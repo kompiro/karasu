@@ -116,7 +116,7 @@ function applyDirectionHintsToForcedLayers(
  * layers, falling back to a topological sort; per-edge direction hints apply
  * last. Extracted so the two paths cannot drift on how a canvas turns nodes
  * into layers (TPL-219). `forcedLayers` is returned because both callers gate
- * their barycenter / column-hint passes on it.
+ * their barycenter pass on it (the forced tiers keep declaration order).
  */
 export function computeLayers(
   nodes: KrsNode[],
@@ -198,7 +198,7 @@ function hasCycle(nodeIds: string[], pairs: Array<{ from: string; to: string }>)
  * tagged as another boundary); we keep it on the infra row rather than promote
  * it. See ADR-1724 (docs/adr/1724-system-view-infra-external-tier-split.md).
  */
-const SYSTEM_TIER_COUNT = 5;
+export const SYSTEM_TIER_COUNT = 5;
 export function systemTier(node: KrsNode): 0 | 1 | 2 | 3 | 4 {
   if (node.kind === "user") return 0;
   if (node.kind === "client") return 1;

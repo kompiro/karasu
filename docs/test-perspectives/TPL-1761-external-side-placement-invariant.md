@@ -69,10 +69,10 @@ system view では `[external]` サービスを左右のサイド列に配置す
 
 kind 別の帯へノードを動かす配置 post-pass を追加・変更する際:
 
-- [ ] 動かした kind 以外（actor/client/service/infra）の行・x スパンが不変であることを確認した [guard: `packages/core/src/renderer/side-column-placement.test.ts`]
+- [ ] 動かした kind 以外（actor/client/service/infra）の行・x スパンが不変であることを確認した
 - [ ] 自動配置が決定的（宣言順安定・tie-break 明示）であることを確認した
 - [ ] 自動振り分けの閾値が分類対象の集合そのものから導出されていないことを確認した。導出している場合は、**閾値が退化する入力**（要素 1 件、全要素同値）を列挙し、そのそれぞれで入力（barycenter 等）が結果に効くことをテストで示した。「同値」の判定は座標の平均に対して bit 一致ではなく許容誤差で行う [judgment]
-- [ ] style ヒント（`column` 等）による override が効くことを確認した [guard: `packages/core/src/renderer/column-hint-override.test.ts`]
+- [ ] style ヒント（`column` 等）による override が効くことを確認した
 - [ ] 列の分配が固定の広がりの N 等分になっていないことを確認した。**隣接ペアの実測ギャップ**を
       複数の件数（入りきる件数 / 入りきらない件数の両方）で assert し、重なりが 0 であることを示した [guard: `packages/core/src/renderer/side-column-placement.test.ts`]
 - [ ] 入りきらない列がフレームと canvas の内側に収まることを確認した（はみ出した分だけフレームが伸び、
@@ -102,15 +102,15 @@ kind 別の帯へノードを動かす配置 post-pass を追加・変更する�
   - `moves external to a side column even without user/client (#1728)`
   - `keeps a database [external] on the infra row, not the external row (kind wins over tag) (#1724)`（境界ルール回帰ガード）
   - `propagates infra pull-up through a dep-on-dep chain … (Issue #974)`（pull-up 回帰ガード）
-- `packages/core/src/renderer/side-column-placement.test.ts`（項目 1・5・6・11 のガード）: `examples/` の全キャンバスと、
+- `packages/core/src/renderer/side-column-placement.test.ts`（項目 5・6・11 のガード）: `examples/` の全キャンバスと、
   external 件数（入りきる / 入りきらない）× 消費ハブ数（gate の上下）の生成モデルを、単一 system と multi-system root の
-  両パイプラインで配置し、最終出力で測る。カードの重なり 0、全カードが自分のフレームと canvas の内側、サイド配置を
-  切った同じモデルと比べてフレームがはみ出し分しか伸びないこと、external を取り除いたモデルと比べて他 kind の行・x スパンが
-  同じであること。external 以外の kind を別の帯へ動かす新しい post-pass の項目 1・6 は測っていない
-- `packages/core/src/renderer/column-hint-override.test.ts`（項目 4 のガード）: `PROPERTY_SCHEMAS.column` の全値 ×
-  `REFERENCE_DATA.nodeKinds` から導いた全キャンバス × 両パイプラインで、ヒントが自動配置を上書きすること
-- `packages/core/src/renderer/system-tier-placement.test.ts`（項目 7 のガード）: レジストリが infra-block とする全 kind を
-  `[external]` / `column` ヒントの有無で、サイド配置が実際に起きるキャンバスに置き、サービスの下の行に残ること
+  両パイプラインで配置し、最終出力で測る。カードの重なり 0 と同じサイド列の隣接ペアのクリアランス、全カードが自分のフレームと
+  canvas の内側、サイド配置を切った同じモデルと比べてフレームがはみ出し分しか伸びないこと。
+  同じファイルは、external を取り除いたモデルと比べて他 kind の行・x スパンが同じであることも測るが、項目 1 のガードではない:
+  項目 1 は任意の kind を別の帯へ動かす post-pass が対象で、このテストは external を動かす経路しか測らない
+- `packages/core/src/renderer/column-hint-override.test.ts`: `PROPERTY_SCHEMAS.column` の全値 ×
+  `REFERENCE_DATA.nodeKinds` から導いた全キャンバス × 両パイプラインで、`column` が自動配置を上書きすること。
+  項目 4 のガードではない: 項目は「`column` 等」で、同じ layout hint の `direction`（edge）と `grid-columns` を測っていない
 - `packages/core/src/renderer/routing-parity.test.ts`（`shared routing chain — ungrouped-only affordances survive (#2362)` › `keeps [external] services in side columns (ADR-1728 / TPL-1761)`: 共有ルーティング chain を通しても external がサイド列に残る）
 
 ## 派生元 spec / ADR

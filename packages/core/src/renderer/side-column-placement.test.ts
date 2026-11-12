@@ -11,7 +11,8 @@
  *   stacked dify's 14 externals into each other, #2625)
  * - every card sits inside its own frame and inside the canvas (items 6, 11)
  * - a frame grows only by what a column that does not fit needs (item 6)
- * - the cards that are not external keep their rows and x-spans (item 1)
+ * - the cards that are not external keep their rows and x-spans (item 1, for
+ *   the external kind only: a pass that bands some other kind is not measured)
  *
  * Inputs are the whole `examples/` corpus plus a generated sweep over the
  * external count (columns that fit and columns that overflow) and the number
@@ -49,6 +50,13 @@ vi.mock("./external-columns.js", async (importOriginal) => {
 });
 
 const TOLERANCE = 0.5;
+
+/**
+ * The clearance two cards of one side column keep (#2625). Held here as the
+ * requirement rather than read from `EXTERNAL_STACK_GAP`, so lowering that
+ * constant toward touching cards fails this file instead of moving its bar.
+ */
+const COLUMN_CLEARANCE = 24;
 
 /** The system a card is drawn in: its path's first segment. */
 const systemOf = (n: LayoutNode): string | undefined => n.path?.[0];
@@ -141,18 +149,60 @@ const SWEEP: SweepCase[] = [false, true].flatMap((multi) =>
 const sweepLayout = (c: SweepCase): LayoutResult =>
   layoutView(sweepModel(c.externals, c.hubs, c.multi));
 
-/** Ungrouped views only: group-by mode places externals in their group's frame instead. */
+/**
+ * Every corpus view, laid out ungrouped: group-by mode skips the side columns
+ * and places externals in their group's frame, so the grouped canvases have
+ * nothing for these checks to measure.
+ */
 const CORPUS = corpusViews();
+
+/**
+ * Adjacent cards of one side column that sit closer than the column's
+ * clearance. Overlap alone is not the item: two cards that touch (gap 0) read
+ * as one block, which is the failure the clearance exists to prevent.
+ */
+function crowdedPairs(res: LayoutResult, moved: ReadonlySet<string>): string[] {
+  const out: string[] = [];
+  const bySystem = new Map<string | undefined, LayoutNode[]>();
+  for (const n of realCards(res)) {
+    bySystem.set(systemOf(n), [...(bySystem.get(systemOf(n)) ?? []), n]);
+  }
+  for (const cards of bySystem.values()) {
+    const band = cards.filter((n) => !moved.has(n.id));
+    const column = cards.filter((n) => moved.has(n.id));
+    if (band.length === 0 || column.length === 0) continue;
+    const bandLeft = Math.min(...band.map((n) => n.x));
+    for (const onLeft of [true, false]) {
+      const side = column.filter((n) => n.x < bandLeft === onLeft).sort((a, b) => a.y - b.y);
+      for (let i = 1; i < side.length; i++) {
+        const gap = side[i].y - (side[i - 1].y + side[i - 1].height);
+        if (gap < COLUMN_CLEARANCE - TOLERANCE) {
+          out.push(`${side[i - 1].id} and ${side[i].id} are ${gap}px apart`);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** Lays out one view and returns the cards the side placement moved in it. */
+function layoutRecordingSides(src: string, path: string[]) {
+  siding.moved.clear();
+  const res = layoutView(src, path);
+  return { res, moved: new Set(siding.moved) };
+}
 
 describe("side columns: no card overlaps another (TPL-1761 item 5)", () => {
   it.each(SWEEP)("$name", (c) => {
-    expect(overlaps(sweepLayout(c))).toEqual([]);
+    const { res, moved } = layoutRecordingSides(sweepModel(c.externals, c.hubs, c.multi), []);
+    expect([...overlaps(res), ...crowdedPairs(res, moved)]).toEqual([]);
   });
 
   it("holds on every example canvas", () => {
-    const found = CORPUS.flatMap((v) =>
-      overlaps(layoutView(v.src, v.path)).map((o) => `${v.name}: ${o}`),
-    );
+    const found = CORPUS.flatMap((v) => {
+      const { res, moved } = layoutRecordingSides(v.src, v.path);
+      return [...overlaps(res), ...crowdedPairs(res, moved)].map((o) => `${v.name}: ${o}`);
+    });
     expect(found).toEqual([]);
   });
 
@@ -301,21 +351,27 @@ function bandShape(res: LayoutResult, sys: string) {
 /** The same source with every external-tier system child, and every edge touching one, removed. */
 function withoutExternals(src: string): { systems: KrsNode[]; removed: number } {
   const systems = Parser.parse(src).value.systems;
-  const removed = new Set<string>();
+  // Keyed per system: two systems may both declare `Stripe`, one as an
+  // external and one as their own service, and only the external goes.
+  const removed = new Map<string, Set<string>>();
   for (const sys of systems) {
-    for (const child of sys.children) if (systemTier(child) === 4) removed.add(child.id);
-    sys.children = sys.children.filter((child) => !removed.has(child.id));
+    const ids = new Set(sys.children.filter((c) => systemTier(c) === 4).map((c) => c.id));
+    removed.set(sys.id, ids);
+    sys.children = sys.children.filter((child) => !ids.has(child.id));
   }
-  const touches = (end: string) => [...removed].some((id) => end === id || end.endsWith(`.${id}`));
-  const prune = (n: KrsNode): void => {
-    n.edges = n.edges.filter((e) => !touches(e.from) && !touches(e.to));
-    for (const child of n.children) prune(child);
+  // A bare endpoint resolves in its own system; a dotted one names the system.
+  const touches = (end: string, own: string) =>
+    removed.get(own)!.has(end) ||
+    [...removed].some(([sys, ids]) => [...ids].some((id) => end === `${sys}.${id}`));
+  const prune = (n: KrsNode, own: string): void => {
+    n.edges = n.edges.filter((e) => !touches(e.from, own) && !touches(e.to, own));
+    for (const child of n.children) prune(child, own);
   };
-  for (const sys of systems) prune(sys);
-  return { systems, removed: removed.size };
+  for (const sys of systems) prune(sys, sys.id);
+  return { systems, removed: [...removed.values()].reduce((sum, ids) => sum + ids.size, 0) };
 }
 
-describe("side columns: the other kinds keep their rows and x-spans (TPL-1761 item 1)", () => {
+describe("side columns: the other kinds keep their rows and x-spans (TPL-1761 item 1, externals only)", () => {
   // Wherever the externals go (a side column, or the bottom band below the
   // single-hub gate), the cards of every other kind are placed as if the
   // externals were not in the model at all.
@@ -323,10 +379,14 @@ describe("side columns: the other kinds keep their rows and x-spans (TPL-1761 it
     const parsed = Parser.parse(src).value;
     const stripped = withoutExternals(src);
     if (stripped.removed === 0) return null;
-    const withExt = layout(extractView(parsed.systems, path), { ownerIndex: parsed.ownerIndex });
-    const without = layout(extractView(stripped.systems, path), {
+    // The same options `layoutView` passes, so both runs see what the other
+    // guards in this file see; only the systems differ.
+    const options = {
       ownerIndex: parsed.ownerIndex,
-    });
+      boundaryMembership: parsed.boundaryMembership,
+    };
+    const withExt = layout(extractView(parsed.systems, path), options);
+    const without = layout(extractView(stripped.systems, path), options);
     const systems = new Set(realCards(withExt).map(systemOf));
     const out: string[] = [];
     for (const sys of systems) {

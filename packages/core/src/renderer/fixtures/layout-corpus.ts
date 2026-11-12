@@ -1,15 +1,20 @@
 /**
- * The `examples/` corpus as layout inputs, for the placement invariants that
- * have to hold on every canvas a user can open rather than on hand-built
- * fixtures (the #1954 lesson). Excluded from the build with the rest of
- * `fixtures/`, which is what lets it read the files from disk.
+ * The `examples/` corpus as layout inputs, for placement invariants that have
+ * to hold on what users draw rather than on hand-built fixtures (the #1954
+ * lesson). Excluded from the build with the rest of `fixtures/`, which is what
+ * lets it read the files from disk.
  *
- * A view is every canvas `extractView` can produce from one file without
- * resolving imports: the root (one system's own canvas, or the multi-system
- * root when the file declares several), each system on its own when there are
- * several, and the drill-down of every child that has children of its own.
+ * A view is a canvas `extractView` produces from one file, parsed on its own:
+ * the root (one system's own canvas, or the multi-system root when the file
+ * declares several), each system on its own when there are several, and the
+ * drill-down of every node at any depth that has children of its own.
  * Enumerated from the parsed model, so a new example is covered the day it
  * lands.
+ *
+ * Not covered: imports are not resolved (a multi-file project is laid out one
+ * file at a time), `layoutView` passes no resolved styles (no layout hints, no
+ * shapes), and group-by is up to the caller (the views are ungrouped unless
+ * it passes `groupBy`).
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -48,11 +53,16 @@ export interface CorpusView {
 
 export function viewPathsOf(systems: readonly KrsNode[]): string[][] {
   const paths: string[][] = [[]];
+  const drill = (node: KrsNode, path: string[]): void => {
+    for (const child of node.children) {
+      if (child.children.length === 0) continue;
+      paths.push([...path, child.id]);
+      drill(child, [...path, child.id]);
+    }
+  };
   for (const sys of systems) {
     if (systems.length > 1) paths.push([sys.id]);
-    for (const child of sys.children) {
-      if (child.children.length > 0) paths.push([sys.id, child.id]);
-    }
+    drill(sys, [sys.id]);
   }
   return paths;
 }

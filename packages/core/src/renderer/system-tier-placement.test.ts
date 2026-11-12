@@ -14,7 +14,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { REFERENCE_DATA } from "../builtins/reference-data.js";
-import { systemTier } from "./layer-assignment.js";
+import { SYSTEM_TIER_COUNT, systemTier } from "./layer-assignment.js";
 import { layoutView } from "./fixtures/layout-corpus.js";
 import type { KrsNode } from "../types/ast.js";
 import type { ResolvedLayoutHints } from "../types/style.js";
@@ -90,9 +90,10 @@ describe("empty tiers leave no phantom row (TPL-1736 item 3)", () => {
   }
 
   it("enumerates every tier systemTier can return", () => {
-    // Five today (user / client / internal / infra / external). Derived, so this
-    // is a floor on the enumeration rather than a pin on the count.
-    expect(reps.length).toBeGreaterThanOrEqual(5);
+    // The kinds a system may hold, with and without `[external]`, have to reach
+    // every tier the layering allocates; a tier no kind reaches would never be
+    // in a subset below.
+    expect(reps.length).toBe(SYSTEM_TIER_COUNT);
   });
 
   describe.each(PIPELINES)("$name", ({ multi }) => {
