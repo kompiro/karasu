@@ -15,25 +15,89 @@ import { resolvePalette, type DiagramTheme } from "./palette.js";
  *
  * A colour from anywhere else is a literal in the renderer or a base style that
  * no theme chose, which is how an element no rule paints ends up drawn in one
- * theme's colours in both (TPL-2662). Every shipped example is drawn in both
- * themes, ungrouped and grouped by team and by boundary, so an element added
- * later is checked as soon as an example draws it.
+ * theme's colours in both (TPL-2662). Every shipped example is drawn by
+ * `buildAllViewsSvg` in both themes, ungrouped and grouped by team and by
+ * boundary, so an element added later is checked as soon as an example draws
+ * it there. Live-viewer chrome (`nodeControls`), diff and facet selection are
+ * not drawn.
  */
 
-const HEX = /#[0-9a-f]{6}\b|#[0-9a-f]{3}\b/gi;
+/** Attributes and CSS properties that take a paint. */
+const PAINT_ATTRIBUTES = ["fill", "stroke", "color", "stop-color", "flood-color", "lighting-color"];
+const PAINT_PROPERTIES = [
+  ...PAINT_ATTRIBUTES,
+  "background",
+  "background-color",
+  "border-color",
+  "outline-color",
+];
 
+/** Paint values that name no colour of their own. */
+const NOT_A_COLOUR = new Set(["none", "transparent", "currentcolor", "inherit"]);
+
+/**
+ * The named colours the renderer writes, by value. A name outside this table
+ * is kept as written and so reported, which can only fail too often: add its
+ * value here when one ships.
+ */
+const NAMED_COLOURS: Record<string, string> = { white: "#ffffff", black: "#000000" };
+
+/**
+ * The colour a paint value names, as lowercase `#rrggbb`; `undefined` for a
+ * value that names none (a keyword or a `url(…)` paint server). An alpha
+ * channel (`#rgba` / `#rrggbbaa`) is dropped: the hue is what a theme chooses.
+ * Anything else (`rgb(…)`, an unknown name) comes back as written.
+ */
+function colourOf(value: string): string | undefined {
+  const v = value
+    .replace(/!important/i, "")
+    .trim()
+    .toLowerCase();
+  if (NOT_A_COLOUR.has(v) || v.startsWith("url(")) return undefined;
+  const hex = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/.exec(v)?.[1];
+  if (hex !== undefined) {
+    const full = hex.length <= 4 ? [...hex].map((c) => c + c).join("") : hex;
+    return `#${full.slice(0, 6)}`;
+  }
+  return NAMED_COLOURS[v] ?? v;
+}
+
+/** Every paint in `svg`: paint attributes, `style` attributes and `<style>` blocks. */
+function paintsIn(svg: string): string[] {
+  const values: string[] = [];
+  const attribute = new RegExp(`\\s(?:${PAINT_ATTRIBUTES.join("|")})="([^"]*)"`, "g");
+  for (const m of svg.matchAll(attribute)) values.push(m[1]);
+  const declaration = new RegExp(
+    `(?:^|[;{\\s])(?:${PAINT_PROPERTIES.join("|")})\\s*:\\s*([^;}"]+)`,
+    "g",
+  );
+  const css = [
+    ...[...svg.matchAll(/\sstyle="([^"]*)"/g)].map((m) => m[1]),
+    ...[...svg.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]),
+  ];
+  for (const block of css) for (const m of block.matchAll(declaration)) values.push(m[1]);
+  return values.flatMap((value) => colourOf(value) ?? []);
+}
+
+/** The hex colours written in `text` (palette values, sheet values, a model's swatches). */
 function hexesIn(text: string): string[] {
-  return (text.match(HEX) ?? []).map((hex) => hex.toLowerCase());
+  return (text.match(/#[0-9a-f]{3,8}\b/gi) ?? []).flatMap((hex) => colourOf(hex) ?? []);
 }
 
 /** The colours `theme` itself supplies. */
 function themeColours(theme: DiagramTheme): Set<string> {
-  const colours = new Set(FACET_OVERLAY_COLORS.map((c) => c.toLowerCase()));
+  const colours = new Set(FACET_OVERLAY_COLORS.flatMap((c) => colourOf(c) ?? []));
   for (const value of Object.values(resolvePalette(theme))) {
-    for (const hex of hexesIn([value].flat().join(" "))) colours.add(hex);
+    for (const part of [value].flat()) {
+      const colour = typeof part === "string" ? colourOf(part) : undefined;
+      if (colour !== undefined) colours.add(colour);
+    }
   }
   for (const rule of getBuiltinStyleSheet(theme).rules) {
-    for (const hex of hexesIn(Object.values(rule.properties).join(" "))) colours.add(hex);
+    for (const value of Object.values(rule.properties)) {
+      const colour = colourOf(value);
+      if (colour !== undefined) colours.add(colour);
+    }
   }
   return colours;
 }
@@ -108,7 +172,7 @@ describe("every colour of a themed render comes from that theme or the model (TP
       const stray = new Set<string>();
       for (const groupBy of GROUPINGS) {
         const svg = splitNodeGroups(draw(krs, theme, groupBy), Object.keys(BASE_CARD_KINDS)).rest;
-        for (const hex of hexesIn(svg)) if (!allowed.has(hex)) stray.add(hex);
+        for (const colour of paintsIn(svg)) if (!allowed.has(colour)) stray.add(colour);
       }
       expect([...stray]).toEqual([]);
     });
@@ -118,7 +182,7 @@ describe("every colour of a themed render comes from that theme or the model (TP
         ([, krs]) => splitNodeGroups(draw(krs, theme, undefined), [kind]).cut,
       );
       expect(cards.length, `no example draws a ${kind}`).toBeGreaterThan(0);
-      const unsupplied = cards.flatMap(hexesIn).filter((hex) => !supplied.has(hex));
+      const unsupplied = cards.flatMap(paintsIn).filter((colour) => !supplied.has(colour));
       expect(
         unsupplied,
         `${kind} is painted from the theme now; drop it from BASE_CARD_KINDS`,
