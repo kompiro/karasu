@@ -449,6 +449,14 @@ function trainIssueOf(sha: string): number | null {
   return train.issue;
 }
 
+/**
+ * Whether a release.yml run failed, from the results of its pack, stage and
+ * vscode jobs. Each is read on its own: a failed pack skips stage, and a
+ * skipped job is not a success.
+ */
+export const releaseRunFailed = (results: (string | null)[]): boolean =>
+  results.some((result) => result !== "success");
+
 function closeTrain(argv: string[]): void {
   const sha = process.env.GITHUB_SHA ?? runOk("git", ["rev-parse", "HEAD"]);
   const packResult = flag(argv, "pack-result");
@@ -458,9 +466,7 @@ function closeTrain(argv: string[]): void {
   const issue = trainIssueOf(sha);
   if (issue === null) return;
 
-  // Each job is read on its own: a failed pack skips stage, and a skipped job
-  // is not a success.
-  if ([packResult, stageResult, vscodeResult].some((result) => result !== "success")) {
+  if (releaseRunFailed([packResult, stageResult, vscodeResult])) {
     runOk("gh", [
       "issue",
       "comment",

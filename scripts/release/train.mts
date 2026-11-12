@@ -90,7 +90,7 @@ export function composeTrainIssueBody(opts: {
     "- [ ] If the CHANGELOG promotes experimental notation or changes the language, confirm the promotion gate (ADR-1820) and the `.krs language vX.Y` note (ADR-2124)",
     ...(npm
       ? [
-          "- [ ] Every bumped npm package has a stage-only Trusted Publisher connection, conditioned on the environment `npm`, that has not expired. Create a missing one right before merging (docs/release.md)",
+          "- [ ] Every bumped npm package has a stage-only Trusted Publisher connection, conditioned on the environment `npm` (deployment branch `main` only), that has not expired. Create a missing one right before merging (docs/release.md)",
         ]
       : []),
     "- [ ] Squash-merge the PR",

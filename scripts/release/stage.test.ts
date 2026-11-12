@@ -7,13 +7,16 @@ import type { NpmPackage, PackageJson } from "./release-state.mts";
 import {
   classifyStage,
   firstGroup,
+  isPrerelease,
   listTarballs,
   manifestProblems,
   matchTarballs,
   MAX_TARBALL_BYTES,
   planProblems,
+  preTagOf,
   readPlan,
   stageArgs,
+  stageGroups,
   tagFor,
   tarballManifest,
   type PlannedRelease,
@@ -118,6 +121,41 @@ describe("tagFor", () => {
     expect(tagFor("0.11.0-rehearsal.0", { preTag: null, override: "latest" })).toEqual({
       problem: expect.stringMatching(/prerelease.*latest/),
     });
+  });
+});
+
+describe("isPrerelease and preTagOf", () => {
+  it("reads a prerelease from the part before build metadata", () => {
+    expect(isPrerelease("0.11.0-next.0")).toBe(true);
+    expect(isPrerelease("0.11.0+build-1")).toBe(false);
+    expect(isPrerelease("0.11.0-next.0+build")).toBe(true);
+  });
+
+  it("takes the tag only from pre.json in pre mode", () => {
+    expect(preTagOf(null)).toBeNull();
+    expect(preTagOf(JSON.stringify({ mode: "pre", tag: "next" }))).toBe("next");
+    expect(preTagOf(JSON.stringify({ mode: "exit", tag: "next" }))).toBeNull();
+  });
+});
+
+describe("stageGroups", () => {
+  const skills = pkg("karasu-skills", "0.3.0");
+  const core = pkg("@karasu-tools/core", "0.5.0");
+  const karasu = pkg("karasu", "0.11.0", ["karasu-skills"]);
+  const all = [karasu, core, skills];
+
+  it("never stages a version the release commit did not bump", () => {
+    // core@0.5.0 is not on npm (an abandoned release), but this commit did not bump it.
+    const { candidates } = stageGroups(all, [skills], () => false);
+    expect(candidates).toEqual([skills]);
+  });
+
+  it("never stages a version already on npm", () => {
+    const onNpm = (name: string) => name === "@karasu-tools/core";
+    const { candidates, first, later } = stageGroups(all, all, onNpm);
+    expect(candidates.map((p) => p.name)).toEqual(["karasu", "karasu-skills"]);
+    expect(first).toEqual([skills]);
+    expect(later).toEqual([karasu]);
   });
 });
 

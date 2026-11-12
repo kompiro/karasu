@@ -141,6 +141,7 @@ node scripts/release/stage.mts pack --out-dir <dir>
 node scripts/release/stage.mts publish --tarballs <dir>
 ```
 
+- `<dir>` は毎回新しいディレクトリにする。前のグループの tarball が残っていると `publish` が止まるので、`pack` は空でないディレクトリを拒む。
 - 手元ではビルドと stage が同じ場所で動くので、`stage` ジョブを分けた効果は無い。承認の直後のインストールに効く項目の照合（上の手順 6）が、メタデータの食い違いを受ける。
 - 計画に次のグループがあると、`pnpm release:approve` は承認のあとで `release.yml` の run を再実行して stage させる。CI の経路が使えないあいだはこの再実行が失敗し、スクリプトはそこで止まる。止まったら、同じ手元のリリースコミットで上の 2 つをもう一度実行して次のグループを stage し、`pnpm release:approve` を実行し直す。承認済みのグループは npm に載って計画から外れているので、スクリプトは次のグループから照合する。グループが残るあいだ、これを繰り返す。
 - 手元から stage した版には provenance が付かない（`stage.mts` は GitHub Actions の外では `--provenance=false` を付ける）。

@@ -69,14 +69,14 @@ import {
   type NpmPackage,
   type PackageJson,
 } from "./release-state.mts";
-import { readTarballStrict } from "./tarball.mts";
+import { readTarball, readTarballStrict } from "./tarball.mts";
 
 // ------------------------------------------------------------------ pack
 
 export type PlannedRelease = {
   name: string;
   version: string;
-  /** changesets' tag; approve.mts expects it. `publish` decides its own (`tagFor`). */
+  /** changesets' tag, which nothing stages by: `publish` and approve.mts use `tagFor`. */
   tag: string;
   tarball: { path: string; integrity: string };
 };
@@ -128,7 +128,15 @@ export function planProblems(
 
 // ------------------------------------------------------------------ publish: decisions
 
-const isPrerelease = (version: string): boolean => version.includes("-");
+/** A semver prerelease: a `-` before any build metadata (`1.0.0+build-1` is not). */
+export const isPrerelease = (version: string): boolean => version.split("+")[0].includes("-");
+
+/** The tag of changesets' pre mode in a `.changeset/pre.json`, or null outside it. */
+export function preTagOf(preJson: string | null): string | null {
+  if (preJson === null) return null;
+  const pre = JSON.parse(preJson) as { mode?: string; tag?: string };
+  return pre.mode === "pre" && typeof pre.tag === "string" ? pre.tag : null;
+}
 
 /**
  * The tag a version is staged under. A release is `latest`; a prerelease takes
@@ -149,6 +157,20 @@ export function tagFor(
     return { problem: `${version} is a prerelease and would be staged under latest.` };
   }
   return { tag };
+}
+
+/**
+ * What `publish` may stage: the packages the release commit bumped (all npm
+ * packages under `--any-commit`) whose version is not on npm yet, split by
+ * `firstGroup`. Nothing else is a candidate, whatever the artifact holds.
+ */
+export function stageGroups(
+  all: NpmPackage[],
+  bumped: NpmPackage[],
+  onNpm: (name: string, version: string) => boolean,
+): { candidates: NpmPackage[]; first: NpmPackage[]; later: NpmPackage[] } {
+  const candidates = bumped.filter((pkg) => !onNpm(pkg.name, pkg.version));
+  return { candidates, ...firstGroup(candidates, all, onNpm) };
 }
 
 /**
@@ -281,9 +303,16 @@ export function listTarballs(dir: string): { files: string[]; problems: string[]
   return { files: files.sort(), problems };
 }
 
-/** The `package.json` inside a tarball, read without npm or any dependency. */
+/**
+ * The `package.json` inside a tarball, read without any dependency. The bounded
+ * strict read stops an archive that unpacks too large; `readTarball` then reads
+ * it again with the node-tar of the npm CLI on PATH (the one that stages it)
+ * and fails unless both see the same files, so the manifest checked here is
+ * the one npm will publish.
+ */
 export function tarballManifest(gzipped: Buffer): Partial<PackageJson> {
-  const manifest = readTarballStrict(gzipped, { maxBytes: MAX_UNPACKED_BYTES }).get("package.json");
+  readTarballStrict(gzipped, { maxBytes: MAX_UNPACKED_BYTES });
+  const manifest = readTarball(gzipped).get("package.json");
   if (manifest === undefined) throw new Error("the tarball has no package/package.json");
   return JSON.parse(manifest.toString("utf8")) as Partial<PackageJson>;
 }
@@ -408,7 +437,11 @@ function pack(argv: string[]): void {
   });
   if (problems.length > 0) return fail(problems);
 
+  // Tarballs of an earlier group left in the directory would stop `publish`.
   const outDir = resolve(options.outDir);
+  if (existsSync(outDir) && readdirSync(outDir).length > 0) {
+    return fail([`${outDir} is not empty: pack into a new directory.`]);
+  }
   mkdirSync(outDir, { recursive: true });
   const [first, ...later] = plan;
   for (const release of first) {
@@ -425,9 +458,7 @@ function pack(argv: string[]): void {
 /** `.changeset/pre.json`'s tag at `sha`, or null outside pre mode. */
 function preTagAt(sha: string): string | null {
   const result = run("git", ["show", `${sha}:.changeset/pre.json`]);
-  if (result.status !== 0) return null;
-  const pre = JSON.parse(result.stdout) as { mode?: string; tag?: string };
-  return pre.mode === "pre" && typeof pre.tag === "string" ? pre.tag : null;
+  return preTagOf(result.status === 0 ? result.stdout : null);
 }
 
 function publish(argv: string[]): void {
@@ -447,12 +478,11 @@ function publish(argv: string[]): void {
     if (!present.has(key)) present.set(key, isOnNpm(name, version));
     return present.get(key) ?? false;
   };
-  const candidates = bumped.filter((pkg) => !onNpm(pkg.name, pkg.version));
+  const { candidates, first, later } = stageGroups(all, bumped, onNpm);
   if (candidates.length === 0) {
     summary("Every npm version this commit bumped is already published: nothing to stage.");
     return;
   }
-  const { first, later } = firstGroup(candidates, all, onNpm);
   if (first.length === 0) {
     return fail([
       `None of ${candidates.map((pkg) => `${pkg.name}@${pkg.version}`).join(", ")} can be installed yet: a workspace dependency is missing from npm.`,

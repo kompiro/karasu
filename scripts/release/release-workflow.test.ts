@@ -78,6 +78,11 @@ describe("release.yml", () => {
     // The pack job may be hijacked: nothing of it reaches the stage job
     // through an expression, only the artifact's files.
     expect(stage).not.toMatch(/needs\.pack\.outputs/);
+    // The artifact lands outside the checkout, so it cannot replace the
+    // stage.mts that reads it.
+    expect(stage).toMatch(
+      /download-artifact@[^\n]*\n(?:\s+[^\n]*\n)*?\s+path: \$\{\{ runner\.temp \}\}\/stage-tarballs/,
+    );
   });
 
   it("no longer records from the staging run", () => {
