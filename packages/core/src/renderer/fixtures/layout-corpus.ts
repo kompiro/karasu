@@ -25,7 +25,7 @@ import { Parser } from "../../parser/parser.js";
 import type { KrsNode } from "../../types/ast.js";
 import type { LayoutOptions, LayoutResult } from "../layout-types.js";
 
-export const EXAMPLES_DIR = resolve(
+const EXAMPLES_DIR = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../../../../examples",
 );
@@ -40,7 +40,7 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 /** Every `.krs` under `examples/`, both languages. */
-export function exampleFiles(): string[] {
+function exampleFiles(): string[] {
   return walk(EXAMPLES_DIR);
 }
 
@@ -51,7 +51,7 @@ export interface CorpusView {
   path: string[];
 }
 
-export function viewPathsOf(systems: readonly KrsNode[]): string[][] {
+function viewPathsOf(systems: readonly KrsNode[]): string[][] {
   const paths: string[][] = [[]];
   const drill = (node: KrsNode, path: string[]): void => {
     for (const child of node.children) {
