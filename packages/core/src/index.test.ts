@@ -274,7 +274,7 @@ describe("Icon Mode — shape cascade priority (issue #279)", () => {
   });
 
   it("icon theme: single-tag client resolution comes from cascade alone (post-step is a no-op)", () => {
-    // Regression guard: if applyClientSubtypeFirstMatch is widened to handle
+    // Regression guard: if applyVariantFirstMatch is widened to handle
     // single-tag nodes, this test catches it. The point is that the resolver
     // post-step must not even consider single-tag clients — those are owned
     // entirely by the icon-theme cascade rules.

@@ -6,6 +6,9 @@ import {
   getIconThemeStyleSheet,
   iconNameForNode,
 } from "./icon-theme.js";
+import { getBuiltinStyleSheet } from "./default-style.js";
+import { resolveStyles } from "../resolver/style-resolver.js";
+import type { KrsNode } from "../types/ast.js";
 
 /** Scopes whose rules `iconNameForNode` resolves (the rest return `undefined`). */
 const SYSTEM_VIEW_SCOPES = new Set(["logical", "infra", "resource-variant", "client-variant"]);
@@ -95,7 +98,7 @@ describe("iconNameForNode (parity with ICON_RULES)", () => {
   });
 
   it("uses first-match-wins on tag order for a multi-subtype client", () => {
-    // Matches applyClientSubtypeFirstMatch in resolver/style-resolver.ts.
+    // Matches applyVariantFirstMatch in resolver/style-resolver.ts.
     expect(iconNameForNode("client", ["web", "mobile"])).toBe("client-web");
     expect(iconNameForNode("client", ["mobile", "web"])).toBe("client-mobile");
   });
@@ -114,5 +117,51 @@ describe("iconNameForNode (parity with ICON_RULES)", () => {
     expect(iconNameForNode("system", [])).toBeUndefined();
     expect(iconNameForNode("table", [])).toBeUndefined();
     expect(iconNameForNode("deploy-block", [])).toBeUndefined();
+  });
+});
+
+/**
+ * The renderer resolves a node's icon through the CSS cascade (plus the client
+ * first-match post-step in `resolver/style-resolver.ts`); every other surface
+ * calls {@link iconNameForNode}. Both have to pick the same icon when a node
+ * carries several variant tags, which is where their resolution orders can part
+ * (TPL-1415 item 5). Each variant tag alone, every ordered pair of a kind's
+ * variant tags, and each kind's variants in full in both orders are generated
+ * from ICON_RULES, so a new
+ * variant or a new kind with variants is compared without a new case here.
+ */
+describe("iconNameForNode agrees with the cascade on multi-variant nodes", () => {
+  // Every tagged rule on a kind `iconNameForNode` draws, whatever its scope, so a
+  // variant added under a new scope is compared too.
+  const VARIANT_TAGS = new Map<string, string[]>();
+  for (const r of ICON_RULES) {
+    if (!r.tag || iconNameForNode(r.kind, []) === undefined) continue;
+    VARIANT_TAGS.set(r.kind, [...(VARIANT_TAGS.get(r.kind) ?? []), r.tag]);
+  }
+
+  const cases: [string, string[]][] = [];
+  for (const [kind, tags] of VARIANT_TAGS) {
+    for (const a of tags) cases.push([kind, [a]]);
+    for (const a of tags) for (const b of tags) if (a !== b) cases.push([kind, [a, b]]);
+    cases.push([kind, tags], [kind, [...tags].reverse()]);
+  }
+
+  it("has a kind with variants to compare", () => {
+    expect(VARIANT_TAGS.size).toBeGreaterThan(0);
+  });
+
+  it.each(cases)("%s %j", (kind, tags) => {
+    const node = {
+      id: "N",
+      kind,
+      label: "N",
+      tags,
+      annotations: [],
+      edges: [],
+      children: [],
+      properties: { links: [] },
+    } as unknown as KrsNode;
+    const styles = resolveStyles([node], [getBuiltinStyleSheet(), getIconThemeStyleSheet()]);
+    expect(styles.nodes.get("N")?.shape).toEqual({ url: iconNameForNode(kind, tags) });
   });
 });

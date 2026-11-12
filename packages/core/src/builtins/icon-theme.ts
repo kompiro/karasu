@@ -40,9 +40,9 @@ interface IconRule {
 
 /**
  * The canonical icon vocabulary. Order is significant for `client-variant`
- * entries: it defines {@link CLIENT_SUBTYPE_TAGS} and therefore the
- * first-match-wins order `applyClientSubtypeFirstMatch` in
- * `resolver/style-resolver.ts` relies on.
+ * entries: it defines {@link CLIENT_SUBTYPE_TAGS}. Which variant a multi-tag
+ * node shows follows the node's `tags` order, not this one
+ * ({@link VARIANT_ICONS_BY_KIND}).
  *
  * Exported for the package-internal parity test only — not re-exported from
  * `index.ts`. Consumers use {@link iconNameForNode} / {@link ICON_THEME_STYLE_SOURCE}.
@@ -94,10 +94,9 @@ function selectorFor(rule: IconRule): string {
 
 /**
  * Recognised `client` form-factor subtype tags, derived from the
- * `client-variant` entries of {@link ICON_RULES} in declaration order. The
- * style resolver imports this list to implement first-match-wins on
- * `node.tags` order for multi-tag clients (see `applyClientSubtypeFirstMatch`
- * in `resolver/style-resolver.ts`).
+ * `client-variant` entries of {@link ICON_RULES} in declaration order. Public
+ * API; the resolver's first-match-wins for multi-tag nodes reads
+ * {@link VARIANT_ICONS_BY_KIND} instead.
  */
 export const CLIENT_SUBTYPE_TAGS: readonly string[] = ICON_RULES.filter(
   (r) => r.scope === "client-variant",
@@ -157,15 +156,27 @@ const BASE_KIND_ICON = new Map<string, string>(
   ]),
 );
 
-/** `resource` tag variant → icon name. */
-const RESOURCE_TAG_ICON = new Map<string, string>(
-  ICON_RULES.filter((r) => r.scope === "resource-variant").map((r) => [r.tag as string, r.icon]),
-);
-
-/** `client` subtype tag → icon name. */
-const CLIENT_SUBTYPE_ICON = new Map<string, string>(
-  ICON_RULES.filter((r) => r.scope === "client-variant").map((r) => [r.tag as string, r.icon]),
-);
+/**
+ * `kind → (variant tag → icon name)` for every system-view kind with tag
+ * variants (`resource`, `client`), derived from {@link ICON_RULES}.
+ *
+ * Both readers of a multi-variant node go through this one table with the same
+ * rule, first-match-wins on the node's `tags` order: {@link iconNameForNode}
+ * here, and `applyVariantFirstMatch` in `resolver/style-resolver.ts`, which
+ * rewrites the cascade's pick (the variant declared last in the sheet). Two
+ * orders would show one node with two icons, the renderer's and the Outline's
+ * (TPL-1415).
+ */
+export const VARIANT_ICONS_BY_KIND: ReadonlyMap<string, ReadonlyMap<string, string>> = (() => {
+  const byKind = new Map<string, Map<string, string>>();
+  for (const r of ICON_RULES) {
+    if (r.scope !== "resource-variant" && r.scope !== "client-variant") continue;
+    const variants = byKind.get(r.kind) ?? new Map<string, string>();
+    variants.set(r.tag as string, r.icon);
+    byKind.set(r.kind, variants);
+  }
+  return byKind;
+})();
 
 /**
  * Resolves a node's `(kind, tags)` to the Icon Mode icon name the preview
@@ -173,29 +184,20 @@ const CLIENT_SUBTYPE_ICON = new Map<string, string>(
  * encodes as CSS. Surfaces other than the renderer (e.g. the app's Outline
  * view) call this so they show the same pictogram for a given node.
  *
- * Tag-driven variants take precedence over the base kind:
- * - a `client` with a recognised subtype tag → `client-<tag>`, using
- *   first-match-wins on `tags` order (matching `applyClientSubtypeFirstMatch`
- *   in `resolver/style-resolver.ts`);
- * - a `resource` with a recognised variant tag → the variant icon,
- *   first-match-wins on `tags` order. (Icon Mode resolves `resource[...]`
- *   through the CSS cascade; the two agree for the common single-variant
- *   case, which is the only one karasu's vocabulary expects.)
+ * Tag-driven variants take precedence over the base kind: a `client` or
+ * `resource` with a recognised variant tag → the variant icon, using
+ * first-match-wins on `tags` order (the order `applyVariantFirstMatch` in
+ * `resolver/style-resolver.ts` gives the renderer — see
+ * {@link VARIANT_ICONS_BY_KIND}).
  *
  * Returns `undefined` for kinds with no Icon Mode pictogram (`system`,
  * deploy / org kinds, infra item kinds) — see {@link IconScope}.
  */
 export function iconNameForNode(kind: string, tags: readonly string[]): string | undefined {
-  if (kind === "client") {
-    for (const tag of tags) {
-      const icon = CLIENT_SUBTYPE_ICON.get(tag);
-      if (icon) return icon;
-    }
-  } else if (kind === "resource") {
-    for (const tag of tags) {
-      const icon = RESOURCE_TAG_ICON.get(tag);
-      if (icon) return icon;
-    }
+  const variants = VARIANT_ICONS_BY_KIND.get(kind);
+  for (const tag of variants ? tags : []) {
+    const icon = variants?.get(tag);
+    if (icon) return icon;
   }
   return BASE_KIND_ICON.get(kind);
 }
