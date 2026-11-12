@@ -68,9 +68,12 @@ export function composeTrainIssueBody(opts: {
   repository: string;
   branch: string;
   bumps: Bump[];
+  /** The released packages that go to npm (not `private`). */
+  npmNames: string[];
 }): string {
   const compare = `https://github.com/${opts.repository}/compare/main...${opts.branch}?expand=1`;
   const rows = opts.bumps.map((b) => `| \`${b.name}\` | ${b.from} | ${b.to} |`).join("\n");
+  const npm = opts.bumps.some((b) => opts.npmNames.includes(b.name));
   return [
     branchLine(opts.branch),
     "",
@@ -85,12 +88,51 @@ export function composeTrainIssueBody(opts: {
     `- [ ] Open the release PR: ${compare}`,
     "- [ ] Read the versions and every `packages/*/CHANGELOG.md` in the PR (docs/release.md)",
     "- [ ] If the CHANGELOG promotes experimental notation or changes the language, confirm the promotion gate (ADR-1820) and the `.krs language vX.Y` note (ADR-2124)",
+    ...(npm
+      ? [
+          "- [ ] Every bumped npm package has a stage-only Trusted Publisher connection that has not expired. Create a missing one right before merging (docs/release.md)",
+        ]
+      : []),
     "- [ ] Squash-merge the PR",
+    ...(npm ? ["- [ ] Approve the staged npm versions (`pnpm release:approve`)"] : []),
     "",
-    "Merging runs `release.yml`: npm publish, the VS Code Marketplace publish, the package tags and the `release-YYYY-MM-DD` GitHub Release. This Issue is closed with the Release link when every step succeeded, and gets a comment with the failed run otherwise.",
+    npm
+      ? "Merging runs `release.yml`: it stages the npm versions and publishes the VS Code extension. Once the staged versions are approved, `release-confirm.yml` checks the published tarballs, tags them, creates the `release-YYYY-MM-DD` GitHub Release and closes this Issue with its link. A failed run gets a comment here (#3240)."
+      : "Merging runs `release.yml`: the VS Code Marketplace publish, the package tag and the `release-YYYY-MM-DD` GitHub Release. This Issue is closed with the Release link when every step succeeded, and gets a comment with the failed run otherwise.",
     "",
     "While this Issue or its release PR is open, the next train does not depart.",
   ].join("\n");
+}
+
+// ------------------------------------------------------------------ closing
+
+export type NpmTrainState = {
+  /** Bumped versions that have no tag yet (staged, or waiting for their turn). */
+  pending: string[];
+  /** Bumped versions tagged on a commit other than the release commit. */
+  misplaced: string[];
+};
+
+/**
+ * Where the bumped npm versions of a release stand. The npm half of a train is
+ * done only when every one of them is tagged on the release commit. A tag is
+ * made only for a version that is on npm and matched the pack of the release
+ * commit (release-confirm.yml), so a rejected or mismatched version keeps the
+ * train open.
+ */
+export function npmTrainState(
+  bumped: { name: string; version: string }[],
+  tagTarget: (tag: string) => string | null,
+  releaseSha: string,
+): NpmTrainState {
+  const state: NpmTrainState = { pending: [], misplaced: [] };
+  for (const pkg of bumped) {
+    const tag = `${pkg.name}@${pkg.version}`;
+    const target = tagTarget(tag);
+    if (target === null) state.pending.push(tag);
+    else if (target !== releaseSha) state.misplaced.push(tag);
+  }
+  return state;
 }
 
 // ------------------------------------------------------------------ Marketplace
@@ -118,14 +160,19 @@ export function marketplaceStatus(show: VsceShow, version: string): MarketplaceS
 
 // ------------------------------------------------------------------ CLI
 
+type Manifest = { version: string; private?: boolean };
+
+const readManifest = (dir: string): Manifest =>
+  JSON.parse(readFileSync(`${dir}/package.json`, "utf8")) as Manifest;
+
 function readVersions(): Versions {
   return Object.fromEntries(
-    RELEASED_PACKAGES.map(({ name, dir }) => [
-      name,
-      (JSON.parse(readFileSync(`${dir}/package.json`, "utf8")) as { version: string }).version,
-    ]),
+    RELEASED_PACKAGES.map(({ name, dir }) => [name, readManifest(dir).version]),
   );
 }
+
+const readNpmNames = (): string[] =>
+  RELEASED_PACKAGES.filter(({ dir }) => !readManifest(dir).private).map(({ name }) => name);
 
 function flag(argv: string[], name: string): string {
   const i = argv.indexOf(`--${name}`);
@@ -159,6 +206,7 @@ export function main(argv: string[]): void {
           repository: process.env.GITHUB_REPOSITORY ?? "kompiro/karasu",
           branch: flag(rest, "branch"),
           bumps: bumpedPackages(readJson(flag(rest, "before")), readVersions()),
+          npmNames: readNpmNames(),
         }),
       );
       return;

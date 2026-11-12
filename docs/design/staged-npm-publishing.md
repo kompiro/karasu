@@ -25,7 +25,7 @@ npm は 2026-05 に staged publishing を GA にした。`npm stage publish` で
 | 段階              | 今の実装                                                                                                                                                                                  | stage 化で変わること                                                  |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | 公開              | `release.yml` の `pnpm run release`（`pnpm build && changeset publish`）。npm に無い版だけを、依存の順に公開する                                                                          | `changeset publish` に stage モードが無いので置き換える（論点 1）     |
-| タグ              | `changeset publish` が runner 上で注釈付きタグを作る。「Collect the tags」が `scripts/release/published-packages.mts` で必要なタグを洗い出し、欠けていれば失敗する（#2982）               | job の終わりに版はまだ npm に無い。タグを打つ時点を決め直す（論点 2） |
+| タグ              | `changeset publish` が runner 上で注釈付きタグを作る。「Collect the tags」が `published-packages.mts` で必要なタグを洗い出し、欠けていれば失敗する（#2982）               | job の終わりに版はまだ npm に無い。タグを打つ時点を決め直す（論点 2） |
 | 記録              | `record` ジョブ（`contents: write`）がタグを push し、`scripts/release/github-release.mts` で `release-YYYY-MM-DD` を作る                                                                 | 同上                                                                  |
 | VS Code           | `vscode` ジョブが `vscode-release.yml` を呼ぶ。npm の結果に関係なく走り、自前の `record` で同じ Release に節を足す（Release が無ければ作る）                                              | 変えない（論点 5）                                                    |
 | トレインの Issue  | `close-train` が全ジョブ成功で Issue を閉じる。失敗なら run のリンクをコメントして開いたままにする。開いているあいだ、`release-prepare.yml` は次のトレインを出さない                      | 承認が済むまで閉じない（論点 4）                                      |
@@ -89,7 +89,6 @@ npm は `workspace:` を書き換えないので、`karasu` の tarball に `"ka
 
 #### 案 1D: `changeset pack` の計画に従って `npm stage publish <tarball>` する
 
-<!-- absent-path-next-line: a file this design doc intends to create (#3240) -->
 `changeset pack --out-dir` が版の選び方、依存の順、tag、pack を受け持つ。新しいスクリプト `scripts/release/stage.mts` は計画を読み、**計画の先頭のグループだけ**を `npm stage publish <tarball> --tag <tag> --json` で stage して、stage id と tarball の integrity を出力する。
 
 `stage.mts` は 2 つのサブコマンドに分かれる。`pack` は計画を作って検査し、先頭のグループの tarball と計画を出す。`publish` はそれを受け取って `npm stage publish` を実行する。2 つは別のジョブで動く（案 7E）。
@@ -142,7 +141,6 @@ Release には、まだインストールできず、reject されうる版が�
 
 #### 案 3B: 依存先が npm に載るまで依存元を stage せず、承認のスクリプトがその段を進める
 
-<!-- absent-path-next-line: a file this design doc intends to create (#3240) -->
 `scripts/release/approve.mts`（`pnpm release:approve`）を kompiro が手元で実行する。
 
 1. リリースコミットを `release-confirm.yml` と同じ方法で求める（`--commit <sha>` で指定もできる）。
@@ -354,7 +352,6 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
 
 ### 実装の指針
 
-<!-- absent-path-next-line: a file this design doc intends to create (#3240) -->
 1. `scripts/release/stage.mts`: `pack` と `publish` のサブコマンドに分ける（案 7E）。`pack` は、リリースのコミットでなければ何もしない。`changeset pack --out-dir` の計画を読み、計画に `RELEASED_PACKAGES` に無いパッケージやリリースコミットで版を上げていないパッケージがあれば止める。tag は決めない。先頭のグループの tarball を出力する。`publish` は案 7E のとおり、何を stage するかと tag をリリースコミットと npm から決め直し（prerelease に `latest` を付けようとしたら止める）、先頭のグループだけを `npm stage publish <tarball> --tag <tag> --json --ignore-scripts` で stage する。GitHub Actions の外では `--provenance=false` を付ける。stage 済みの拒否だけを飛ばし、そのことを出力に明示する。stage した `name@version`、stage id、integrity を出力する。
 2. `release.yml`:
    - `release` ジョブを `pack` と `stage` に分ける（案 7E）。`pack` は依存を入れてビルドし、`stage.mts pack` の出力を artifact にする。`pull-requests: read` と `GH_TOKEN` は、リリースのコミットを判定する `pack` と `stage` の両方に渡す。`stage` は `id-token: write` と environment `npm` を持ち、依存を入れず、pnpm の setup も cache も使わずに `stage.mts publish` を実行する。`vscode` ジョブの `needs` を `stage` に変え、`close-train` は `pack` と `stage` の両方の結果を読む（`pack` が落ちて `stage` が飛ばされた run を成功と読まないため）。
@@ -365,7 +362,6 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
    - `verify`（`contents: read`、`issues: read`、`pull-requests: read`）: リリースコミットを求め、npm に載っていてタグがまだ無い版を案 7D のとおり照合する。その版が無い日はビルドしない。計画外の版の検出はビルドが要らないので毎回行う。
    - `record`（`contents: write`、`issues: write`、`pull-requests: read`、`actions: read`。`actions: read` は `release.yml` の run の結果を読むため）: `verify` が通した版のタグを打ち、Release を作り、順序の違反を検出し、論点 4 の判定で Issue を閉じる。`verify` が落ちたら、落ちた版とファイルの一覧を Issue にコメントする。依存を入れない。concurrency は `release-record` グループに入れる。
 
-<!-- absent-path-next-line: a file this design doc intends to create (#3240) -->
 4. `scripts/release/approve.mts` と、ルートの `package.json` の `release:approve`。論点 3 の手順（段ごとの承認と `release.yml` の再実行）、論点 7 の照合、承認の直後のインストールに効く項目の照合、notices のプラットフォーム固有の節を除く規則、計画に無い stage 済みの項目の表示、`--dry-run`、`--commit`、`--expect-tag`。照合の処理は `release-confirm.yml` の `verify` と共有する。
 5. `scripts/release/train.mts`: チェックリストに承認の行と、「版を上げる npm パッケージに、失効していない stage 専用で environment `npm` を条件にした接続があるか。無ければマージの直前に作る」の行を足し、Issue 本文の文言（いまの「`release.yml` が閉じる」など）を直す。Issue を閉じる判定を足す。
 6. テスト: 既存の `scripts/release/*.test.ts` に倣う。計画の読み方、版を上げていないパッケージで止まること、拒否の分類、`npm view` の `E404` とほかの失敗の区別、リリースコミットの求め方、順序の違反の検出、閉じる判定、tarball の中身の照合、照合に落ちた版にタグを打たないこと、計画外の版の検出（`latest` 以外のタグ、以前からある版、取り下げ済みの版）。`release-workflow.test.ts` はいま「Set a git identity」「Collect the tags」と `record` ジョブを検査しているので、書き直す。`release.yml` の `pack` ジョブが `id-token` を持たないこと、`stage` ジョブが `contents: read`、`pull-requests: read`、`id-token: write` だけを持ち、`pnpm install`・pnpm の setup・cache を持たないこと、`id-token: write` を持つのが `stage` と `vscode` だけであること、`stage` ジョブが environment `npm` を持ち `setup-node` の cache を切っていること、`publish` が artifact の tarball の食い違い（リリースコミットで上げていない版、npm にある版、先頭でないグループ、名前や版の違う tarball、ディレクトリの外のパス）で止まること、tag を版から決めること、`release-confirm.yml` が `id-token` を持たないこと、`verify` が `contents: write` を持たず、`record` が依存を入れないことを確かめる。
