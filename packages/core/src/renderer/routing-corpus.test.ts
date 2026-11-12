@@ -135,10 +135,27 @@ describe("routing over every view of every example (TPL-1927)", () => {
     const unmarked: string[] = [];
     for (const { where, res } of canvases) {
       const hops = res.crossingMarks?.hops ?? [];
-      for (const { at, edges } of crossingsOf(res)) {
-        // A clustered hop is centred between its crossings and reaches each of
-        // them: `halfWidth` is half their spread plus the arc radius.
-        const marked = hops.some((h) => Math.hypot(h.x - at.x, h.y - at.y) <= h.halfWidth + 1e-3);
+      const crossings = crossingsOf(res);
+      // Where three or more edges cross at one point, the mark pass keeps one
+      // arc there, hosted by whichever edge it chose; that arc marks every pair.
+      const pairsAt = new Map<string, number>();
+      const spot = (p: Point) => `${p.x.toFixed(3)},${p.y.toFixed(3)}`;
+      for (const { at } of crossings) pairsAt.set(spot(at), (pairsAt.get(spot(at)) ?? 0) + 1);
+      for (const { at, edges } of crossings) {
+        const concurrent = (pairsAt.get(spot(at)) ?? 0) > 1;
+        // The arc rides one of the two crossing edges and lies along it: the
+        // crossing sits on the arc's axis (no offset across it) and within its
+        // half-width along it. A clustered arc spans its crossings, so the
+        // half-width is half their spread plus the radius.
+        const marked = hops.some((h) => {
+          if (!concurrent && !edges.includes(h.edge)) return false;
+          const rad = (h.angle * Math.PI) / 180;
+          const dx = at.x - h.x;
+          const dy = at.y - h.y;
+          const along = Math.abs(dx * Math.cos(rad) + dy * Math.sin(rad));
+          const across = Math.abs(-dx * Math.sin(rad) + dy * Math.cos(rad));
+          return across <= 1e-3 && along <= h.halfWidth + 1e-3;
+        });
         if (!marked) {
           const [a, b] = edges.map((k) => `${res.edges[k].from}->${res.edges[k].to}`);
           unmarked.push(`${where}: ${a} x ${b} at (${at.x}, ${at.y})`);
