@@ -1,8 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { marker, partialRelease, releaseRunFailed, taggable, vscodeSucceeded } from "./confirm.mts";
+import {
+  hasPackageTag,
+  marker,
+  partialRelease,
+  releaseRunFailed,
+  taggable,
+  vscodeSucceeded,
+} from "./confirm.mts";
 import type { NpmPackage } from "./release-state.mts";
 
 // Fences the record decisions of release-confirm.yml (#3240).
+
+describe("hasPackageTag", () => {
+  const pkgs = [
+    { name: "karasu", dir: "packages/cli", version: "0.11.0", workspaceDependencies: [] },
+    { name: "karasu-skills", dir: "packages/skills", version: "0.3.0", workspaceDependencies: [] },
+  ];
+
+  it("finds a package tag left on the commit by an earlier run, so the Release is retried", () => {
+    const tags: Record<string, string> = { "karasu-skills@0.3.0": "abc" };
+    expect(hasPackageTag(pkgs, (tag) => tags[tag] ?? null, "abc")).toBe(true);
+  });
+
+  it("ignores tags on another commit", () => {
+    const tags: Record<string, string> = { "karasu@0.11.0": "def" };
+    expect(hasPackageTag(pkgs, (tag) => tags[tag] ?? null, "abc")).toBe(false);
+  });
+});
 
 describe("releaseRunFailed", () => {
   it("passes only when pack, stage and vscode all succeeded", () => {

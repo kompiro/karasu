@@ -256,6 +256,28 @@ export function findTrain(): Train | null {
   return { ...train, sha: pickMergeCommit(pulls) };
 }
 
+export type NpmHistory = { time: Record<string, string>; versions: string[] };
+
+/**
+ * `npm view <name> time versions --json`, read. A package npm does not know
+ * yet (a new one whose first version still waits in the stage queue) has an
+ * empty history; any other failure is an error (TPL-2804).
+ */
+export function classifyNpmHistory(result: CommandResult): NpmHistory {
+  if (result.status === 0) {
+    const parsed = JSON.parse(result.stdout) as Partial<NpmHistory>;
+    return { time: parsed.time ?? {}, versions: parsed.versions ?? [] };
+  }
+  if (/\bE404\b/.test(result.stderr)) return { time: {}, versions: [] };
+  throw new Error(`npm view failed (exit ${result.status}): ${result.stderr.trim()}`);
+}
+
+export function npmHistory(name: string): NpmHistory {
+  return classifyNpmHistory(
+    run("npm", ["view", name, "time", "versions", "--json", "--registry", NPM_REGISTRY]),
+  );
+}
+
 export function isOnNpm(name: string, version: string): boolean {
   const result = run("npm", [
     "view",
