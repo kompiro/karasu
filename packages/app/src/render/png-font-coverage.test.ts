@@ -15,7 +15,9 @@ import { RASTER_FONT_FILES, readCmapCoverage } from "./raster-fonts.js";
  * font swapped for one lacking coverage. The list below is hand-kept; what
  * the raster paths actually receive is checked over the whole example and AT
  * corpus by scripts/ci/raster-input.test.ts, which needs no list. A marker
- * that only a non-raster view draws (the degraded tab) still belongs here.
+ * drawn only in views the raster paths never render still belongs here: the
+ * degraded boundary tab is drawn only when grouped by team or boundary (the
+ * same ◇ does reach the rasters, as the @planned badge).
  *
  * Note ✦ (U+2726, @new badge) is a Dingbats symbol, not an emoji — Noto Emoji
  * does NOT cover it, so Noto Sans Symbols 2 is bundled for it (#1799).

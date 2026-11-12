@@ -1,5 +1,4 @@
-import { renderSharePayload } from "../packages/app/src/render/share-render.js";
-import { wrapSvgForOgpFrame } from "@karasu-tools/core";
+import { renderSharePayload, sharePngSource } from "../packages/app/src/render/share-render.js";
 import { Resvg, initWasm } from "@resvg/resvg-wasm";
 // wrangler resolves the `.wasm` import to a WebAssembly.Module at bundle time.
 import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm";
@@ -77,22 +76,18 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
   const url = new URL(context.request.url);
   const wantsPng = url.searchParams.get("format") === "png";
 
-  // The default (no `view`) SVG is the bundled all-views diagram, whose CSS
-  // `:target` tab navigation is interactive — rasterized to a static PNG it
-  // shows only the tab bar with an empty body. PNG needs one concrete view, so
-  // default to `system` when none is given. (SVG keeps the all-views default.)
-  const params = new URLSearchParams(url.search);
-  if (wantsPng && !params.get("view")) params.set("view", "system");
-
-  const result = renderSharePayload(params);
+  // What gets rasterized, and how it is fitted, is chosen by `sharePngSource`
+  // (view defaulting, OGP letterboxing), where the raster-input guard runs it
+  // over the whole corpus (TPL-1799). This handler only hands it to resvg.
+  const source = wantsPng ? sharePngSource(url.searchParams) : renderSharePayload(url.searchParams);
 
   // SVG, or any error from the shared handler, passes through unchanged.
-  if (!wantsPng || result.status !== 200) {
-    return new Response(result.body, {
-      status: result.status,
+  if (!("svg" in source)) {
+    return new Response(source.body, {
+      status: source.status,
       headers: {
-        "Content-Type": result.contentType,
-        "Cache-Control": cacheControl(result.status),
+        "Content-Type": source.contentType,
+        "Cache-Control": cacheControl(source.status),
         "Access-Control-Allow-Origin": "*",
       },
     });
@@ -100,29 +95,9 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
 
   try {
     const [, fontBuffers] = await Promise.all([ensureWasm(), loadFonts(context.env, url.origin)]);
-    const widthRaw = Number(url.searchParams.get("width"));
-    // Cap to a sane max so a huge `?width=` can't trigger a giant allocation.
-    const width = Number.isFinite(widthRaw) && widthRaw > 0 ? Math.min(widthRaw, 4096) : undefined;
-    const heightRaw = Number(url.searchParams.get("height"));
-    const height =
-      Number.isFinite(heightRaw) && heightRaw > 0 ? Math.min(heightRaw, 4096) : undefined;
-    const background = url.searchParams.get("bg") ?? undefined;
-
-    // `fit=contain` (with width+height) letterboxes the whole diagram into a
-    // fixed frame — used for OGP, whose cards crop a width-fit portrait diagram
-    // to its top band. Other callers (README <img>) keep the width-fit default.
-    let svg = result.body;
-    let fitTo: { mode: "width"; value: number } | { mode: "original" } = width
-      ? { mode: "width", value: width }
-      : { mode: "original" };
-    if (url.searchParams.get("fit") === "contain" && width && height) {
-      svg = wrapSvgForOgpFrame(result.body, width, height, background ?? "#ffffff");
-      fitTo = { mode: "width", value: width };
-    }
-
-    const png = new Resvg(svg, {
-      fitTo,
-      background,
+    const png = new Resvg(source.svg, {
+      fitTo: source.fitTo,
+      background: source.background,
       font: {
         loadSystemFonts: false,
         fontBuffers,

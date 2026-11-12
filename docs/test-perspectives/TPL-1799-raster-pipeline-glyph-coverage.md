@@ -64,14 +64,20 @@ scope:
   同梱フォントの cmap の和集合がレンダラーの出す非 ASCII マーカー（バッジ・ghost バッジ・縮退タブ）を
   すべてカバーすることと、`BUNDLED_FONTS` が `functions/render.ts` の読み込むフォント集合と一致することを
   assert する。マーカーの列挙はテスト内の手書きリストなので、新グリフを足すときはここへの追加が要る
-- `scripts/ci/raster-input.test.ts` — チェックリスト 3・4 のガード。resvg を読み込むモジュールを全 workspace
-  パッケージと `functions/` の import graph（madge）から導き、ラスタ経路の表と一致させる。新しいラスタ経路は
-  表に載るまで落ちる。そのうえで Render equivalence と同じコーパス（examples の全 entry と AT の全 `krs` fence）を
-  system / deploy / org × light / dark × shape / icon で描き（OGP 枠つきも）、出力の全文字が各経路のフォントの
-  cmap の和集合に入ること、出力に静的ラスタで落ちる要素・CSS（許可リスト外の要素、`:` を含むセレクタ、
-  at-rule、許可リスト外の CSS プロパティ、文書外への参照）が無いことを assert する。判定は出力に対して行うので、
-  グリフの書き方（リテラル・エスケープ・`String.fromCodePoint`）を問わない。
-  チェックリスト 1 のガードにはしていない: 検査するのはコーパスが描いたものだけで、どのモデルも通らない分岐
-  （例: 縮退タブの `◇` は banded view だけが描き、ラスタ経路には来ない）のグリフはレンダラーが出しうるものの
-  全列挙にならない。ラスタ経路が `compile` 以外（all-views の束ね SVG・diff）を描くようになったときは、
-  表への追加と同時にそのプロデューサーをこのテストに足す必要がある（表に載せることがその主張になる）
+- `scripts/ci/raster-input.test.ts` — チェックリスト 3・4 のガード。ラスタライザ（`@resvg/*`・`sharp`・`canvas` など）を
+  読み込むモジュールを `functions/` と全 workspace パッケージの `src` の import graph（madge）から導き、ラスタ経路の表と
+  一致させる。表の各行は、その経路が何をラスタライズするかを決める関数（`functions/render.ts` は
+  `sharePngSource`、nest の OGP 画像は `ogImageSource`。`rasterizeOgPng` はその戻り値の branded 型しか受け取らない）を
+  呼ぶ。そのうえで Render equivalence と同じコーパス（examples の全 entry と AT の全 `krs` fence を
+  `synthesizeSharePayload` で 1 つの payload にしたもの）を各経路の入口に通し、view 指定なし・各 view × light / dark ×
+  shape / icon × OGP 枠の有無で、全モデルが描けること、出力の全文字（数値文字参照も展開）が経路のフォントの cmap の
+  和集合に入ること、静的ラスタで落ちる要素・CSS（許可リスト外の要素と CSS プロパティ、`:` を含むセレクタ、at-rule、
+  文書外への参照）が無いことを assert する。判定は出力に対して行うので、グリフの書き方（リテラル・エスケープ・
+  `String.fromCodePoint`）を問わない。PNG の view 既定（`system`）を外すと all-views の `:target` で落ちる。
+  - 3 をガードとする理由: 3 の「新しい箇所」はラスタ経路そのもの。新しい経路は表に載るまで落ち、載せればその入口に
+    コーパス全体が通る。経路の発見は静的に解決できる import に限る（実行時に組み立てた specifier と、`functions/`・
+    `packages/*/src` の外のファイルは見えない。後者は build と CI のスクリプトで、利用者に届く画像を描かない）
+  - 1 をガードにしない理由: 1 の「新しい箇所」はグリフで、検査するのはコーパスが描いたものだけ。どのモデルも通らない
+    分岐のグリフは、レンダラーが出しうるものの全列挙にならない。例: 縮退タブの `◇`（`degraded-tabs.ts`）は team /
+    boundary でグループ化したときだけ描かれ、ラスタ経路はグループ化しない。同じ `◇` は `@planned` バッジとして
+    ラスタ経路に来るので文字としては検査されるが、縮退タブの記号だけを別の文字に変えてもこのテストは落ちない

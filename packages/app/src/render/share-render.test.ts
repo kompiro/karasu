@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { encodeShare } from "../utils/inline-share.js";
-import { renderSharePayload } from "./share-render.js";
+import { renderSharePayload, sharePngSource } from "./share-render.js";
 
 const KRS = `system Shop {
   service Web { label "Web" }
@@ -60,5 +60,30 @@ describe("renderSharePayload", () => {
       params({ s: encodeShare({ krs: "system { oops" }), view: "system" }),
     );
     expect(res.status).toBe(422);
+  });
+});
+
+describe("sharePngSource", () => {
+  it("rasterizes the system view when no view is given, never the all-views SVG", () => {
+    const source = sharePngSource(params({ s: encodeShare({ krs: KRS }) }));
+    const system = renderSharePayload(params({ s: encodeShare({ krs: KRS }), view: "system" }));
+    expect(source).toEqual({
+      status: 200,
+      svg: system.body,
+      fitTo: { mode: "original" },
+      background: undefined,
+    });
+  });
+
+  it("letterboxes into width x height for fit=contain, and caps the size", () => {
+    const source = sharePngSource(
+      params({ s: encodeShare({ krs: KRS }), fit: "contain", width: "1200", height: "9999" }),
+    );
+    expect(source).toMatchObject({ status: 200, fitTo: { mode: "width", value: 1200 } });
+    expect("svg" in source && source.svg).toMatch(/^<svg[^>]* width="1200" height="4096"/);
+  });
+
+  it("passes an error through", () => {
+    expect(sharePngSource(params({ s: "@@@not-valid@@@" })).status).toBe(400);
   });
 });

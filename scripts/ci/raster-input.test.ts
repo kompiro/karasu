@@ -1,17 +1,19 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
-import madge from "madge";
+import { join, resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { RASTER_FONT_FILES, readCmapCoverage } from "../../packages/app/src/render/raster-fonts.ts";
+import { sharePngSource } from "../../packages/app/src/render/share-render.ts";
+import { encodeShare } from "../../packages/app/src/utils/inline-share.ts";
 import { NodeFileSystemProvider } from "../../packages/cli/src/node-fs.ts";
 import {
   buildAllViewsSvg,
-  compile,
-  compileProject,
-  wrapSvgForOgpFrame,
+  type SharePayload,
+  synthesizeSharePayload,
 } from "../../packages/core/src/index.ts";
 import { OG_FONT_FILES } from "../../packages/nest/src/gallery/og-image.ts";
-import { buildManifest, type Entry } from "../render-equivalence/inputs.ts";
+import { ogImageSource } from "../../packages/nest/src/gallery/render.ts";
+import { buildManifest } from "../render-equivalence/inputs.ts";
+import { browserOnlyFeatures, charactersOf, rasterizerLoaders } from "./raster-input.ts";
 
 // What the PNG raster paths hand resvg-wasm, checked on every model the repo
 // owns (TPL-1799, #1799). A browser falls back to the OS for a glyph or a CSS
@@ -20,131 +22,98 @@ import { buildManifest, type Entry } from "../render-equivalence/inputs.ts";
 // can come out of a raster path with tofu (□) or an empty body, and nothing on
 // the SVG side notices.
 //
-// The checks run on output, not on renderer source: whatever a model makes the
-// renderer emit (a new marker glyph, a user's label, a `<style>` rule) is what
-// is checked, however the renderer spells it. The models are the corpus Render
-// equivalence renders, every example entry and every ```krs fence in the
-// acceptance records, so a new example or AT joins without an edit here.
+// Each path is run through its own entry function, the code that decides which
+// SVG gets rasterized (view defaulting, the OGP frame), so a change to that
+// choice is checked, not only the renderer. The checks run on output, not on
+// renderer source: whatever a model makes the renderer emit (a new marker
+// glyph, a user's label, a `<style>` rule) is checked however it is spelled.
+// The models are the corpus Render equivalence renders, every example entry and
+// every krs fence in the acceptance records, bundled into one share payload the
+// way a repo permalink bundles a project.
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 const FONTS_DIR = join(REPO_ROOT, "packages/app/public/fonts");
 
-/**
- * Every module that loads resvg, and the fonts it hands it. The first test
- * derives the module set from the import graph of every workspace package and
- * the Pages Functions, so a new raster path fails until it is listed here.
- * Listing it is the claim that it rasterizes what the corpus checks below
- * render: `compile` for one concrete view, optionally framed by
- * `wrapSvgForOgpFrame`. A path that rasterizes anything else (the bundled
- * all-views SVG, a diff) needs its own producer in this file first.
- */
-const RASTER_PATHS: Record<string, readonly string[]> = {
-  // `/render?format=png`: forces `view=system` when none is given, because
-  // the all-views default needs CSS `:target` (see the last test).
-  "functions/render.ts": RASTER_FONT_FILES,
-  // nest's `/g/<id>/og.png`: always `view: "system"`, framed for OGP.
-  "packages/nest/src/gallery/og-rasterize.ts": OG_FONT_FILES,
-};
-
-/** The SVG elements resvg draws as a static picture. Anything else is browser-only until shown otherwise. */
-const STATIC_ELEMENTS = new Set([
-  "svg", "g", "defs", "title", "desc", "style", "path", "rect", "circle", "ellipse", "line",
-  "polyline", "polygon", "text", "tspan", "marker", "clipPath", "mask", "pattern",
-  "linearGradient", "radialGradient", "stop", "use", "symbol",
-]); // prettier-ignore
-
-/**
- * CSS properties allowed in a `style` attribute or a `<style>` rule. Presentation
- * properties resvg applies, plus interaction-only ones whose absence in a still
- * image changes nothing (`cursor`, `pointer-events`). `animation`, `transition`
- * and the like are left out on purpose.
- */
-const STATIC_CSS_PROPERTIES = new Set([
-  "cursor", "pointer-events", "display", "visibility", "opacity", "fill", "fill-opacity",
-  "fill-rule", "stroke", "stroke-width", "stroke-opacity", "stroke-dasharray",
-  "stroke-dashoffset", "stroke-linecap", "stroke-linejoin", "font-family", "font-size",
-  "font-style", "font-weight", "text-anchor", "dominant-baseline", "background",
-]); // prettier-ignore
-
-/**
- * Why `svg` would not rasterize as it shows in a browser: an element, a style
- * rule or a reference that only a browser resolves. Empty when it is static.
- */
-function browserOnlyFeatures(svg: string): string[] {
-  const found: string[] = [];
-  const checkDeclarations = (where: string, block: string) => {
-    for (const declaration of block.split(";")) {
-      const property = declaration.split(":")[0]?.trim().toLowerCase();
-      if (property && !STATIC_CSS_PROPERTIES.has(property)) {
-        found.push(`${where}: CSS property "${property}"`);
-      }
-    }
-  };
-  for (const tag of svg.matchAll(/<([a-zA-Z][\w:-]*)((?:\s+[\w:-]+="[^"]*")*)\s*\/?>/g)) {
-    const [, name, attrs] = tag;
-    if (!STATIC_ELEMENTS.has(name)) found.push(`element <${name}>`);
-    for (const [, attr, value] of attrs.matchAll(/([\w:-]+)="([^"]*)"/g)) {
-      // data-* only feeds the app's scripts; it is never drawn.
-      if (attr.startsWith("data-")) continue;
-      if (attr === "style") checkDeclarations(`<${name} style>`, value);
-      if ((attr === "href" || attr === "xlink:href") && !value.startsWith("#")) {
-        found.push(`<${name} ${attr}> points outside the document: ${value}`);
-      }
-      for (const [, ref] of value.matchAll(/url\(\s*['"]?([^'")]*)/g)) {
-        if (!ref.startsWith("#"))
-          found.push(`<${name} ${attr}> url(${ref}) is not a local reference`);
-      }
-    }
-  }
-  for (const [, css] of svg.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
-    const text = css.replace(/\/\*[\s\S]*?\*\//g, "");
-    // @font-face, @import, @keyframes, @media: none of them reach a still image.
-    for (const [rule] of text.matchAll(/@[\w-]+/g)) found.push(`<style> at-rule ${rule}`);
-    for (const [, selector, body] of text.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      // :target, :hover, :has(...) depend on a browser's state.
-      if (selector.includes(":")) found.push(`<style> selector "${selector.trim()}"`);
-      checkDeclarations("<style>", body);
-    }
-  }
-  return [...new Set(found)];
-}
-
-const VIEWS = ["system", "deploy", "org"] as const;
+const VIEWS = [undefined, "system", "deploy", "org"] as const;
 const THEMES = ["light", "dark"] as const;
 const DISPLAY_MODES = [undefined, "icon"] as const;
+const FITS = [{}, { fit: "contain", width: "1200", height: "630" }] as const;
 
-interface Rendered {
+/** One raster path: the fonts it hands resvg, and every SVG it would rasterize for a model. */
+interface RasterPath {
+  fonts: readonly string[];
+  /** The SVGs, or the answer when the path would draw nothing (never expected for the corpus). */
+  draw(payload: SharePayload): { variant: string; svg?: string; refused?: string }[];
+}
+
+/**
+ * Every module that loads a rasterizer, keyed by path. The first test derives
+ * the module set from the import graph, so a new raster path fails until it is
+ * listed here with the function that chooses what it rasterizes.
+ */
+const RASTER_PATHS: Record<string, RasterPath> = {
+  // `/render?format=png`. `sharePngSource` is everything the handler does
+  // before resvg: the handler passes its query straight through.
+  "functions/render.ts": {
+    fonts: RASTER_FONT_FILES,
+    draw: (payload) => {
+      const s = encodeShare(payload);
+      return VIEWS.flatMap((view) =>
+        THEMES.flatMap((theme) =>
+          DISPLAY_MODES.flatMap((displayMode) =>
+            FITS.map((fit) => {
+              const query = { s, theme, ...(view && { view }), ...(displayMode && { displayMode }), ...fit }; // prettier-ignore
+              const source = sharePngSource(new URLSearchParams(query));
+              const variant = new URLSearchParams({ ...query, s: "…" }).toString();
+              return "svg" in source ? { variant, svg: source.svg } : { variant, refused: source.body }; // prettier-ignore
+            }),
+          ),
+        ),
+      );
+    },
+  },
+  // nest's `/g/<id>/og.png`. `rasterizeOgPng` accepts only the branded SVG
+  // `ogImageSource` returns. A submission is one `.krs` with no sheet.
+  "packages/nest/src/gallery/og-rasterize.ts": {
+    fonts: OG_FONT_FILES,
+    draw: (payload) => {
+      const source = ogImageSource(payload.krs);
+      return ["svg" in source ? { variant: "og", svg: source.svg } : { variant: "og", refused: source.body }]; // prettier-ignore
+    },
+  },
+};
+
+interface Drawn {
+  path: string;
   label: string;
   svg: string;
 }
 
-/** Every corpus model in every view, theme and display mode, framed as the OGP card is. */
-async function renderCorpus(): Promise<Rendered[]> {
+let drawn: Drawn[];
+let refused: string[];
+let entryCount: number;
+
+beforeAll(async () => {
   const records = readdirSync(join(REPO_ROOT, "docs/acceptance"))
     .filter((file) => file.endsWith(".md"))
     .map((file) => `docs/acceptance/${file}`);
   const { entries } = buildManifest(REPO_ROOT, records);
+  entryCount = entries.length;
   const fs = new NodeFileSystemProvider();
-  const out: Rendered[] = [];
-  for (const entry of entries as Entry[]) {
-    for (const diagramType of VIEWS) {
-      for (const theme of THEMES) {
-        for (const displayMode of DISPLAY_MODES) {
-          const options = { diagramType, theme, displayMode };
-          const result =
-            entry.kind === "fence"
-              ? compile(entry.source, options)
-              : await compileProject(entry.path, fs, options);
-          if (result.diagnostics.some((d) => d.severity === "error")) continue;
-          const label = `${entry.name} :: ${diagramType}/${theme}/${displayMode ?? "shape"}`;
-          out.push({ label, svg: result.svg });
-          out.push({ label: `${label} (OGP frame)`, svg: wrapSvgForOgpFrame(result.svg, 1200, 630, "#ffffff") }); // prettier-ignore
-        }
+  drawn = [];
+  refused = [];
+  for (const entry of entries) {
+    const payload =
+      entry.kind === "fence" ? { krs: entry.source } : await synthesizeSharePayload(entry.path, fs);
+    for (const [path, { draw }] of Object.entries(RASTER_PATHS)) {
+      for (const { variant, svg, refused: why } of draw(payload)) {
+        const label = `${entry.name} :: ${path} ${variant}`;
+        if (svg === undefined) refused.push(`${label}: ${why}`);
+        else drawn.push({ path, label, svg });
       }
     }
   }
-  return out;
-}
+});
 
 function coverageOf(files: readonly string[]): Set<number> {
   const covered = new Set<number>();
@@ -154,13 +123,8 @@ function coverageOf(files: readonly string[]): Set<number> {
   return covered;
 }
 
-let corpus: Rendered[];
-beforeAll(async () => {
-  corpus = await renderCorpus();
-});
-
 describe("raster paths (TPL-1799)", () => {
-  it("lists every module that loads resvg", async () => {
+  it("lists every module that loads a rasterizer", async () => {
     const roots = [
       join(REPO_ROOT, "functions"),
       // Every workspace package's runtime source (`packages/*`); e2e suites have none.
@@ -168,33 +132,28 @@ describe("raster paths (TPL-1799)", () => {
         .map((pkg) => join(REPO_ROOT, "packages", pkg, "src"))
         .filter((dir) => existsSync(dir)),
     ];
-    const graph = await madge(roots, {
-      baseDir: REPO_ROOT,
-      includeNpm: true,
-      fileExtensions: ["ts", "tsx", "mts"],
-      excludeRegExp: [/\.test\.tsx?$/],
-    });
-    const loaders = Object.entries(graph.obj())
-      .filter(([, deps]) => deps.some((dep) => /(^|\/)@resvg\//.test(dep)))
-      .map(([file]) => relative(REPO_ROOT, resolve(REPO_ROOT, file)))
-      .sort();
-    expect(loaders).toEqual(Object.keys(RASTER_PATHS).sort());
+    expect(await rasterizerLoaders(REPO_ROOT, roots)).toEqual(Object.keys(RASTER_PATHS).sort());
   });
 
-  it("renders a corpus to check", () => {
-    // A corpus that silently compiled to nothing would pass every check below.
-    expect(corpus.length).toBeGreaterThan(500);
+  it("draws every corpus model on every path, with no model dropped", () => {
+    // A model that stopped compiling would otherwise leave the checks below
+    // with less to look at and nothing to say about it.
+    expect(refused).toEqual([]);
+    expect(entryCount).toBeGreaterThan(200);
+    for (const [path, { draw }] of Object.entries(RASTER_PATHS)) {
+      const perModel = draw({ krs: "system A { service B {} }" }).length;
+      expect(drawn.filter((d) => d.path === path)).toHaveLength(entryCount * perModel);
+    }
   });
 
   it.each(Object.entries(RASTER_PATHS))(
     "%s: its fonts cover every character the corpus draws (no tofu)",
-    (_path, fonts) => {
+    (path, { fonts }) => {
       const covered = coverageOf(fonts);
       const missing = new Map<string, string>();
-      for (const { label, svg } of corpus) {
-        for (const ch of svg) {
-          const cp = ch.codePointAt(0) ?? 0;
-          const key = `U+${cp.toString(16).toUpperCase().padStart(4, "0")} ${ch}`;
+      for (const { label, svg } of drawn.filter((d) => d.path === path)) {
+        for (const cp of charactersOf(svg)) {
+          const key = `U+${cp.toString(16).toUpperCase().padStart(4, "0")} ${String.fromCodePoint(cp)}`; // prettier-ignore
           if (cp > 0x7e && !covered.has(cp) && !missing.has(key)) missing.set(key, label);
         }
       }
@@ -203,9 +162,9 @@ describe("raster paths (TPL-1799)", () => {
     },
   );
 
-  it("the corpus SVG uses nothing a static rasterizer drops (:target, web fonts, animation)", () => {
+  it("the SVG each path rasterizes uses nothing a static rasterizer drops (:target, web fonts, animation)", () => {
     const offending: Record<string, string[]> = {};
-    for (const { label, svg } of corpus) {
+    for (const { label, svg } of drawn) {
       const features = browserOnlyFeatures(svg);
       if (features.length > 0) offending[label] = features;
     }
@@ -217,5 +176,24 @@ describe("raster paths (TPL-1799)", () => {
     // `:target`, and a still image of it is a tab bar over an empty body.
     const { svg } = buildAllViewsSvg("system A { service B {} }", undefined, undefined, undefined, "light"); // prettier-ignore
     expect(browserOnlyFeatures(svg).some((f) => f.includes(":target"))).toBe(true);
+  });
+});
+
+describe("browserOnlyFeatures / charactersOf", () => {
+  it("reads single-quoted attributes and flags a remote paint server in CSS", () => {
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg'><rect style='fill: url(https://x.test/p.svg#g)'/></svg>`; // prettier-ignore
+    expect(browserOnlyFeatures(svg)).toEqual([
+      "<rect style>: url(https://x.test/p.svg#g) is not a local reference",
+    ]);
+  });
+
+  it("reports a tag it cannot read instead of skipping it", () => {
+    expect(browserOnlyFeatures(`<svg><rect width=10/></svg>`)).toEqual([
+      "1 tag(s) this check could not read",
+    ]);
+  });
+
+  it("decodes numeric character references", () => {
+    expect(charactersOf("&#x29C9;&#9671;")).toEqual(new Set([0x29c9, 0x25c7]));
   });
 });

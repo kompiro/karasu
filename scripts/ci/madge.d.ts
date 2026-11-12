@@ -1,5 +1,6 @@
-// madge ships no types. The slice `raster-input.test.ts` calls: the dependency
-// graph of a set of directories, as file -> the files it imports.
+// madge ships no types. The slice `raster-input.ts` calls: the dependency
+// graph of a set of directories, as file -> the files it imports, and the
+// specifiers it could not resolve.
 declare module "madge" {
   interface MadgeConfig {
     baseDir?: string;
@@ -9,6 +10,7 @@ declare module "madge" {
   }
   interface MadgeResult {
     obj(): Record<string, string[]>;
+    warnings(): { skipped: string[] };
   }
   export default function madge(
     path: string | string[],
