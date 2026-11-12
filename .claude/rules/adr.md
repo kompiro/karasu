@@ -223,7 +223,7 @@ node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/review/await-low-mer
 | --- | --- |
 | `merged-by-merger` | JSON 行を #3698 にコメントする。main の push で走った workflow は、そのとき `gh run list --commit <mergeSha> --event push` で読んで添える |
 | `merged-otherwise` | JSON 行を #3698 にコメントする。人の手か native の auto-merge なので 5 本には数えない |
-| `merged-unattributed` | JSON 行を #3698 にコメントする。App らしい login がマージしたが、`searched` の範囲の merge job のログに PR が無い。5 本に数えるかは kompiro が決める |
+| `merged-unattributed` | JSON 行を #3698 にコメントする。`[bot]` の login がマージしたが、`searched` の範囲の merge job のログに PR が無い（`unread` はログを読めなかった run）。5 本に数えるかは kompiro が決める |
 | `auto-merge-enabled` | `gh pr merge <N> --disable-auto` で解き、もう一度走らせる |
 | `fix-pr` | `reasons` の問題を PR で直し、もう一度走らせる。コミットを足すなら下の「PR を作った後に差分を足すとき」に従う |
 | `checks-stuck` | 止まった check を `gh run rerun <run-id>` で走らせ直す。必須 check が 1 本も現れていなければ PR を close して reopen する。JSON 行を #3698 に書き、もう一度走らせる |

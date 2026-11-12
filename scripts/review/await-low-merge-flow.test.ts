@@ -127,15 +127,67 @@ describe("awaitLowMerge: a merged PR", () => {
     });
   });
 
+  it("does not look up a person's merge", async () => {
+    const { deps, asked } = fake({ pulls: [merged({ mergedBy: "kompiro" })] });
+    expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({
+      outcome: "merged-otherwise",
+      mergedBy: "kompiro",
+    });
+    expect(asked).toEqual({});
+  });
+
   it("does not take another PR's line for this one", async () => {
     const { deps } = fake({
-      pulls: [merged({ mergedBy: "kompiro" })],
+      pulls: [merged()],
       runs: [{ id: 1, url: "u" }],
       jobs: { 1: [[job(`merged #77 at ${HEAD}\n`)]] },
     });
     expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({
-      outcome: "merged-otherwise",
-      mergedBy: "kompiro",
+      outcome: "merged-unattributed",
+      unread: [],
+    });
+  });
+
+  it("takes a finished attempt's line without waiting on a re-run still in progress", async () => {
+    const { deps } = fake({
+      pulls: [merged()],
+      runs: [{ id: 1, url: "u" }],
+      jobs: { 1: [[job(`merged #7 at ${HEAD}\n`), job("", "in_progress")]] },
+    });
+    expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({
+      outcome: "merged-by-merger",
+      waitedMin: 0,
+    });
+  });
+
+  it("reads the other runs past a log that cannot be read, and names it when none matched", async () => {
+    const unreadable: MergeJob = {
+      status: "completed",
+      conclusion: "cancelled",
+      log: () => {
+        throw new Error("gh api: HTTP 404");
+      },
+    };
+    const found = fake({
+      pulls: [merged()],
+      runs: [
+        { id: 2, url: "u2" },
+        { id: 1, url: "u1" },
+      ],
+      jobs: { 2: [[unreadable]], 1: [[job(`merged #7 at ${HEAD}\n`)]] },
+    });
+    expect(await awaitLowMerge(found.deps, 7, OPTS)).toMatchObject({
+      outcome: "merged-by-merger",
+      run: "u1",
+    });
+    const missing = fake({
+      pulls: [merged()],
+      runs: [{ id: 2, url: "u2" }],
+      jobs: { 2: [[unreadable]] },
+    });
+    expect(await awaitLowMerge(missing.deps, 7, OPTS)).toMatchObject({
+      outcome: "merged-unattributed",
+      unread: ["u2"],
     });
   });
 

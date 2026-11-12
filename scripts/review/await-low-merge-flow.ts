@@ -75,7 +75,14 @@ type Outcome =
   /** Merged by a person, which includes native auto-merge (merged as whoever enabled it). */
   | { outcome: "merged-otherwise"; mergedBy: string | null }
   /** Merged by an app, but no merge job in the searched runs logged it: #3698 decides. */
-  | { outcome: "merged-unattributed"; mergedBy: string; mergeSha: string | null; searched: string }
+  | {
+      outcome: "merged-unattributed";
+      mergedBy: string;
+      mergeSha: string | null;
+      searched: string;
+      /** The runs with a merge job whose log could not be read. */
+      unread: string[];
+    }
   | { outcome: "closed" }
   /** Native auto-merge is on and would merge before the merger: disable it and run again. */
   | { outcome: "auto-merge-enabled" }
@@ -113,39 +120,55 @@ async function whoMerged(
   opts: Options,
   deadline: number,
 ): Promise<Outcome> {
+  // An app's login ends in `[bot]`; a person's cannot, and native auto-merge
+  // merges as the person who enabled it. Only an app's merge is looked up.
+  if (!p.mergedBy?.endsWith("[bot]")) return { outcome: "merged-otherwise", mergedBy: p.mergedBy };
   const to = Date.parse(p.mergedAt ?? "") || deps.now();
   const [from, until] = [iso(to - MERGE_WINDOW_MS), iso(to)];
   const line = new RegExp(`^.*merged #${pr} at `, "m");
-  for (const run of deps.mergerRuns(from, until)) {
-    let jobs = deps.mergeJobs(run.id);
-    while (jobs.some((j) => j.status !== "completed")) {
-      if (deps.now() >= deadline) {
-        return { outcome: "timeout", last: `the merge job of ${run.url} is still running` };
+  const runs = deps.mergerRuns(from, until);
+  for (;;) {
+    // Every finished attempt of every run is read before waiting on an unfinished
+    // one, and a log that cannot be read does not stop the others being read.
+    let running: string | null = null;
+    const unread = new Set<string>();
+    for (const run of runs) {
+      for (const job of deps.mergeJobs(run.id)) {
+        if (job.status !== "completed") {
+          running ??= `the merge job of ${run.url} is still running`;
+          continue;
+        }
+        let log: string;
+        try {
+          log = job.log();
+        } catch {
+          unread.add(run.url);
+          continue;
+        }
+        if (!line.test(log)) continue;
+        return {
+          outcome: "merged-by-merger",
+          run: run.url,
+          mergedBy: p.mergedBy,
+          mergeSha: p.mergeSha,
+          branchDeleted: !deps.branchExists(p.headRef),
+        };
       }
-      await deps.sleep(opts.pollMs);
-      jobs = deps.mergeJobs(run.id);
     }
-    if (!jobs.some((j) => line.test(j.log()))) continue;
-    return {
-      outcome: "merged-by-merger",
-      run: run.url,
-      mergedBy: p.mergedBy,
-      mergeSha: p.mergeSha,
-      branchDeleted: !deps.branchExists(p.headRef),
-    };
+    if (running === null) {
+      // The merger's run may lie outside the window (a runner that took over an
+      // hour to start), or in a log that could not be read: #3698 decides.
+      return {
+        outcome: "merged-unattributed",
+        mergedBy: p.mergedBy,
+        mergeSha: p.mergeSha,
+        searched: `${from}..${until}`,
+        unread: [...unread],
+      };
+    }
+    if (deps.now() >= deadline) return { outcome: "timeout", last: running };
+    await deps.sleep(opts.pollMs);
   }
-  // An app's login ends in `[bot]`; a person's cannot. The merger's run may lie
-  // outside the window (a runner that took over an hour to start), so an app's
-  // merge without a log line is left to #3698 rather than counted either way.
-  if (p.mergedBy?.endsWith("[bot]")) {
-    return {
-      outcome: "merged-unattributed",
-      mergedBy: p.mergedBy,
-      mergeSha: p.mergeSha,
-      searched: `${from}..${until}`,
-    };
-  }
-  return { outcome: "merged-otherwise", mergedBy: p.mergedBy };
 }
 
 /**
