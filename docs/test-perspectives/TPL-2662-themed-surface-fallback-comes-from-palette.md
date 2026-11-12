@@ -63,7 +63,7 @@ scope:
 描画要素の色を決めるコードを書く / 触るとき:
 
 - [ ] 「どのルールもこの要素を塗らなかった」経路の色は `DiagramPalette` の role 由来か
-      （片テーマ固定のリテラルやベース style を経由していないか）
+      （片テーマ固定のリテラルやベース style を経由していないか） [guard: `packages/core/src/renderer/theme-colour-sources.test.ts`]
 - [ ] 「塗られなかった」の判定を**解決済みの値の一致**で代用していないか
       （ベース値を明示指定したケースを黙って塗り替える）
 - [ ] その要素がカードでない（塗りが無い / 破線フレーム / 区切り）なら、カード用の
@@ -93,3 +93,11 @@ scope:
   role を描き、作者指定はそれに勝つことを検証。
 - `packages/core/src/builtins/default-style-contrast.test.ts` — frame タイトルを
   `MUTED_FRAME_TITLE_OPACITY` で合成した後の比を canvas と全 boundary tint 上で検証。
+- `packages/core/src/renderer/theme-colour-sources.test.ts` — 同梱の全 example を `buildAllViewsSvg` で両テーマ・
+  group なし / team / boundary で描き、SVG の色（hex）がすべて、そのテーマの `DiagramPalette`・そのテーマの builtin
+  シート・モデルに書かれた色（凡例の swatch）・テーマ非依存と決めた facet の色のどれかから来ることを見る。片テーマの
+  リテラルやベース style に落ちる要素は、どれかの example が描けば反対のテーマ（ベース style なら両方）で落ちる
+  （チェックリスト 1 項目目）。diff や facet 選択などビューア状態でだけ出る要素は描かない。
+  導入時点で `table` / `queue-item` / `bucket` のカードは builtin の規則が無く、resolver の `DEFAULT_NODE_STYLE`
+  （dark 向けのカード）に両テーマで落ちていた。色を決めるのは別の判断なので `BASE_CARD_KINDS` に理由付きで免除し、
+  免除が要らなくなったら落ちるようにしている
