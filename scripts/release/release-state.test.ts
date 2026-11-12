@@ -221,6 +221,23 @@ describe("unplannedVersions", () => {
     ).toEqual([]);
   });
 
+  it("keeps reporting after the release's own tag is pushed", () => {
+    expect(
+      unplannedVersions({
+        time,
+        versions,
+        tagged: ["0.9.0", "0.10.0", "0.11.0"],
+        releaseVersion: "0.11.0",
+      }),
+    ).toEqual(["0.10.1-next.0"]);
+  });
+
+  it("cannot measure a package whose only tag is the release's own", () => {
+    expect(
+      unplannedVersions({ time, versions, tagged: ["0.11.0"], releaseVersion: "0.11.0" }),
+    ).toBeNull();
+  });
+
   it("cannot measure a package with no tagged version yet", () => {
     expect(unplannedVersions({ time, versions, tagged: [], releaseVersion: "0.11.0" })).toBeNull();
   });
