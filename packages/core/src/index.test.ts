@@ -683,26 +683,37 @@ describe("compile — edge#<canonical id> written the way the app writes it", ()
   // The two bases used to be the same `a->b->c`, and so did the resolved style
   // map key: whichever edge was written last styled both (#3481). Each edge is
   // the target once, so neither write order can hide a shared key.
-  const ARROW_PAIR = `system S {\n  service a {}\n  service "b->c" {}\n  service "a->b" {}\n  service c {}\n  "a->b" -> c\n  a -> "b->c"\n}`;
+  const ARROW_PAIR_HEAD = `system S {\n  service a {}\n  service "b->c" {}\n  service "a->b" {}\n  service c {}\n`;
+  const ARROW_PAIR = `${ARROW_PAIR_HEAD}  "a->b" -> c\n  a -> "b->c"\n}`;
+  // Written the other way round, the quoted source on the second line used to
+  // become the first edge's label and the second edge was lost (#3752).
+  const ARROW_PAIR_REVERSED = `${ARROW_PAIR_HEAD}  a -> "b->c"\n  "a->b" -> c\n}`;
 
-  it("gives endpoints containing -> their own id and a rule that names one of them", () => {
-    const plain = render(ARROW_PAIR);
-    expect(plain.diagnostics.filter((d) => d.code === "ambiguous-edge-base")).toEqual([]);
-    const first = canonicalIdOf(plain.svg, "a->b", "c");
-    const last = canonicalIdOf(plain.svg, "a", "b->c");
-    expect([first, last]).toEqual(['"a->b"->c', 'a->"b->c"']);
-    for (const [target, other, id] of [
-      [["a->b", "c"], ["a", "b->c"], first],
-      [["a", "b->c"], ["a->b", "c"], last],
-    ] as const) {
-      const sheet = StyleParser.parse(`edge#${id} { color: #00FF00; }`);
-      expect(sheet.diagnostics).toEqual([]);
-      expect(sheet.value.rules[0].selector.edgeId).toBe(id);
-      const styled = render(ARROW_PAIR, `edge#${id} { color: #00FF00; }`);
-      expect(strokeOf(styled.svg, target[0], target[1])).toBe("#00FF00");
-      expect(strokeOf(styled.svg, other[0], other[1])).not.toBe("#00FF00");
-    }
-  });
+  it.each([
+    { order: "the quoted source first", krs: ARROW_PAIR },
+    { order: "the quoted source second", krs: ARROW_PAIR_REVERSED },
+  ])(
+    "gives endpoints containing -> their own id and a rule that names one of them, with $order",
+    ({ krs }) => {
+      const plain = render(krs);
+      expect(plain.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+      expect(plain.diagnostics.filter((d) => d.code === "ambiguous-edge-base")).toEqual([]);
+      const first = canonicalIdOf(plain.svg, "a->b", "c");
+      const last = canonicalIdOf(plain.svg, "a", "b->c");
+      expect([first, last]).toEqual(['"a->b"->c', 'a->"b->c"']);
+      for (const [target, other, id] of [
+        [["a->b", "c"], ["a", "b->c"], first],
+        [["a", "b->c"], ["a->b", "c"], last],
+      ] as const) {
+        const sheet = StyleParser.parse(`edge#${id} { color: #00FF00; }`);
+        expect(sheet.diagnostics).toEqual([]);
+        expect(sheet.value.rules[0].selector.edgeId).toBe(id);
+        const styled = render(krs, `edge#${id} { color: #00FF00; }`);
+        expect(strokeOf(styled.svg, target[0], target[1])).toBe("#00FF00");
+        expect(strokeOf(styled.svg, other[0], other[1])).not.toBe("#00FF00");
+      }
+    },
+  );
 
   // The layout read `direction` back with the same plain join, so a hint on one
   // of the pair steered the other too, or neither (#3481).

@@ -82,6 +82,14 @@ describe("readNodeIdPathTail", () => {
     expect(readNodeIdPathTail(first, cursor).segments).toEqual(["A", "B"]);
   });
 
+  // The arrow opens an implicit-source edge on the line after, so it does not
+  // make `B` an edge source; the edge and link label readers share this check
+  // (#3752).
+  it("reads a segment whose following arrow is on a later line", () => {
+    const { first, cursor } = tailCursor("A.\nB\n-> C");
+    expect(readNodeIdPathTail(first, cursor).segments).toEqual(["A", "B"]);
+  });
+
   it("tracks end at the last accepted segment when a later dot dangles", () => {
     const { first, cursor } = tailCursor("A.B. }");
     const tail = readNodeIdPathTail(first, cursor);

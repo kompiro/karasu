@@ -23,6 +23,34 @@ import type { NodeIdPath } from "../types/ast.js";
  * #2549) resolve through these helpers.
  */
 
+/**
+ * True when the next token starts an explicit edge (`x -> …` / `"x y" --> …`)
+ * on a line after `after`, the token the caller read last.
+ *
+ * The lexer drops newlines, so a reader that takes an optional trailing token
+ * (an edge's positional label, a link's label, a path's next segment) would
+ * otherwise swallow the source of the edge written on the next line. Every
+ * such reader stops on this one check, so they cannot disagree on where the
+ * next statement begins (#3499, #3752).
+ *
+ * The arrow has to be on the same line as the id. In `-> b` / `"calls"` /
+ * `-> c`, the string is also followed by an arrow, but that arrow opens an
+ * implicit-source edge on the line after, so `"calls"` stays the label of
+ * `-> b`. And the id has to be on a later line: on one line, `a -> b "x" -> c`
+ * keeps `"x"` as the label and reports the stray `-> c`, instead of quietly
+ * reading a second edge.
+ */
+export function opensEdgeOnLaterLine(cursor: TokenCursor, after: Token): boolean {
+  const next = cursor.peek();
+  const arrow = cursor.peekAt(1);
+  return (
+    next.loc.line > after.loc.line &&
+    (next.type === TokenType.Identifier || next.type === TokenType.StringLiteral) &&
+    (arrow.type === TokenType.Arrow || arrow.type === TokenType.DashedArrow) &&
+    arrow.loc.line === next.loc.line
+  );
+}
+
 /** Result of reading the dotted tail of a node-reference path. */
 export interface NodeIdPathTail {
   /** Segment values actually read: `first.value` plus each accepted tail segment. */
@@ -77,14 +105,10 @@ export function readNodeIdPathTail(
     const isSegment =
       next.type === TokenType.Identifier ||
       (acceptStringSegments && next.type === TokenType.StringLiteral);
-    // An id on a later line that an arrow follows is the next statement's edge
-    // source, not this path's next segment. A path segment is never followed
-    // by an arrow, so this only changes recovery after a trailing dot (#3499).
-    const opensEdge =
-      next.loc.line > dot.loc.line &&
-      (cursor.peekAt(1).type === TokenType.Arrow ||
-        cursor.peekAt(1).type === TokenType.DashedArrow);
-    if (!isSegment || opensEdge) {
+    // The next statement's edge source, not this path's next segment. A path
+    // segment is never followed by an arrow, so this only changes recovery
+    // after a trailing dot (#3499).
+    if (!isSegment || opensEdgeOnLaterLine(cursor, dot)) {
       return { segments, end, dangling: next, danglingDot: dot };
     }
     cursor.advance();
