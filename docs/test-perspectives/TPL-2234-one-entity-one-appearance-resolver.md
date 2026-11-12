@@ -86,8 +86,10 @@ karasu の boundary で実際にこうなった:
 同じエンティティを複数の面が描く実装・変更で確認する:
 
 - [ ] そのエンティティの見た目を返す関数が **1 つだけ**あり、全ての描画面がそれを呼んでいる。
-      パレットや定数テーブルを直接引いている描画コードが他に無いことを grep で確認した
-      （karasu では `palette.boundaryHues` の直読みが残っていないこと）。
+      パレットや定数テーブルを直接引いている描画コードが他に無いことを grep で確認した。
+      エンティティごとに面の集合が違い、閉じた集合が無いので、新しいエンティティでは機械では見ない
+- [ ] karasu の boundary では、全ての描画面（枠・塗り・タイトル・`◇` タブ）が `resolveBoundaryPaint` から色を取り、
+      `palette.boundaryHues` を直接読まない。 [guard: `packages/core/src/renderer/boundary-paint-surfaces.test.ts`]
 - [ ] **上書き手段を足す変更では、読み口の 1 本化を先行させた**（挙動不変のコミットとして
       分け、そのうえで上書きを足す）。同じコミットで両方やらない。 [judgment]
 - [ ] 上書きが効いていることを、**最も目立たない面**で assert するテストがある。主要な面
@@ -107,6 +109,14 @@ karasu の boundary で実際にこうなった:
   フレームの両方に届くこと
 - `packages/core/src/renderer/legend-footer.test.ts` — 「lets a user rule outrank the builtin at equal specificity (Issue #2445)」と、
   その tag ref / annotation ref 版。凡例 swatch がカードと同じカスケード（シート横断の宣言順）で解決されること
+- `packages/core/src/renderer/boundary-paint-surfaces.test.ts` — `groupBy` を取る公開入口を `index.ts` の型から求め
+  （`BOUNDARY_SURFACES` が `satisfies Record<GroupByEntryName, …>`）、boundary を描く全モデル（`◇` タブの出るモデルと、
+  boundary で group したとき色相が出る同梱 example）を両テーマで描き、`boundary { border-color: … }` で全 boundary を
+  塗り直すと SVG に `palette.boundaryHues` の色が 1 つも残らないことを見る。色相を自分で引く面は、どの関数で描いても
+  色が残って落ちる（チェックリスト 2 項目目）。boundary 以外のエンティティは見ない
+- 5 項目目（解決規則を書き写していない）にはガードが無い。`StyleRule.sourceIndex` を外して `flattenSheetsInCascadeOrder` の
+  結果だけが順序を持つ型にする案は、#2445 の形（シートごとの index でのソート）は書けなくするが、specificity と配列の
+  位置で比べるソートは手で書けるので、新しい書き写しを止めない
 
 ## 派生元 spec
 
