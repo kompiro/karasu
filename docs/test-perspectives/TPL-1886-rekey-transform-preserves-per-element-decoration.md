@@ -62,8 +62,8 @@ TPL-1738 のチェックリストを全部通しても**すり抜ける**劣化�
       **保持**することを assert（装飾なしにならない）。
 - [ ] 集約が 1 対多なら、複数元装飾の **fold 規則を明示的に定義**しテストする（例: 単一 state は
       踏襲・混在は `changed`）。混在ケースを最低 1 つ assert する。
-- [ ] 装飾 map のキー形が、レイアウト後の要素 id 形と**一致**することを確認する（[TPL-1666]）。
-- [ ] 退化ケース（畳み込み対象ゼロ / 全 unchanged / 単一元）で装飾が破綻しないことを確認する。
+- [ ] 装飾 map のキー形が、レイアウト後の要素 id 形と**一致**することを確認する（[TPL-1666]）。 [guard: `packages/core/src/renderer/collapse-corpus.test.ts`]
+- [ ] 退化ケース（畳み込み対象ゼロ / 全 unchanged / 単一元）で装飾が破綻しないことを確認する。 [guard: `packages/core/src/renderer/collapse-corpus.test.ts`]
 
 ## 既知の対処パターン
 
@@ -79,6 +79,14 @@ TPL-1738 のチェックリストを全部通しても**すり抜ける**劣化�
 
 - `packages/core/src/renderer/group-by-diff.test.ts`（team を畳んだ集約 stub エッジが diff state を
   保持・単一踏襲/混在 `changed` の fold・除去ノードが former team フレームに配置 — #1886）
+- `packages/core/src/renderer/collapse-corpus.test.ts`（全 example の全ビューを全 Group-by モードで、全グループ・
+  全カテゴリを畳み、合成した diff map（全エッジ `added` / 全エッジ `unchanged` / 畳まない）で描いた SVG の
+  `data-diff-state` を読む。カテゴリ軸が diff state を付け替えていなかったのはこのテストで見つかった。
+  混在の fold（2 項目め）は確かめていない: どの元エッジがどの stub エッジに畳まれたかを `LayoutResult` が
+  持たず、「最初の state を採る」新しい集約は全エッジ同一 state の入力では区別できない）
+- `packages/core/src/renderer/category-collapse.test.ts` › `collapseCategories diff state on re-targeted edges (#1886)`
+  （カテゴリ軸の単一踏襲・混在 `changed`・compare 外で何も記録しないこと。既存の 2 軸の fold を固定するだけで、
+  新しい集約は覆わない）
 
 ## 派生元 spec
 

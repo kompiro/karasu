@@ -53,7 +53,7 @@ export function makeStubNode(opts: {
 
 /**
  * Fold the diff states of the original edges that collapse onto one stub edge.
- * A single distinct state carries through; a mix reports `changed` — an existing
+ * A single distinct state carries through; a mix reports `changed`, an existing
  * `DiffState` value (see `view-diff.ts`). Order-independent and deterministic.
  */
 export function foldEdgeDiffStates(states: readonly string[]): string {
@@ -68,7 +68,7 @@ export function foldEdgeDiffStates(states: readonly string[]): string {
  * that until it shared this with the group axis.
  *
  * `add` takes each re-targeted edge with its new endpoints; `folded` returns the
- * fold per stub edge, keyed by `edgeKey` — the render lookup form, kind-less
+ * fold per stub edge, keyed by `edgeKey` (the render lookup form), kind-less
  * like `edge-layer.ts`, so a sync+async pair shares one slot and folds
  * together. Only non-`unchanged` folds are kept, so an all-`unchanged` bundle
  * stays undecorated like the edges it stands for. Without a diff map it

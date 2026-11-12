@@ -78,8 +78,8 @@ system-view grouping の設計計測（`docs/design/system-view-grouping.md` § 
 - [ ] **ノード/フレーム貫通数 == 0** を厳密に assert した（「救済される」の定性確認で済ませない）。 [guard: `packages/core/src/renderer/routing-parity.test.ts`]
 - [ ] **相異なるエッジの共線オーバーラップ数 == 0** を assert した（**縦**＝同一 x + y 区間の正長オーバーラップ／**横**＝同一 y + x 区間の正長オーバーラップの両方。意図的な集約トランク兄弟は同一 `trunkId` で除外）。単一 x にレーンを共有させる／単一アンカーに複数エッジを付ける実装では特に必須（#1927）。 [guard: `packages/core/src/renderer/routing-parity.test.ts`]
 - [ ] 貫通判定の障害物集合に**ノードカードとフレーム矩形の両方**を含めた（grouped/framed view）。 [guard: `packages/core/src/renderer/routing-parity.test.ts`]
-- [ ] 交差を hop/junction 等の**表現で無害化**する設計なら、交差数の残存を欠陥と誤認せず、代わりに「全交差が mark 付き（非接続/接続が明示）」を assert した。
-- [ ] 退化ケース（グループ 1 つ / 枠なし / infra・external なし）で貫通ゼロが保たれることを確認した。
+- [ ] 交差を hop/junction 等の**表現で無害化**する設計なら、交差数の残存を欠陥と誤認せず、代わりに「全交差が mark 付き（非接続/接続が明示）」を assert した。 [guard: `packages/core/src/renderer/routing-corpus.test.ts`]
+- [ ] 退化ケース（グループ 1 つ / 枠なし / infra・external なし）で貫通ゼロが保たれることを確認した。 [guard: `packages/core/src/renderer/routing-corpus.test.ts`]
 - [ ] 「Group by: none」等の**非対象モードが byte-identical で不変**であることを確認した（新ルーティングが gate 内でのみ走る）。
 
 ## 既知の対処パターン
@@ -92,6 +92,7 @@ system-view grouping の設計計測（`docs/design/system-view-grouping.md` § 
 
 ## 関連テスト
 
+- `packages/core/src/renderer/routing-corpus.test.ts`（`layout` を包み、全 example の全ビュー（drill-down・deploy を含む）を全 Group-by モードで計測する。交差ごとに hop mark が載っていること、貫通ゼロ、コーパスに退化ケース（枠 1 つ / Group-by 下で枠なし / infra・external なし）が含まれること。「非対象モードが byte-identical」は変更前との比較が要り、コーパスの golden が無いのでガードにしていない。モデルからグループ情報を外す metamorphic 比較も、none モードが `ownerIndex`（カードの owner 表示）と展開の membership を正当に読むので成り立たない）
 - `packages/core/src/renderer/edge-routing-channels.test.ts`（skip-layer 直交ルーティング — ノードカード貫通の既存ガード）
 - `packages/core/src/renderer/edge-routing-groups.test.ts`（grouped view のルーティング — `totalPenetrations == 0`・`collinearVerticalOverlaps == 0`・`collinearHorizontalOverlaps == 0` を assert。#1859 / #1927）
 - `packages/core/src/renderer/routing-parity.test.ts`（`shared routing chain — ungrouped fences (#2362, TPL-1927)` で ungrouped の実サンプル群について貫通ゼロと共線オーバーラップゼロ、`shared routing chain — grouped output is unchanged` で grouped の貫通ゼロと交差数を同時に assert する）

@@ -51,7 +51,7 @@ group-collapse（#1874）は逆に **id を意図的に書き換える**ケー�
 - [ ] 主構造側と別グループ側の述語が **相補的**（complement）で、全要素がちょうど一度どちらかに入ることをテストする（drop / dup なし）。
 - [ ] 配置後のノード総数が入力ユニット総数と一致することを assert する。
 - [ ] 抜き出した要素を端点に持つエッジ / 関係が、再配置後も両端点を解決して描画されることをテストする（帯をまたぐケース）。
-- [ ] 再配置が端点 id を書き換える（fold → stub）なら、主 edge リストと **同じ id を参照する全ての parallel edge リスト**（view model 上の ghost / aux 系を含む）が同一 remap を通ることをテストする。畳まれた端点のエッジが stub にアンカーし、親コンテナ枠へフォールバックしないことを assert する。
+- [ ] 再配置が端点 id を書き換える（fold → stub）なら、主 edge リストと **同じ id を参照する全ての parallel edge リスト**（view model 上の ghost / aux 系を含む）が同一 remap を通ることをテストする。畳まれた端点のエッジが stub にアンカーし、親コンテナ枠へフォールバックしないことを assert する。 [guard: `packages/core/src/renderer/collapse-corpus.test.ts`]
 - [ ] 退化ケース（別グループが空 / 主構造が空 / 両方に要素）でレイアウトが破綻しないことを確認する。
 
 ## 既知の対処パターン
@@ -63,6 +63,7 @@ group-collapse（#1874）は逆に **id を意図的に書き換える**ケー�
 
 ## 関連テスト
 
+- `packages/core/src/renderer/collapse-corpus.test.ts`（全 example の全ビューを全 Group-by モードで、全グループ・全カテゴリを畳んで描き直す。ghost を含む全エッジの端点がカードかコンテナに解決し、片端が畳まれたエッジが stub への辺として残る。今の example には端点がメンバーの ghost エッジが無いので、既存の ghost の remap そのものは `layout.test.ts` の #1874 が守る）
 - `packages/core/src/renderer/deploy-layout.test.ts` › `layoutDeploy job band (#1738)`（帯配置・全ユニット一度・帯越しエッジ・退化ケース）
 - `packages/core/src/view/deploy-view-extract.test.ts` › `job band classification (#1738)`（job-only 判定の相補性）
 - `packages/core/src/renderer/deploy-renderer.test.ts` › `job band (#1738)`（帯ラッパー描画・非該当時の不在）
