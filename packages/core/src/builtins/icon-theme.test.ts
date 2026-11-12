@@ -121,11 +121,12 @@ describe("iconNameForNode (parity with ICON_RULES)", () => {
 });
 
 /**
- * The renderer resolves a node's icon through the CSS cascade (plus the client
- * first-match post-step in `resolver/style-resolver.ts`); every other surface
+ * The renderer resolves a node's icon through the CSS cascade (plus the
+ * variant first-match post-step in `resolver/style-resolver.ts`, which covers
+ * every kind in `VARIANT_ICONS_BY_KIND`); every other surface
  * calls {@link iconNameForNode}. Both have to pick the same icon when a node
  * carries several variant tags, which is where their resolution orders can part
- * (TPL-1415 item 5). Each variant tag alone, every ordered pair of a kind's
+ * (TPL-1415 item 6). Each variant tag alone, every ordered pair of a kind's
  * variant tags, and each kind's variants in full in both orders are generated
  * from ICON_RULES, so a new
  * variant or a new kind with variants is compared without a new case here.
