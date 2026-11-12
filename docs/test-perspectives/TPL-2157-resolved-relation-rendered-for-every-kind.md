@@ -62,7 +62,7 @@ kind gate を扱う。
 - [ ] **描画・measure・metadata の 3 点セット**を同じ gate で通したか（measure を忘れるとチップが未予約領域に描かれる）
 - [ ] 同じ情報を出す**全サーフェス**を洗い出したか（SVG カード / core の `NodeMetadata` / app の detail panel / VS Code webview / エクスポータ） [judgment]
 - [ ] 意図的に**除外する kind** があるなら、理由をコード定数の doc コメントに書き、除外を assert するテストを置いたか（例: infra は shape 都合で deploy ボタン対象外）
-- [ ] kind を列挙する**振る舞いテスト**（定数を回して各 kind で提示されることを assert）を置き、定数に kind を足したらケース不足で落ちるようにしたか
+- [ ] kind を列挙する**振る舞いテスト**（定数を回して各 kind で提示されることを assert）を置き、定数に kind を足したらケース不足で落ちるようにしたか [guard: `packages/core/src/renderer/owner-affordance-kinds.test.ts`]
 
 ## 既知の対処パターン
 
@@ -77,6 +77,6 @@ kind gate を扱う。
 
 ## 関連テスト
 
-- `packages/core/src/renderer/owner-affordance-kinds.test.ts`（kind 網羅・除外 kind・label 表示・measure 予約）
+- `packages/core/src/renderer/owner-affordance-kinds.test.ts`（kind 網羅・除外 kind・label 表示・measure 予約）。`types/ast.ts` が export する kind 集合をすべて `KIND_SET_ROLE`（`satisfies Record<KindSetName, …>`）で分類し、カードの提示を決める集合には kind ごとのモデル表を要求して集合一致を見る。`ast.ts` に集合を足すと分類するまで typecheck が落ち、既存の gate に kind を足すとモデル不足で落ちる（チェックリスト 5 項目目）。`ast.ts` の外で定義した gate は見ない
 - `packages/app/src/components/NodeDetailPanel.test.tsx`（`teamLabel` を表示し `team` で遷移する）
 - `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-02`（VS Code の preview は #3312 以降 app の `NodeDetailPanel` そのもので、team の label を org ジャンプボタンに出す）
