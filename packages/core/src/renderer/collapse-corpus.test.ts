@@ -59,7 +59,7 @@ interface Redraw {
   /** Every group collapsed, every edge `unchanged`. */
   foldedUnchanged: string;
   /** Nothing collapsed, every edge `added`. */
-  unfolded: string;
+  unfolded: { layout: LayoutResult; svg: string };
 }
 
 const redraws: Redraw[] = [];
@@ -115,7 +115,7 @@ vi.mock("./svg-renderer.js", async (importOriginal) => {
       slice,
       folded: { layout: foldedLayout, svg: foldedSvg },
       foldedUnchanged: draw({ ...collapse, edgeDiffState: all("unchanged") }),
-      unfolded: draw({ edgeDiffState: all("added") }),
+      unfolded: { svg: draw({ edgeDiffState: all("added") }), layout: lastLayout! },
     });
     return svg;
   };
@@ -137,6 +137,18 @@ function edgeStates(svg: string): (string | null)[] {
   return [...svg.matchAll(/<g [^>]*data-edge-from="[^>]*>/g)].map(
     ([tag]) => /data-diff-state="([^"]*)"/.exec(tag)?.[1] ?? null,
   );
+}
+
+/** Ids an edge endpoint may name on a canvas: its cards and its containers. */
+function endpointIds(res: LayoutResult, slice: ViewSlice): Set<string> {
+  const ids = new Set<string>(res.containers.map((c) => c.id));
+  if (slice.containerNode) ids.add(slice.containerNode.id);
+  for (const [key, n] of res.nodes) {
+    ids.add(key).add(n.id);
+    // The multi-system root names a card in another system by its dotted path.
+    if (n.path) ids.add(n.path.join("."));
+  }
+  return ids;
 }
 
 const stubsTagged = (res: LayoutResult, tag: string) =>
@@ -164,21 +176,46 @@ describe("collapse-all over every view of every example", () => {
   it("every edge, ghost ones included, ends on a card or a container (TPL-1738)", () => {
     const dangling: string[] = [];
     for (const { where: at, slice, folded } of redraws) {
-      const res = folded.layout;
-      const ids = new Set<string>(res.containers.map((c) => c.id));
-      if (slice.containerNode) ids.add(slice.containerNode.id);
-      for (const [key, n] of res.nodes) {
-        ids.add(key).add(n.id);
-        // The multi-system root names a card in another system by its dotted path.
-        if (n.path) ids.add(n.path.join("."));
-      }
-      for (const e of res.edges) {
+      const ids = endpointIds(folded.layout, slice);
+      for (const e of folded.layout.edges) {
         for (const end of [e.from, e.to]) {
           if (!ids.has(end)) dangling.push(`${at}: ${e.ghost ? "ghost " : ""}${e.from}->${e.to}`);
         }
       }
     }
     expect(dangling).toEqual([]);
+  });
+
+  // A list that skips the remap can also lose the edge instead of mis-anchoring
+  // it: the cross-system lists drop an endpoint they cannot find. So each edge
+  // the unfolded canvas drew with one endpoint folded must reappear between the
+  // surviving endpoint and a stub, on the same side and with the same ghost
+  // flag. (Both endpoints folded may land in one stub and vanish by design.)
+  it("an edge with one folded endpoint survives as an edge to a stub (TPL-1738)", () => {
+    const lost: string[] = [];
+    for (const { where: at, slice, folded, unfolded } of redraws) {
+      const kept = endpointIds(folded.layout, slice);
+      const stubs = new Set(
+        [GROUP_STUB_TAG, CATEGORY_STUB_TAG].flatMap((t) =>
+          stubsTagged(folded.layout, t).map((n) => n.id),
+        ),
+      );
+      const reached = (e: { from: string; to: string; ghost?: boolean }, fromFolded: boolean) =>
+        folded.layout.edges.some(
+          (f) =>
+            !!f.ghost === !!e.ghost &&
+            (fromFolded
+              ? stubs.has(f.from) && f.to === e.to
+              : f.from === e.from && stubs.has(f.to)),
+        );
+      for (const e of unfolded.layout.edges) {
+        const fromFolded = !kept.has(e.from);
+        if (fromFolded === !kept.has(e.to)) continue;
+        if (!reached(e, fromFolded))
+          lost.push(`${at}: ${e.ghost ? "ghost " : ""}${e.from}->${e.to}`);
+      }
+    }
+    expect(lost).toEqual([]);
   });
 
   it("every drawn edge keeps its diff state through the fold (TPL-1886)", () => {
@@ -190,7 +227,7 @@ describe("collapse-all over every view of every example", () => {
         });
       check(r.folded.svg, "all added, folded", (s) => s === "added");
       check(r.foldedUnchanged, "all unchanged, folded", (s) => s === null || s === "unchanged");
-      check(r.unfolded, "all added, nothing folded", (s) => s === "added");
+      check(r.unfolded.svg, "all added, nothing folded", (s) => s === "added");
     }
     expect(wrong).toEqual([]);
   });
