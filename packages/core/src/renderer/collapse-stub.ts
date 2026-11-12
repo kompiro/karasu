@@ -56,7 +56,7 @@ export function makeStubNode(opts: {
  * A single distinct state carries through; a mix reports `changed`, an existing
  * `DiffState` value (see `view-diff.ts`). Order-independent and deterministic.
  */
-export function foldEdgeDiffStates(states: readonly string[]): string {
+function foldEdgeDiffStates(states: readonly string[]): string {
   const distinct = new Set(states);
   return distinct.size === 1 ? [...distinct][0] : "changed";
 }

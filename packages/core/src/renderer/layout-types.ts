@@ -374,9 +374,9 @@ export interface LayoutResult {
    */
   shapeInsetsApplied?: boolean;
   /**
-   * Diff state re-keyed onto collapsed-group stub edges, keyed by the render
-   * lookup form `edgeKey` (#1886). Present only when a team collapses in
-   * compare/diff mode; `renderEdgeLayer` (edge-layer.ts) merges it over
+   * Diff state re-keyed onto the stub edges of a collapsed group or category,
+   * keyed by the render lookup form `edgeKey` (#1886). Present only when
+   * something collapses in compare/diff mode; `renderEdgeLayer` (edge-layer.ts) merges it over
    * `edgeDiffState` so a re-targeted stub edge keeps its diff decoration.
    */
   foldedEdgeDiffState?: Map<string, string>;

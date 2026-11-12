@@ -101,7 +101,7 @@ export function renderEdgeLayer(
     return facetOrder.filter((id) => own.includes(id));
   };
 
-  // A collapsed team's re-targeted stub edges are keyed by the stub id, which
+  // A collapsed group's or category's re-targeted stub edges are keyed by the stub id, which
   // the original `edgeDiffState` (keyed on pre-collapse endpoints) cannot match;
   // `layout` folds their diff state onto the stub key, so overlay it here so the
   // stub edge keeps its `data-diff-state` (#1886). Stub keys use the reserved
