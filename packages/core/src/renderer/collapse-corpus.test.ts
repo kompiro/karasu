@@ -29,8 +29,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { LayoutResult } from "./layout-types.js";
 import type { ViewSlice } from "../view/view-slice.js";
 import { edgeKey } from "../view/edge-key.js";
-import { CATEGORY_STUB_TAG, type CategoryId } from "./category-collapse.js";
-import { GROUP_STUB_TAG } from "./group-collapse.js";
+import { CATEGORY_STUB_TAG, categoryOf, stubId, type CategoryId } from "./category-collapse.js";
+import { GROUP_STUB_TAG, groupStubId } from "./group-collapse.js";
 import {
   GROUP_BY_MODES,
   loadExampleCorpus,
@@ -151,6 +151,29 @@ function endpointIds(res: LayoutResult, slice: ViewSlice): Set<string> {
   return ids;
 }
 
+/**
+ * The stubs a member may fold into, read off the unfolded canvas: its
+ * category's, or that of any group frame drawn around it (a boundary member
+ * can sit in several). Both the bare and the system-scoped spellings are
+ * listed, since only the multi-system root scopes stub ids; the caller keeps
+ * the ones the folded canvas drew. Re-deriving the remap is what lets each
+ * edge be checked against its own stub rather than any stub.
+ */
+function stubsOf(unfolded: LayoutResult, endpoint: string): string[] {
+  const n =
+    unfolded.nodes.get(endpoint) ??
+    [...unfolded.nodes.values()].find((c) => c.id === endpoint || c.path?.join(".") === endpoint);
+  if (!n) return [];
+  const scopes = [undefined, n.path?.[0]];
+  const category = categoryOf(n);
+  if (category !== null) return scopes.map((s) => stubId(category, s));
+  const inside = (r: { x: number; y: number; width: number; height: number }) =>
+    n.x >= r.x && n.y >= r.y && n.x + n.width <= r.x + r.width && n.y + n.height <= r.y + r.height;
+  return unfolded.containers
+    .filter((c) => c.group && c.groupId && (c.coverage ?? [c]).some(inside))
+    .flatMap((c) => scopes.map((s) => groupStubId(c.groupId!, s)));
+}
+
 const stubsTagged = (res: LayoutResult, tag: string) =>
   [...res.nodes.values()].filter((n) => n.tags?.includes(tag));
 
@@ -191,43 +214,62 @@ describe("collapse-all over every view of every example", () => {
   // the unfolded canvas drew with one endpoint folded must reappear between the
   // surviving endpoint and a stub, on the same side and with the same ghost
   // flag. (Both endpoints folded may land in one stub and vanish by design.)
-  it("an edge with one folded endpoint survives as an edge to a stub (TPL-1738)", () => {
+  it("an edge with one folded endpoint survives as an edge to its member's stub (TPL-1738)", () => {
     const lost: string[] = [];
+    let checked = 0;
     for (const { where: at, slice, folded, unfolded } of redraws) {
       const kept = endpointIds(folded.layout, slice);
-      const stubs = new Set(
-        [GROUP_STUB_TAG, CATEGORY_STUB_TAG].flatMap((t) =>
-          stubsTagged(folded.layout, t).map((n) => n.id),
-        ),
-      );
-      const reached = (e: { from: string; to: string; ghost?: boolean }, fromFolded: boolean) =>
-        folded.layout.edges.some(
+      const present = new Set([...folded.layout.nodes.values()].map((n) => n.id));
+      const reached = (e: { from: string; to: string; ghost?: boolean }, fromFolded: boolean) => {
+        const member = fromFolded ? e.from : e.to;
+        const own = stubsOf(unfolded.layout, member).filter((id) => present.has(id));
+        return folded.layout.edges.some(
           (f) =>
             !!f.ghost === !!e.ghost &&
             (fromFolded
-              ? stubs.has(f.from) && f.to === e.to
-              : f.from === e.from && stubs.has(f.to)),
+              ? own.includes(f.from) && f.to === e.to
+              : f.from === e.from && own.includes(f.to)),
         );
+      };
       for (const e of unfolded.layout.edges) {
         const fromFolded = !kept.has(e.from);
         if (fromFolded === !kept.has(e.to)) continue;
+        checked++;
         if (!reached(e, fromFolded))
           lost.push(`${at}: ${e.ghost ? "ghost " : ""}${e.from}->${e.to}`);
       }
     }
-    expect(lost).toEqual([]);
+    expect({ lost, checked: checked > 0 }).toEqual({ lost: [], checked: true });
   });
 
   it("every drawn edge keeps its diff state through the fold (TPL-1886)", () => {
     const wrong: string[] = [];
     for (const r of redraws) {
-      const check = (svg: string, label: string, ok: (s: string | null) => boolean) =>
-        edgeStates(svg).forEach((s, i) => {
+      const check = (
+        svg: string,
+        laidOut: LayoutResult,
+        label: string,
+        ok: (s: string | null) => boolean,
+      ) => {
+        const states = edgeStates(svg);
+        // Every laid-out edge is drawn as one `<g data-edge-from>`. Without this,
+        // a renamed attribute would leave nothing to read and every check pass.
+        if (states.length !== laidOut.edges.length) {
+          wrong.push(`${r.where} ${label}: ${states.length} drawn of ${laidOut.edges.length}`);
+        }
+        states.forEach((s, i) => {
           if (!ok(s)) wrong.push(`${r.where} ${label} edge #${i}: ${s}`);
         });
-      check(r.folded.svg, "all added, folded", (s) => s === "added");
-      check(r.foldedUnchanged, "all unchanged, folded", (s) => s === null || s === "unchanged");
-      check(r.unfolded.svg, "all added, nothing folded", (s) => s === "added");
+      };
+      check(r.folded.svg, r.folded.layout, "all added, folded", (s) => s === "added");
+      // Same collapse as `folded`, so the same edges are laid out.
+      check(
+        r.foldedUnchanged,
+        r.folded.layout,
+        "all unchanged, folded",
+        (s) => s === null || s === "unchanged",
+      );
+      check(r.unfolded.svg, r.unfolded.layout, "all added, nothing folded", (s) => s === "added");
     }
     expect(wrong).toEqual([]);
   });
