@@ -10,6 +10,7 @@ import {
   pickTrain,
   unplannedVersions,
   type NpmPackage,
+  workflowCommand,
 } from "./release-state.mts";
 
 // Fences the release-commit decisions of #3240 that stage.mts, approve.mts and
@@ -258,5 +259,13 @@ describe("unplannedVersions", () => {
 
   it("cannot measure a package with no tagged version yet", () => {
     expect(check({ tagged: [], releaseVersion: "0.11.0" })).toBeNull();
+  });
+});
+
+describe("workflowCommand", () => {
+  it("escapes CR, LF and % so a message cannot start another command", () => {
+    expect(workflowCommand("error", "x\r::add-mask::y\n::error::z 100%")).toBe(
+      "::error::x%0D::add-mask::y%0A::error::z 100%25",
+    );
   });
 });

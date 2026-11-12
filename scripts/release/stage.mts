@@ -68,6 +68,7 @@ import {
   type CommandResult,
   type NpmPackage,
   type PackageJson,
+  workflowCommand,
 } from "./release-state.mts";
 import { readTarball, readTarballStrict } from "./tarball.mts";
 
@@ -409,7 +410,7 @@ function summary(line: string): void {
 }
 
 function fail(problems: string[]): void {
-  for (const problem of problems) console.log(`::error::${problem}`);
+  for (const problem of problems) console.log(workflowCommand("error", problem));
   process.exitCode = 1;
 }
 
@@ -420,7 +421,7 @@ function pack(argv: string[]): void {
   if (options.outDir === null) throw new Error("pack needs --out-dir");
   const sha = currentSha();
   if (!options.anyCommit && !isReleaseCommit(sha)) {
-    console.log(`::notice::${sha} is not a release commit: nothing to pack.`);
+    console.log(workflowCommand("notice", `${sha} is not a release commit: nothing to pack.`));
     return;
   }
 
@@ -466,7 +467,7 @@ function publish(argv: string[]): void {
   if (options.tarballs === null) throw new Error("publish needs --tarballs");
   const sha = currentSha();
   if (!options.anyCommit && !isReleaseCommit(sha)) {
-    console.log(`::notice::${sha} is not a release commit: nothing to stage.`);
+    console.log(workflowCommand("notice", `${sha} is not a release commit: nothing to stage.`));
     return;
   }
 
@@ -527,7 +528,9 @@ function publish(argv: string[]): void {
     const id = `\`${pkg.name}@${pkg.version}\``;
     if (outcome.kind === "failed") {
       summary(`| ${id} | ${tag} | failed | | |`);
-      console.log(`::error::Staging ${pkg.name}@${pkg.version} failed: ${outcome.message}`);
+      console.log(
+        workflowCommand("error", `Staging ${pkg.name}@${pkg.version} failed: ${outcome.message}`),
+      );
       process.exitCode = 1;
       return;
     }

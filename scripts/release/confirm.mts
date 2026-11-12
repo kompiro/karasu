@@ -50,6 +50,7 @@ import {
   unplannedVersions,
   type NpmPackage,
   type TrainIssue,
+  workflowCommand,
 } from "./release-state.mts";
 import {
   compareTarballs,
@@ -182,7 +183,10 @@ function unplannedReport(sha: string, packages: NpmPackage[]): string[] {
     });
     if (after === null) {
       console.log(
-        `::notice::${pkg.name} has no tagged version before this release: no unplanned-version check for it.`,
+        workflowCommand(
+          "notice",
+          `${pkg.name} has no tagged version before this release: no unplanned-version check for it.`,
+        ),
       );
       return [];
     }
@@ -209,7 +213,10 @@ function locate(): void {
     console.log(
       train === null
         ? "::notice::No train is open: nothing to record."
-        : `::notice::The release PR of ${train.branch} has not merged yet: nothing to record.`,
+        : workflowCommand(
+            "notice",
+            `The release PR of ${train.branch} has not merged yet: nothing to record.`,
+          ),
     );
     output("sha", "");
     return;
@@ -294,7 +301,7 @@ function verify(argv: string[]): void {
     verified.push(packageTag(pkg));
   }
   console.log(`Verified: ${verified.join(", ") || "none"}`);
-  for (const mismatch of mismatches) console.log(`::error::${mismatch.replaceAll("\n", "%0A")}`);
+  for (const mismatch of mismatches) console.log(workflowCommand("error", mismatch));
   output("verified", verified.join(" "));
   output("mismatches", mismatches.join("\n\n"));
   if (mismatches.length > 0) process.exitCode = 1;
@@ -401,7 +408,10 @@ function record(argv: string[]): void {
   );
   if (tags.refused.length > 0) {
     console.log(
-      `::error::Not a bumped, untagged version on npm, so not tagged: ${tags.refused.join(", ")}`,
+      workflowCommand(
+        "error",
+        `Not a bumped, untagged version on npm, so not tagged: ${tags.refused.join(", ")}`,
+      ),
     );
     process.exitCode = 1;
   }
@@ -428,7 +438,7 @@ function record(argv: string[]): void {
         ...lines,
       ].join("\n"),
     );
-    console.log(`::error::${lines.join(" ")}`);
+    console.log(workflowCommand("error", lines.join(" ")));
     process.exitCode = 1;
   }
 
@@ -443,7 +453,12 @@ function record(argv: string[]): void {
 
   const state = npmTrainState(bumped, tagTarget, sha);
   if (state.misplaced.length > 0) {
-    console.log(`::error::Tagged on another commit than ${sha}: ${state.misplaced.join(", ")}`);
+    console.log(
+      workflowCommand(
+        "error",
+        `Tagged on another commit than ${sha}: ${state.misplaced.join(", ")}`,
+      ),
+    );
     process.exitCode = 1;
   }
   const npmDone = state.pending.length === 0 && state.misplaced.length === 0;
@@ -475,7 +490,9 @@ function trainIssueOf(sha: string): number | null {
     ".[0].head.ref // empty",
   ]);
   if (!isReleaseBranch(branch)) {
-    console.log(`::notice::${sha} was not merged from a release branch: no train to close.`);
+    console.log(
+      workflowCommand("notice", `${sha} was not merged from a release branch: no train to close.`),
+    );
     return null;
   }
   const issues = JSON.parse(
@@ -492,7 +509,7 @@ function trainIssueOf(sha: string): number | null {
   ) as TrainIssue[];
   const train = pickTrain(issues.filter((issue) => issue.body.includes(`\`${branch}\``)));
   if (train === null || train.branch !== branch) {
-    console.log(`::notice::No open tracking Issue names ${branch}.`);
+    console.log(workflowCommand("notice", `No open tracking Issue names ${branch}.`));
     return null;
   }
   return train.issue;
@@ -530,7 +547,12 @@ function closeTrain(argv: string[]): void {
   runOk("git", ["fetch", "--quiet", "--tags", "origin"]);
   const state = npmTrainState(bumpedPackagesAt(sha), tagTarget, sha);
   if (state.misplaced.length > 0) {
-    console.log(`::error::Tagged on another commit than ${sha}: ${state.misplaced.join(", ")}`);
+    console.log(
+      workflowCommand(
+        "error",
+        `Tagged on another commit than ${sha}: ${state.misplaced.join(", ")}`,
+      ),
+    );
     process.exitCode = 1;
     return;
   }

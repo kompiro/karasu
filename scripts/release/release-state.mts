@@ -304,5 +304,16 @@ export function tagTarget(tag: string): string | null {
   return result.status === 0 ? result.stdout.trim() : null;
 }
 
+/**
+ * A GitHub Actions workflow command line (`::error::…`) whose message is
+ * escaped, so a CR or LF inside it cannot end the line and start another
+ * command. Messages carry names and paths from tarballs, npm and the verify
+ * job, which a hijacked dependency can choose.
+ */
+export function workflowCommand(command: "error" | "notice" | "warning", message: string): string {
+  const escaped = message.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
+  return `::${command}::${escaped}`;
+}
+
 export const packageTag = (pkg: { name: string; version: string }): string =>
   `${pkg.name}@${pkg.version}`;
