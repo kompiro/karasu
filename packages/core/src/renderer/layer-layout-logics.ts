@@ -341,10 +341,12 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
       forcedLayers !== null || layerOrder === 0
         ? rawLayer
         : sortByBarycenter(rawLayer, predecessorsMap, nodeCenterX);
+    // `column` buckets whatever order the layer arrived in: declaration order
+    // on the kind tiers, barycenter elsewhere (ADR-969). It used to run on the
+    // kind tiers only, so a system view of plain services and every drill-down
+    // silently dropped the hint (found by column-hint-override.test.ts).
     const bucketed =
-      forcedLayers !== null && layoutHints && layoutHints.size > 0
-        ? bucketByColumn(sorted, layoutHints)
-        : sorted;
+      layoutHints && layoutHints.size > 0 ? bucketByColumn(sorted, layoutHints) : sorted;
     const nodesInLayer = applyEdgeDirectionWithinLayer(
       bucketed.map((item) => item.id),
       edges as KrsEdge[],
