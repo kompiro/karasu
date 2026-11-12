@@ -15,7 +15,7 @@ import { escapeXml } from "./svg-builder.js";
 import { resolveStyles, styleDerivedEdges } from "../resolver/style-resolver.js";
 import { collectLegendUsage } from "../legend/usage.js";
 import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/default-style.js";
-import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
+import { withDisplayModeSheet } from "../builtins/display-mode-sheets.js";
 import { StyleParser, unplacedStyleDiagnostics } from "../parser/style-parser.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 import { type DiagramTheme, resolvePalette } from "./palette.js";
@@ -110,8 +110,8 @@ export function buildStyles(
     modelSheets.push(styleResult.value);
     diagnostics.push(...unplacedStyleDiagnostics(styleResult.diagnostics));
   }
-  // Icon theme is appended last so it takes highest priority for `shape`.
-  const sheets = displayMode === "icon" ? [...modelSheets, getIconThemeStyleSheet()] : modelSheets;
+  // The mode's sheet goes last so it takes highest priority for `shape`.
+  const sheets = withDisplayModeSheet(modelSheets, displayMode);
   return { sheets, modelSheets, diagnostics };
 }
 

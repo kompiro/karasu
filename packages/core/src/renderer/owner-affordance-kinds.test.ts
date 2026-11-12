@@ -71,10 +71,13 @@ const KIND_SET_ROLE = {
 } satisfies Record<KindSetName, Record<string, string> | string>;
 
 describe("every card gate has a model per kind (#2157)", () => {
+  const exported = new Map<string, unknown>(Object.entries(ast));
+
   it.each(Object.entries(KIND_SET_ROLE).filter(([, role]) => typeof role !== "string"))(
     "%s has a model for exactly its kinds",
     (name, models) => {
-      expect(Object.keys(models).sort()).toEqual([...ast[name as KindSetName]].sort());
+      const kinds = exported.get(name) as ReadonlySet<string>;
+      expect(Object.keys(models).sort()).toEqual([...kinds].sort());
     },
   );
 });

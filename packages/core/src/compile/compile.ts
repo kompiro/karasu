@@ -75,7 +75,7 @@ import {
 } from "../view/team-dependency-extract.js";
 import { ImportResolver } from "../fs/import-resolver.js";
 import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/default-style.js";
-import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
+import { withDisplayModeSheet } from "../builtins/display-mode-sheets.js";
 import { bareIdView, nodePathKey, nodePathRefId } from "../parser/node-path.js";
 import "../renderer/shapes.js"; // ensure built-in shapes are registered
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
@@ -382,9 +382,9 @@ function _compileFromPreparedInput(
     for (const w of styles.warnings) warnings.push(resolvedStyleWarningToWarning(w));
   };
 
-  // For style resolution, icon theme is appended last so it takes highest priority for `shape`.
-  // This ensures Icon Mode is immune to `shape` overrides from user or builtin stylesheets.
-  const resolveSheets = displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
+  // For style resolution only, the mode's sheet goes last so Icon Mode is immune to
+  // `shape` overrides from user or builtin stylesheets.
+  const resolveSheets = withDisplayModeSheet(sheets, displayMode);
 
   if (diagramType === "org") {
     const slice = extractOrgView(krsFile.organizations, viewPath ?? []);
