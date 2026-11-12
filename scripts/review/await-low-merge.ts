@@ -49,19 +49,13 @@ const realDeps: Deps = {
       `repos/${REPO}/actions/workflows/low-pr-merger.yml/runs?created=${from}..${to}&per_page=100`,
       ".workflow_runs[] | {id, url: .html_url}",
     ),
-  mergeJob: (runId) => {
-    const [job] = ghList<{ id: number; status: string; conclusion: string | null }>(
-      `repos/${REPO}/actions/runs/${runId}/jobs?per_page=100`,
-      `.jobs[] | select(.name == "${MERGE_JOB}") | {id, status, conclusion}`,
-    );
-    if (job === undefined || job.conclusion === "skipped") return null;
-    return { ...job, log: () => gh([`repos/${REPO}/actions/jobs/${job.id}/logs`]) };
-  },
-  pushWorkflows: (sha) =>
-    ghList<string>(
-      `repos/${REPO}/actions/runs?head_sha=${sha}&event=push&per_page=100`,
-      ".workflow_runs[] | .name",
-    ),
+  // `filter=all`: the default lists only the latest attempt, so a re-run whose
+  // merge job was skipped would hide the attempt that merged.
+  mergeJobs: (runId) =>
+    ghList<{ id: number; status: string; conclusion: string | null }>(
+      `repos/${REPO}/actions/runs/${runId}/jobs?filter=all&per_page=100`,
+      `.jobs[] | select(.name == "${MERGE_JOB}" and .conclusion != "skipped") | {id, status, conclusion}`,
+    ).map((job) => ({ ...job, log: () => gh([`repos/${REPO}/actions/jobs/${job.id}/logs`]) })),
   branchExists: (ref) => {
     try {
       gh([`repos/${REPO}/branches/${encodeURIComponent(ref)}`, "--silent"]);

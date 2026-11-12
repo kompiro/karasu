@@ -39,10 +39,8 @@ export interface Deps {
   judge(pr: number): Verdict | null;
   /** `Low PR merger` runs created in [from, to], as ids and URLs. */
   mergerRuns(from: string, to: string): { id: number; url: string }[];
-  /** The run's merge job, or null when the run had none (skipped or not reached). */
-  mergeJob(runId: number): MergeJob | null;
-  /** The names of the `push` workflows that ran on a commit. */
-  pushWorkflows(sha: string): string[];
+  /** The run's merge jobs over every attempt, without the skipped ones: a re-run keeps the earlier log. */
+  mergeJobs(runId: number): MergeJob[];
   branchExists(ref: string): boolean;
   now(): number;
   sleep(ms: number): Promise<void>;
@@ -52,8 +50,6 @@ export interface Options {
   pollMs: number;
   /** How long a PR the merger could merge may stay open before falling back. */
   settleMs: number;
-  /** How long to look for the push workflows on the merge commit. */
-  pushWaitMs: number;
   /** The whole wait, after which the outcome is `timeout`. */
   budgetMs: number;
 }
@@ -61,23 +57,25 @@ export interface Options {
 export const DEFAULT_OPTIONS: Options = {
   pollMs: 60_000,
   settleMs: STALL_MS,
-  pushWaitMs: 5 * 60_000,
   budgetMs: 3 * 60 * 60_000,
 };
 
 type Outcome =
-  /** The merge job logged this PR: what #3698 records. */
+  /**
+   * The merge job logged this PR: what #3698 records. The push workflows on
+   * `mergeSha` are read on #3698 later, when they have all started.
+   */
   | {
       outcome: "merged-by-merger";
       run: string;
       mergedBy: string | null;
       mergeSha: string | null;
-      /** Empty when none appeared within `pushWaitMs`. */
-      pushWorkflows: string[];
       branchDeleted: boolean;
     }
-  /** Merged, but no merge job logged it: a person or native auto-merge. */
+  /** Merged by a person, which includes native auto-merge (merged as whoever enabled it). */
   | { outcome: "merged-otherwise"; mergedBy: string | null }
+  /** Merged by an app, but no merge job in the searched runs logged it: #3698 decides. */
+  | { outcome: "merged-unattributed"; mergedBy: string; mergeSha: string | null; searched: string }
   | { outcome: "closed" }
   /** Native auto-merge is on and would merge before the merger: disable it and run again. */
   | { outcome: "auto-merge-enabled" }
@@ -108,22 +106,6 @@ const MERGE_WINDOW_MS = 60 * 60_000;
 
 const iso = (ms: number): string => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
 
-/**
- * The `push` workflows on the merge commit, read until the list stops growing
- * between two polls or `pushWaitMs` runs out: they do not all appear at once.
- */
-async function pushesOn(deps: Deps, sha: string, opts: Options): Promise<string[]> {
-  const until = deps.now() + opts.pushWaitMs;
-  let seen = deps.pushWorkflows(sha);
-  while (deps.now() < until) {
-    await deps.sleep(opts.pollMs);
-    const again = deps.pushWorkflows(sha);
-    if (seen.length > 0 && again.length === seen.length) return again;
-    seen = again;
-  }
-  return seen;
-}
-
 async function whoMerged(
   deps: Deps,
   pr: number,
@@ -132,24 +114,35 @@ async function whoMerged(
   deadline: number,
 ): Promise<Outcome> {
   const to = Date.parse(p.mergedAt ?? "") || deps.now();
-  for (const run of deps.mergerRuns(iso(to - MERGE_WINDOW_MS), iso(to))) {
-    let job = deps.mergeJob(run.id);
-    while (job !== null && job.status !== "completed") {
+  const [from, until] = [iso(to - MERGE_WINDOW_MS), iso(to)];
+  const line = new RegExp(`^.*merged #${pr} at `, "m");
+  for (const run of deps.mergerRuns(from, until)) {
+    let jobs = deps.mergeJobs(run.id);
+    while (jobs.some((j) => j.status !== "completed")) {
       if (deps.now() >= deadline) {
         return { outcome: "timeout", last: `the merge job of ${run.url} is still running` };
       }
       await deps.sleep(opts.pollMs);
-      job = deps.mergeJob(run.id);
+      jobs = deps.mergeJobs(run.id);
     }
-    if (job === null) continue;
-    if (!new RegExp(`^.*merged #${pr} at `, "m").test(job.log())) continue;
+    if (!jobs.some((j) => line.test(j.log()))) continue;
     return {
       outcome: "merged-by-merger",
       run: run.url,
       mergedBy: p.mergedBy,
       mergeSha: p.mergeSha,
-      pushWorkflows: p.mergeSha === null ? [] : await pushesOn(deps, p.mergeSha, opts),
       branchDeleted: !deps.branchExists(p.headRef),
+    };
+  }
+  // An app's login ends in `[bot]`; a person's cannot. The merger's run may lie
+  // outside the window (a runner that took over an hour to start), so an app's
+  // merge without a log line is left to #3698 rather than counted either way.
+  if (p.mergedBy?.endsWith("[bot]")) {
+    return {
+      outcome: "merged-unattributed",
+      mergedBy: p.mergedBy,
+      mergeSha: p.mergeSha,
+      searched: `${from}..${until}`,
     };
   }
   return { outcome: "merged-otherwise", mergedBy: p.mergedBy };

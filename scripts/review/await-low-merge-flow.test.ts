@@ -11,7 +11,7 @@ import type { Verdict } from "./low-pr-merger-flow.ts";
 const HEAD = "0123456789abcdef0123456789abcdef01234567";
 const PUSHED = "fedcba9876543210fedcba9876543210fedcba98";
 const MIN = 60_000;
-const OPTS: Options = { pollMs: MIN, settleMs: 30 * MIN, pushWaitMs: 5 * MIN, budgetMs: 180 * MIN };
+const OPTS: Options = { pollMs: MIN, settleMs: 30 * MIN, budgetMs: 180 * MIN };
 
 const open = (over: Partial<PrState> = {}): PrState => ({
   state: "open",
@@ -48,8 +48,8 @@ function fake(script: {
   pulls: PrState[];
   verdicts?: (Verdict | null)[];
   runs?: { id: number; url: string }[];
-  jobs?: Record<number, (MergeJob | null)[]>;
-  pushes?: string[][];
+  /** Each read of a run's merge jobs, over every attempt. */
+  jobs?: Record<number, MergeJob[][]>;
   branchExists?: boolean;
 }) {
   let now = Date.parse("2026-11-11T10:10:00Z");
@@ -63,8 +63,7 @@ function fake(script: {
       asked.runsTo = to;
       return script.runs ?? [];
     },
-    mergeJob: (id) => next(script.jobs?.[id] ?? [null]),
-    pushWorkflows: () => next(script.pushes ?? [[]]),
+    mergeJobs: (id) => next(script.jobs?.[id] ?? [[]]),
     branchExists: () => script.branchExists ?? false,
     now: () => now,
     sleep: async (ms) => {
@@ -79,7 +78,7 @@ const waitVerdict = (reasons: string[], stalled: boolean): Verdict =>
   ({ pr: 7, sha: HEAD, outcome: "wait", reasons, details: ["Check"], stalled }) as Verdict;
 
 describe("awaitLowMerge: a merged PR", () => {
-  it("reports a merge the merge job logged, once the job finished and the push workflows appeared", async () => {
+  it("reports a merge the merge job logged, once the job finished", async () => {
     const { deps, asked } = fake({
       pulls: [merged()],
       runs: [
@@ -87,32 +86,31 @@ describe("awaitLowMerge: a merged PR", () => {
         { id: 1, url: "https://example.test/runs/1" },
       ],
       jobs: {
-        2: [job("", "in_progress"), job(`merged #8 at ${HEAD}\nmerged #7 at ${HEAD}\n`)],
-        1: [null],
+        2: [[job("", "in_progress")], [job(`merged #8 at ${HEAD}\nmerged #7 at ${HEAD}\n`)]],
+        1: [[]],
       },
-      pushes: [[], ["Deploy", "Pages"]],
     });
     expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({
       outcome: "merged-by-merger",
       run: "https://example.test/runs/2",
       mergedBy: "low-pr-merger[bot]",
-      pushWorkflows: ["Deploy", "Pages"],
       branchDeleted: true,
+      waitedMin: 1,
     });
     // The hour before the merge, even before the PR existed: a run can start first.
     expect(asked).toEqual({ runsFrom: "2026-11-11T09:20:00Z", runsTo: "2026-11-11T10:20:00Z" });
   });
 
-  it("keeps reading the push workflows until the list stops growing", async () => {
+  it("finds the line in an earlier attempt of a re-run run", async () => {
     const { deps } = fake({
       pulls: [merged()],
       runs: [{ id: 1, url: "u" }],
-      jobs: { 1: [job(`merged #7 at ${HEAD}\n`)] },
-      pushes: [["Deploy"], ["Deploy", "Pages"], ["Deploy", "Pages"]],
+      jobs: { 1: [[job(`merged #7 at ${HEAD}\n`), job("nothing cleared\n")]] },
+      branchExists: true,
     });
     expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({
-      pushWorkflows: ["Deploy", "Pages"],
-      waitedMin: 2,
+      outcome: "merged-by-merger",
+      branchDeleted: false,
     });
   });
 
@@ -120,7 +118,7 @@ describe("awaitLowMerge: a merged PR", () => {
     const { deps } = fake({
       pulls: [merged()],
       runs: [{ id: 1, url: "https://example.test/runs/1" }],
-      jobs: { 1: [job("", "in_progress")] },
+      jobs: { 1: [[job("", "in_progress")]] },
     });
     expect(await awaitLowMerge(deps, 7, { ...OPTS, budgetMs: 10 * MIN })).toMatchObject({
       outcome: "timeout",
@@ -133,7 +131,7 @@ describe("awaitLowMerge: a merged PR", () => {
     const { deps } = fake({
       pulls: [merged({ mergedBy: "kompiro" })],
       runs: [{ id: 1, url: "u" }],
-      jobs: { 1: [job(`merged #77 at ${HEAD}\n`)] },
+      jobs: { 1: [[job(`merged #77 at ${HEAD}\n`)]] },
     });
     expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({
       outcome: "merged-otherwise",
@@ -141,19 +139,12 @@ describe("awaitLowMerge: a merged PR", () => {
     });
   });
 
-  it("gives up on the push workflows after pushWaitMs, and still reports the merge", async () => {
-    const { deps } = fake({
-      pulls: [merged()],
-      runs: [{ id: 1, url: "u" }],
-      jobs: { 1: [job(`merged #7 at ${HEAD}\n`)] },
-      pushes: [[]],
-      branchExists: true,
-    });
+  it("leaves an app's merge that no searched run logged to #3698", async () => {
+    const { deps } = fake({ pulls: [merged()], runs: [] });
     expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({
-      outcome: "merged-by-merger",
-      pushWorkflows: [],
-      branchDeleted: false,
-      waitedMin: 5,
+      outcome: "merged-unattributed",
+      mergedBy: "low-pr-merger[bot]",
+      searched: "2026-11-11T09:20:00Z..2026-11-11T10:20:00Z",
     });
   });
 });
@@ -285,7 +276,6 @@ describe("awaitLowMerge: failed reads", () => {
     const { deps } = fake({
       pulls: [merged()],
       runs: [{ id: 1, url: "u" }],
-      pushes: [["Deploy"]],
     });
     const pull = deps.pull;
     let calls = 0;
@@ -293,11 +283,10 @@ describe("awaitLowMerge: failed reads", () => {
       if (calls++ === 0) throw new Error("gh api: HTTP 502");
       return pull(n);
     };
-    deps.mergeJob = () => job(`merged #7 at ${HEAD}\n`);
+    deps.mergeJobs = () => [job(`merged #7 at ${HEAD}\n`)];
     expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({
       outcome: "merged-by-merger",
-      // One poll to read again, one to see the push workflows settle.
-      waitedMin: 2,
+      waitedMin: 1,
     });
   });
 
