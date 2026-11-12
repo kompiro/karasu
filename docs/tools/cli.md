@@ -156,23 +156,28 @@ You can also pass a directory: `karasu render docs/model` renders
 `serve` and `render` cover most day-to-day use. The CLI also includes commands
 for keeping files tidy, lifting an existing system into `.krs`, and reviewing
 changes. Run `karasu <command> --help` for the full option list and examples.
+Two options mean the same on every command that takes them: `-o, --output
+<path>` writes to a file instead of stdout, and `--format <format>` picks one of
+the formats the command's row names.
 
 | Command | What it does |
 | --- | --- |
 | `serve [dir]` | Serve `.krs` files from a directory with live preview |
 | `render <file>` | Render a `.krs` file to SVG or draw.io |
-| `check <file>` | Validate a `.krs` project without writing anything; exits `1` on any error. Runs the same compile as `render`, so a file that passes renders. Run it before `fmt`, which refuses unparseable files without saying where |
-| `matrix <file>` | Render a usecase × resource CRUD matrix (`md` / `csv` / `svg`) |
+| `check <file>` | Validate a `.krs` project without writing anything; exits `1` on any error. Runs the same compile as `render`, so a file that passes renders. Run it before `fmt`, which refuses unparseable files without saying where. Each diagnostic line carries its ID after the severity word (`Warning[KRS041]: ...`), which the [diagnostics catalog](../spec/diagnostics.md#how-the-cli-shows-a-diagnostic) lists; `--format json` prints the findings as one JSON document for scripts and agents |
+| `matrix <file>` | Render a usecase × resource CRUD matrix (`md` / `csv` / `svg`). `--service` narrows the rows; `--infra`, `--external` and `--no-external` narrow the columns; `--writes-only`, `--omit-empty` and `--no-totals` trim the table |
 | `team-dependencies <file>` | Derive which teams depend on which from `owns` × the logical edges, plus ownership that crosses containment (`md` / `csv`) |
+| `coverage <file>` | Report each domain's density to spot thinly modeled domains (`md` / `json`; `--threshold` sets the thin-score cut-off, 0..1) |
+| `subtree <node-id> <file>` | Extract one node's sub-tree as a standalone `.krs` (`--with-ancestors` keeps the full chain of ancestors) |
 | `fmt [files...]` | Format `.krs` files in place (`--check` for CI, `--stdin` for pipes) |
-| `tidy-style [files...]` | Tidy `.krs.style` files: merge duplicate rules, group properties |
-| `lint-style [files...]` | Lint `.krs.style` property values against the schema |
-| `translate <file>` | Translate an infra config or API spec into a `.krs` scaffold (`--from compose` \| `k8s` \| `openapi` \| `db` \| `wrangler`) |
+| `tidy-style [files...]` | Tidy `.krs.style` files: merge duplicate rules, group properties (`--check` for CI, `--stdin` for pipes, `--no-merge` only reorders) |
+| `lint-style [files...]` | Lint `.krs.style` property values against the schema (`--stdin` for pipes) |
+| `translate <file>` | Translate an infra config or API spec into a `.krs` scaffold (`--from compose` \| `k8s` \| `openapi` \| `db` \| `wrangler`). `--map` points at a `karasu.map.yaml` (compose, k8s); `--system` wraps the emitted blocks in `system <name> {}` (openapi, db), names the system `wrangler` emits, and is ignored with a warning for compose and k8s; `--service` (openapi) and `--database` (db) name the service or database the spec becomes; `--granularity` picks resource or operation (openapi), aggregate or table (db); `--emit-bindings` adds usecase → resource bindings and `--emit-crud-decoration` also marks each operation's CRUD verb (both only with `--granularity resource` for openapi or `aggregate` for db; other sources and granularities ignore them with a warning) |
 | `apply <file>` | Apply piped `.krs` from stdin — replace a node by id, else append |
 | `append <file>` | Append piped `.krs` from stdin as a new top-level block |
 | `insert <parent-id> <file>` | Insert piped `.krs` from stdin as the last child of a node |
 | `remove <node-id> <file>` | Remove a node by id from a `.krs` file in place |
-| `diff <before> <after>` | Render a diff SVG between two `.krs` revisions (either side may be `-` for stdin) |
+| `diff <before> <after>` | Render a diff SVG between two `.krs` revisions (either side may be `-` for stdin; `--view` picks one view) |
 | `capabilities` | List the commands, flags and deprecated names this CLI accepts (`--json` for skills and scripts; see [below](#karasu-capabilities-what-this-cli-accepts)) |
 | `skill install [name]` | Copy the karasu agent skills (default: all) into `.claude/skills/` or `--dir <path>`, for agents that cannot install the Claude Code plugin (see [below](#karasu-skill-install-the-agent-skills)) |
 | `skill path [name]` | Print where the installed CLI keeps a skill |

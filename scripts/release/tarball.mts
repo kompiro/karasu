@@ -142,9 +142,21 @@ function addFile(files: TarballFiles, folded: Set<string>, entryPath: string, da
   files.set(path, data);
 }
 
-/** The strict reader: every regular file, or a failure on anything unusual. */
-export function readTarballStrict(gzipped: Buffer): TarballFiles {
-  const tar = gunzipSync(gzipped);
+/**
+ * The strict reader: every regular file, or a failure on anything unusual.
+ * `maxBytes` bounds the decompressed archive, for a caller that reads a
+ * tarball nobody has checked yet (the stage job, #3240).
+ */
+export function readTarballStrict(gzipped: Buffer, opts: { maxBytes?: number } = {}): TarballFiles {
+  let tar: Buffer;
+  try {
+    tar = gunzipSync(gzipped, opts.maxBytes ? { maxOutputLength: opts.maxBytes } : {});
+  } catch (error) {
+    if ((error as { code?: string }).code === "ERR_BUFFER_TOO_LARGE") {
+      throw new Error(`the tarball unpacks to more than ${opts.maxBytes} bytes`, { cause: error });
+    }
+    throw error;
+  }
   const files: TarballFiles = new Map();
   const folded = new Set<string>();
   let offset = 0;

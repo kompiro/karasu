@@ -156,7 +156,6 @@ export class ImportResolver {
   private loadingKrs = new Set<string>();
   /** Pass 1: 読み込み完了 memo — DAG 再到達で warning を出さないために使う */
   private loadedKrs = new Set<string>();
-  private visitedStyles = new Set<string>();
   private diagnostics: Diagnostic[] = [];
   /**
    * Which declarations each named-import stub stands for, so a second arrival
@@ -188,7 +187,6 @@ export class ImportResolver {
     this.declaringFile = new WeakMap();
     this.loadingKrs.clear();
     this.loadedKrs.clear();
-    this.visitedStyles.clear();
     this.diagnostics = [];
     this.dirExpansions.clear();
     this.resolvedCache.clear();
@@ -310,7 +308,7 @@ export class ImportResolver {
     // duplicate no single file can see.
     this.diagnostics.push(...validateFacetDeclarations(krsFile.facets));
 
-    const styleSheets = await this.resolveStyles(entryPath, krsFile.styleImports);
+    const styleSheets = await this.resolveStyles(krsFile.styleImports);
 
     return {
       krsFile,
@@ -447,7 +445,13 @@ export class ImportResolver {
     }
 
     // 自身のコンテンツをマージ
-    mergedFile.styleImports.push(...file.styleImports);
+    // A style path is relative to the file that declares it (#3714), so it is
+    // resolved here, where that file is known; from here on `styleImports`
+    // holds resolved paths. Deduped by that path: a sheet several files
+    // `@import` is one sheet, at its first position (#3513).
+    for (const styleImport of file.styleImports) {
+      addStyleImport(mergedFile, resolvePath(filePath, styleImport));
+    }
     mergedFile.systems.push(...file.systems);
     mergedFile.services.push(...file.services);
     mergedFile.clients.push(...(file.clients ?? []));
@@ -625,11 +629,7 @@ export class ImportResolver {
     // ownerIndex deliberately not unioned (#2548), and `nodePathIndex` not
     // since #2596 — see the comment in `resolveKrsFromMap` where the file's own
     // index used to be unioned; `resolve()` rebuilds both from the merged model.
-    for (const styleImport of resolved.styleImports) {
-      if (!mergedFile.styleImports.includes(styleImport)) {
-        mergedFile.styleImports.push(styleImport);
-      }
-    }
+    for (const styleImport of resolved.styleImports) addStyleImport(mergedFile, styleImport);
   }
 
   private isInfraKind(kind: string): kind is "database" | "queue" | "storage" {
@@ -928,7 +928,7 @@ export class ImportResolver {
       }
     }
 
-    mergedFile.styleImports.push(...importedFile.styleImports);
+    for (const styleImport of importedFile.styleImports) addStyleImport(mergedFile, styleImport);
   }
 
   /**
@@ -1350,12 +1350,16 @@ export class ImportResolver {
 
   // ─── Style resolution ─────────────────────────────────────────────────────
 
-  private async resolveStyles(basePath: string, styleImports: string[]): Promise<StyleSheet[]> {
+  /**
+   * `styleImports` are the merged model's: already resolved against the file
+   * that declared each one, and deduped. A sheet cannot `@import`, so a style
+   * import is never part of a cycle and needs no visited set.
+   */
+  private async resolveStyles(styleImports: string[]): Promise<StyleSheet[]> {
     const sheets: StyleSheet[] = [];
 
-    for (const importPath of styleImports) {
-      const resolvedPath = resolvePath(basePath, importPath);
-      const sheet = await this.resolveStyleFile(resolvedPath);
+    for (const filePath of styleImports) {
+      const sheet = await this.resolveStyleFile(filePath);
       if (sheet) {
         sheets.push(sheet);
       }
@@ -1365,16 +1369,6 @@ export class ImportResolver {
   }
 
   private async resolveStyleFile(filePath: string): Promise<StyleSheet | null> {
-    if (this.visitedStyles.has(filePath)) {
-      this.diagnostics.push({
-        severity: "warning",
-        code: "circular-style-import",
-        params: { filePath },
-      });
-      return null;
-    }
-    this.visitedStyles.add(filePath);
-
     let source: string;
     try {
       source = await this.fs.readFile(filePath);
@@ -1394,4 +1388,9 @@ export class ImportResolver {
 
     return parseResult.value;
   }
+}
+
+/** Appends a resolved style path unless the merged model already holds it. */
+function addStyleImport(mergedFile: KrsFile, styleImport: string): void {
+  if (!mergedFile.styleImports.includes(styleImport)) mergedFile.styleImports.push(styleImport);
 }

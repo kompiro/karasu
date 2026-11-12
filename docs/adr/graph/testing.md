@@ -27,11 +27,13 @@ flowchart TD
     ADR_3289["ADR-3289<br/>TPL の索引は PR に含めず、ADR の生成物と同じ毎日の再生成 PR で生成する"]
     ADR_3429["ADR-3429<br/>合成エッジのスタイル解決テストは、本物の受け渡しと同じ `extraEdges` で渡し、`...."]
     ADR_3486["ADR-3486<br/>PR の変更ファイルから関係する TPL を引き、PR を作った直後に出す"]
+    ADR_3706["ADR-3706<br/>変更ファイルから TPL を引く鍵に、ガードの印と後から足した接頭辞を含める"]
     ADR_9012["ADR-9012<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
   end
   ADR_529["ADR-529<br/>[chat-ai] Playwright と AI による視覚レビューの併用"]
   ADR_9012 --> ADR_40
   ADR_1014 -.supersedes.-> ADR_926
+  ADR_3706 -.supersedes.-> ADR_3486
   ADR_529 -.supersedes.-> ADR_33
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
@@ -60,7 +62,8 @@ flowchart TD
   class ADR_3237 accepted
   class ADR_3289 accepted
   class ADR_3429 accepted
-  class ADR_3486 accepted
+  class ADR_3486 superseded
+  class ADR_3706 accepted
   class ADR_9012 accepted
   class ADR_529 ghost
 ```

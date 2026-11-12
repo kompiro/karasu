@@ -63,6 +63,55 @@ function constant(path: string, name: string): number {
 
 const POLICY = "docs/policy/nest-data-handling.md";
 
+/** The registry of key spaces, `packages/nest/src/store/gallery-keys.ts`. */
+const KEYS = "packages/nest/src/store/gallery-keys.ts";
+
+interface KeySpace {
+  space: string;
+  prefix: string;
+  retention: "content" | "credential";
+}
+
+/**
+ * Read `GALLERY_KEY_SPACES` out of the source, the way `constant` reads a
+ * number. Every `prefix:` in the literal has to parse as an entry, so a
+ * reformatted literal fails loudly instead of reading as a shorter registry.
+ */
+function registeredKeySpaces(): KeySpace[] {
+  const source = read(KEYS).replaceAll(/\/\*[\s\S]*?\*\//g, "");
+  const literal = /^export const GALLERY_KEY_SPACES = \{([\s\S]*?)^\} as const/m.exec(source)?.[1];
+  if (literal === undefined)
+    throw new Error(`GALLERY_KEY_SPACES is not declared in ${KEYS} any more`);
+  const entries = [
+    ...literal.matchAll(
+      /^\s*(\w+): \{ prefix: "([^"]+)", retention: "(content|credential)" \},?$/gm,
+    ),
+  ].map(([, space, prefix, retention]) => ({ space, prefix, retention }) as KeySpace);
+  const declared = literal.match(/prefix:/g)?.length ?? 0;
+  if (entries.length !== declared || declared === 0) {
+    throw new Error(`GALLERY_KEY_SPACES in ${KEYS} no longer reads as one line per space`);
+  }
+  return entries;
+}
+
+/** How the document states each retention class, in a row's period column. */
+const PERIOD: Record<KeySpace["retention"], RegExp> = {
+  // A condition in bold ("**アカウント削除まで**"), never a number of days.
+  content: /^\*\*[^*]+まで\*\*$/,
+  // A number of days.
+  credential: /\d+ 日/,
+};
+
+/** The retention table's rows: the key column and the period column. */
+function policyRows(text: string): { key: string; period: string }[] {
+  return [...text.matchAll(/^\|[^|\n]*\| (`[^`]+`) \| ([^|\n]+?) \|$/gm)].map(
+    ([, key, period]) => ({
+      key,
+      period,
+    }),
+  );
+}
+
 /** The store whose two expiries every document below has to agree with. */
 const SESSIONS = "packages/nest/src/store/sessions.ts";
 
@@ -221,23 +270,27 @@ describe("the data-handling document matches the code (#1996, #2591)", () => {
     expect(policy).toContain("1 投稿あたり 1MiB");
   });
 
-  it("names each prefix the purge is wired for (not that the list is complete)", () => {
-    // Deliberately narrow, and named for what it does. Both lists below are
-    // written here, so a *new* prefix with no doc row and no purge wiring
-    // passes this untouched — the gap TPL-2226 exists for, closed by a human
-    // reading `gallery-purge-coverage.test.ts`'s seeder ledger rather than by
-    // this file. Claiming otherwise in the test name would be worse than the
-    // gap, because it would stop anyone looking.
-    const store = read("packages/nest/src/store/gallery-store.ts");
-    for (const member of ["sessions", "submissions", "accounts"]) {
-      expect(store).toMatch(new RegExp(`this\\.${member}\\.purgeAccount`));
-    }
-    for (const key of [
-      "`acct/v1/<account>`",
-      "`sub/v1/<account>/<id>`",
-      "`sess/v1/<account>/<session>`",
-    ]) {
-      expect(policy).toContain(key);
+  it("has a row for every registered key space, stating its retention class", () => {
+    // Complete, unlike a list written here would be. The gallery's key spaces
+    // are a closed set (`GALLERY_KEY_SPACES`): the stores cannot write a key
+    // outside it, and `GalleryStore.purgeAccount` and the purge-coverage test
+    // are typed over it. So reading that literal reads every prefix this
+    // service can write, and a new one fails here until the document says how
+    // long it is kept, before anyone is asked to accept it (TPL-2226, TPL-2587).
+    const spaces = registeredKeySpaces();
+    expect(spaces.map(({ space }) => space)).toEqual(
+      expect.arrayContaining(["accounts", "sessions", "submissions"]),
+    );
+    for (const { space, prefix, retention } of spaces) {
+      const rows = policyRows(policy).filter(({ key }) => key.startsWith(`\`${prefix}/`));
+      // Named in the comparison so a failure says which space has no row.
+      expect({ space, hasRow: rows.length > 0 }).toEqual({ space, hasRow: true });
+      // Content is kept on a condition, stated as one; a credential expires
+      // after a stated number of days. A row saying the other thing is the
+      // document describing a different retention from the code's.
+      for (const { key, period } of rows) {
+        expect({ key, period }).toEqual({ key, period: expect.stringMatching(PERIOD[retention]) });
+      }
     }
   });
 

@@ -199,8 +199,6 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
         importPath: d.params.importPath,
         lastResolvedId: d.params.lastResolvedId ?? "",
       });
-    case "circular-style-import":
-      return t("diagnostic.circularStyleImport.message", d.params);
     case "style-file-not-found":
       return t("diagnostic.styleFileNotFound.message", d.params);
     case "app-project-compile-error":

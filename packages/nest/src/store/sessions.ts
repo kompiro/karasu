@@ -21,6 +21,7 @@
  * point.
  */
 import { KV_MINIMUM_TTL_SECONDS, type KVNamespaceLike } from "../env.js";
+import { logError } from "../log.js";
 import {
   newSessionId,
   sessionKey,
@@ -190,8 +191,15 @@ export class SessionStore {
    * Restart the idle window, but only if the record is stale enough to be
    * worth a write. Returns whether one happened.
    *
-   * Callers treat a `false` and a throw alike: the session is valid either
-   * way, and the worst a dropped refresh costs is an earlier sign-in.
+   * **Never rejects.** A caller holding a session has already authenticated
+   * it (the read that proved it has happened), and the worst a dropped
+   * refresh costs is a sign-in sooner than it needed to be. So a failure here
+   * must not change what the caller decided (TPL-2655). The `try` sits here
+   * rather than in each caller, so it holds for every caller of this method
+   * without any of them having to remember it. It does not cover a refresh
+   * written somewhere else that bypasses this method. Logged rather than
+   * swallowed silently, because a
+   * refresh that fails *every* time is a broken binding worth seeing.
    *
    * The key is derived from `session.accountId` rather than taken as its own
    * argument, so there is no way to pass a session and a key that disagree —
@@ -203,6 +211,16 @@ export class SessionStore {
     session: Session,
     now: Date = new Date(),
   ): Promise<boolean> {
+    try {
+      return await this.refresh(sessionId, session, now);
+    } catch (cause) {
+      logError("karasu-nest could not refresh a session", cause);
+      return false;
+    }
+  }
+
+  /** `refreshIfStale`, without the promise not to reject. */
+  private async refresh(sessionId: string, session: Session, now: Date): Promise<boolean> {
     const sinceRefresh = elapsedSince(session.refreshedAt, now);
     if (sinceRefresh === undefined || sinceRefresh < SESSION_REFRESH_AFTER_SECONDS * 1000) {
       return false;

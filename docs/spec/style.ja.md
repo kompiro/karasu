@@ -845,6 +845,7 @@ edge { label-max-chars: none; label-display: always; }
 ## @import のスコープと衝突
 
 - グローバルスコープ（ファイル全体に適用）
+- パスは `@import` を宣言した `.krs` ファイルからの相対で、複数のファイルが import するシートは 1 回だけ読まれる。構文リファレンスの [@import のスコープ](syntax.ja.md#import-のスコープ) を参照
 - 同じセレクタが複数ファイルで定義された場合は後勝ち
 - 衝突時は警告を出力（エラーにはしない）
 

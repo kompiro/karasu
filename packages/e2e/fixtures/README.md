@@ -15,6 +15,17 @@ runner used to time out `page.goto` in whatever test happened to be booting.
 its own `test` extends `./network.js`, not `@playwright/test`.
 `tests/fixtures/network.smoke.spec.ts` checks the stub answers the request.
 
+## `expect.ts` — the `expect` specs get
+
+`network.ts`, `opfs.ts` and `serve.ts` re-export this `expect` rather than
+Playwright's. It refuses an auto-retrying assertion whose timeout waits beyond
+the 5s default (or `0`, no timeout), whether the value is written inline or held
+in a constant (TPL-1171). Specs and the helpers here import `expect` from a
+fixture or from `./expect.js`: `.oxlintrc.json` forbids importing `test` or
+`expect` from `@playwright/test` under `tests/` and `fixtures/`, except in
+`expect.ts` itself and the one `test` base in `network.ts`. A helper with a
+real reason to wait longer needs a per-line disable that states it.
+
 ## `opfs.ts` — OPFS state fixture
 
 Seeds and resets OPFS / `localStorage` state so tests can drive

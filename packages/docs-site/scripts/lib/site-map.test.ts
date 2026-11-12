@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../sources.ts";
+import { sidebarReach } from "./sidebar.ts";
 import { contentPathOf, PUBLISHED_EN_FILES, routeOf } from "./site-map.ts";
 
 // PR-time fence for the published-pages set (AT-1710 / 1711 / 1712 / 1734 /
@@ -25,6 +26,25 @@ describe("published pages", () => {
       (rel) => !fs.existsSync(path.join(REPO_ROOT, "docs", rel)),
     );
     expect(missing).toEqual([]);
+  });
+
+  // A published page needs its Japanese twin and a way in from the sidebar
+  // (TPL-2005). Without the twin the ja locale silently falls back to English;
+  // without a sidebar entry the page is built but orphaned.
+  it("every published en file has a .ja.md sibling", () => {
+    const missing = PUBLISHED_EN_FILES.filter(
+      (rel) => !fs.existsSync(path.join(REPO_ROOT, "docs", rel.replace(/\.md$/, ".ja.md"))),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it("every published page is reachable from the sidebar", () => {
+    const { directories, links } = sidebarReach();
+    const orphans = PUBLISHED_EN_FILES.filter((rel) => {
+      const route = routeOf(rel);
+      return !directories.has(route.split("/")[0]) && !links.has(`/${route}`);
+    });
+    expect(orphans).toEqual([]);
   });
 
   it("resolves each published page to its route + content path", () => {

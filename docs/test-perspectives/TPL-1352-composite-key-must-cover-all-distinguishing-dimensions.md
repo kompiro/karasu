@@ -19,6 +19,8 @@ discovered_from:
   - issue: "#2819"
   - issue: "#2933"
   - issue: "#3111"
+  - issue: "#3481"
+  - issue: "#3702"
   - root_cause_file: "packages/core/src/resolver/style-resolver.ts"
 related_to:
   - TPL-2167
@@ -55,6 +57,7 @@ scope:
 - [ ] 同じ部分キーを共有する複数要素（parallel edge、同 ID の annotation 違いノード等）が存在しうるか考える [judgment]
 - [ ] 衝突しうるなら、合成キーのヘルパー関数を 1 つ用意し、書き込み側と参照側の両方で同じ関数を使う。そのキーを**外へ出す**（id・属性・アンカーとして書き出す）なら、エンコード自体が injective かも確認する。次元が揃っていても、セパレータ join は区切りを失うので `["a.b"]` と `["a", "b"]` が同じ文字列になる（#2714）
 - [ ] キーを分解する読み手（キーから segment や端点を取り出す側）は、エンコーダの逆関数（`parseNodePathRefId` 等）を使う。文字列の prefix 一致・`includes(".")`・最初の `#` での切断で割らない。エンコードを injective にしても、読み手が区切り文字で割れば同じ取り違えが読み手の側で起きる（#2819）
+- [ ] 1 つのマップに複数の形のキー（kind 付きと kind 無しなど）を入れるなら、形どうしが重ならないことを確かめる。片方の形が付け足す区切り（`#sync` の `#`）を、もう片方の形の要素が含みうるなら、その要素は囲む（#3702）
 - [ ] 合成キーで引けなかった場合のフォールバック（synthetic 要素用の bare key 等）の挙動を意図的に決める [judgment]
 - [ ] parallel / 共存ケースを 1 件、レンダリング結果の差（実線 vs 破線等）まで含めてテストする
 
@@ -170,6 +173,34 @@ path は segment の区切りを保つ injective な形に揃えること（call
 `nodePathIdentityKey`、`buildNodePathIndex` の同 path 畳みは既に import 済みの `nodePathRefId`）。
 書き込みと読み取りが同じヘルパーを通る点は #2819 と同じである。
 
+## 既知の consumer: 解決済みスタイルのキーと `direction` の引き当て（#3481）
+
+#3111 は `.krs.style` のセレクタの問題として、解決済みスタイルの `styles.edges` のキー
+（`edgeStyleKey` と kind 無しの `${from}->${to}`）を残した。#3480 で canonical id が別々になり、
+`edge#` の rule は 1 本にだけ当たるようになったが、結果を格納するキーがまだ素の join だった。
+
+- `a -> "b->c"` と `"a->b" -> c` が同じキーに書かれ、後に宣言した方のスタイルで 2 本とも描かれた。
+  後に宣言した edge への rule の色は 2 本に付き、先に宣言した edge への rule の色はどちらにも付かなかった
+- レイアウトも同じ join で `direction` を引いたので、片方への `direction: up` がもう片方にも効くか、
+  どちらにも効かなかった
+
+照合（どの edge に当たるか）が正しくても、結果を格納するキーが injective でなければ同じ結果になる。
+直し方は `edgeStyleKey` を `edgeKey` / `edgeKindKey` に通し、レイアウトの引き当ても `edgeKey` にすること。
+
+## 既知の consumer: 1 つのマップの 2 つの形（#3702）
+
+#3481 で `styles.edges` のキーはそれぞれ injective になったが、このマップには kind 付きのキー
+（`edgeKindKey`、`<組>#sync`）と kind 無しのキー（`edgeKey`、`<組>`）が同居している。`edgeKey` は
+`#` を含む端点を囲んでいなかったので、`x -> "y#sync"` の kind 無しキー `x->y#sync` が
+`x -> y` の sync キーと同じ文字列になった。
+
+- 宣言の順によって、`x -> y` と `x -> "y#sync"` のどちらかに書いた色の rule が、2 本とも塗るか、どちらにも効かなかった
+- このマップから作る `edgeDirections` も同じ混ざり方をしたので、`direction: up` が 2 本とも入れ替えるか、どちらも入れ替えなかった
+
+形ごとに injective でも、2 つの形を 1 つのマップに入れれば、形をまたいだ衝突が残る。直し方は、
+`edgeKey` が `#`（`edgeKindKey` が足す区切り）を含む端点も囲むこと。kind 無しのキーは `#sync` /
+`#async` で終わらなくなる。`ownsEdgeKey`（`#owns#` の区切り）が同じ規則をすでに使っていた。
+
 ## 関連テスト
 
 - `packages/core/src/renderer/svg-renderer.test.ts` — "keeps the sync edge solid when a parallel async edge exists between the same pair"
@@ -185,6 +216,9 @@ path は segment の区切りを保つ injective な形に揃えること（call
 - `packages/core/src/view/edge-key.test.ts` — "edgeKindKey (#3111)"
 - `packages/core/src/renderer/static-bundle-same-id.test.ts` — "one level per anchor id (#2933) › draws the later system's subtree from its own nodes"
 - `packages/core/src/renderer/facet-overview.test.ts` — "buildFacetOverview › keeps two same-named nodes in different scopes apart (TPL-1352)" / "keeps two same-arrow edges in different scopes apart (TPL-1352)"
+- `packages/core/src/resolver/style-resolver.test.ts` — "edgeStyleKey (#3481)" / "keeps kind-less keys apart from kind keys when an endpoint contains # (#3702)"
+- `packages/core/src/view/edge-key.test.ts` — "edgeKindKey (#3111) › never gives a kind-less key the form of a kind key (#3702)"
+- `packages/core/src/index.test.ts` — "compile — edge#<canonical id> written the way the app writes it › gives endpoints containing -> their own id and a rule that names one of them" / "turns only $name up when endpoints contain ->" / "turns only $name $direction when endpoints contain ->" / "colors only $id when an endpoint ends in #sync ($order)" / "turns only $id up when an endpoint ends in #sync ($order)"
 
 ## 派生元 spec
 

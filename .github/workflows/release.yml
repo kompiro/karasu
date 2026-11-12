@@ -1,8 +1,5 @@
 name: Release
 
-# REHEARSAL ONLY (spike/3240-stage-publish-rehearsal): stages prerelease
-# versions under the `rehearsal` tag from this branch; kompiro rejects them.
-#
 # Stage step of the release pipeline (OIDC trusted publishing, #3240).
 #
 # Fires when a release PR lands: `changeset version` only ever rewrites
@@ -13,8 +10,15 @@ name: Release
 # (release-prepare.yml), which runs `changeset version` and pushes a
 # `chore/release-*` branch for review. See ADR-1370.
 #
-# `stage.mts` stages the npm versions that are not on npm yet, as a
-# changesets publish plan orders them, so this is a no-op between releases.
+# Two jobs stage the npm versions that are not on npm yet, so this is a no-op
+# between releases. `pack` installs the dependencies, builds and packs the
+# first dependency-ordered group of a changesets publish plan; it holds no
+# OIDC token. `stage` holds the token and runs no dependency code: it takes
+# only the tarball files from `pack`, decides again from the release commit
+# and npm what to stage and under which tag, and runs `npm stage publish`. A
+# hijacked dependency can then change only the tarball contents, which the
+# approval checks against a local pack (#3240).
+#
 # Nothing is installable until a maintainer approves it with 2FA
 # (`pnpm release:approve`); `release-confirm.yml` then checks the published
 # tarballs against the release commit, tags them, creates the release's GitHub
@@ -24,9 +28,11 @@ name: Release
 # `NPM_TOKEN`. npm exchanges the workflow's OIDC token (`id-token: write`)
 # for a short-lived credential, provided a Trusted Publisher is configured for
 # each package on npmjs.com (org `kompiro`, repo `karasu`, workflow file
-# `release.yml`) that allows `npm stage publish` and not `npm publish`.
+# `release.yml`, environment `npm`) that allows `npm stage publish` and not
+# `npm publish`. Only the `stage` job names the environment `npm`, whose
+# deployment branch is `main`, so npm accepts no other job's token.
 # Requires npm >= 11.15.0 for staging and Node >= 22.14.0, which the pinned
-# Node 24 satisfies on its own (see the stage step). Provenance is generated
+# Node 24 satisfies on its own (see the stage job). Provenance is generated
 # automatically under trusted publishing. See ADR-9020 (OIDC migration) and
 # docs/release.md "リリース運用".
 #
@@ -46,18 +52,19 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
-# Each job states its own; only `release` and `vscode` get an OIDC token.
+# Each job states its own; only `stage` and `vscode` get an OIDC token.
 permissions:
   contents: read
 
 jobs:
-  release:
-    name: Release
+  # Builds and packs with the dependencies installed, and so holds no OIDC
+  # token. Its only output is the tarballs of the first group, as an artifact.
+  pack:
+    name: Pack
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # npm OIDC trusted publishing
-      pull-requests: read # stage.mts stages only on a release commit
+      pull-requests: read # stage.mts packs only on a release commit
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -67,29 +74,138 @@ jobs:
 
       - uses: actions/setup-node@v7.1.0
         with:
-          node-version: "24" # resolves to the latest 24.x, which bundles npm >= 11.15.0 (staging)
+          node-version: "24"
           cache: "pnpm"
+
+      # All dependencies (incl. `@kompiro/*`) install from the public npm
+      # registry — no token needed.
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      # `changeset pack` writes the plan and the tarballs; the first group's
+      # tarballs go to the stage job. Nothing is packed unless this commit is a
+      # release commit that bumped every planned package.
+      - name: Pack the first group
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/release/stage.mts pack --out-dir "$RUNNER_TEMP/stage-tarballs"
+
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: stage-tarballs
+          path: ${{ runner.temp }}/stage-tarballs
+          if-no-files-found: ignore # nothing to stage outside a release
+          retention-days: 7
+
+  # The only job npm accepts a token from (the Trusted Publishers require the
+  # environment `npm`). It installs nothing, restores no cache and reads no
+  # output of `pack` through an expression: the artifact may come from a
+  # hijacked `pack` job, so `stage.mts publish` uses only its tarball files and
+  # re-derives everything else from the release commit and npm.
+  stage:
+    name: Stage on npm
+    needs: pack
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write # npm OIDC trusted publishing
+      pull-requests: read # stage.mts stages only on a release commit
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0 # stage.mts compares versions with the first parent
+          persist-credentials: false # git only reads the local history here
+
+      # No pnpm and no cache: a cache the pack job wrote could run code here.
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24" # resolves to the latest 24.x, which bundles npm >= 11.15.0 (staging)
+          package-manager-cache: false
 
       # This job deliberately carries no step that upgrades the npm CLI before
       # staging. `stage.mts` calls the `npm` on PATH, the one Node 24 bundles,
       # which satisfies the staging floor by itself; pulling an unpinned npm
       # from the registry here would only re-add a supply-chain surface to the
       # one job that holds the OIDC token. Issue #2397 / ADR-2397.
+      - run: npm --version
 
-      # All dependencies (incl. `@kompiro/*`) install from the public npm
-      # registry — no token needed. Staging uses OIDC (see header).
-      - run: pnpm install --frozen-lockfile
+      # Missing outside a release, when `pack` uploaded nothing; `publish` then
+      # stops if this commit has something to stage.
+      - uses: actions/download-artifact@v8.0.2
+        continue-on-error: true
+        with:
+          name: stage-tarballs
+          path: ${{ runner.temp }}/stage-tarballs
 
-      # `pnpm run release` runs `pnpm build && node scripts/release/stage.mts`:
-      # `changeset pack` writes the plan and the tarballs, and the first group
-      # of the plan is staged with `npm stage publish <tarball>`. A package
+      # Stages the first group with `npm stage publish <tarball>`. A package
       # pinned exactly by another one is approved before the other is staged
       # (TPL-3240), so `pnpm release:approve` re-runs this workflow for the
       # next group. The table of what was staged is in the job summary.
-      - name: Show the npm version (rehearsal)
-        run: npm --version
-
       - name: Stage on npm
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm run release
+        run: node scripts/release/stage.mts publish --tarballs "$RUNNER_TEMP/stage-tarballs"
+
+  # The monthly release train (#2922): the VS Code extension ships in the same
+  # run. It does not depend on npm, so it runs even when packing or staging for
+  # npm failed; a job after a failed `needs` is otherwise skipped. The called
+  # workflow publishes only a version the Marketplace does not have yet, and
+  # its own `record` job adds the extension to this commit's Release.
+  vscode:
+    name: VS Code extension
+    needs: stage
+    if: ${{ !cancelled() }}
+    permissions:
+      contents: write # the called `record` job pushes the tag and edits the Release
+      id-token: write # azure/login exchanges the GitHub OIDC token
+    uses: ./.github/workflows/vscode-release.yml
+    with:
+      pre_release: false
+
+  # Reports on the train's tracking Issue (#2922, #3240). A failed run is
+  # commented on and keeps the Issue open, which holds the next train. When npm
+  # versions were staged, the Issue stays open with what waits for approval;
+  # release-confirm.yml closes it once they are approved and tagged. A train
+  # that published nothing to npm is closed here. Only the Issue of the release
+  # branch this commit was merged from is touched, so a manual run after main
+  # moved on, or a push that merely edits a CHANGELOG, closes nothing.
+  close-train:
+    name: Close the release train Issue
+    needs: [pack, stage, vscode]
+    if: ${{ !cancelled() }}
+    # Shared with release-confirm.yml so the two never judge or comment on the
+    # same train at once.
+    concurrency:
+      group: release-record
+      cancel-in-progress: false
+      queue: max # keep a waiting job instead of replacing it
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write # comment on and close the tracking Issue
+      pull-requests: read # find the PR this commit was merged from
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0 # read the versions of the first parent and the tags
+
+      # Node 24 runs the .mts script through type stripping; no install needed.
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Close or report on the tracking Issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACK_RESULT: ${{ needs.pack.result }}
+          STAGE_RESULT: ${{ needs.stage.result }}
+          VSCODE_RESULT: ${{ needs.vscode.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          node scripts/release/confirm.mts close-train
+          --pack-result "$PACK_RESULT"
+          --stage-result "$STAGE_RESULT"
+          --vscode-result "$VSCODE_RESULT"
+          --run-url "$RUN_URL"

@@ -2215,7 +2215,11 @@ The same project always produces the same merged AST.
 
 - Applies to the entire file (global scope).
 - Must be written at the top of the file.
+- The path is relative to the file that declares it, the same as an `import` path. A file finds its sheets in the same place whether it is opened directly or imported from another directory.
+- A sheet that several files in one import graph `@import` is loaded once, at its first position in merge order: a file's own `@import`s come before those of the files it imports, which follow in the order of its `import` lines. A sheet cannot `@import`, so a style import never forms a cycle.
 - When the same selector is defined in multiple files, the last one wins (a warning is emitted).
+
+> Related TPLs: [TPL-1381](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1381-import-dag-not-cycle.md) — a sheet reached a second time is a DAG re-arrival, not a cycle. [TPL-1383](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1383-whole-file-import-completeness.md) — the `@import` an imported file holds enters the cascade, resolved beside that file.
 
 ---
 

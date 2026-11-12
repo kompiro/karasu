@@ -39,6 +39,7 @@ export const PUBLISHED_EN_FILES: readonly string[] = [
   "guide/adr-permalinks.md",
   "guide/notation-cookbook.md",
   "guide/reverse-engineering-with-ai.md",
+  "guide/team-trial-session.md",
   "spec/glossary.md",
   "spec/syntax.md",
   "spec/style.md",

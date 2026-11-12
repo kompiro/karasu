@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { DIAGNOSTIC_IDS, RETIRED_DIAGNOSTIC_IDS } from "./diagnostic-ids.js";
 
 // Guards docs/spec/diagnostics.md against drift from the emitted code surface
 // (TPL-1623). Every member of DiagnosticParamsByCode and WarningKind
@@ -71,6 +72,34 @@ describe("diagnostics catalog completeness (TPL-1623)", () => {
       const emitted = new Set([...codes, ...kinds]);
       const retired = [...new Set(rows)].filter((c) => !emitted.has(c)).sort();
       expect(retired).toEqual([]);
+    });
+
+    // The `ID` column is how a person gets from a diagnostic line
+    // (`Warning[KRS041]: ...`) to its row, so it must match the registry the
+    // CLI prints from (#3654, TPL-3654).
+    it(`gives every row the registry's ID in ${catalog}`, () => {
+      const rows = [...read(catalog).matchAll(/^\|\s*`([a-z][a-z0-9-]+)`\s*\|\s*(\S*)\s*\|/gm)].map(
+        (m) => [m[1], m[2]] as const,
+      );
+      // Every code needs a row, not only a mention in prose: the row is where
+      // its ID is listed.
+      const rowCodes = new Set(rows.map(([code]) => code));
+      expect(Object.keys(DIAGNOSTIC_IDS).filter((c) => !rowCodes.has(c))).toEqual([]);
+      const ids: Record<string, string> = DIAGNOSTIC_IDS;
+      const wrong = rows
+        .filter(([code, id]) => ids[code] !== id)
+        .map(([code, id]) => `${code}=${id}`);
+      expect(wrong).toEqual([]);
+    });
+
+    it(`lists every retired ID in ${catalog}`, () => {
+      // A retired ID's row puts the ID first, so its old code (in backticks in
+      // a later column) is not read as a live row by the check above.
+      const text = read(catalog);
+      const missing = RETIRED_DIAGNOSTIC_IDS.filter(
+        ({ id, code }) => !new RegExp(`^\\|\\s*${id}\\s*\\|\\s*\`${code}\`\\s*\\|`, "m").test(text),
+      ).map((r) => r.id);
+      expect(missing).toEqual([]);
     });
   }
 });

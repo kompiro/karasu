@@ -5,7 +5,7 @@
  *   node scripts/release/confirm.mts locate
  *   node scripts/release/confirm.mts verify --tree <dir> --candidates <json>
  *   node scripts/release/confirm.mts record --sha <sha> --issue <n> --verified "<tags>"
- *   node scripts/release/confirm.mts close-train --release-result <r> --vscode-result <r> --run-url <url>
+ *   node scripts/release/confirm.mts close-train --pack-result <r> --stage-result <r> --vscode-result <r> --run-url <url>
  *
  * release-confirm.yml runs `locate` and `verify` in a job that can read only,
  * and `record` in a job that can push tags but installs nothing:
@@ -449,21 +449,30 @@ function trainIssueOf(sha: string): number | null {
   return train.issue;
 }
 
+/**
+ * Whether a release.yml run failed, from the results of its pack, stage and
+ * vscode jobs. Each is read on its own: a failed pack skips stage, and a
+ * skipped job is not a success.
+ */
+export const releaseRunFailed = (results: (string | null)[]): boolean =>
+  results.some((result) => result !== "success");
+
 function closeTrain(argv: string[]): void {
   const sha = process.env.GITHUB_SHA ?? runOk("git", ["rev-parse", "HEAD"]);
-  const releaseResult = flag(argv, "release-result");
+  const packResult = flag(argv, "pack-result");
+  const stageResult = flag(argv, "stage-result");
   const vscodeResult = flag(argv, "vscode-result");
   const runUrl = flag(argv, "run-url");
   const issue = trainIssueOf(sha);
   if (issue === null) return;
 
-  if (releaseResult !== "success" || vscodeResult !== "success") {
+  if (releaseRunFailed([packResult, stageResult, vscodeResult])) {
     runOk("gh", [
       "issue",
       "comment",
       String(issue),
       "--body",
-      `The release run did not finish: ${runUrl} (npm stage: ${releaseResult}, VS Code: ${vscodeResult}). Fix it and re-run the failed jobs; this Issue stays open and the next train waits for it.`,
+      `The release run did not finish: ${runUrl} (npm pack: ${packResult}, npm stage: ${stageResult}, VS Code: ${vscodeResult}). Fix it and re-run the failed jobs; this Issue stays open and the next train waits for it.`,
     ]);
     process.exitCode = 1;
     return;

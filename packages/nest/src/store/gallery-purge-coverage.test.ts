@@ -15,15 +15,21 @@
  * structural: write something under every prefix the gallery uses, purge, and
  * assert the store is empty.
  *
- * `SEEDERS` is deliberately a short list a reviewer can read. A prefix nobody
- * adds here is the failure this file cannot catch by itself; a prefix added
- * here without wiring the purge is the failure it catches immediately.
+ * `SEEDERS` is deliberately a short list a reviewer can read, and it cannot
+ * fall behind the registry. It is typed as a `Record` over the
+ * registered key spaces (`GALLERY_KEY_SPACES` in `gallery-keys.ts`), and the
+ * stores cannot write a key outside them, so a new space does not compile
+ * until it has a seeder here, and from then on every case below runs it
+ * through `GalleryStore.purgeAccount`. A space registered without wiring the
+ * purge is caught by the compiler in `gallery-store.ts`; one whose purge
+ * leaves something behind is caught here.
  *
  * See TPL-2226. The generation-side twin is `nest-purge-coverage.test.ts`,
  * which #2590 removes along with the service it guards.
  */
 import { describe, expect, it } from "vitest";
 import { AccountStore } from "./accounts.js";
+import { GALLERY_KEY_SPACES, type GalleryKeySpace } from "./gallery-keys.js";
 import { GalleryStore } from "./gallery-store.js";
 import { SessionStore } from "./sessions.js";
 import { SubmissionStore } from "./submissions.js";
@@ -32,34 +38,25 @@ import { MemoryKV } from "../testing/memory-kv.js";
 const ACCOUNT = 42;
 const at = new Date("2026-08-02T00:00:00Z");
 
-/** One writer per KV prefix the gallery uses. */
-const SEEDERS: { prefix: string; seed: (kv: MemoryKV, accountId: number) => Promise<void> }[] = [
-  {
-    prefix: "acct/",
-    seed: async (kv, accountId) => {
-      await new AccountStore(kv).signIn(accountId, "kompiro", at);
-    },
+type Seeder = (kv: MemoryKV, accountId: number) => Promise<void>;
+
+/** One writer per registered key space, through the store that owns it. */
+const SEEDERS: Record<GalleryKeySpace, Seeder> = {
+  accounts: async (kv, accountId) => {
+    await new AccountStore(kv).signIn(accountId, "kompiro", at);
   },
-  {
-    prefix: "sess/",
-    seed: async (kv, accountId) => {
-      await new SessionStore(kv).issue(accountId, "kompiro", at);
-    },
+  sessions: async (kv, accountId) => {
+    await new SessionStore(kv).issue(accountId, "kompiro", at);
   },
-  {
-    prefix: "sub/",
-    seed: async (kv, accountId) => {
-      await new SubmissionStore(kv).create(
-        accountId,
-        { title: "Shop", krs: "system Shop {}\n" },
-        at,
-      );
-    },
+  submissions: async (kv, accountId) => {
+    await new SubmissionStore(kv).create(accountId, { title: "Shop", krs: "system Shop {}\n" }, at);
   },
-];
+};
+
+const SPACES = Object.keys(GALLERY_KEY_SPACES) as GalleryKeySpace[];
 
 async function seedEverything(kv: MemoryKV, accountId: number): Promise<void> {
-  for (const { seed } of SEEDERS) await seed(kv, accountId);
+  for (const space of SPACES) await SEEDERS[space](kv, accountId);
 }
 
 const remaining = async (kv: MemoryKV): Promise<string[]> =>
@@ -69,34 +66,50 @@ describe("account purge coverage", () => {
   it("leaves nothing behind when an account is deleted", async () => {
     const kv = new MemoryKV();
     await seedEverything(kv, ACCOUNT);
-    expect((await remaining(kv)).length).toBe(SEEDERS.length);
+    expect((await remaining(kv)).length).toBe(SPACES.length);
 
     await new GalleryStore(kv).purgeAccount(ACCOUNT);
     expect(await remaining(kv)).toEqual([]);
   });
 
-  it("covers every prefix the gallery writes, so a new one is noticed", async () => {
-    // The ledger above is what a reviewer reads; this asserts the seeded keys
-    // really do span the prefixes it claims, so a seeder that stopped writing
-    // does not silently reduce the check to nothing.
+  it("can run again on a purged account, and reports nothing the second time", async () => {
+    // A purge interrupted halfway is retried by running it again, so a
+    // second run has to be harmless: no throw, and zero in every space.
     const kv = new MemoryKV();
     await seedEverything(kv, ACCOUNT);
-    const keys = await remaining(kv);
-    for (const { prefix } of SEEDERS) {
-      expect(keys.some((key) => key.startsWith(prefix))).toBe(true);
+    const store = new GalleryStore(kv);
+    await store.purgeAccount(ACCOUNT);
+    expect(await store.purgeAccount(ACCOUNT)).toEqual(
+      Object.fromEntries(SPACES.map((space) => [space, 0])),
+    );
+  });
+
+  it("covers every prefix the gallery writes, so a new one is noticed", async () => {
+    // The type makes a seeder exist for every space; this makes each one
+    // actually write into the space it is filed under, so a seeder that wrote
+    // somewhere else (or stopped writing) cannot reduce the check to
+    // nothing while the ledger still looks complete.
+    for (const space of SPACES) {
+      const kv = new MemoryKV();
+      await SEEDERS[space](kv, ACCOUNT);
+      const keys = await remaining(kv);
+      expect(keys.length).toBeGreaterThan(0);
+      expect(keys.every((key) => key.startsWith(`${GALLERY_KEY_SPACES[space].prefix}/`))).toBe(
+        true,
+      );
     }
   });
 
   it("counts what it deleted in every category", async () => {
     // A purge reporting zeroes while deleting things is indistinguishable
-    // from one that deleted nothing.
+    // from one that deleted nothing. Each seeder writes one record, so every
+    // registered space has to report exactly one. Built from the registry,
+    // so a new space is expected in the result without anyone adding it here.
     const kv = new MemoryKV();
     await seedEverything(kv, ACCOUNT);
-    expect(await new GalleryStore(kv).purgeAccount(ACCOUNT)).toEqual({
-      accounts: 1,
-      sessions: 1,
-      submissions: 1,
-    });
+    expect(await new GalleryStore(kv).purgeAccount(ACCOUNT)).toEqual(
+      Object.fromEntries(SPACES.map((space) => [space, 1])),
+    );
   });
 
   it("touches nothing belonging to an account whose id merely extends it", async () => {
@@ -108,7 +121,7 @@ describe("account purge coverage", () => {
 
     await new GalleryStore(kv).purgeAccount(ACCOUNT);
     const left = await remaining(kv);
-    expect(left.length).toBe(SEEDERS.length);
+    expect(left.length).toBe(SPACES.length);
     expect(left.every((key) => key.includes("420"))).toBe(true);
   });
 });

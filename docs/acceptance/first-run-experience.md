@@ -1,7 +1,7 @@
 # AT: Web App の初回体験（Welcome と 3 つのガイドツアー、題材の切り替え）
 
 - **日付**: 2026-11-03
-- **関連 Issue**: [#3563](https://github.com/kompiro/karasu/issues/3563)（Epic）/ [#3583](https://github.com/kompiro/karasu/issues/3583)（配置の自動判定）/ [#3597](https://github.com/kompiro/karasu/issues/3597)（ツアーのやり直し）/ [#3598](https://github.com/kompiro/karasu/issues/3598)（ツアーの再開）/ [#3599](https://github.com/kompiro/karasu/issues/3599)（ステップの操作を終えた印）/ [#3600](https://github.com/kompiro/karasu/issues/3600)（Understand と Evolve のガイド）/ [#3601](https://github.com/kompiro/karasu/issues/3601)（2 つ目の題材）/ [#3564](https://github.com/kompiro/karasu/issues/3564)（サンプル）/ [#3565](https://github.com/kompiro/karasu/issues/3565)（Welcome）/ [#3566](https://github.com/kompiro/karasu/issues/3566)（ガイドツアー）
+- **関連 Issue**: [#3563](https://github.com/kompiro/karasu/issues/3563)（Epic）/ [#3583](https://github.com/kompiro/karasu/issues/3583)（配置の自動判定）/ [#3597](https://github.com/kompiro/karasu/issues/3597)（ツアーのやり直し）/ [#3598](https://github.com/kompiro/karasu/issues/3598)（ツアーの再開）/ [#3599](https://github.com/kompiro/karasu/issues/3599)（ステップの操作を終えた印）/ [#3600](https://github.com/kompiro/karasu/issues/3600)（Understand と Evolve のガイド）/ [#3601](https://github.com/kompiro/karasu/issues/3601)（2 つ目の題材）/ [#3689](https://github.com/kompiro/karasu/issues/3689)（フィードバックの窓口）/ [#3564](https://github.com/kompiro/karasu/issues/3564)（サンプル）/ [#3565](https://github.com/kompiro/karasu/issues/3565)（Welcome）/ [#3566](https://github.com/kompiro/karasu/issues/3566)（ガイドツアー）
 - **PRD**: [#3573](https://github.com/kompiro/karasu/issues/3573)
 - **対象ファイル**:
   - `examples/{en,ja}/service-split/`、`examples/{en,ja}/payroll-split/`（`index.krs` / `planned.krs` / `migrating.krs`）、`examples/{en,ja}/getting-started/`
@@ -249,6 +249,12 @@
   > ✅ Automated — `packages/core/src/examples.test.ts` › `current: the team of the moving domain owns that domain but no service`
   > ✅ Automated — `packages/core/src/examples.test.ts` › `migrating: the new service is the migration target and its database is planned`
   > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `walks the same scenes on both subjects, so the guide has one shape`
+
+- [x] AT-AR: どのガイドも最後のステップに、GitHub Discussions の Feedback カテゴリで新しい投稿を始めるリンクが出て、新しいタブで開く。最後より前のステップには出ない。リンクの category はフォーム（`.github/DISCUSSION_TEMPLATE/`）のファイル名と一致する（[#3689](https://github.com/kompiro/karasu/issues/3689)）
+
+  > ✅ Automated — `packages/app/src/components/first-run/TourPanel.test.tsx` › `ends on a link to the Feedback discussions on the last step of each guide, in a new tab (#3689)`
+  > ✅ Automated — `packages/app/src/components/first-run/TourPanel.test.tsx` › `asks for feedback on the last step only (#3689)`
+  > ✅ Automated — `packages/app/src/utils/feedback-discussions.test.ts` › `preselects the category whose form is in .github/DISCUSSION_TEMPLATE`
 
 ## 手動確認
 

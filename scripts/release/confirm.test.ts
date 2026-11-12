@@ -1,8 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { marker, partialRelease, taggable, vscodeSucceeded } from "./confirm.mts";
+import { marker, partialRelease, releaseRunFailed, taggable, vscodeSucceeded } from "./confirm.mts";
 import type { NpmPackage } from "./release-state.mts";
 
 // Fences the record decisions of release-confirm.yml (#3240).
+
+describe("releaseRunFailed", () => {
+  it("passes only when pack, stage and vscode all succeeded", () => {
+    expect(releaseRunFailed(["success", "success", "success"])).toBe(false);
+  });
+
+  it("fails when pack failed and stage was skipped", () => {
+    expect(releaseRunFailed(["failure", "skipped", "success"])).toBe(true);
+  });
+
+  it("fails on a missing result", () => {
+    expect(releaseRunFailed(["success", null, "success"])).toBe(true);
+  });
+});
 
 describe("vscodeSucceeded", () => {
   it("reads the reusable workflow's jobs and counts a skipped publish", () => {

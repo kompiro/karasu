@@ -27,14 +27,14 @@
  * it before approving on npmjs.com. `--expect-tag` checks the staged tag
  * against the given one instead of the plan's (the rehearsal's `rehearsal`).
  */
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { findTrain, isOnNpm, npmPackagesAt, run, runOk } from "./release-state.mts";
-import { readPlan, type PlannedRelease } from "./stage.mts";
+import { preTagOf, readPlan, tagFor, type PlannedRelease } from "./stage.mts";
 import {
   compareTarballs,
   describeDifference,
@@ -268,6 +268,13 @@ export async function main(argv: string[]): Promise<void> {
     attached("pnpm", ["install", "--frozen-lockfile"], tree);
     attached("pnpm", ["build"], tree);
     const platform = platformPackages(readFileSync(join(tree, "pnpm-lock.yaml"), "utf8"));
+    // The tag the stage job decides (stage.mts `tagFor`), not changesets' plan tag.
+    const preJson = join(tree, ".changeset", "pre.json");
+    const preTag = preTagOf(existsSync(preJson) ? readFileSync(preJson, "utf8") : null);
+    const expectedTag = (version: string): string => {
+      const decided = tagFor(version, { preTag, override: options.expectTag });
+      return "tag" in decided ? decided.tag : `(none: ${decided.problem})`;
+    };
 
     for (let round = 0; ; round++) {
       step("Packing the release commit");
@@ -288,7 +295,7 @@ export async function main(argv: string[]): Promise<void> {
         return {
           release,
           staged,
-          expectedTag: options.expectTag ?? release.tag,
+          expectedTag: expectedTag(release.version),
           diff: staged
             ? compareTarballs(local, readTarball(downloadStaged(staged.id)), platform)
             : null,

@@ -39,6 +39,21 @@ describe("npmPackagesOf", () => {
     expect(packages[0].workspaceDependencies).toEqual(["karasu-skills"]);
   });
 
+  it("counts optional and peer workspace dependencies, but not devDependencies", () => {
+    const packages = npmPackagesOf((dir) =>
+      dir === "packages/cli"
+        ? ({
+            name: "karasu",
+            version: "0.11.0",
+            optionalDependencies: { "karasu-skills": "workspace:*" },
+            peerDependencies: { "@karasu-tools/core": "workspace:^" },
+            devDependencies: { "@karasu-tools/i18n": "workspace:*" },
+          } as never)
+        : null,
+    );
+    expect(packages[0].workspaceDependencies).toEqual(["karasu-skills", "@karasu-tools/core"]);
+  });
+
   it("fails when a directory holds another package than RELEASED_PACKAGES says", () => {
     expect(() =>
       npmPackagesOf((dir) =>
