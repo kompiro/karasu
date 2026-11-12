@@ -167,18 +167,22 @@ function tagsOf(name: string): string[] {
     .map((tag) => tag.slice(name.length + 1));
 }
 
-function unplannedReport(packages: NpmPackage[]): string[] {
+function unplannedReport(sha: string, packages: NpmPackage[]): string[] {
   return packages.flatMap((pkg) => {
     const info = npmHistory(pkg.name);
+    const tagged = tagsOf(pkg.name);
     const after = unplannedVersions({
       time: info.time,
       versions: info.versions,
-      tagged: tagsOf(pkg.name),
+      tagged,
+      taggedOnRelease: tagged.filter(
+        (version) => tagTarget(packageTag({ name: pkg.name, version })) === sha,
+      ),
       releaseVersion: pkg.version,
     });
     if (after === null) {
       console.log(
-        `::notice::${pkg.name} has no tagged version yet: no unplanned-version check for it.`,
+        `::notice::${pkg.name} has no tagged version before this release: no unplanned-version check for it.`,
       );
       return [];
     }
@@ -215,7 +219,7 @@ function locate(): void {
   const candidates = bumped.filter(
     (pkg) => tagTarget(packageTag(pkg)) === null && isOnNpm(pkg.name, pkg.version),
   );
-  const unplanned = unplannedReport(npmPackagesAt(train.sha));
+  const unplanned = unplannedReport(train.sha, npmPackagesAt(train.sha));
   console.log(`Release commit ${train.sha} (train #${train.issue}, ${train.branch}).`);
   console.log(`To verify: ${candidates.map(packageTag).join(", ") || "none"}`);
   output("sha", train.sha);

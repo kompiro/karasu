@@ -196,24 +196,34 @@ describe("unplannedVersions", () => {
     "0.8.0": "2026-09-01T00:00:00Z",
   };
   const versions = ["0.8.0", "0.9.0", "0.10.0", "0.10.1-next.0", "0.11.0"];
+  const check = (opts: {
+    versions?: string[];
+    tagged: string[];
+    taggedOnRelease?: string[];
+    releaseVersion: string;
+  }) =>
+    unplannedVersions({
+      time,
+      versions: opts.versions ?? versions,
+      tagged: opts.tagged,
+      taggedOnRelease: opts.taggedOnRelease ?? [],
+      releaseVersion: opts.releaseVersion,
+    });
 
   it("finds a version published after the newest tagged one, under any dist-tag", () => {
-    expect(
-      unplannedVersions({ time, versions, tagged: ["0.9.0", "0.10.0"], releaseVersion: "0.11.0" }),
-    ).toEqual(["0.10.1-next.0"]);
+    expect(check({ tagged: ["0.9.0", "0.10.0"], releaseVersion: "0.11.0" })).toEqual([
+      "0.10.1-next.0",
+    ]);
   });
 
   it("leaves older versions and the release's own version alone", () => {
     const later = versions.filter((v) => v !== "0.10.1-next.0");
-    expect(
-      unplannedVersions({ time, versions: later, tagged: ["0.10.0"], releaseVersion: "0.11.0" }),
-    ).toEqual([]);
+    expect(check({ versions: later, tagged: ["0.10.0"], releaseVersion: "0.11.0" })).toEqual([]);
   });
 
   it("skips a version no longer in `versions` (unpublished)", () => {
     expect(
-      unplannedVersions({
-        time,
+      check({
         versions: ["0.9.0", "0.10.0", "0.11.0"],
         tagged: ["0.10.0"],
         releaseVersion: "0.11.0",
@@ -221,24 +231,32 @@ describe("unplannedVersions", () => {
     ).toEqual([]);
   });
 
-  it("keeps reporting after the release's own tag is pushed", () => {
+  it("keeps reporting after this train's record pushed the release's tag", () => {
     expect(
-      unplannedVersions({
-        time,
-        versions,
+      check({
         tagged: ["0.9.0", "0.10.0", "0.11.0"],
+        taggedOnRelease: ["0.11.0"],
         releaseVersion: "0.11.0",
       }),
     ).toEqual(["0.10.1-next.0"]);
   });
 
-  it("cannot measure a package whose only tag is the release's own", () => {
+  it("measures a package this train did not bump from its tag of an earlier train", () => {
+    // releaseVersion is the version an earlier train tagged on another commit,
+    // so that tag stays the baseline and a later approval is still reported.
+    expect(check({ tagged: ["0.10.0"], releaseVersion: "0.10.0" })).toEqual([
+      "0.10.1-next.0",
+      "0.11.0",
+    ]);
+  });
+
+  it("cannot measure a package whose only tag is on the release commit", () => {
     expect(
-      unplannedVersions({ time, versions, tagged: ["0.11.0"], releaseVersion: "0.11.0" }),
+      check({ tagged: ["0.11.0"], taggedOnRelease: ["0.11.0"], releaseVersion: "0.11.0" }),
     ).toBeNull();
   });
 
   it("cannot measure a package with no tagged version yet", () => {
-    expect(unplannedVersions({ time, versions, tagged: [], releaseVersion: "0.11.0" })).toBeNull();
+    expect(check({ tagged: [], releaseVersion: "0.11.0" })).toBeNull();
   });
 });

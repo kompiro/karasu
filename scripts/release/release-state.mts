@@ -152,20 +152,25 @@ export function orderViolations(
  * Versions of a package published after its newest tagged version that are not
  * the release commit's version. A version approved on npmjs.com outside the
  * plan, under any dist-tag, shows up here and nowhere else. Versions published
- * before that point predate the staged releases and are left alone. The
- * release's own tag is not a baseline. Null when no other version is tagged.
+ * before that point predate the staged releases and are left alone. Tags on
+ * the release commit itself (`taggedOnRelease`, pushed by this train's
+ * `record`) are not a baseline. Null when no other version is tagged.
  */
 export function unplannedVersions(opts: {
   time: Record<string, string>;
   versions: string[];
   tagged: string[];
+  taggedOnRelease: string[];
   releaseVersion: string;
 }): string[] | null {
-  // The release's own tag is pushed by this train's `record`, so it must not
-  // move the baseline: versions published before it would drop out of the
-  // report on the next run and the train could close over them.
+  // A tag this train's `record` pushed must not move the baseline: versions
+  // published before it would drop out of the report on the next run and the
+  // train could close over them. A package this train did not bump keeps its
+  // tag from an earlier train, which points at another commit.
   const taggedTimes = opts.tagged.flatMap((version) =>
-    version !== opts.releaseVersion && opts.time[version] ? [Date.parse(opts.time[version])] : [],
+    !opts.taggedOnRelease.includes(version) && opts.time[version]
+      ? [Date.parse(opts.time[version])]
+      : [],
   );
   // A package with no tagged version yet (a newly public one) has nothing to
   // measure from: its manually published first version is not unplanned.
