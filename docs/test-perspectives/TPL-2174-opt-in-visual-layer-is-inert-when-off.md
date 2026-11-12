@@ -86,7 +86,6 @@ opt-in な視覚レイヤを足す / 触る PR で:
 - [ ] 有効 → 無効で元に戻ることを見ている（TPL-1402）。
 - [ ] 静的バンドルを含む**全サーフェス**で無効時の assert がある（TPL-1983）。
 - [ ] 「無効」を `undefined` に畳んでおり、空だが有効な状態が型として作れない。
-      新しいレイヤでは型の形を設計で決めるので、レイヤの閉じた集合が無く機械では見ない。
 - [ ] facet overlay では、`FacetOverlay.entries` が非空の readonly タプルのままで、
       選択の無い overlay を書くと typecheck が落ちる。 [guard: `packages/core/src/renderer/facet-overlay-type.test.ts`]
 

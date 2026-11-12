@@ -21,10 +21,10 @@
  *    deploy renderers give icon mode a footprint of their own and rely on (1).
  * 3. For entries that assemble sheets, an author sheet that redeclares every
  *    mode-sheet rule at the rule's own selector changes nothing in that mode:
- *    the mode's sheet sits after the author's (TPL-1001 items 4 and 7).
+ *    the mode's sheet sits after the author's (TPL-1001 items 3 and 6).
  * 4. For the same entries, the mode adds no warning or diagnostic to what
  *    shape mode reports with that author sheet: a mode's intentional override
- *    is not an author conflict (#279, TPL-1001 item 5).
+ *    is not an author conflict (#279, TPL-1001 item 4).
  *
  * The `theme` argument (Issue #1479) has its own sibling meta-test,
  * `theme-meta.test.ts`, applying the same enumeration pattern.
