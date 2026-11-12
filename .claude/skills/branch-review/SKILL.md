@@ -130,9 +130,11 @@ CI が見ていない中身（記述が正しいか）である。
 pnpm -s exec tpl related --config tpl.config.json --limit 0 --changed-files <変更したファイル…>
 ```
 
-返った TPL のチェックリストのうち、この変更に当てはまる項目を確かめる。`tpl related` は作業ツリーの TPL を読むので、
-作業ツリーが `HEAD_REV` でない（冒頭のテストの条件を満たさない）ときは、返った TPL の本文を
-`git show origin/main:<TPL のパス>` で読み直す。
+返った TPL のチェックリストのうち、この変更に当てはまる項目を確かめる。`tpl related` は既定で作業ツリーの TPL を
+読む。作業ツリーが `HEAD_REV` でない（冒頭のテストの条件を満たさない）ときは、`HEAD_REV` の TPL を scratchpad に
+取り出し（`git archive $HEAD_REV docs/test-perspectives tpl.config.json | tar -x -C <scratchpad>/rev`）、
+`--tpl-dir <scratchpad>/rev/docs/test-perspectives --config <scratchpad>/rev/tpl.config.json` を付けて引き、返った TPL の
+本文も `git show $HEAD_REV:<TPL のパス>` で読む。この PR が足した TPL もこれで引ける。
 
 TPL の一覧は今の `docs/test-perspectives/` のものなので、マージ済みの PR では当時に無かった項目も返る。TPL のファイル名や
 ID は変わったことがあるので、パスでは判定せず、E と同じく文で判定する。マージ済みの PR で、根拠にした項目の文が
