@@ -52,7 +52,13 @@ export async function loadExampleCorpus(): Promise<ExampleEntry[]> {
   const entries: ExampleEntry[] = [];
   for (const file of files.filter((f) => f.endsWith(".krs"))) {
     const name = relative(EXAMPLES, file);
-    const { krsFile, styleSheets } = await new ImportResolver(fs).resolve(`/${name}`);
+    const { krsFile, styleSheets, diagnostics } = await new ImportResolver(fs).resolve(`/${name}`);
+    // A file that does not parse or resolve would join as a partial model and
+    // quietly shrink what every corpus guard measures.
+    const errors = diagnostics.filter((d) => d.severity === "error");
+    if (errors.length > 0) {
+      throw new Error(`${name} does not resolve cleanly: ${errors.map((d) => d.code).join(", ")}`);
+    }
     entries.push({ name, krsFile, styleSheets });
   }
   return entries;
@@ -61,8 +67,9 @@ export async function loadExampleCorpus(): Promise<ExampleEntry[]> {
 /**
  * Render every view of an entry the way the all-views bundle does: the system
  * view and each drill-down level under `mode`, plus the deploy and org views.
- * Returns the bundle's SVG; a test that wraps `layout` sees every canvas laid
- * out on the way.
+ * Returns the bundle's SVG. A test that wraps `layout` sees every logical
+ * canvas laid out on the way, and one that wraps `layoutDeploy` every deploy
+ * canvas; the org view has its own tree renderer and goes through neither.
  */
 export function renderEveryView(entry: ExampleEntry, mode: GroupByMode): string {
   return buildAllViewsSvg(
