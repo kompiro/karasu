@@ -204,6 +204,50 @@ describe("collapseCategories edge re-targeting (#1872)", () => {
   });
 });
 
+// TPL-1886 on the category axis. The stub edge's key names the stub, which the
+// diff map (keyed on the original endpoints) never holds, so without the fold
+// a compare-mode render drew `Web -> External (2)` undecorated even when every
+// edge behind it was added. Found by `collapse-corpus.test.ts`.
+describe("collapseCategories diff state on re-targeted edges (#1886)", () => {
+  const nodes = [
+    idNode("Web", "service"),
+    idNode("Api", "service"),
+    idNode("ExtA", "service", ["external"]),
+    idNode("ExtB", "service", ["external"]),
+  ];
+  const stub = stubId("external");
+
+  it("keys the folded state by the stub edge, carrying a single state through", () => {
+    const r = collapseCategories(
+      nodes,
+      [edge("Web", "ExtA"), edge("Web", "ExtB")],
+      new Set(["external"]),
+      undefined,
+      new Map([
+        ["Web->ExtA", "added"],
+        ["Web->ExtB", "added"],
+      ]),
+    );
+    expect(r.foldedEdgeDiffState).toEqual(new Map([[`Web->${stub}`, "added"]]));
+  });
+
+  it("folds a mix to `changed` and leaves an all-unchanged bundle undecorated", () => {
+    const r = collapseCategories(
+      nodes,
+      [edge("Web", "ExtA"), edge("Web", "ExtB"), edge("Api", "ExtA")],
+      new Set(["external"]),
+      undefined,
+      new Map([["Web->ExtA", "removed"]]),
+    );
+    expect(r.foldedEdgeDiffState).toEqual(new Map([[`Web->${stub}`, "changed"]]));
+  });
+
+  it("records nothing outside compare mode", () => {
+    const r = collapseCategories(nodes, [edge("Web", "ExtA")], new Set(["external"]));
+    expect(r.foldedEdgeDiffState.size).toBe(0);
+  });
+});
+
 // End-to-end: a service→external edge survives as a trunk to the stub (#1872),
 // where node-only folding used to drop it.
 describe("compile(): edges to a collapsed category survive as trunks (#1872)", () => {

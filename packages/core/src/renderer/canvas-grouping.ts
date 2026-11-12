@@ -9,6 +9,7 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import type { ViewSlice } from "../view/view-slice.js";
 import { collapseCategories } from "./category-collapse.js";
+import { withFolded } from "./collapse-stub.js";
 import { assignGroupedLayers, type GroupedNode, type GroupBand } from "./group-layout.js";
 import { systemTier } from "./layer-assignment.js";
 import { collapseAndAssignGroupLayers, resolveCanvasAxis } from "./layout-grouping.js";
@@ -52,6 +53,8 @@ export function prepareCanvasGrouping(
     viewSlice.childNodes,
     viewSlice.childEdges,
     collapsedCategories,
+    undefined,
+    edgeDiffState,
   );
   let allNodes = collapsedCat.nodes;
   let allEdges: KrsEdge[] = collapsedCat.edges;
@@ -84,10 +87,10 @@ export function prepareCanvasGrouping(
   // are disjoint, so composing the two remaps (category first, then group) is
   // order-independent in practice; identity outside collapse.
   let remapGhostEndpoint: (id: string) => string = collapsedCat.remapEndpoint;
-  // Diff state re-keyed onto collapsed-group stub edges (#1886). Empty unless a
-  // team collapses in compare/diff mode; `layoutInner` merges it into the
-  // render lookup.
-  let foldedEdgeDiffState = new Map<string, string>();
+  // Diff state re-keyed onto the stub edges of both collapses (#1886). Empty
+  // unless something collapses in compare/diff mode; `layoutInner` merges it
+  // into the render lookup.
+  let foldedEdgeDiffState = collapsedCat.foldedEdgeDiffState;
   // System-view grouping (#1858, P2a): when the viewer picks "Group by: team",
   // bucket nodes into their owning team instead of the kind tiers, stacking each
   // team as a dependency-ordered band that a boundary frame can enclose. Falls
@@ -102,7 +105,9 @@ export function prepareCanvasGrouping(
       edges: allEdges,
       groupIndex,
       collapsedGroups,
-      edgeDiffState,
+      // An edge already re-targeted onto a category stub is keyed by that stub
+      // now, so the group fold reads its state from the category fold.
+      edgeDiffState: withFolded(edgeDiffState, collapsedCat.foldedEdgeDiffState),
       bandOrder,
       membership: canvasMembership,
     });
@@ -112,7 +117,7 @@ export function prepareCanvasGrouping(
     survivorGroup = collapsed.survivorGroup;
     const groupRemap = collapsed.remapEndpoint;
     remapGhostEndpoint = (id) => groupRemap(collapsedCat.remapEndpoint(id));
-    foldedEdgeDiffState = collapsed.foldedEdgeDiffState;
+    foldedEdgeDiffState = new Map([...foldedEdgeDiffState, ...collapsed.foldedEdgeDiffState]);
     if (collapsed.grouped) {
       groupedLayers = collapsed.grouped.layers;
       groupBands = collapsed.grouped.groupBands;

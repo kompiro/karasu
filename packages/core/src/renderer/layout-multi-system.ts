@@ -52,6 +52,7 @@ import {
 } from "./layout-measure.js";
 import { nodePathIdentityKey, nodePathRefId } from "../parser/node-path.js";
 import { edgeKey, edgeKindKey } from "../view/edge-key.js";
+import { withFolded } from "./collapse-stub.js";
 import {
   createCrossSystemRemap,
   layoutCrossSystemEdges,
@@ -161,7 +162,9 @@ export function layoutMultipleSystems(
       systemRawEdges,
       collapsedCategories,
       sys.id,
+      edgeDiffState,
     );
+    for (const [k, v] of sysCollapsedCat.foldedEdgeDiffState) foldedEdgeDiffState.set(k, v);
     const rawNodes = sysCollapsedCat.nodes;
     const sysEdges = sysCollapsedCat.edges;
 
@@ -218,7 +221,7 @@ export function layoutMultipleSystems(
         edges: sysEdges,
         groupIndex: systemGroupIndex,
         collapsedGroups,
-        edgeDiffState,
+        edgeDiffState: withFolded(edgeDiffState, sysCollapsedCat.foldedEdgeDiffState),
         stubScope: sys.id,
         bandOrder: systemBandOrder,
         membership: systemMembership,
