@@ -113,7 +113,9 @@ beforeAll(async () => {
       }
     }
   }
-});
+  // Drawing the whole corpus on every path takes about 5 s locally and longer
+  // on a CI runner, past vitest's 10 s hook default.
+}, 120_000);
 
 function coverageOf(files: readonly string[]): Set<number> {
   const covered = new Set<number>();
