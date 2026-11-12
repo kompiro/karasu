@@ -4,7 +4,7 @@
  *
  *   node scripts/release/confirm.mts locate
  *   node scripts/release/confirm.mts verify --tree <dir> --candidates <json>
- *   node scripts/release/confirm.mts record --sha <sha> --issue <n> --verified "<tags>"
+ *   node scripts/release/confirm.mts record --sha <sha> --issue <n> --verified "<tags>" --verify-result <r> --run-url <url>
  *   node scripts/release/confirm.mts close-train --pack-result <r> --stage-result <r> --vscode-result <r> --run-url <url>
  *
  * release-confirm.yml runs `locate` and `verify` in a job that can read only,
@@ -39,6 +39,8 @@ import {
   findTrain,
   isOnNpm,
   isReleaseBranch,
+  NPM_REGISTRY,
+  npmHistory,
   npmPackagesAt,
   orderViolations,
   packageTag,
@@ -167,10 +169,7 @@ function tagsOf(name: string): string[] {
 
 function unplannedReport(packages: NpmPackage[]): string[] {
   return packages.flatMap((pkg) => {
-    const info = JSON.parse(runOk("npm", ["view", pkg.name, "time", "versions", "--json"])) as {
-      time: Record<string, string>;
-      versions: string[];
-    };
+    const info = npmHistory(pkg.name);
     const after = unplannedVersions({
       time: info.time,
       versions: info.versions,
@@ -184,7 +183,14 @@ function unplannedReport(packages: NpmPackage[]): string[] {
       return [];
     }
     const found = after.filter(
-      (version) => runOk("npm", ["view", `${pkg.name}@${version}`, "deprecated"]) === "",
+      (version) =>
+        runOk("npm", [
+          "view",
+          `${pkg.name}@${version}`,
+          "deprecated",
+          "--registry",
+          NPM_REGISTRY,
+        ]) === "",
     );
     return found.map(
       (version) =>
@@ -237,7 +243,15 @@ function verify(argv: string[]): void {
     const ours = mkdtempSync(join(tmpdir(), "karasu-pack-"));
     runOk("pnpm", ["pack", "--pack-destination", ours], join(tree, pkg.dir));
     const theirs = mkdtempSync(join(tmpdir(), "karasu-npm-"));
-    runOk("npm", ["pack", packageTag(pkg), "--ignore-scripts", "--pack-destination", theirs]);
+    runOk("npm", [
+      "pack",
+      packageTag(pkg),
+      "--ignore-scripts",
+      "--pack-destination",
+      theirs,
+      "--registry",
+      NPM_REGISTRY,
+    ]);
     const expected = readTarball(readFileSync(onlyTarball(ours)));
     // A published tarball the readers refuse is reported like a mismatch: it is
     // live on npm, and a refusal is what a crafted archive would produce. A
@@ -263,7 +277,9 @@ function verify(argv: string[]): void {
       throw new Error(`the pack of ${packageTag(pkg)} has no package.json`);
     const fields = manifestDifferences(
       JSON.parse(manifest.toString("utf8")) as Record<string, unknown>,
-      JSON.parse(runOk("npm", ["view", packageTag(pkg), "--json"])) as Record<string, unknown>,
+      JSON.parse(
+        runOk("npm", ["view", packageTag(pkg), "--json", "--registry", NPM_REGISTRY]),
+      ) as Record<string, unknown>,
     );
     if (fields.length > 0) {
       mismatches.push(
@@ -311,6 +327,18 @@ function pushTags(sha: string, tags: string[]): void {
   }
 }
 
+/** Whether a package tag of `packages` points at `sha`. */
+export function hasPackageTag(
+  packages: NpmPackage[],
+  target: (tag: string) => string | null,
+  sha: string,
+): boolean {
+  return packages.some((pkg) => target(packageTag(pkg)) === sha);
+}
+
+const hasPackageTagOn = (sha: string, packages: NpmPackage[]): boolean =>
+  hasPackageTag(packages, tagTarget, sha);
+
 function record(argv: string[]): void {
   const sha = flag(argv, "sha");
   const issue = Number(flag(argv, "issue"));
@@ -318,7 +346,21 @@ function record(argv: string[]): void {
     .split(" ")
     .filter((tag) => tag !== "");
   const failures = (process.env.VERIFY_REPORT ?? "").trim();
+  const verifyResult = flag(argv, "verify-result");
+  const runUrl = flag(argv, "run-url");
+  // verify can fail before it writes a report (a build or npm failure). That
+  // is not a mismatch, but it must not pass silently or close the train.
+  const verifyBroke = verifyResult !== "success" && failures === "";
   runOk("git", ["fetch", "--quiet", "--tags", "origin"]);
+
+  if (verifyBroke) {
+    commentOnce(
+      issue,
+      marker("verify-broke", `${sha}:${runUrl}`),
+      `The check of the published npm tarballs did not finish (${verifyResult}): ${runUrl}. Nothing new was tagged. Fix the cause and start release-confirm.yml again; this Issue stays open.`,
+    );
+    process.exitCode = 1;
+  }
 
   if (failures !== "") {
     commentOnce(
@@ -360,7 +402,10 @@ function record(argv: string[]): void {
     process.exitCode = 1;
   }
   pushTags(sha, tags.accepted);
-  if (releaseTagOn(sha) !== null || tags.accepted.length > 0) {
+  // Any package tag on this commit, not only the ones pushed now: a run that
+  // pushed tags and then failed to create the Release leaves nothing to
+  // accept on the retry, and the Release would be skipped for good.
+  if (releaseTagOn(sha) !== null || hasPackageTagOn(sha, all)) {
     runOk("node", ["scripts/release/github-release.mts", "--commit", sha]);
     runOk("git", ["fetch", "--quiet", "--tags", "origin"]);
   }
@@ -400,7 +445,7 @@ function record(argv: string[]): void {
   const npmDone = state.pending.length === 0 && state.misplaced.length === 0;
   const vscodeDone = vscodeSucceeded(latestReleaseRunJobs(sha));
   if (failures !== "" || violations.length > 0) process.exitCode = 1;
-  if (!npmDone || !vscodeDone || failures !== "" || violations.length > 0) {
+  if (!npmDone || !vscodeDone || failures !== "" || verifyBroke || violations.length > 0) {
     console.log(
       `Train #${issue} stays open (npm pending: ${state.pending.join(", ") || "none"}; VS Code done: ${vscodeDone}).`,
     );

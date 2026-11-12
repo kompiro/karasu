@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   bumpedNpmPackages,
+  classifyNpmHistory,
   classifyNpmView,
   isReleaseBranch,
   npmPackagesOf,
@@ -60,6 +61,32 @@ describe("npmPackagesOf", () => {
         dir === "packages/cli" ? ({ name: "other", version: "1.0.0" } as never) : null,
       ),
     ).toThrow(/expected karasu/);
+  });
+});
+
+describe("classifyNpmHistory", () => {
+  it("reads the times and versions npm prints", () => {
+    const stdout = JSON.stringify({
+      time: { "0.1.0": "2026-01-01T00:00:00Z" },
+      versions: ["0.1.0"],
+    });
+    expect(classifyNpmHistory({ status: 0, stdout, stderr: "" })).toEqual({
+      time: { "0.1.0": "2026-01-01T00:00:00Z" },
+      versions: ["0.1.0"],
+    });
+  });
+
+  it("reads a package npm does not know yet as an empty history", () => {
+    expect(classifyNpmHistory({ status: 1, stdout: "", stderr: "npm error code E404" })).toEqual({
+      time: {},
+      versions: [],
+    });
+  });
+
+  it("fails on any other error (TPL-2804)", () => {
+    expect(() =>
+      classifyNpmHistory({ status: 1, stdout: "", stderr: "npm error code ETIMEDOUT" }),
+    ).toThrow(/ETIMEDOUT/);
   });
 });
 

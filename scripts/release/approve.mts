@@ -33,7 +33,7 @@ import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { findTrain, isOnNpm, npmPackagesAt, run, runOk } from "./release-state.mts";
+import { findTrain, isOnNpm, NPM_REGISTRY, npmPackagesAt, run, runOk } from "./release-state.mts";
 import { preTagOf, readPlan, tagFor, type PlannedRelease } from "./stage.mts";
 import {
   compareTarballs,
@@ -134,13 +134,15 @@ function attached(cmd: string, args: string[], cwd?: string): void {
 }
 
 function stagedItems(name: string): StagedItem[] {
-  return JSON.parse(runOk("npm", ["stage", "list", name, "--json"])) as StagedItem[];
+  return JSON.parse(
+    runOk("npm", ["stage", "list", name, "--json", "--registry", NPM_REGISTRY]),
+  ) as StagedItem[];
 }
 
 function downloadStaged(id: string): Buffer {
   const dir = mkdtempSync(join(tmpdir(), "karasu-staged-"));
   try {
-    runOk("npm", ["stage", "download", id, "--json"], dir);
+    runOk("npm", ["stage", "download", id, "--json", "--registry", NPM_REGISTRY], dir);
     const tarballs = readdirSync(dir).filter((file) => file.endsWith(".tgz"));
     if (tarballs.length !== 1)
       throw new Error(`npm stage download ${id} wrote ${tarballs.length} tarballs`);
@@ -219,7 +221,7 @@ async function checkInstallFields(packed: Map<string, Record<string, unknown>>):
     // request may still meet a stale answer right after `waitForPublished`.
     let served = "";
     await waitFor(`the metadata of ${spec} on npm`, () => {
-      served = runOk("npm", ["view", spec, "--json"]);
+      served = runOk("npm", ["view", spec, "--json", "--registry", NPM_REGISTRY]);
       return served !== "";
     });
     const fields = manifestDifferences(manifest, JSON.parse(served) as Record<string, unknown>);
@@ -334,7 +336,7 @@ export async function main(argv: string[]): Promise<void> {
       }
       for (const check of checks) {
         step(`Approving ${check.release.name}@${check.release.version}`);
-        attached("npm", ["stage", "approve", check.staged!.id]);
+        attached("npm", ["stage", "approve", check.staged!.id, "--registry", NPM_REGISTRY]);
         approvedAny = true;
       }
       await waitForPublished(checks.map((check) => check.release));
@@ -344,7 +346,13 @@ export async function main(argv: string[]): Promise<void> {
         // The train Issue gets the report now, not at the next daily run;
         // release-confirm.yml tags nothing that differs.
         step("Starting release-confirm.yml to report on the train Issue");
-        run("gh", ["workflow", "run", "release-confirm.yml"]);
+        const dispatch = run("gh", ["workflow", "run", "release-confirm.yml"]);
+        if (dispatch.status !== 0) {
+          throw new Error(
+            `${error instanceof Error ? error.message : String(error)}\nStarting release-confirm.yml failed too, so nothing was reported on the train Issue: ${dispatch.stderr.trim()}. Start it by hand.`,
+            { cause: error },
+          );
+        }
         throw error;
       }
       if (plan.length === 1) break;
