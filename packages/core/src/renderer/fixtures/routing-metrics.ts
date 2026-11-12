@@ -44,16 +44,21 @@ export function framesOfNode(
   return out;
 }
 
-/** Obstacles an edge must never cross: non-endpoint cards + frames neither endpoint is in. */
+/**
+ * Obstacles an edge must never cross: every card but the two it ends on, and
+ * the frames neither endpoint is in. The endpoints are excluded as the cards
+ * themselves, not by id: the multi-system root can draw two cards named `Api`,
+ * and an edge into one of them must still count the other.
+ */
 export function obstaclesForEdge(
-  e: LayoutEdge,
+  ends: readonly [LayoutNode, LayoutNode],
   nodes: LayoutNode[],
   frames: { id: string; pieces: Rect[] }[],
   fFrom: Set<string>,
   fTo: Set<string>,
 ): Rect[] {
   return [
-    ...nodes.filter((n) => n.id !== e.from && n.id !== e.to),
+    ...nodes.filter((n) => n !== ends[0] && n !== ends[1]),
     ...frames.filter((f) => !fFrom.has(f.id) && !fTo.has(f.id)).flatMap((f) => f.pieces),
   ];
 }
@@ -65,10 +70,30 @@ export function pointsOf(e: LayoutEdge): Point[] {
 /**
  * A card by the id an edge endpoint names. Deploy keys its Map by that id
  * (`<container>::<unit>`); the multi-system root keys it by (system, id) and
- * keeps the bare id on the card (#2917), so fall back to a search by `id`.
+ * keeps the bare id on the card (#2917), so fall back to a search by `id`, and
+ * then by dotted path, which is how a cross-system edge names a card in
+ * another system (`PaymentGateway.PaymentService`).
  */
 export function nodeOf(res: LayoutResult, id: string): LayoutNode | undefined {
-  return res.nodes.get(id) ?? [...res.nodes.values()].find((n) => n.id === id);
+  return (
+    res.nodes.get(id) ??
+    [...res.nodes.values()].find((n) => n.id === id) ??
+    [...res.nodes.values()].find((n) => n.path?.join(".") === id)
+  );
+}
+
+/**
+ * The two cards an edge ends on. The multi-system root stamps each in-frame
+ * edge with the Map keys of its endpoints (#2934), which name one card where
+ * the bare id may name two; every other edge is resolved by `nodeOf`.
+ */
+export function endpointsOf(
+  res: LayoutResult,
+  e: LayoutEdge,
+): [LayoutNode | undefined, LayoutNode | undefined] {
+  const end = (key: string | undefined, id: string) =>
+    (key !== undefined ? res.nodes.get(key) : undefined) ?? nodeOf(res, id);
+  return [end(e.fromKey, e.from), end(e.toKey, e.to)];
 }
 
 export function totalPenetrations(res: LayoutResult): number {
@@ -77,11 +102,10 @@ export function totalPenetrations(res: LayoutResult): number {
   let total = 0;
   for (const e of res.edges) {
     if (e.ghost || e.cyclic) continue;
-    const from = nodeOf(res, e.from);
-    const to = nodeOf(res, e.to);
+    const [from, to] = endpointsOf(res, e);
     if (!from || !to) continue;
     const obstacles = obstaclesForEdge(
-      e,
+      [from, to],
       nodes,
       frames,
       framesOfNode(from, frames),

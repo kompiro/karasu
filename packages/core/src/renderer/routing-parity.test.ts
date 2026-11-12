@@ -57,6 +57,7 @@ import { ObstacleIndex } from "./obstacle-index.js";
 import { generateLargeModel } from "./fixtures/large-model.js";
 import type { LayoutEdge, LayoutNode, LayoutResult } from "./layout-types.js";
 import {
+  endpointsOf,
   framesOf,
   framesOfNode,
   nodeOf,
@@ -83,11 +84,10 @@ function straightCentrePenetrations(res: LayoutResult): number {
   let total = 0;
   for (const e of res.edges) {
     if (e.ghost || e.cyclic) continue;
-    const from = nodeOf(res, e.from);
-    const to = nodeOf(res, e.to);
+    const [from, to] = endpointsOf(res, e);
     if (!from || !to) continue;
     const obstacles = obstaclesForEdge(
-      e,
+      [from, to],
       nodes,
       frames,
       framesOfNode(from, frames),
@@ -1938,11 +1938,10 @@ describe("the obstacle index measures what the fences measure (#2790, TPL-1927)"
     let blocked = 0;
     for (const e of res.edges) {
       if (e.ghost || e.cyclic) continue;
-      const from = nodeOf(res, e.from);
-      const to = nodeOf(res, e.to);
+      const [from, to] = endpointsOf(res, e);
       if (!from || !to) continue;
       const obstacles = obstaclesForEdge(
-        e,
+        [from, to],
         nodes,
         frames,
         framesOfNode(from, frames),

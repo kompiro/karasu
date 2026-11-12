@@ -30,7 +30,7 @@ import {
   renderEveryView,
   type GroupByMode,
 } from "./fixtures/example-corpus.js";
-import { pointsOf, totalPenetrations } from "./fixtures/routing-metrics.js";
+import { endpointsOf, pointsOf, totalPenetrations } from "./fixtures/routing-metrics.js";
 
 const laidOut: LayoutResult[] = [];
 vi.mock("./layout.js", async (importOriginal) => {
@@ -149,10 +149,18 @@ describe("routing over every view of every example (TPL-1927)", () => {
   });
 
   it("no edge pierces a card or a frame it does not belong to", () => {
+    // `totalPenetrations` skips an edge whose endpoint it cannot find, so an
+    // endpoint spelled in a way `endpointsOf` does not resolve would go
+    // unmeasured. None may be.
+    const unresolved = canvases.flatMap(({ where, res }) =>
+      res.edges
+        .filter((e) => !e.ghost && !e.cyclic && endpointsOf(res, e).includes(undefined))
+        .map((e) => `${where}: ${e.from}->${e.to}`),
+    );
     const pierced = canvases
       .map(({ where, res }) => [where, totalPenetrations(res)] as const)
       .filter(([, n]) => n > 0);
-    expect(pierced).toEqual([]);
+    expect({ unresolved, pierced }).toEqual({ unresolved: [], pierced: [] });
   });
 
   it("the corpus holds the degenerate canvases, so the zero above covers them", () => {
