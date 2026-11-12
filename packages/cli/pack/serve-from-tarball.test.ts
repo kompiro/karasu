@@ -186,6 +186,20 @@ describe("karasu serve from the tarball (#3017)", () => {
   });
 });
 
+/**
+ * The markup of an icon's `krs-pictogram` group, with `{{color}}` matching any
+ * colour. Throws when an icon has no such group, so an icon added in another
+ * shape fails here instead of being skipped.
+ */
+function pictogramPattern(name: string, svg: string): RegExp {
+  const inner = /<g class="krs-pictogram"[^>]*>([\s\S]*)<\/g>\s*<text class="krs-label"/.exec(
+    svg,
+  )?.[1];
+  if (inner === undefined) throw new Error(`icon "${name}" has no krs-pictogram group`);
+  const escaped = inner.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(escaped.replaceAll("\\{\\{color\\}\\}", '[^"]*'));
+}
+
 // The built-in icons are core's to register (#2802): a host that bundles core
 // must carry them without registering anything itself. The workspace tests
 // import core from `src/`, so only the bundle can show that esbuild kept the
@@ -219,12 +233,11 @@ describe("karasu render from the tarball draws every built-in icon (TPL-2802)", 
     );
     expect(result.status).toBe(0);
     expect(result.stderr).not.toMatch(/style-unknown-icon|names no registered icon/);
-    // Each icon's first path, as the renderer inlines it: present only when
-    // that icon, not the box fallback, was drawn.
-    const missing = BUILTIN_ICON_SOURCES.filter(({ svg }) => {
-      const d = /<path d="([^"]+)"/.exec(svg)?.[1];
-      return d !== undefined && !result.stdout.includes(d);
-    }).map(({ name }) => name);
+    // Each icon's whole pictogram, as the renderer inlines it (its colour
+    // filled in): present only when that icon, not the box fallback, was drawn.
+    const missing = BUILTIN_ICON_SOURCES.filter(
+      ({ name, svg }) => !pictogramPattern(name, svg).test(result.stdout),
+    ).map(({ name }) => name);
     expect(missing).toEqual([]);
   });
 });
