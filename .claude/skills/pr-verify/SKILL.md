@@ -54,18 +54,27 @@ $S/gate.sh <pr>
   直させても無駄になるので、実装セッションへの依頼文は出さない。置き換え先の PR の本文から、この PR を
   いつ閉じる段取りか（例: 置き換え先のマージ後）を読んで伝え、置き換え先を `/pr-verify` するよう勧めて
   終わる。`reasons` にほかの問題（コンフリクトなど）があっても、置き換え先で解消済みかどうかを書くに留める
-- **`fix`**: 直すべき点がある。`reasons` と、その根拠（`unresolvedThreads` の各指摘、
-  `coderabbit.bodyFindingIds` / `threadReplyUrls`、`failedChecks` の名前とリンク、コンフリクト）を
+- **`fix`**: 実装セッションの作業が残っている。`reasons` と、その根拠（`unresolvedThreads` の各指摘、
+  `coderabbit.bodyFindingIds` / `threadReplyUrls`、`failedChecks` の名前とリンク、コンフリクト、
+  CodeRabbit の rate limit が明けてレビューを頼み直す必要があること）を
   kompiro に日本語で短く伝える。失敗した check はリンク先のログ（`gh run view <run-id> --log-failed`）
   から失敗の要点を 1〜2 行で添える。続けて、実装セッションへそのまま貼れる英語の依頼文を
   コードブロックで渡す（PR 番号、直すもの、各リンク）。**ここで終わる。** 手順 2 以降は行わない。
   実装セッションが直したあとに `/pr-verify` をもう一度実行すればよいことを一言添える
-- **`wait`**: 直す点は無いが、required check か CodeRabbit がまだ動いている。そのことを伝えて
-  手順 2 へ進む。手順 6 の前に `gate.sh` をもう一度実行する
+- **`wait`**: 直す点は無いが、まだ落ち着いていないものがある（check が走っている・cancel された、
+  CodeRabbit がレビュー中か rate limit 中、CodeRabbit がまだ一度もレビューしていない、CodeRabbit の
+  状態を読めなかった、GitHub がコンフリクトの有無をまだ出していない）。`reasons` を伝えて手順 2 へ進む。
+  cancel された check は最新の run を走り直せば済む（コードの修正は要らない）と添える。手順 6 の前に
+  `gate.sh` をもう一度実行する
 - **`proceed`**: 手順 2 へ進む
 
 CodeRabbit がレビューするのは `risk: high`（または段階のラベルなし）と `risk: design` の PR だけなので、
-それ以外では `coderabbit` は `null` になる。`isDraft: true` は差し戻しの理由にしないが、手順 6 で触れる。
+それ以外では `coderabbit` は `null` になる。`coderabbitReviewedHead: false` は CodeRabbit の PR レビューが
+HEAD を見ていないことを表すので、手順 4 で使う。`otherFailedChecks`（必須でない check の失敗）は判定を
+変えないが、手順 6 の根拠で触れる。`isDraft: true` は差し戻しの理由にしないが、手順 6 で触れる。
+`headSha` は手順 6 でマージする commit と照らし合わせるので控えておく。
+
+`gate.sh` が JSON を出さずに失敗したら、エラーを kompiro に伝えて終わる（判定できないまま先へ進まない）。
 
 ## 手順 2: PR の要約（日本語）
 
@@ -103,7 +112,8 @@ kompiro は変更の中身を PR の diff で見るので、本文の言い換�
 - 記録の `head=` が PR の HEAD と違えば、記録のあとに入ったコミットを `git log <head>..<PR head>`
   で見て、main の取り込みだけか、レビューされていない変更があるかを伝える
 - 記録が HEAD を指していても、最後の指摘を直したコミットのあとに誰もレビューしていないことがある
-  （High で CodeRabbit の PR レビューが最後に見たコミットが HEAD より古い、など）。そういうコミットが
+  （High で CodeRabbit の PR レビューが最後に見たコミットが HEAD より古い、つまり手順 1 の
+  `coderabbitReviewedHead` が `false` のとき、など）。そういうコミットが
   あれば、その diff を自分で読み、指摘が意図どおりに直っているか、新しい問題が入っていないかを
   所見として書く
 
@@ -138,7 +148,10 @@ app の画面で確かめられない項目（VS Code 拡張、CLI、本番環�
 
 ### 5b. PR の checkout を用意する
 
-PR の spec と fixture はそのブランチにしか無いので、HEAD を一時 worktree に出す。
+PR の spec と fixture はそのブランチにしか無いので、HEAD を一時 worktree に出す。この worktree では
+PR のコード（lockfile の依存、`playwright.config.ts`、fixture）が手元で動く。手順 1 の
+`isCrossRepository` が `true`（fork からの PR）なら、checkout の前に AskUserQuestion で kompiro に
+実行してよいかを聞き、断られたら手順 5 を省いてその旨を書く。
 
 ```bash
 D=$($S/checkout.sh <pr>)          # .claude/worktrees/pr-verify/<pr>
@@ -148,8 +161,9 @@ CFG=$PWD/$S/playwright.preview.config.mts
 
 ### 5c. 手動項目を操作してスクショを撮る
 
-項目ごとに使い捨ての spec を `$OUT/specs/` に書く。fixture は PR の checkout から絶対パスで
-import する（`@playwright/test` をそこから解決させるため）。
+項目ごとに使い捨ての spec を `$OUT/specs/` に書く。ファイル名は `*.spec.ts` にする（Playwright は
+既定でその名前のファイルしか拾わない。例: `M1-share-link.spec.ts`）。fixture は PR の checkout から
+絶対パスで import する（`@playwright/test` をそこから解決させるため）。
 
 ```ts
 import { test, expect } from "<D>/packages/e2e/fixtures/opfs.ts";
@@ -183,8 +197,10 @@ assert が通っただけで「確認できた」としない。結果は項目�
 ### 5d. PR が足した・変えた e2e テストを動画付きで流す
 
 spec ファイルは多くのテストを抱えているので（`at-3563-first-run-experience.spec.ts` だけで 30 本以上）、
-流すのは **PR の差分が触れた `test(...)` だけ**にする。`git -C $D diff origin/main...HEAD -U0 -- <spec>`
-の hunk の行番号から、それを含む `test(` の開始行を見つけ、`<spec>:<line>` で指定する。
+流すのは **PR の差分が触れた `test(...)` だけ**にする。PR の base（`gh pr view <pr> --json baseRefName`。
+stack した PR では `main` ではない）を `B` として、`git -C $D fetch -q origin $B` のあと
+`git -C $D diff origin/$B...HEAD -U0 -- <spec>` の hunk の行番号から、それを含む `test(` の開始行を
+見つけ、`<spec>:<line>` で指定する。
 `test.describe` の中の共通処理（`beforeEach`、ヘルパー）だけが変わったなら、その describe のテストを流す。
 
 ```bash
@@ -223,8 +239,10 @@ Artifact を書く前に `artifact-design` スキルを読み込む。レポー�
 
 ## 手順 6: マージしてよいかの意見
 
-`wait` だった場合や手順に時間がかかった場合は、先に `$S/gate.sh <pr>` を実行し直して `proceed` で
-あることを確かめる（`fix` に変わっていれば手順 1 の差し戻しに切り替える）。
+`wait` だった場合や手順に時間がかかった場合は、先に `$S/gate.sh <pr>` を実行し直す。`fix` に
+変わっていれば手順 1 の差し戻しに切り替える。`wait` のままなら、その理由を意見の根拠に入れる。
+`headSha` が手順 1 と違えば、確かめたあとにコミットが足されたので、そのことを伝えて手順 2〜5 を
+新しい HEAD でやり直すかを kompiro に聞く。
 
 意見は **マージしてよい / 条件付き（kompiro の判断待ちの項目がある）/ マージしないほうがよい** の
 どれかを最初に書き、根拠を 3〜5 点で添える。根拠には手順 1〜5 のうち判断に効いたもの（判断が必要な
@@ -237,16 +255,25 @@ Design Doc と実装のずれをどう扱うか。無ければ「特にありま
 
 `risk: low` の PR は GitHub App（Low PR merger）が自動でマージするので、その旨を添える。
 
-最後に AskUserQuestion でマージするかを聞く（選択肢: マージする / マージしない）。
+draft の PR はマージできない（ready にすると CI と CodeRabbit が走るので、ready にするのは実装
+セッションの手順）。draft なら意見までを伝え、マージは ready にしてから `/pr-verify` をもう一度
+実行するよう添えて終わる。AskUserQuestion は出さない。
+
+draft でなければ、最後に AskUserQuestion でマージするかを聞く（選択肢: マージする / マージしない）。
 
 ### kompiro が OK したとき
 
-1. 手順 5 で **確認できた** 項目だけ、PR 本文の `## Manual Verification Checklist` の対応する
+1. `$S/gate.sh <pr>` を実行し直す。`proceed` で、`headSha` が手順 1 で控えたものと同じなら次へ進む。
+   `fix` なら差し戻しに切り替え、`wait` なら理由を伝えて、待ってから実行し直すか kompiro に聞く。
+   `headSha` が変わっていれば、確かめていないコミットが入っているのでマージせずにそう伝える
+2. 手順 5 で **確認できた** 項目だけ、PR 本文の `## Manual Verification Checklist` の対応する
    `- [ ]` を `- [x]` にする。本文を `gh pr view <pr> --json body --jq .body > $OUT/body.md` で
    取り出し、その行だけを変えて `gh pr edit <pr> --body-file $OUT/body.md` で戻す。ほかの行は
    変えない。確認できなかった項目が残るなら、マージ前に kompiro にそのまま進めてよいか確かめる
-2. `$S/gate.sh <pr>` を実行し直し、`proceed` であることを確かめる
-3. `gh pr merge <pr> --squash` でマージする（リポジトリは squash のみ許可、ブランチは自動削除される）
+   （手順 5 を行わなかった PR はこの手順を飛ばす）
+3. `gh pr merge <pr> --squash --match-head-commit <headSha>` でマージする（リポジトリは squash のみ
+   許可、ブランチは自動削除される）。`--match-head-commit` は、確かめたあとに push があれば
+   マージを拒否させるために付ける
 4. マージできたことを `gh pr view <pr> --json state,mergedAt` で確かめて伝える
 
 ### kompiro が NO と言ったとき
