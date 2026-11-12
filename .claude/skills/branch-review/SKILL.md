@@ -53,6 +53,10 @@ fetch する（上の表）。
 `HEAD_REV` と `BASE` は、どの行でもここで一度だけコミットの SHA に解決して持つ。ref の名前（`HEAD`、ブランチ）の
 まま持つと、レビューの途中で ref が動いたときに、後の読み出しが別のコミットを見る。
 
+この skill で `origin/<name>`（`origin/main` を含む）と書いた ref は、remote-tracking の `refs/remotes/origin/<name>` を
+指す。git のコマンドに渡すときはこの完全な形で書く。同名の tag や手元のブランチ（`origin/main` という名前のものなど）が
+あると、短い形はそちらを指す。
+
 差分は `git diff $BASE $HEAD_REV`、ファイルの一覧は `git diff --name-status $BASE $HEAD_REV`。
 `HEAD_REV` が作業ツリーと違うときは、ファイルを `git show $HEAD_REV:<path>` で、検索を
 `git grep -n <pattern> $HEAD_REV -- <pathspec>` で読む（作業ツリーを読むと別のコードを見ることになる）。
@@ -99,9 +103,11 @@ A〜F をすべて行う。指摘の候補は、場所と「どんな入力や�
 ### D. 一緒に変わるべきもの
 
 下の表のうち、変更に当てはまる行を確かめる。ここで見るのは、CI が見ていない中身（記述が正しいか）である。
-CI が検査している部分は、その check が `$HEAD_REV` で通っているとき（`gh api repos/kompiro/karasu/commits/$HEAD_REV/check-runs
---jq '.check_runs[] | "\(.name) \(.conclusion)"'`）だけ CI に任せる。まだ走っていない（push 前のブランチなど）か
-落ちているときは、作業ツリーが `$HEAD_REV` なら同じ検査を手元で走らせ（`pnpm -s lint:skill-reference-bundle-sync` など、
+CI が検査している部分は、その検査の script を実行する step が `$HEAD_REV` で走って通ったときだけ CI に任せる。
+check の名前と結果だけでは決めない。変更したパスによっては、同じ名前の check が検査を走らせない skip の stub
+（`.github/workflows/*-skip.yml`）で通る。`gh api repos/kompiro/karasu/commits/$HEAD_REV/check-runs` で run を引き、
+`gh run view <run id> --json jobs --jq '.jobs[].steps[] | "\(.name) \(.conclusion)"'` で、その script の step が
+`success` になっていることを確かめる。そうでない（push 前のブランチ、stub だけが走った、落ちている）ときは、作業ツリーが `$HEAD_REV` なら同じ検査を手元で走らせ（`pnpm -s lint:skill-reference-bundle-sync` など、
 `package.json` の同名の script）、そうでなければ中身を直接比べるか、「確認していない範囲」に書く。
 
 | 変更したもの | 一緒に確かめるもの | CI が見ている部分（ここでは見ない） |
