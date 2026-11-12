@@ -19,7 +19,7 @@
  *   keeps something from the previous render, draws differently in one of the
  *   passes. The primer is there because nearly every example keeps the floor
  *   budget, so the corpus alone leaves little behind that differs; the primer
- *   is a view the search widens (asserted below).
+ *   is a view the search widens (asserted in the test).
  * - **Trials leave nothing behind.** `searchWidthBudget` is wrapped: after it
  *   returns, every candidate it tried is placed again and must equal the run it
  *   produced the first time. A trial that mutates the input or a shared map
@@ -28,6 +28,7 @@
 import { isDeepStrictEqual } from "node:util";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { Parser } from "../parser/parser.js";
+import { searchWidthBudget } from "./aspect-search.js";
 import {
   GROUP_BY_MODES,
   loadExampleCorpus,
@@ -39,12 +40,15 @@ const replays = { searches: 0, trials: 0, widened: 0 };
 const impure: string[] = [];
 vi.mock("./aspect-search.js", async (importOriginal) => {
   const mod = await importOriginal<typeof import("./aspect-search.js")>();
-  const searchWidthBudget: typeof mod.searchWidthBudget = (place, size, opts) => {
-    const tried: { budget: number; run: ReturnType<typeof place> }[] = [];
+  const wrapped: typeof mod.searchWidthBudget = (place, size, opts) => {
+    // Each run is copied as it is made: a later candidate that mutates a map
+    // or array the kept run shares would otherwise change the copy it is
+    // compared against along with it, and the replay would match.
+    const tried: { budget: number; run: ReturnType<typeof place>; snapshot: unknown }[] = [];
     const found = mod.searchWidthBudget(
       (budget) => {
         const run = place(budget);
-        tried.push({ budget, run });
+        tried.push({ budget, run, snapshot: structuredClone(run) });
         return run;
       },
       size,
@@ -52,14 +56,17 @@ vi.mock("./aspect-search.js", async (importOriginal) => {
     );
     replays.searches++;
     if (found.budget !== opts.floor) replays.widened++;
-    for (const { budget, run } of tried) {
+    for (const { budget, run, snapshot } of tried) {
       replays.trials++;
-      if (!isDeepStrictEqual(place(budget), run))
-        impure.push(`budget ${budget} of ${tried.length}`);
+      if (!isDeepStrictEqual(run, snapshot)) {
+        impure.push(`budget ${budget} of ${tried.length}: changed after it was made`);
+      } else if (!isDeepStrictEqual(place(budget), snapshot)) {
+        impure.push(`budget ${budget} of ${tried.length}: places differently again`);
+      }
     }
     return found;
   };
-  return { ...mod, searchWidthBudget };
+  return { ...mod, searchWidthBudget: wrapped };
 });
 
 /** Globals a placement could read the viewport from, were one ever to. */
@@ -124,8 +131,11 @@ describe("the width-budget search over every view of every example (TPL-2593)", 
     });
     const differing = [...first].filter(([key, svg]) => second.get(key) !== svg).map(([k]) => k);
     expect(first.size).toBeGreaterThan(200);
-    // The primer moved the search off the floor, so it left a different result behind.
-    expect(replays.widened).toBeGreaterThan(0);
+    // The primer moves the search off the floor, so it leaves a different
+    // result behind than the examples, nearly all of which keep the floor.
+    const widened = replays.widened;
+    renderEveryView(PRIMER, "none");
+    expect(replays.widened).toBeGreaterThan(widened);
     expect(differing).toEqual([]);
   });
 
@@ -138,5 +148,23 @@ describe("the width-budget search over every view of every example (TPL-2593)", 
     // state for the next one has a next one to dirty.
     expect(replays.trials).toBeGreaterThan(replays.searches);
     expect(impure).toEqual([]);
+  });
+
+  it("rejects a placement that reuses one mutable result (negative control)", () => {
+    // One object returned for every budget: each trial overwrites the run an
+    // earlier trial returned. The replay alone would match (it overwrites the
+    // object again); the copy taken when the run was made does not.
+    const run = { width: 0, height: 900 };
+    const before = impure.length;
+    searchWidthBudget(
+      (budget) => {
+        run.width = budget;
+        return run;
+      },
+      (r) => ({ width: r.width, height: r.height }),
+      { floor: 1200 },
+    );
+    const caught = impure.splice(before);
+    expect(caught.length).toBeGreaterThan(0);
   });
 });
