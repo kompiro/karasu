@@ -100,7 +100,7 @@ karasu の boundary で実際にこうなった:
       `border-color` だけの指定で塗りとタイトルも追従する）。「指定されなかったものは
       既定値」で済ませると、1 エンティティ 2 色が仕様として固定される。 [judgment]
 - [ ] karasu の boundary では、全ての描画面（枠・塗り・タイトル・`◇` タブ）が `resolveBoundaryPaint` から色を取り、
-      `palette.boundaryHues` を直接読まない。 [guard: `packages/core/src/renderer/boundary-paint-surfaces.test.ts`]
+      `palette.boundaryHues` を直接読まない。
 
 ## 関連テスト
 
@@ -115,7 +115,7 @@ karasu の boundary で実際にこうなった:
   塗り直すと SVG に `palette.boundaryHues` の色が 1 つも残らないことを見る。色相を自分で引く面は、どの関数で描いても
   色が残って落ちる（チェックリスト 6 項目目）。描く入口はそれぞれ、塗り直す前にどれかのモデルで色相を出すことも
   確かめる（出さない入口では塗り直しが何も証明しない）。entity view（`renderEntityView`）は boundary を描かないので
-  理由付きで分け、どのモデルでも色相を出さないことを見る。boundary 以外のエンティティは見ない（1 項目目は、エンティティごとに面の集合が違い閉じた集合が無いので印なし）
+  理由付きで分け、どのモデルでも色相を出さないことを見る。boundary 以外のエンティティは見ない。描くのはモデルの集合で塗りの経路を列挙しないので、どのモデルも通らない分岐が `palette.boundaryHues` を直接読んでも落ちず、6 項目目のガードにはしない（PR #3778 のレビュー）（1 項目目は、エンティティごとに面の集合が違い閉じた集合が無いので印なし）
 - 4 項目目（解決規則を書き写していない）にはガードが無い。`StyleRule.sourceIndex` を外して `flattenSheetsInCascadeOrder` の
   結果だけが順序を持つ型にする案は、#2445 の形（シートごとの index でのソート）は書けなくするが、specificity と配列の
   位置で比べるソートは手で書けるので、新しい書き写しを止めない
