@@ -88,7 +88,7 @@ opt-in な視覚レイヤを足す / 触る PR で:
 - [ ] 「無効」を `undefined` に畳んでおり、空だが有効な状態が型として作れない。
       新しいレイヤでは型の形を設計で決めるので、レイヤの閉じた集合が無く機械では見ない。
 - [ ] facet overlay では、`FacetOverlay.entries` が非空の readonly タプルのままで、
-      選択の無い overlay を書くと typecheck が落ちる。 [guard: `packages/core/src/renderer/facet-overlay.ts`]
+      選択の無い overlay を書くと typecheck が落ちる。 [guard: `packages/core/src/renderer/facet-overlay-type.test.ts`]
 
 ## 関連テスト
 
@@ -98,8 +98,10 @@ opt-in な視覚レイヤを足す / 触る PR で:
 - `packages/core/src/compile/facet-overlay-surfaces.test.ts` — `facet overlay reaches every render surface (TPL-219)` の
   「every surface leaves its output untouched when nothing is selected」。live compile・drill-down・all-layers・all-views の
   各サーフェスで、未選択時に `data-facet-ring` / `data-facet-member` が出ないこと（TPL-1983）
-- `packages/core/src/renderer/facet-overlay.ts` — `FacetOverlay.entries` は非空の readonly タプル（`NonEmpty<FacetOverlayEntry>`）で、
-  `resolveFacetOverlay` は型の述語で絞ってから返す。`entries: []` や絞っていない配列を入れる overlay は書けない（チェックリスト 7 項目目）。
+- `packages/core/src/renderer/facet-overlay-type.test.ts` — 型のテスト。`FacetOverlay.entries` は非空の readonly タプル
+  （`facet-overlay.ts` の `NonEmpty<FacetOverlayEntry>`）で、`resolveFacetOverlay` は型の述語で絞ってから返す。`entries: []`・
+  絞っていない配列・作った後の `pop()` を `@ts-expect-error` で書き、配列が代入できないことを `expectTypeOf` で見る。core の
+  `typecheck`（`tsc --noEmit`、CI が走らせる）が検査するので、型を配列に戻すと未使用の directive として落ちる（チェックリスト 7 項目目）。
   新しいレイヤは別の型になるので覆わない（6 項目目は印なし）
 
 ## 派生元 spec
