@@ -43,7 +43,7 @@ agent: general-purpose
 | 空 | `git fetch origin main` の後、`HEAD_REV=$(git rev-parse HEAD)`、`BASE=$(git merge-base origin/main $HEAD_REV)`。未コミットの変更は対象外とし、あれば「確認していない範囲」に書く。upstream があれば（`git rev-parse --verify -q @{u}`）fetch して、HEAD に無いコミットが upstream にあれば（`git rev-list HEAD..@{u}`。CodeRabbit の autofix など）それも「確認していない範囲」に書く |
 | PR 番号（`123` / `#123`） | 先頭の `#` を外した番号を `<n>` とする（`pull/#123/head` は fetch できない）。`gh pr view <n> --json title,body,state,baseRefName,baseRefOid,headRefOid,closingIssuesReferences`。`git fetch origin main pull/<n>/head` の後、`baseRefOid` が手元に無ければ（`git cat-file -e <baseRefOid>` が失敗する。base が `main` でない stack の PR）、`git fetch origin <baseRefOid>` で取ってくる（base のブランチは消えていることがあるので名前では取らない）。その後、`BASE=$(git merge-base <baseRefOid> <headRefOid>)`、`HEAD_REV=<headRefOid>`。マージ済みの PR でもこの 2 つで当時の差分を読む |
 | PR 番号とコミット（`123@<sha>`） | PR 番号と同じ。ただし `HEAD_REV=<sha>`、`BASE=$(git merge-base <baseRefOid> <sha>)` にして、PR の途中の状態を読む。`<sha>` が手元に無ければ（force-push で PR の履歴から消えたなど）`git fetch origin <sha>` を試し、それでも無ければそこで止まってそう報告する。PR の本文は今のもの（マージ済みならマージ時のもの）なので、`<sha>` より後の修正を前提にした記述は意図として読まない |
-| ブランチ名 | `git fetch origin main`。origin にブランチがあれば一緒に fetch する。手元のブランチ（`git rev-parse --verify refs/heads/<branch>`）が無いか、`origin/<branch>` の祖先（`git merge-base --is-ancestor <branch> origin/<branch>` が成功し、2 つが違う。CodeRabbit の autofix などで手元が遅れている）なら `HEAD_REV=$(git rev-parse origin/<branch>)`、それ以外は `HEAD_REV=$(git rev-parse <branch>)` にして、まだ push していないコミットも読む。手元と origin が分かれている（どちらにも相手に無いコミットがある）ときは、origin にしか無いコミット（`git rev-list <branch>..origin/<branch>`）を「確認していない範囲」に書く。どちらも `BASE=$(git merge-base origin/main $HEAD_REV)` |
+| ブランチ名 | `git fetch origin main`。origin にブランチがあれば一緒に fetch する。手元のブランチ（`git rev-parse --verify refs/heads/<branch>`）が無いか、`origin/<branch>` の祖先（`git merge-base --is-ancestor refs/heads/<branch> origin/<branch>` が成功し、2 つが違う。CodeRabbit の autofix などで手元が遅れている）なら `HEAD_REV=$(git rev-parse origin/<branch>)`、それ以外は `HEAD_REV=$(git rev-parse refs/heads/<branch>)` にして、まだ push していないコミットも読む。手元のブランチは常に `refs/heads/<branch>` と書く（同名の tag があると、裸の名前は tag を指す）。手元と origin が分かれている（どちらにも相手に無いコミットがある）ときは、origin にしか無いコミット（`git rev-list refs/heads/<branch>..origin/<branch>`）を「確認していない範囲」に書く。どちらも `BASE=$(git merge-base origin/main $HEAD_REV)` |
 
 どの行でも main を一緒に fetch する。手元の `origin/main` が古いと、ブランチ名では merge-base が古い main のコミットに
 落ちて、その後に main へ入った変更まで PR の差分として読むことになり、PR 番号では `baseRefOid` が手元に無く
@@ -124,9 +124,9 @@ CI が検査している部分は、その check が `$HEAD_REV` で通ってい
 `CLAUDE.md` もルールも、`origin/main` と `$HEAD_REV` の両方で読む（`git show <rev>:<path>`）。作業ツリーの
 ファイルは、いまのブランチの未マージの変更を含みうるので使わない。`$HEAD_REV` 側には、この PR が足したり変えたり
 したルールが入る。`origin/main` 側は今のルールで、まだマージしていない PR にはマージのときに当たる。
-この PR が変えたり消したりしたルールのファイル（`git diff --name-status $BASE $HEAD_REV -- CLAUDE.md .claude/rules`）は
-`$HEAD_REV` の文だけで判定し、`$HEAD_REV` に無いルールは当てない。`origin/main` の文で判定するのは、この PR が
-触れていないルールだけにする。
+判定は文の単位で分ける。この PR が変えたり消したりした文（`git diff $BASE $HEAD_REV -- CLAUDE.md .claude/rules` の
+hunk の行）は `$HEAD_REV` の文で判定し、消した文は当てない。それ以外の文は、この PR が変えたファイルの中にあっても、
+`origin/main` の文で判定する（PR の後で main に足された文も、マージのときに当たる）。
 
 マージ済みの PR では、今のルールに当時は無かった文も混ざる。マージ済みの PR で、指摘の根拠にした文が `$BASE` にも
 `$HEAD_REV` にも無い（PR の後で足された）ときだけ、原因を「この PR」としたまま重大度を 1 段下げる。まだマージして
