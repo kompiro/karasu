@@ -361,13 +361,9 @@ export function rejectMisplacedProperty(ctx: ParseContext, nodeKind: string): bo
   switch (ctx.peek().type) {
     case TokenType.Role:
       // A bare `role` must not take the source of an edge on the next line;
-      // a string on its own line is still its value (`role "A" -> B`).
+      // a string on the same line is still its value (`role "A" -> B`).
       rejectProperty(ctx, "role", nodeKind, (keyword) => {
-        const arrow = ctx.peekAt(1).type;
-        const edgeStart = arrow === TokenType.Arrow || arrow === TokenType.DashedArrow;
-        const nextLine = ctx.peek().loc.line !== keyword.loc.line;
-        if (!(nextLine && isIdOrString(ctx.peek()) && edgeStart))
-          ctx.match(TokenType.StringLiteral);
+        if (!opensEdgeOnLaterLine(ctx, keyword)) ctx.match(TokenType.StringLiteral);
       });
       return true;
     case TokenType.Handles:

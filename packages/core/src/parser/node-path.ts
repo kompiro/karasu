@@ -33,22 +33,31 @@ import type { NodeIdPath } from "../types/ast.js";
  * such reader stops on this one check, so they cannot disagree on where the
  * next statement begins (#3499, #3752).
  *
- * The arrow has to be on the same line as the id. In `-> b` / `"calls"` /
- * `-> c`, the string is also followed by an arrow, but that arrow opens an
- * implicit-source edge on the line after, so `"calls"` stays the label of
- * `-> b`. And the id has to be on a later line: on one line, `a -> b "x" -> c`
- * keeps `"x"` as the label and reports the stray `-> c`, instead of quietly
- * reading a second edge.
+ * The id has to start on a later line than the one `after` ends on: on one
+ * line, `a -> b "x" -> c` keeps `"x"` as the label and reports the stray
+ * `-> c`, instead of quietly reading a second edge. And the arrow has to be on
+ * the line the id ends on. In `-> b` / `"calls"` / `-> c`, the string is also
+ * followed by an arrow, but that arrow opens an implicit-source edge on the
+ * line after, so `"calls"` stays the label of `-> b`.
+ *
+ * Both compare where a token ends, not where it starts, because a string
+ * literal may span lines: `a -> "b⏎c" "x" -> c` puts `"x"` on the line the
+ * target closes on, which is the same line as far as the author can see.
  */
 export function opensEdgeOnLaterLine(cursor: TokenCursor, after: Token): boolean {
   const next = cursor.peek();
   const arrow = cursor.peekAt(1);
   return (
-    next.loc.line > after.loc.line &&
+    next.loc.line > endLine(after) &&
     (next.type === TokenType.Identifier || next.type === TokenType.StringLiteral) &&
     (arrow.type === TokenType.Arrow || arrow.type === TokenType.DashedArrow) &&
-    arrow.loc.line === next.loc.line
+    arrow.loc.line === endLine(next)
   );
+}
+
+/** The line a token ends on; a hand-built token without `end` ends where it starts. */
+function endLine(token: Token): number {
+  return (token.end ?? token.loc).line;
 }
 
 /** Result of reading the dotted tail of a node-reference path. */

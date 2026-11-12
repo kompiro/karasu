@@ -60,7 +60,18 @@ describe("an optional string stops at an edge on a later line (#3752)", () => {
     });
 
     it("reads a quoted source after a plain-id edge as its own edge", () => {
-      expect(parse(SYSTEM(`  a -> c\n  "x" -> c`)).edges).toEqual(["a -> c", "x -> c"]);
+      const parsed = parse(SYSTEM(`  a -> c\n  "x" -> c`));
+      expect(parsed.edges).toEqual(["a -> c", "x -> c"]);
+      expect(parsed.errors).toEqual([]);
+    });
+
+    // A string literal may span lines, so the check reads where tokens end.
+    it("reads a multi-line quoted source on the next line as its own edge", () => {
+      const parsed = parse(
+        `system S {\n  service a {}\n  service b {}\n  service "x\ny" {}\n  a -> b\n  "x\ny" -> b\n}\n`,
+      );
+      expect(parsed.edges).toEqual(["a -> b", "x\ny -> b"]);
+      expect(parsed.errors).toEqual([]);
     });
   });
 
@@ -87,6 +98,14 @@ describe("an optional string stops at an edge on a later line (#3752)", () => {
       expect(parsed.links).toEqual(["https://example.com"]);
       expect(parsed.edges).not.toContain("a -> b");
       expect(parsed.errors).toEqual(["edge-source-mismatch"]);
+    });
+
+    // The recovery after the removed `team` property reads an optional value
+    // the same way.
+    it("does not read the next line's source as a removed team property's value", () => {
+      const parsed = parse(BLOCK(`    team\n    "x y" -> b`));
+      expect(parsed.edges).toEqual(["x y -> b"]);
+      expect(parsed.errors).toEqual(["team-property-removed", "edge-source-mismatch"]);
     });
 
     it("still reads a link label on the next line that no arrow follows", () => {
@@ -135,7 +154,16 @@ describe("an optional string stops at an edge on a later line (#3752)", () => {
         `system S {\n  service a {}\n  service b {}\n  service c {}\n  a -> b "x" -> c\n}\n`,
       );
       expect(parsed.edges).toEqual(['a -> b "x"']);
-      expect(parsed.errors).toHaveLength(2);
+      expect(parsed.errors).toEqual(["unexpected-token-in-block", "unexpected-token-in-block"]);
+    });
+
+    it("keeps a string on the line a multi-line target closes on a label", () => {
+      // `"x"` starts on a later line than `"b⏎c"` starts, but on the line it ends.
+      const parsed = parse(
+        `system S {\n  service a {}\n  service "b\nc" {}\n  service c {}\n  a -> "b\nc" "x" -> c\n}\n`,
+      );
+      expect(parsed.edges).toEqual(['a -> b\nc "x"']);
+      expect(parsed.errors).toEqual(["unexpected-token-in-block", "unexpected-token-in-block"]);
     });
   });
 });
