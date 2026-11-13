@@ -25,7 +25,9 @@ import {
   type DiagramTheme,
   type DiagramType,
   type DisplayMode,
+  wrapSvgForOgpFrame,
 } from "@karasu-tools/core";
+import { OG_IMAGE_BACKGROUND, OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH } from "./og-image.js";
 
 export interface RenderResult {
   status: number;
@@ -97,4 +99,28 @@ export function renderSubmission(krs: string, params: URLSearchParams): RenderRe
       body: `Render error: ${cause instanceof Error ? cause.message : String(cause)}`,
     };
   }
+}
+
+declare const OG_IMAGE_SVG: unique symbol;
+
+/**
+ * An SVG only {@link ogImageSource} makes. `rasterizeOgPng` accepts nothing
+ * else, so every PNG this Worker draws is one the raster-input guard
+ * (`scripts/ci/raster-input.test.ts`, TPL-1799) runs over the whole corpus:
+ * a caller cannot hand resvg the all-views SVG, whose `:target` tabs draw as
+ * an empty body, without a cast that says so.
+ */
+export type OgImageSvg = string & { readonly [OG_IMAGE_SVG]: true };
+
+/** The OGP card for a submission: its system view, letterboxed into the 1200×630 frame. */
+export function ogImageSource(krs: string): { status: 200; svg: OgImageSvg } | RenderResult {
+  const rendered = renderSubmission(krs, new URLSearchParams({ view: "system" }));
+  if (rendered.status !== 200) return rendered;
+  const svg = wrapSvgForOgpFrame(
+    rendered.body,
+    OG_IMAGE_WIDTH,
+    OG_IMAGE_HEIGHT,
+    OG_IMAGE_BACKGROUND,
+  );
+  return { status: 200, svg: svg as OgImageSvg };
 }

@@ -38,7 +38,7 @@ export const OG_EDGE_CACHE_SECONDS = 24 * 60 * 60;
 /**
  * The fonts resvg needs, staged from `packages/app/public/fonts/`.
  *
- * Exactly the set the app's `/render` loads (`functions/render.ts`), which
+ * Exactly the set the app's `/render` loads (`functions/_lib/share-raster.ts`), which
  * `png-font-coverage.test.ts` checks against every glyph the renderer emits
  * (TPL-1799). `og-image.test.ts` keeps this list equal to that one.
  */

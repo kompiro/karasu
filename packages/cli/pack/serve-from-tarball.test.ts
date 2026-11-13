@@ -1,4 +1,4 @@
-import { type ChildProcess, execFileSync, spawn } from "node:child_process";
+import { type ChildProcess, execFileSync, spawn, spawnSync } from "node:child_process";
 import {
   mkdirSync,
   mkdtempSync,
@@ -12,6 +12,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { BUILTIN_ICON_SOURCES } from "../../core/src/shapes/builtin-icons.generated.ts";
 
 /**
  * `karasu serve` from the tarball npm users install (#3017, TPL-1024 /
@@ -182,5 +183,61 @@ describe("karasu serve from the tarball (#3017)", () => {
     expect(JSON.parse(body)).toEqual({
       files: [{ path: "index.krs", content: "system A { service B {} }\n" }],
     });
+  });
+});
+
+/**
+ * The markup of an icon's `krs-pictogram` group, with `{{color}}` matching any
+ * colour. Throws when an icon has no such group, so an icon added in another
+ * shape fails here instead of being skipped.
+ */
+function pictogramPattern(name: string, svg: string): RegExp {
+  const inner = /<g class="krs-pictogram"[^>]*>([\s\S]*)<\/g>\s*<text class="krs-label"/.exec(
+    svg,
+  )?.[1];
+  if (inner === undefined) throw new Error(`icon "${name}" has no krs-pictogram group`);
+  const escaped = inner.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(escaped.replaceAll("\\{\\{color\\}\\}", '[^"]*'));
+}
+
+// The built-in icons are core's to register (#2802): a host that bundles core
+// must carry them without registering anything itself. The workspace tests
+// import core from `src/`, so only the bundle can show that esbuild kept the
+// registration that runs on import (TPL-2802). Every name in the generated
+// manifest is drawn, so an icon added later is checked here too.
+describe("karasu render from the tarball draws every built-in icon (TPL-2802)", () => {
+  it("resolves each url() name with no style-unknown-icon warning", () => {
+    const project = join(work, "icons");
+    mkdirSync(project);
+    const ids = BUILTIN_ICON_SOURCES.map((_, i) => `Icon${i}`);
+    writeFileSync(
+      join(project, "index.krs"),
+      `@import "./icons.krs.style"\n\nsystem A {\n${ids.map((id) => `  service ${id}\n`).join("")}}\n`,
+    );
+    writeFileSync(
+      join(project, "icons.krs.style"),
+      BUILTIN_ICON_SOURCES.map(({ name }, i) => `#${ids[i]} {\n  shape: url("${name}");\n}\n`).join(
+        "",
+      ),
+    );
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(work, "package/dist/index.js"),
+        "render",
+        join(project, "index.krs"),
+        "--view",
+        "system",
+      ],
+      { encoding: "utf8", env: { ...process.env, VITEST: undefined } },
+    );
+    expect(result.status).toBe(0);
+    expect(result.stderr).not.toMatch(/style-unknown-icon|names no registered icon/);
+    // Each icon's whole pictogram, as the renderer inlines it (its colour
+    // filled in): present only when that icon, not the box fallback, was drawn.
+    const missing = BUILTIN_ICON_SOURCES.filter(
+      ({ name, svg }) => !pictogramPattern(name, svg).test(result.stdout),
+    ).map(({ name }) => name);
+    expect(missing).toEqual([]);
   });
 });

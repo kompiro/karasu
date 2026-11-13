@@ -14,7 +14,7 @@ assumptions:
   - "symbol: packages/app/src/render/share-page.ts :: buildSharePage"
   - "file: packages/core/src/renderer/ogp-frame.ts"
   - "symbol: packages/core/src/renderer/ogp-frame.ts :: wrapSvgForOgpFrame"
-  - "symbol: functions/render.ts :: wrapSvgForOgpFrame"
+  - "symbol: packages/app/src/render/share-render.ts :: wrapSvgForOgpFrame"
   - "symbol: packages/app/src/utils/inline-share.ts :: buildShareUrls"
   - "symbol: packages/app/src/utils/inline-share.ts :: MAX_UNFURL_PAYLOAD"
   - "file: packages/app/src/components/ShareDialog.tsx"

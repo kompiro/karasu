@@ -60,7 +60,7 @@ describe("stageViewer (#2998)", () => {
     // renderer emits. Holding this list equal to it is what lets the gallery's
     // image rely on that proof instead of needing its own.
     const render = readFileSync(
-      resolve(import.meta.dirname, "../../../functions/render.ts"),
+      resolve(import.meta.dirname, "../../../functions/_lib/share-raster.ts"),
       "utf8",
     );
     const loaded = [...render.matchAll(/"\/fonts\/([^"]+)"/g)].map((match) => match[1]);

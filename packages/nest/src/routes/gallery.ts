@@ -21,7 +21,6 @@
  * repository route entirely; until then, both are reachable and neither
  * shadows the other.
  */
-import { wrapSvgForOgpFrame } from "@karasu-tools/core";
 import { requireBinding } from "../env.js";
 import { error, html, png, svg, text } from "../http.js";
 import { logError } from "../log.js";
@@ -30,16 +29,13 @@ import { currentViewer } from "../auth/current.js";
 import { GalleryStore } from "../store/gallery-store.js";
 import { InvalidGalleryRefError, parseSubmissionId } from "../store/gallery-keys.js";
 import type { Submission } from "../store/submissions.js";
-import { renderSubmission } from "../gallery/render.js";
+import { ogImageSource, renderSubmission } from "../gallery/render.js";
 import { VIEWER_TEMPLATE_PATH } from "../gallery/viewer-assets.js";
 import { viewerHeader, viewerPage } from "../gallery/viewer-page.js";
 import { ogpMeta } from "../gallery/ogp.js";
 import {
   edgeCache,
   type EdgeCacheLike,
-  OG_IMAGE_BACKGROUND,
-  OG_IMAGE_HEIGHT,
-  OG_IMAGE_WIDTH,
   ogImageCacheEntry,
   ogImageCacheKey,
   ogImageUrl,
@@ -231,21 +227,17 @@ export async function submissionOgImage(context: RouteContext): Promise<Response
     return png(cached, { cacheControl: PUBLIC_CACHE });
   }
 
-  const rendered = renderSubmission(submission.krs, new URLSearchParams({ view: "system" }));
+  const source = ogImageSource(submission.krs);
   // 422 for a document that cannot be shown, as `?format=svg` answers. Not
   // cached: `text` defaults to `no-store`, and nothing reaches the edge cache.
-  if (rendered.status !== 200) return text(rendered.body, { status: rendered.status });
+  if (!("svg" in source)) return text(source.body, { status: source.status });
 
   // Outside the `try`: a deploy without the binding is a configuration error,
   // which `app.ts` answers as 503 naming it, not a failed drawing.
   const assets = requireBinding(context.env, "ASSETS");
   let image: Uint8Array<ArrayBuffer>;
   try {
-    image = await rasterizeOgPng(
-      wrapSvgForOgpFrame(rendered.body, OG_IMAGE_WIDTH, OG_IMAGE_HEIGHT, OG_IMAGE_BACKGROUND),
-      assets,
-      context.url,
-    );
+    image = await rasterizeOgPng(source.svg, assets, context.url);
   } catch (cause) {
     // wasm or a font failed to load. The next request retries both.
     logError("karasu-nest could not draw an OGP image", cause);
