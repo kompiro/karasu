@@ -221,6 +221,7 @@ kompiro に決めてほしい点:
 3. `parseLink` は `readValueAfter` で URL を読み、無ければ `expected-string-after`（`property: "link"`）を出して `undefined` を返す。`expected-string-after` の `property` の型と i18n の表示を直す。呼び出し側 9 か所は `undefined` を足さない
 4. 上の表の残りの各所（`label`・`role`・`slack`・`github`・node の宣言の id・`contains`・`owns`・deploy の値）を `readValueAfter` と `reportMissingValue` に置き換える
 5. `edge-parser.ts`: `parseEdge` は target が無いとき、positional label を読まずに tag・`#id`・property block を読み、`expected-id-or-string` を出して `undefined` を返す。呼び出し側（`block-contents.ts` ×2、`infra-parser.ts` ×2、`parser.ts` ×2）を直す。`ctx.tryParseEdge` は「edge を始めない」と「edge を読んだが target が無い」を区別して返し、`rejectEdge` は後者を読み切ったものとして扱う（診断は `expected-id-or-string` の 1 件）。トップレベルの `a ->` は今どおり `top-level-declaration` も出し、error は 2 件になる（直す場所が 2 つあるため）
+<!-- absent-path-next-line: the test file the implementation PR creates (#3767) -->
 6. テスト（`packages/core/src/parser/required-value-next-edge.test.ts`）。修正前のコードで落ちることを確かめる:
    - 表の reader ごとに、値の位置に次の行の `"x y" -> b` を置くと、値として読まれず、余分な暗黙の source の edge ができず、値の無い診断が構文の先頭から 1 件出る
    - edge の target: `->` / `"x y" -> b` と `->` / `x -> b`（素の id）。system 直下の `a ->` / `"x y" -> b` で 2 本目の edge が残る。`->` / `}` で edge が残らない。`-> { label "x" }` と `-> [t]` の後に兄弟のプロパティを置き、それが同じ node に付く
