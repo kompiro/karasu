@@ -562,6 +562,61 @@ const LINK = /\[([^\]]*)\]\(([^)\s]+)\)/g;
 const CODE_SPAN = /`([^`]+)`/g;
 const refToken = (stem: string) => `⟦ref:${stem}⟧`;
 
+type Segment =
+  | { kind: "link"; start: number; body: string; target: string }
+  | { kind: "code" | "plain"; start: number; body: string };
+
+/** A line cut into markdown links, code spans outside them, and the plain text between. */
+function segmentsOf(line: string): Segment[] {
+  const segs: Segment[] = [];
+  const text = (start: number, body: string) => {
+    let last = 0;
+    for (const m of body.matchAll(CODE_SPAN)) {
+      if (m.index > last)
+        segs.push({ kind: "plain", start: start + last, body: body.slice(last, m.index) });
+      segs.push({ kind: "code", start: start + m.index, body: m[1] });
+      last = m.index + m[0].length;
+    }
+    if (last < body.length)
+      segs.push({ kind: "plain", start: start + last, body: body.slice(last) });
+  };
+  let last = 0;
+  for (const m of line.matchAll(LINK)) {
+    text(last, line.slice(last, m.index));
+    segs.push({ kind: "link", start: m.index, body: m[1], target: m[2] });
+    last = m.index + m[0].length;
+  }
+  text(last, line.slice(last));
+  return segs;
+}
+
+/** What may stand right before a prose `ADR-<n>`, and right after it (#3620). */
+const PROSE_BEFORE = /[\s(（「『、。，,：；぀-ヿ㐀-鿿]/;
+const PROSE_AFTER = /[\s)）」』、。，,：；！？぀-ヿ㐀-鿿]/;
+/** Sentence punctuation that may follow `ADR-<n>` only before a space or the line's end. */
+const SENTENCE_END = /[.:;!?]/;
+/** A whitespace-delimited word that is, or holds, a URL, an address, a tag or link brackets. */
+const URL_LIKE = /:\/\/|^www\.|[@<>[\]]/;
+
+/**
+ * Whether `line[start, end)` is an `ADR-<n>` written as a name in prose: the
+ * characters around it are prose ones listed above, and its word is no URL.
+ * An allowlist, so a URL character not thought of keeps the line out of Low.
+ */
+function isStandaloneName(line: string, start: number, end: number): boolean {
+  const before = line[start - 1];
+  const after = line[end];
+  if (before !== undefined && !PROSE_BEFORE.test(before)) return false;
+  if (after !== undefined && !PROSE_AFTER.test(after)) {
+    const next = line[end + 1];
+    if (!SENTENCE_END.test(after) || (next !== undefined && !/\s/.test(next))) return false;
+  }
+  let [from, to] = [start, end];
+  while (from > 0 && !/\s/.test(line[from - 1])) from -= 1;
+  while (to < line.length && !/\s/.test(line[to])) to += 1;
+  return !URL_LIKE.test(line.slice(from, to));
+}
+
 /**
  * Whether one changed line pair only swaps a reference to a deleted Design Doc for
  * a reference to the ADR that replaced it (ADR-2331's "張り替え"). Only the
@@ -626,53 +681,44 @@ export function isLinkSwap(
   // `ADR-<n>`; then directory-bearing paths in what is left.
   const normalize = (line: string, side: "removed" | "added") => {
     const seen = { old: false, new: false };
-    const plain = (text: string) => {
-      let out = text;
-      if (side === "added") {
-        out = out.replace(/(?<![\w./:?=#&-])ADR-(\d+)(?![\w/-]|\.[\w-])/g, (m, n: string) => {
-          const stem = numbered.get(n);
-          if (stem === undefined) return m;
-          seen.new = true;
-          return `\`${refToken(stem)}\``;
-        });
-      }
-      if (bare(oldRef).test(out)) seen.old = true;
-      if (bare(newRef).test(out)) seen.new = true;
-      return out.replace(bare(either), "⟦ref⟧");
+    const swapPaths = (text: string) => {
+      if (bare(oldRef).test(text)) seen.old = true;
+      if (bare(newRef).test(text)) seen.new = true;
+      return text.replace(bare(either), "⟦ref⟧");
     };
-    const outsideLinks = (text: string) => {
-      let out = "";
-      let last = 0;
-      for (const m of text.matchAll(CODE_SPAN)) {
-        out += plain(text.slice(last, m.index));
-        const ref = wholeRef(m[1]);
+    let out = "";
+    for (const seg of segmentsOf(line)) {
+      if (seg.kind === "link") {
+        const ref = wholeRef(seg.target);
         if (ref === undefined) {
-          out += m[0].replace(bare(either), "⟦ref⟧");
-          if (bare(oldRef).test(m[1])) seen.old = true;
-          if (bare(newRef).test(m[1])) seen.new = true;
+          out += `[${swapPaths(seg.body)}](${seg.target})`;
+        } else {
+          seen[ref.old ? "old" : "new"] = true;
+          out += `[${isName(seg.body) ? "⟦name⟧" : swapPaths(seg.body)}](⟦ref⟧)`;
+        }
+      } else if (seg.kind === "code") {
+        const ref = wholeRef(seg.body);
+        if (ref === undefined) {
+          out += `\`${swapPaths(seg.body)}\``;
         } else {
           seen[ref.old ? "old" : "new"] = true;
           out += `\`${refToken(ref.stem)}\``;
         }
-        last = m.index + m[0].length;
-      }
-      return out + plain(text.slice(last));
-    };
-    let out = "";
-    let last = 0;
-    for (const m of line.matchAll(LINK)) {
-      out += outsideLinks(line.slice(last, m.index));
-      const ref = wholeRef(m[2]);
-      if (ref === undefined) {
-        out += m[0];
       } else {
-        seen[ref.old ? "old" : "new"] = true;
-        const text = isName(m[1]) ? "⟦name⟧" : m[1].replace(bare(either), "⟦ref⟧");
-        out += `[${text}](⟦ref⟧)`;
+        let text = seg.body;
+        if (side === "added") {
+          text = text.replace(/ADR-(\d+)/g, (m: string, n: string, offset: number) => {
+            const stem = numbered.get(n);
+            const start = seg.start + offset;
+            if (stem === undefined || !isStandaloneName(line, start, start + m.length)) return m;
+            seen.new = true;
+            return `\`${refToken(stem)}\``;
+          });
+        }
+        out += swapPaths(text);
       }
-      last = m.index + m[0].length;
     }
-    return { text: out + outsideLinks(line.slice(last)), seen };
+    return { text: out, seen };
   };
 
   // The item label pair, compared only when nothing else in the label moved and

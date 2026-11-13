@@ -840,7 +840,15 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
 
   it("keeps swaps it accepted before", () => {
     expect(swap("`docs/design/x.md`", "`docs/adr/12-x.md`")).toBe(true);
-    // a path in the text of a link to the reference
+    // a path inside a code span, and in the text of a link to anything
+    expect(swap("run `cat docs/design/x.md` now", "run `cat docs/adr/12-x.md` now")).toBe(true);
+    expect(
+      swap(
+        "[docs/design/x.md の議論](https://e.example/pull/1)",
+        "[docs/adr/12-x.md の議論](https://e.example/pull/1)",
+        "docs/roadmap.md",
+      ),
+    ).toBe(true);
     expect(
       swap(
         "see [see docs/design/x.md](../design/x.md)",
@@ -886,7 +894,7 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     expect(swap(`- 関連 Design Doc: ${S}`, `  - 関連 ADR: ${L}`)).toBe(false);
     expect(swap(`- 関連 Design Doc: ${S}`, `* 関連 ADR: ${L}`)).toBe(false);
     expect(swap(`- 関連 Design Doc: ${S}`, `- **関連 ADR**: ${L}`)).toBe(false);
-    expect(swap(`- 関連 Design Doc: ${S}`, `- 関連 ADR：${L}`)).toBe(false);
+    expect(swap(`- 関連 Design Doc:${S}`, `- 関連 ADR：${L}`)).toBe(false);
   });
 
   it("rejects the label change while the line still refers to a Design Doc", () => {
@@ -907,6 +915,11 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
 
   it("allows a code span holding the Design Doc's reference to become ADR-<n>", () => {
     expect(swap("（`x.md` の D5）", "（ADR-12 の D5）")).toBe(true);
+    // prose neighbours: Japanese text, brackets, a colon or period before a space
+    expect(swap("設計は`x.md`の D5", "設計はADR-12の D5")).toBe(true);
+    expect(swap("「`x.md`」", "「ADR-12」")).toBe(true);
+    expect(swap("see (`x.md`)", "see (ADR-12)")).toBe(true);
+    expect(swap("`x.md`: the design", "ADR-12: the design")).toBe(true);
     expect(swap("（`./x.md#d5` の D5）", "（ADR-12 の D5）")).toBe(true);
     expect(swap("see `docs/design/x.md`.", "see ADR-12.", "docs/roadmap.md")).toBe(true);
   });
@@ -927,6 +940,25 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
       ["https://e.example/?id=`x.md`", "https://e.example/?id=ADR-12"],
       ["https://e.example/#`x.md`", "https://e.example/#ADR-12"],
       ["<https://e.example/?a=1&`x.md`>", "<https://e.example/?a=1&ADR-12>"],
+      ["https://e.example/?`x.md`", "https://e.example/?ADR-12"],
+      ["see x.`x.md`", "see x.ADR-12"],
+      ["see x-`x.md`", "see x-ADR-12"],
+      ["see `x.md`-y", "see ADR-12-y"],
+      // URL characters nobody listed: the allowlist keeps them out
+      ["<https://e.example/?q=a+`x.md`>", "<https://e.example/?q=a+ADR-12>"],
+      ["https://e.example/a;`x.md`", "https://e.example/a;ADR-12"],
+      ["https://e.example/~`x.md`", "https://e.example/~ADR-12"],
+      ["https://e.example/a%`x.md`", "https://e.example/a%ADR-12"],
+      ["mailto:a@`x.md`", "mailto:a@ADR-12"],
+      ["see <`x.md`>", "see <ADR-12>"],
+      // prose neighbours, but the word is a URL or an address
+      ["https://e.example/（`x.md`）", "https://e.example/（ADR-12）"],
+      ["a@e.example（`x.md`）", "a@e.example（ADR-12）"],
+      // link text the link pattern does not see
+      ['see [`x.md`](https://e.example/x "t")', 'see [ADR-12](https://e.example/x "t")'],
+      ["see [`x.md`][r]", "see [ADR-12][r]"],
+      ["see [a [`x.md`] b](https://e.example/x)", "see [a [ADR-12] b](https://e.example/x)"],
+      ["see [^`x.md`]", "see [^ADR-12]"],
     ]) {
       expect(swap(before, after)).toBe(false);
     }
