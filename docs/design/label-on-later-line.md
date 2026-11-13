@@ -2,7 +2,7 @@
 
 - **日付**: 2026-11-13
 - **ステータス**: 検討中
-- **PR**: #TBD
+- **PR**: #3785
 - **関連**:
   - 引き金 Issue: [#3766](https://github.com/kompiro/karasu/issues/3766)（#3752 の Design Doc で切り出した判断）
   - 関連 ADR: [ADR-3752](../adr/3752-optional-string-stops-at-next-edge.md)（任意で続く要素は後の行で始まる次の edge を読まない）, [ADR-2208](../adr/2208-positional-label-error-promotion.md)（spec に無い受理形を error にした前例）, [ADR-2167](../adr/2167-realizes-comma-list.md)（カンマ列挙の受理形）, [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（`.krs` の凍結）, [ADR-2677](../adr/2677-language-v2-act.md)（language v2.0。error の定義）, [ADR-2209](../adr/2209-edge-property-block.md)（edge の property block）
