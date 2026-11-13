@@ -77,6 +77,8 @@ kind gate を扱う。
 
 ## 関連テスト
 
-- `packages/core/src/renderer/owner-affordance-kinds.test.ts`（kind 網羅・除外 kind・label 表示・measure 予約）
+- `packages/core/src/renderer/owner-affordance-kinds.test.ts`（kind 網羅・除外 kind・label 表示・measure 予約）。`types/ast.ts` が export する kind 集合をすべて `KIND_SET_ROLE`（`satisfies Record<KindSetName, …>`）で分類し、カードの提示を決める集合には kind ごとのモデル表を要求して集合一致を見る。`ast.ts` に集合を足すと分類するまで typecheck が落ち、既存の gate に kind を足すとモデル不足で落ちる。チェックリスト 5 項目目のガードではない: 見るのは `ast.ts` が `ReadonlySet` として export する集合だけで、
+  ほかの場所や配列で書いた gate は漏れる。また新しい集合については、分類とモデル表を求めるだけで、各 kind で提示されることを
+  assert する振る舞いテストは誰も走らせない
 - `packages/app/src/components/NodeDetailPanel.test.tsx`（`teamLabel` を表示し `team` で遷移する）
 - `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-02`（VS Code の preview は #3312 以降 app の `NodeDetailPanel` そのもので、team の label を org ジャンプボタンに出す）

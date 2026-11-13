@@ -13,7 +13,7 @@ import { edgeKey, edgeKindKey } from "../view/edge-key.js";
 import { hasShape } from "../shapes/shape-registry.js";
 // `hasShape` answers for the built-in icons only once they are registered (#2802).
 import "../shapes/builtin-icons.js";
-import { CLIENT_SUBTYPE_TAGS, type ClientSubtypeTag } from "../builtins/icon-theme.js";
+import { applyVariantFirstMatch } from "../builtins/icon-theme.js";
 import { NON_AUTHOR_SHEET_IDS } from "../builtins/non-author-sheets.js";
 import { flattenSheetsInCascadeOrder, mergeInCascadeOrder } from "../style/cascade.js";
 import type {
@@ -196,9 +196,9 @@ export function resolveStyles(
       }
       const merged = mergeMatchingProperties(resolvedNode, allRules);
       const hints = finalizeLayoutHints(merged);
-      // applyClientSubtypeFirstMatch mutates `merged` (shape-related only — does
+      // applyVariantFirstMatch mutates `merged` (shape-related only — does
       // not touch `column`), so it must run after the layout-hint read.
-      applyClientSubtypeFirstMatch(resolvedNode, merged);
+      applyVariantFirstMatch(resolvedNode, merged);
       const style = toResolvedNodeStyle(merged);
       const painted = paintedOf(merged);
       // Keyed by the node's own path; the simple-id entry is derived from these
@@ -528,32 +528,6 @@ function collectEdges(node: KrsNode): KrsEdge[] {
     edges.push(...collectEdges(child));
   }
   return edges;
-}
-
-/**
- * No-op for everything except multi-subtype client nodes.
- *
- * When a client node has more than one of {@link CLIENT_SUBTYPE_TAGS}, CSS
- * cascade alone would resolve to the rule declared latest in the icon theme;
- * that contradicts the intuition that the *first* tag the user wrote should
- * win. This helper rewrites the resolved shape so `client X [mobile] [desktop]`
- * picks `client-mobile`. Single-tag and zero-tag clients are handled correctly
- * by the cascade and untouched here. User-defined shape overrides (anything
- * that is not a `client-<subtype>` icon URL) are left alone too.
- */
-const CLIENT_SUBTYPE_SHAPE_RE = new RegExp(
-  String.raw`^url\("client-(?:${CLIENT_SUBTYPE_TAGS.join("|")})"\)$`,
-);
-
-function applyClientSubtypeFirstMatch(node: KrsNode, merged: Record<string, string>): void {
-  if (node.kind !== "client") return;
-  const subtypes: ClientSubtypeTag[] = node.tags.filter((t): t is ClientSubtypeTag =>
-    (CLIENT_SUBTYPE_TAGS as readonly string[]).includes(t),
-  );
-  if (subtypes.length < 2) return;
-  const currentShape = merged["shape"];
-  if (!currentShape || !CLIENT_SUBTYPE_SHAPE_RE.test(currentShape)) return;
-  merged["shape"] = `url("client-${subtypes[0]}")`;
 }
 
 function resolveEdgeStyle(edge: KrsEdge, rules: StyleRule[], cyclicTag = true): ResolvedEdgeStyle {

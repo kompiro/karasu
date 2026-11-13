@@ -74,3 +74,11 @@ control を最後に描くことで最前面に来て hit-testable を保つ。`
 - `packages/core/src/renderer/drill-down-svg.test.ts` — "drill-down back button paints on top of the level canvas rect"（`buildAllViewsSvg`）
 - `packages/core/src/renderer/drill-down-svg.test.ts` — "entity view back button paints on top of the level canvas rect"（`buildAllViewsSvg` entity level）
 - `packages/e2e` — #2049 M1/M2 popup suite（`xfail` → 通常 assertion に反転予定）
+- `packages/core/src/displaymode-meta.test.ts` — `meta: drill levels paint their controls over the level canvas (#2044)`。
+  `displayMode` を取る公開入口の表（`DISPLAY_MODE_CONSUMERS`、`index.ts` の型から求めた `Record` なので新しい入口は登録するまで
+  typecheck が落ちる）のうち、出力に drill level（`<g class="krs-view…">`）を持つものを出力から選び、fixture と同梱の全 example で、
+  各 level の `<a>`（back button・カードのリンク）がその level の canvas（最初の `<rect>`）より後にあることを見る。
+  連結の順を逆にした箇所・新しい並行 builder・新しい level の種類は、どれかの入口と example を通れば落ちる（チェックリスト 1・2 項目目）。
+  見る control は `<a>` だけで、`<a>` を使わない control は見ない。入口の集合は「公開の SVG 入口はすべて `displayMode` を取る」
+  という前提で `displayMode` の表から取っており（`BUNDLES_LEVELS`）、この前提を強制するものは無い。`displayMode` を取らない
+  SVG 入口と、fixture で level を出さない入口は見ない。このため 1・2 項目目のガードにはしない（新しい入口や、example が通らない経路の control は落ちない。PR #3778 のレビュー）

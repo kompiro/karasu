@@ -93,3 +93,15 @@ scope:
   role を描き、作者指定はそれに勝つことを検証。
 - `packages/core/src/builtins/default-style-contrast.test.ts` — frame タイトルを
   `MUTED_FRAME_TITLE_OPACITY` で合成した後の比を canvas と全 boundary tint 上で検証。
+- `packages/core/src/renderer/theme-colour-sources.test.ts` — 同梱の全 example を `buildAllViewsSvg` で両テーマ・
+  group なし / team / boundary で描き、SVG の塗り（`fill` / `stroke` / `color` / `stop-color` / `flood-color` 属性と、
+  `style` 属性・`<style>` の色のプロパティ）がすべて、そのテーマの `DiagramPalette`・そのテーマの builtin シート・
+  モデルに書かれた色（凡例の swatch）・テーマ非依存と決めた facet の色のどれかから来ることを見る。`none` / `transparent` /
+  `currentColor` / `inherit` / `url(…)` は色を名指さないので除き、hex は 3〜8 桁を `#rrggbb` にそろえ（alpha は見ない）、
+  名前の色は表で値に直す。表に無い名前と `rgb(…)` などはそのまま報告する。片テーマのリテラルやベース style に落ちる要素は、
+  どれかの example が描けば反対のテーマ（ベース style なら両方）で落ちる（チェックリスト 1 項目目）。
+  見るのは `buildAllViewsSvg` の出力だけで、live viewer の chrome（`nodeControls` のボタン）、diff、facet 選択でだけ
+  出る要素は描かない。たまたまそのテーマの色と同じ値のリテラルは区別できない。example が描かない surface の違反は落ちないので、1 項目目のガードにはしない（PR #3778 のレビュー）。
+  導入時点で `table` / `queue-item` / `bucket` のカードは builtin の規則が無く、resolver の `DEFAULT_NODE_STYLE`
+  （dark 向けのカード）に両テーマで落ちていた。色を決めるのは別の判断なので `BASE_CARD_KINDS` に理由付きで免除し、
+  免除が要らなくなったら落ちるようにしている
