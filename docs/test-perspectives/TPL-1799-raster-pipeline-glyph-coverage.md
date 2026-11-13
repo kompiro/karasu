@@ -11,7 +11,7 @@ known_consumers:
   - svg-renderer
 discovered_from:
   - issue: "#1799"
-  - root_cause_file: "functions/render.ts:FONT_PATHS"
+  - root_cause_file: "functions/_lib/share-raster.ts:FONT_PATHS"
 related_to:
   - TPL-1001
   - TPL-219
@@ -54,7 +54,7 @@ scope:
 
 - **フォントはフル同梱で将来堅牢に**: subset は新マーカー追加で再発しやすい。monochrome Noto Emoji（~2MB）をフル同梱して全絵文字をカバー（#1799）。resvg は与えた全 buffer をフォールバック走査するので、buffer 配列に積むだけで per-family 指定は不要。
 - **Node + resvg-wasm で事前確認**: Workers にデプロイする前に、Node から同じフォント buffer でラスタライズして豆腐が無いか確認する（CI の vitest では Workers ランタイムを再現できないため）。
-- **ブラウザ専用 SVG の縮退**: CSS `:target` タブ束ね SVG は静的ラスタで本体が空白になるため、PNG では単一 view にフォールバック（`functions/render.ts` の `view` 既定 = `system`）。
+- **ブラウザ専用 SVG の縮退**: CSS `:target` タブ束ね SVG は静的ラスタで本体が空白になるため、PNG では単一 view にフォールバック（`share-render.ts` の `sharePngSource` の `view` 既定 = `system`）。
 
 ## 関連テスト
 
@@ -62,13 +62,16 @@ scope:
 - `packages/app/src/render/share-render.test.ts` — SVG 経路の生成（ラスタ前段）
 - `packages/app/src/render/png-font-coverage.test.ts` — `PNG raster font coverage (TPL-1799, #1799)`。
   同梱フォントの cmap の和集合がレンダラーの出す非 ASCII マーカー（バッジ・ghost バッジ・縮退タブ）を
-  すべてカバーすることと、`BUNDLED_FONTS` が `functions/render.ts` の読み込むフォント集合と一致することを
+  すべてカバーすることと、`BUNDLED_FONTS` が `functions/_lib/share-raster.ts` の読み込むフォント集合と一致することを
   assert する。マーカーの列挙はテスト内の手書きリストなので、新グリフを足すときはここへの追加が要る
 - `scripts/ci/raster-input.test.ts` — チェックリスト 3・4 のガード。ラスタライザ（`@resvg/*`・`sharp`・`canvas` など）を
   読み込むモジュールを `functions/` と全 workspace パッケージの `src` の import graph（madge）から導き、ラスタ経路の表と
-  一致させる。表の各行は、その経路が何をラスタライズするかを決める関数（`functions/render.ts` は
-  `sharePngSource`、nest の OGP 画像は `ogImageSource`。`rasterizeOgPng` はその戻り値の branded 型しか受け取らない）を
-  呼ぶ。そのうえで Render equivalence と同じコーパス（examples の全 entry と AT の全 `krs` fence を
+  一致させる。ラスタライザを読み込むモジュールは経路ごとに 1 つ（`/render` は `functions/_lib/share-raster.ts`、
+  nest の OGP 画像は `gallery/og-rasterize.ts`）で、それぞれ resvg を呼ぶ関数を 1 つだけ export し、その関数は
+  branded 型の SVG（`SharePngSvg` / `OgImageSvg`）しか受け取らない。その型を作れるのは、何をラスタライズするかを
+  決める関数（`sharePngSource` / `ogImageSource`）だけで、表の各行はその関数を呼ぶ。登録済みのファイルで別の SVG を
+  ラスタライズしようとすると型エラーになり（`functions/` も root の `typecheck` が見る）、別のファイルで resvg を
+  読み込めば表との突き合わせで落ちる。そのうえで Render equivalence と同じコーパス（examples の全 entry と AT の全 `krs` fence を
   `synthesizeSharePayload` で 1 つの payload にしたもの）を各経路の入口に通し、view 指定なし・各 view × light / dark ×
   shape / icon × OGP 枠の有無で、全モデルが描けること、出力の全文字（数値文字参照も展開）が経路のフォントの cmap の
   和集合に入ること、静的ラスタで落ちる要素・CSS（許可リスト外の要素と CSS プロパティ、`:` を含むセレクタ、at-rule、

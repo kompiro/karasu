@@ -9,7 +9,7 @@
  *
  * PNG exists only inside this Worker, as it does inside the app's `/render`
  * Pages Function: core, the CLI and the app stay SVG-only (ADR-105, ADR-1805).
- * This file mirrors `functions/render.ts` deliberately, fonts included, so the
+ * This file mirrors `functions/_lib/share-raster.ts` deliberately, fonts included, so the
  * gallery's card and the app's `/s` card are drawn the same way.
  */
 import { Resvg, initWasm } from "@resvg/resvg-wasm";

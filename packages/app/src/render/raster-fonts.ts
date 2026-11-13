@@ -1,17 +1,17 @@
 /**
- * The fonts the PNG render path (`functions/render.ts`, resvg-wasm) hands the
+ * The fonts the PNG render path (`functions/_lib/share-raster.ts`, resvg-wasm) hands the
  * rasterizer, and a reader for what they cover (TPL-1799, #1799).
  *
  * resvg in the Workers runtime has no system fonts and no implicit fallback:
  * the union of these files' cmaps is every character a PNG can show. Kept out
  * of the test files so two guards read the same list and the same reader:
- * `png-font-coverage.test.ts` (the list equals what `functions/render.ts`
+ * `png-font-coverage.test.ts` (the list equals what `functions/_lib/share-raster.ts`
  * loads, and covers the renderer's markers) and
  * `scripts/ci/raster-input.test.ts` (every character the corpus draws on a
  * raster path is covered).
  */
 
-/** File names under `packages/app/public/fonts/`, in the order `functions/render.ts` loads them. */
+/** File names under `packages/app/public/fonts/`, in the order `functions/_lib/share-raster.ts` loads them. */
 export const RASTER_FONT_FILES: readonly string[] = [
   "NotoSans-Regular.ttf",
   "NotoSansJP-Regular.otf",

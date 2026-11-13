@@ -97,11 +97,23 @@ export function renderSharePayload(params: URLSearchParams): ShareRenderResult {
 }
 
 /** How resvg sizes the image: to a width, or at the SVG's own size. */
-type RasterFit = { mode: "width"; value: number } | { mode: "original" };
+export type RasterFit = { mode: "width"; value: number } | { mode: "original" };
+
+declare const SHARE_PNG_SVG: unique symbol;
+
+/**
+ * An SVG only {@link sharePngSource} makes. The `/render` rasterizer
+ * (`functions/_lib/share-raster.ts`) accepts nothing else, so every PNG the
+ * Pages Function draws is one the raster-input guard
+ * (`scripts/ci/raster-input.test.ts`, TPL-1799) runs over the whole corpus: a
+ * caller cannot hand resvg the all-views SVG, whose `:target` tabs draw as an
+ * empty body, without a cast that says so.
+ */
+export type SharePngSvg = string & { readonly [SHARE_PNG_SVG]: true };
 
 /** What `/render?format=png` hands resvg, or the answer when there is nothing to draw. */
 export type SharePngSource =
-  | { status: 200; svg: string; fitTo: RasterFit; background: string | undefined }
+  | { status: 200; svg: SharePngSvg; fitTo: RasterFit; background: string | undefined }
   | ShareRenderResult;
 
 const positiveCapped = (raw: string | null): number | undefined => {
@@ -137,8 +149,13 @@ export function sharePngSource(params: URLSearchParams): SharePngSource {
   const background = own.get("bg") ?? undefined;
   if (own.get("fit") === "contain" && width && height) {
     const svg = wrapSvgForOgpFrame(result.body, width, height, background ?? "#ffffff");
-    return { status: 200, svg, fitTo: { mode: "width", value: width }, background };
+    return {
+      status: 200,
+      svg: svg as SharePngSvg,
+      fitTo: { mode: "width", value: width },
+      background,
+    };
   }
   const fitTo: RasterFit = width ? { mode: "width", value: width } : { mode: "original" };
-  return { status: 200, svg: result.body, fitTo, background };
+  return { status: 200, svg: result.body as SharePngSvg, fitTo, background };
 }

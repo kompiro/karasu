@@ -52,9 +52,10 @@ interface RasterPath {
  * listed here with the function that chooses what it rasterizes.
  */
 const RASTER_PATHS: Record<string, RasterPath> = {
-  // `/render?format=png`. `sharePngSource` is everything the handler does
-  // before resvg: the handler passes its query straight through.
-  "functions/render.ts": {
+  // `/render?format=png` (`functions/render.ts`). `rasterizeSharePng` accepts
+  // only the branded SVG `sharePngSource` returns, and the handler passes its
+  // query straight through to `sharePngSource`.
+  "functions/_lib/share-raster.ts": {
     fonts: RASTER_FONT_FILES,
     draw: (payload) => {
       const s = encodeShare(payload);

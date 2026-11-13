@@ -5,7 +5,7 @@ import { RASTER_FONT_FILES, readCmapCoverage } from "./raster-fonts.js";
 
 /**
  * Guard for TPL-1799 (#1799): the karasu-nest PNG raster path
- * (`functions/render.ts`, resvg-wasm) supplies its own fonts, with no implicit
+ * (`functions/_lib/share-raster.ts`, resvg-wasm) supplies its own fonts, with no implicit
  * browser fallback. The SVG renderer emits emoji as inline node markers, so the
  * bundled emoji font MUST cover every marker codepoint — otherwise PNG output
  * shows tofu (□) while the browser SVG looks fine.
@@ -45,12 +45,14 @@ const MARKER_CODEPOINTS: ReadonlyArray<{ cp: number; label: string }> = [
 
 // The fonts the PNG render path loads (shared with scripts/ci/raster-input.test.ts).
 // The second test below asserts this set is exactly the `/fonts/*` set wired in
-// functions/render.ts, so the two can't silently diverge (in either direction).
+// functions/_lib/share-raster.ts, so the two can't silently diverge (in either direction).
 const BUNDLED_FONTS = RASTER_FONT_FILES;
 
 const fontPath = (file: string) =>
   fileURLToPath(new URL(`../../public/fonts/${file}`, import.meta.url));
-const RENDER_FN_PATH = fileURLToPath(new URL("../../../../functions/render.ts", import.meta.url));
+const RENDER_FN_PATH = fileURLToPath(
+  new URL("../../../../functions/_lib/share-raster.ts", import.meta.url),
+);
 
 describe("PNG raster font coverage (TPL-1799, #1799)", () => {
   it("the bundled fonts together cover every marker glyph the renderer emits", () => {
@@ -64,7 +66,7 @@ describe("PNG raster font coverage (TPL-1799, #1799)", () => {
     expect(missing).toEqual([]);
   });
 
-  it("BUNDLED_FONTS exactly mirrors the font set functions/render.ts loads", () => {
+  it("BUNDLED_FONTS exactly mirrors the font set functions/_lib/share-raster.ts loads", () => {
     const src = readFileSync(RENDER_FN_PATH, "utf8");
     // Parse the `/fonts/<file>` entries from render.ts FONT_PATHS. Asserting set
     // equality (not just ⊇) catches drift in BOTH directions: a font added to
