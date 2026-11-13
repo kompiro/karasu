@@ -1037,6 +1037,30 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     ).toBe(true);
   });
 
+  it("pairs references in order, so each one only moves from the Design Doc to the ADR or stays", () => {
+    // back from the ADR to the Design Doc, in a code span and in a sibling link
+    expect(swap("`x.md` と `docs/adr/12-x.md`", "ADR-12 と `x.md`")).toBe(false);
+    expect(swap("[x](x.md) と [x](../adr/12-x.md)", "[x](../adr/12-x.md) と [x](x.md)")).toBe(
+      false,
+    );
+    // a reference to the deleted Design Doc left on the added line
+    expect(
+      swap(
+        "see [a](../design/x.md) and [b](../design/x.md)",
+        "see [a](../adr/12-x.md) and [b](../design/x.md)",
+      ),
+    ).toBe(false);
+    // an ADR-<n> that was already there stays as it was
+    expect(
+      swap(
+        "see `docs/design/x.md` (ADR-12).",
+        "see `docs/adr/12-x.md` (ADR-12).",
+        "docs/roadmap.md",
+      ),
+    ).toBe(true);
+    expect(swap("see `x.md` (ADR-12).", "see ADR-12 (ADR-12).")).toBe(true);
+  });
+
   describe("the promotions that motivated it", () => {
     const hunk = (before: string, after: string) => ({
       oldStart: 9,

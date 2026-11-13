@@ -560,8 +560,6 @@ const BARE_MD_NAME = /(?<![\w./-])(?:\.\/)?[\w-][\w.-]*\.md(?![\w-])/;
 /** A markdown link, and a code span. */
 const LINK = /\[([^\]]*)\]\(([^)\s]+)\)/g;
 const CODE_SPAN = /`([^`]+)`/g;
-const refToken = (stem: string) => `⟦ref:${stem}⟧`;
-
 type Segment =
   | { kind: "link"; start: number; body: string; target: string }
   | { kind: "code" | "plain"; start: number; body: string };
@@ -680,16 +678,22 @@ export function isLinkSwap(
   // A code span may become `ADR-<n>` only on lines of plain prose (D3).
   const proseLines = !NOT_PROSE_LINE.test(removed) && !NOT_PROSE_LINE.test(added);
 
-  // Links first, so a code span in link text stays with the link rule; then
-  // whole-reference code spans; then, on the added line only, a standalone
-  // `ADR-<n>`; then directory-bearing paths in what is left.
-  const normalize = (line: string, side: "removed" | "added") => {
-    const seen = { old: false, new: false };
-    const swapPaths = (text: string) => {
-      if (bare(oldRef).test(text)) seen.old = true;
-      if (bare(newRef).test(text)) seen.new = true;
-      return text.replace(bare(either), "⟦ref⟧");
-    };
+  // Each reference is cut out of the line and recorded: what it points at
+  // (the deleted Design Doc, the new ADR, or a same-stem ADR number) and how it
+  // was written. The rest of the line must stay as it was, and the references
+  // are then paired in order, so each one may only move from the Design Doc to
+  // the ADR, or stay. Links first, so a code span in link text stays with the
+  // link rule; then whole-reference code spans; then prose `ADR-<n>`; then
+  // directory-bearing paths in what is left.
+  type Ref = { kind: "old" | "new" | "num"; form: "link" | "code" | "bare"; stem: string };
+  const normalize = (line: string) => {
+    const refs: Ref[] = [];
+    const swapPaths = (text: string) =>
+      text.replace(bare(either), (m: string) => {
+        const ref = wholeRef(m);
+        refs.push({ kind: ref?.old ? "old" : "new", form: "bare", stem: ref?.stem ?? "" });
+        return "⟦ref⟧";
+      });
     let out = "";
     for (const seg of segmentsOf(line)) {
       if (seg.kind === "link") {
@@ -697,7 +701,7 @@ export function isLinkSwap(
         if (ref === undefined) {
           out += `[${swapPaths(seg.body)}](${swapPaths(seg.target)})`;
         } else {
-          seen[ref.old ? "old" : "new"] = true;
+          refs.push({ kind: ref.old ? "old" : "new", form: "link", stem: ref.stem });
           out += `[${isName(seg.body) ? "⟦name⟧" : swapPaths(seg.body)}](⟦ref⟧)`;
         }
       } else if (seg.kind === "code") {
@@ -705,25 +709,31 @@ export function isLinkSwap(
         if (ref === undefined) {
           out += `\`${swapPaths(seg.body)}\``;
         } else {
-          seen[ref.old ? "old" : "new"] = true;
-          out += `\`${refToken(ref.stem)}\``;
+          refs.push({ kind: ref.old ? "old" : "new", form: "code", stem: ref.stem });
+          out += "`⟦ref⟧`";
         }
       } else {
         let text = seg.body;
-        if (side === "added" && proseLines) {
+        if (proseLines) {
           text = text.replace(/ADR-(\d+)/g, (m: string, n: string, offset: number) => {
             const stem = numbered.get(n);
             const start = seg.start + offset;
             if (stem === undefined || !isStandaloneName(line, start, start + m.length)) return m;
-            seen.new = true;
-            return `\`${refToken(stem)}\``;
+            refs.push({ kind: "num", form: "code", stem });
+            return "`⟦ref⟧`";
           });
         }
         out += swapPaths(text);
       }
     }
-    return { text: out, seen };
+    return { text: out, refs };
   };
+  // Which pairs of references, in order, a swap may make (#3620).
+  const pairs = (r: Ref, a: Ref) =>
+    (r.kind === "new" && a.kind === "new") ||
+    (r.kind === "num" && a.kind === "num" && r.stem === a.stem) ||
+    (r.kind === "old" && a.kind === "new" && (r.form !== "code" || r.stem === a.stem)) ||
+    (r.kind === "old" && a.kind === "num" && r.form === "code" && r.stem === a.stem);
 
   // The item label pair, compared only when nothing else in the label moved and
   // the added line no longer refers to any Design Doc.
@@ -744,9 +754,14 @@ export function isLinkSwap(
     from = word(r, removed);
     to = word(a, added);
   }
-  const before = normalize(from, "removed");
-  const after = normalize(to, "added");
-  return before.seen.old && after.seen.new && before.text === after.text;
+  const before = normalize(from);
+  const after = normalize(to);
+  return (
+    before.text === after.text &&
+    before.refs.length === after.refs.length &&
+    before.refs.every((ref, i) => pairs(ref, after.refs[i])) &&
+    before.refs.some((ref) => ref.kind === "old")
+  );
 }
 
 /** The labels of an ADR line in a record: `- **設計 (ADR)**:`, `- **関連 ADR**:` and their spellings. */
