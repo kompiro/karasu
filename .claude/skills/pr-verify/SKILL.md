@@ -166,8 +166,12 @@ PR のコード（lockfile の依存、`playwright.config.ts`、fixture）が手
 ```bash
 D=$($S/checkout.sh <pr>)          # .claude/worktrees/pr-verify/<pr>
 OUT=$PWD/reports/pr-verify/<pr>   # gitignore された置き場（reports/README.md）
+rm -rf "$OUT" && mkdir -p "$OUT/specs" "$OUT/shots"
 CFG=$PWD/$S/playwright.preview.config.mts
 ```
+
+`$OUT` は実行のたびに作り直す。前回の実行の spec やスクショが残っていると、PR から消えた項目の spec が
+新しい preview に対して走ったり、古いスクショがレポートと一緒に公開されたりする。
 
 ### 5c. 手動項目を操作してスクショを撮る
 
