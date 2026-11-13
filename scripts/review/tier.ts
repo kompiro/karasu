@@ -735,14 +735,6 @@ export function isLinkSwap(
     (r.kind === "old" && a.kind === "new" && (r.form !== "code" || r.stem === a.stem)) ||
     (r.kind === "old" && a.kind === "num" && r.form === "code" && r.stem === a.stem);
 
-  // A link to a new ADR may carry the ADR's own name as its text; that name is
-  // no Design Doc, so it does not hold the label back. Any other text stays.
-  // Spaces stand in for the link, so what was on either side cannot join.
-  const adrNames = namesOf(newAdrs);
-  const withoutAdrLinks = (line: string) =>
-    line.replace(LINK, (link: string, text: string, href: string) =>
-      wholeRef(href)?.old === false ? (isNameIn(adrNames, text) ? " " : ` ${text} `) : link,
-    );
   // The item label pair, compared only when nothing else in the label moved and
   // the added line no longer refers to any Design Doc.
   const [r, a] = [ITEM_LABEL.exec(removed), ITEM_LABEL.exec(added)];
@@ -753,7 +745,7 @@ export function isLinkSwap(
     r[2] === a[2] &&
     r[4] === a[4] &&
     !DESIGN_PATH.test(added) &&
-    !(inDesignDir && BARE_MD_NAME.test(withoutAdrLinks(added)))
+    !(inDesignDir && BARE_MD_NAME.test(added))
   ) {
     // Only the label word is replaced: the indent, bold marks and colon stay in
     // both lines, so they must match, and the colon still precedes the value.

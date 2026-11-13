@@ -878,20 +878,22 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     expect(swap("  - 関連 Design Doc: [x.md](x.md)（注）", `  - 関連 ADR: ${L}（注）`)).toBe(true);
     expect(swap("- **関連 Design Doc**: [x.md](x.md)", `- **関連 ADR**: ${L}`)).toBe(true);
     expect(swap("- 関連 Design Doc：[x.md](x.md)", `- 関連 ADR：${L}`)).toBe(true);
-    // the new ADR's file name as link text is no Design Doc left on the line
+    // Any bare .md name on the added line holds the label back, even the new
+    // ADR's own file name as its link text: cutting links out of the line to
+    // tell them apart joined or split the text around them (PR #3781).
     expect(swap("- 関連 Design Doc: [x.md](x.md)", "- 関連 ADR: [12-x.md](../adr/12-x.md)")).toBe(
-      true,
+      false,
     );
-    // but the Design Doc's name kept as the text of the ADR link still holds it back
     expect(swap("- 関連 Design Doc: [x.md](x.md)", "- 関連 ADR: [x.md](../adr/12-x.md)")).toBe(
       false,
     );
-    // ... even right after a slash or a period, where taking the link out would join them
+    // Design Doc names around or across the link, which removing the link would hide
     for (const [before, after] of [
       ["- 関連 Design Doc: /[x.md](x.md)", "- 関連 ADR: /[x.md](../adr/12-x.md)"],
       ["- 関連 Design Doc: .[x.md](x.md)", "- 関連 ADR: .[x.md](../adr/12-x.md)"],
       ["- 関連 Design Doc: /[x.md](x.md)z.md", "- 関連 ADR: /[ADR-12](../adr/12-x.md)z.md"],
       ["- 関連 Design Doc: .[x.md](x.md)z.md", "- 関連 ADR: .[12-x.md](../adr/12-x.md)z.md"],
+      ["- 関連 Design Doc: [x](x.md).md", "- 関連 ADR: [x](../adr/12-x.md).md"],
     ]) {
       expect(swap(before, after)).toBe(false);
     }
