@@ -32,7 +32,9 @@ import type { LayoutNode, LayoutResult } from "./layout-types.js";
 
 // Wrap, do not replace: every layout below runs the real side placement. The
 // wrapper records which cards it moved, and can switch it off so a frame can
-// be compared with the frame the same model gets without side columns.
+// be compared with the frame the same model gets without side columns. Moved
+// cards are keyed by system as well as id (`movedKey`): the helper returns bare
+// ids, and two systems may both declare an `Ext0`.
 const siding = vi.hoisted(() => ({ off: false, moved: new Set<string>() }));
 vi.mock("./external-columns.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./external-columns.js")>();
@@ -43,7 +45,10 @@ vi.mock("./external-columns.js", async (importOriginal) => {
     ) => {
       if (siding.off) return new Map<string, "left" | "right">();
       const sides = actual.placeExternalServicesOnSides(...args);
-      for (const id of sides.keys()) siding.moved.add(id);
+      const [, , layoutNodes] = args;
+      for (const id of sides.keys()) {
+        siding.moved.add(`${layoutNodes.get(id)?.path?.[0]}::${id}`);
+      }
       return sides;
     },
   };
@@ -60,6 +65,9 @@ const COLUMN_CLEARANCE = 24;
 
 /** The system a card is drawn in: its path's first segment. */
 const systemOf = (n: LayoutNode): string | undefined => n.path?.[0];
+
+/** How the side-placement recorder names a card it moved. */
+const movedKey = (n: LayoutNode): string => `${systemOf(n)}::${n.id}`;
 
 const realCards = (res: LayoutResult): LayoutNode[] =>
   [...res.nodes.values()].filter((n) => !n.ghost);
@@ -125,7 +133,16 @@ function sweepModel(externals: number, hubs: number, multi: boolean) {
     lines.push(`  ${hubIds[i % hubs]} -> Ext${i}`);
   }
   const own = `system S {\n${lines.join("\n")}\n}\n`;
-  return multi ? `${own}system T {\n  service Other {}\n}\n` : own;
+  // The neighbour declares externals named like the first four of `S`, left in
+  // one bottom row under its single hub. A recorder keyed by bare id would count
+  // them as moved, and two of them sharing a row read as a crowded column.
+  const shared = [0, 1, 2, 3].map((i) => `Ext${i}`);
+  const neighbour = `system T {
+  service Other {}
+${shared.map((id) => `  service ${id} [external] {}\n  Other -> ${id}`).join("\n")}
+}
+`;
+  return multi ? `${own}${neighbour}` : own;
 }
 
 interface SweepCase {
@@ -168,8 +185,8 @@ function crowdedPairs(res: LayoutResult, moved: ReadonlySet<string>): string[] {
     bySystem.set(systemOf(n), [...(bySystem.get(systemOf(n)) ?? []), n]);
   }
   for (const cards of bySystem.values()) {
-    const band = cards.filter((n) => !moved.has(n.id));
-    const column = cards.filter((n) => moved.has(n.id));
+    const band = cards.filter((n) => !moved.has(movedKey(n)));
+    const column = cards.filter((n) => moved.has(movedKey(n)));
     if (band.length === 0 || column.length === 0) continue;
     const bandLeft = Math.min(...band.map((n) => n.x));
     for (const onLeft of [true, false]) {
@@ -217,10 +234,10 @@ describe("side columns: no card overlaps another (TPL-1761 item 5)", () => {
     for (const c of SWEEP) {
       siding.moved.clear();
       const cards = realCards(sweepLayout(c)).filter((n) => systemOf(n) === "S");
-      const band = cards.filter((n) => !siding.moved.has(n.id));
+      const band = cards.filter((n) => !siding.moved.has(movedKey(n)));
       const span = Math.max(...band.map((n) => n.y + n.height)) - Math.min(...band.map((n) => n.y));
       const bandLeft = Math.min(...band.map((n) => n.x));
-      const column = cards.filter((n) => siding.moved.has(n.id));
+      const column = cards.filter((n) => siding.moved.has(movedKey(n)));
       for (const side of [true, false]) {
         const members = column.filter((n) => n.x < bandLeft === side);
         if (members.length === 0) continue;
@@ -246,20 +263,27 @@ describe("side columns: every card stays inside its frame and the canvas (TPL-17
   });
 });
 
-/** A frame's vertical extent, relative to the top of the cards that stay in the band. */
+/** A frame's extent, relative to the top-left of the cards that stay in the band. */
 function extentOf(res: LayoutResult, sys: string, band: LayoutNode[]) {
   const top = Math.min(...band.map((n) => n.y));
+  const left = Math.min(...band.map((n) => n.x));
   const frame = res.containers.find((c) => c.id === sys && !c.group && !c.ghost);
   // One system's own canvas has no frame of its own: the canvas is its frame.
-  const rect = frame ?? { y: 0, height: res.height };
-  return { top: rect.y - top, bottom: rect.y + rect.height - top };
+  const rect = frame ?? { x: 0, y: 0, width: res.width, height: res.height };
+  return {
+    top: rect.y - top,
+    bottom: rect.y + rect.height - top,
+    left: rect.x - left,
+    right: rect.x + rect.width - left,
+  };
 }
 
 describe("side columns: a frame grows only by what an overflowing column needs (TPL-1761 item 6)", () => {
   // The reference is the same model laid out with the side placement switched
   // off, where the externals sit in the bottom band. With the columns on, the
   // frame may reach past that only to wrap a column card (plus the frame's
-  // padding); a column that fits inside the band leaves the frame where it was.
+  // padding), on each axis and only on the side a column was placed; a column
+  // that fits inside the band leaves the frame where it was.
   //
   // Compared only where both runs placed once at the same width budget: a
   // second placement pass reserves channel room from the routed edges, and the
@@ -281,27 +305,57 @@ describe("side columns: a frame grows only by what an overflowing column needs (
       return { compared: 0, offenders: [] };
     if (on.widthBudget !== off.widthBudget) return { compared: 0, offenders: [] };
     const offenders: string[] = [];
-    const systems = new Set(realCards(on).flatMap((n) => (moved.has(n.id) ? [systemOf(n)] : [])));
+    const systems = new Set(
+      realCards(on).flatMap((n) => (moved.has(movedKey(n)) ? [systemOf(n)] : [])),
+    );
     for (const sys of systems) {
       if (sys === undefined) continue;
       const inSys = (r: LayoutResult) => realCards(r).filter((n) => systemOf(n) === sys);
       const bandOn = inSys(on).filter((n) => !isExternalTier(n));
       const bandOff = inSys(off).filter((n) => !isExternalTier(n));
       const top = Math.min(...bandOn.map((n) => n.y));
-      const column = inSys(on).filter((n) => moved.has(n.id));
+      const left = Math.min(...bandOn.map((n) => n.x));
+      const column = inSys(on).filter((n) => moved.has(movedKey(n)));
+      const leftColumn = column.filter((n) => n.x < left);
+      const rightColumn = column.filter((n) => n.x >= left);
+      const a = extentOf(on, sys, bandOn);
+      const b = extentOf(off, sys, bandOff);
+      // Horizontally a system frame grows to the column plus `CONTAINER_PADDING`
+      // (what `placeExternalServicesOnSides` grants). A frameless canvas is sized
+      // by the canvas margin instead, read from the reference run. A side
+      // without a column grants no allowance at all.
+      const framed = on.containers.some((c) => c.id === sys && !c.group && !c.ghost);
+      const offCards = inSys(off);
+      const offLeft = Math.min(...bandOff.map((n) => n.x));
+      const padLeft = framed
+        ? CONTAINER_PADDING
+        : Math.min(...offCards.map((n) => n.x)) - offLeft - b.left;
+      const padRight = framed
+        ? CONTAINER_PADDING
+        : b.right - (Math.max(...offCards.map((n) => n.x + n.width)) - offLeft);
       const reach = {
         top: Math.min(...column.map((n) => n.y)) - CONTAINER_PADDING - top,
         bottom: Math.max(...column.map((n) => n.y + n.height)) + CONTAINER_PADDING - top,
+        left: Math.min(...leftColumn.map((n) => n.x)) - padLeft - left,
+        right: Math.max(...rightColumn.map((n) => n.x + n.width)) + padRight - left,
       };
-      const a = extentOf(on, sys, bandOn);
-      const b = extentOf(off, sys, bandOff);
-      if (a.top < Math.min(b.top, reach.top) - TOLERANCE) {
-        offenders.push(`${sys}: frame top ${a.top} above ${Math.min(b.top, reach.top)}`);
+      const allowed = {
+        top: Math.min(b.top, reach.top),
+        bottom: Math.max(b.bottom, reach.bottom),
+        left: Math.min(b.left, reach.left),
+        right: Math.max(b.right, reach.right),
+      };
+      if (a.top < allowed.top - TOLERANCE) {
+        offenders.push(`${sys}: frame top ${a.top} above ${allowed.top}`);
       }
-      if (a.bottom > Math.max(b.bottom, reach.bottom) + TOLERANCE) {
-        offenders.push(
-          `${sys}: frame bottom ${a.bottom} below ${Math.max(b.bottom, reach.bottom)}`,
-        );
+      if (a.bottom > allowed.bottom + TOLERANCE) {
+        offenders.push(`${sys}: frame bottom ${a.bottom} below ${allowed.bottom}`);
+      }
+      if (a.left < allowed.left - TOLERANCE) {
+        offenders.push(`${sys}: frame left ${a.left} beyond ${allowed.left}`);
+      }
+      if (a.right > allowed.right + TOLERANCE) {
+        offenders.push(`${sys}: frame right ${a.right} beyond ${allowed.right}`);
       }
     }
     return { compared: systems.size, offenders };

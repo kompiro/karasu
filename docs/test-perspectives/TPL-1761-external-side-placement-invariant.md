@@ -105,7 +105,7 @@ kind 別の帯へノードを動かす配置 post-pass を追加・変更する�
 - `packages/core/src/renderer/side-column-placement.test.ts`（項目 5・6・11 のガード）: `examples/` の全キャンバスと、
   external 件数（入りきる / 入りきらない）× 消費ハブ数（gate の上下）の生成モデルを、単一 system と multi-system root の
   両パイプラインで配置し、最終出力で測る。カードの重なり 0 と同じサイド列の隣接ペアのクリアランス、全カードが自分のフレームと
-  canvas の内側、サイド配置を切った同じモデルと比べてフレームがはみ出し分しか伸びないこと。
+  canvas の内側、サイド配置を切った同じモデルと比べてフレームが列と padding の分しか伸びないこと（縦横とも。横は列を置いた側だけ）。
   同じファイルは、external を取り除いたモデルと比べて他 kind の行・x スパンが同じであることも測るが、項目 1 のガードではない:
   項目 1 は任意の kind を別の帯へ動かす post-pass が対象で、このテストは external を動かす経路しか測らない
 - `packages/core/src/renderer/column-hint-override.test.ts`: `PROPERTY_SCHEMAS.column` の全値 ×
