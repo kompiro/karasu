@@ -38,7 +38,7 @@ import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
 import { ImportResolver, type ResolvedProject } from "../fs/import-resolver.js";
 import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/default-style.js";
-import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
+import { withDisplayModeSheet } from "../builtins/display-mode-sheets.js";
 import type { EmptyStateLabels } from "../renderer/empty-state-labels.js";
 
 import { diffSystemViewSlices, type EdgeDiffMeta, type NodeDiffMeta } from "../diff/view-diff.js";
@@ -97,7 +97,7 @@ function assembleDiffSheets(
     ...beforeResolved.styleSheets,
     ...afterResolved.styleSheets,
   ];
-  return displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
+  return withDisplayModeSheet(sheets, displayMode);
 }
 
 /**

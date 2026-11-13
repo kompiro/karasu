@@ -63,6 +63,8 @@ CSS だけに新 variant を足すと Outline view が古いアイコンを出�
 - [ ] 全表現が同じ入力に対し同じ結果を返すことを検証するテストがあるか（理想は表現の網羅を 1 つのソースから駆動する parity テスト） [judgment]
 - [ ] その parity テストが両表現の **key 集合の和（union）** を突き合わせているか — 片側の keys だけを反復し、もう片側にしか無い member を暗黙に除外すると、その member を足した drift が静かに通る（#1856: `icon-consistency.test.ts` が panel 側 keys のみ反復し、renderer にしか無い kind の追加を検出できなかった。既知の gap は明示的な allowlist に固定し、新規の片側追加は必ず落とす）
 - [ ] 解決順序（first-match-wins / cascade last-wins など）が表現間で一致しているか
+- [ ] Icon Mode の語彙では、複数の variant タグを持つノードの icon を、カスケード（と
+      resolver の first-match 後処理）と `iconNameForNode` が同じに選ぶか。 [guard: `packages/core/src/builtins/icon-theme.test.ts`]
 
 ## 既知の対処パターン
 
@@ -78,6 +80,13 @@ CSS だけに新 variant を足すと Outline view が古いアイコンを出�
 - `packages/core/src/builtins/icon-theme.test.ts` — 真実源 `ICON_RULES` を
   網羅入力とし、そこから生成した `ICON_THEME_STYLE_SOURCE` と `iconNameForNode`
   が全エントリで一致することを検証する parity テスト。
+  `iconNameForNode agrees with the cascade on multi-variant nodes` は、`iconNameForNode` が描く kind の
+  タグ付き規則をすべて（scope を問わず）集め、variant タグ単独・順序付きの組・全部を正逆の順で
+  `resolveStyles` と突き合わせる。variant を足すと組が増え、順序の規則を片方だけ変えると落ちる
+  （チェックリスト 6 項目目）。複数 variant の `resource` は今も食い違う（描画はカスケードで後に宣言された variant、
+  `iconNameForNode` は最初のタグ）。shape mode の variant も builtin シートのキーワード規則でカスケードの順に決まるので、
+  icon mode だけ最初のタグにすると 2 つのモードで形が分かれる。両モードをタグの順にそろえるまで `CASCADE_ORDER_KINDS` に
+  理由付きで免除し、食い違いが無くなったら落ちるようにしている。5 項目目は語彙ごとに表現の組が違い、組の閉じた集合が無いので印なし
 - `packages/core/src/builtins/default-style.test.ts` — builtin シートの
   アノテーションバッジラベルが `reference-data.ts` の en ラベルと一致する
   parity テスト（#1508 で badge ルールを reference-data から生成する形に

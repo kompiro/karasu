@@ -1,7 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { compile, compileSystemDiff, InMemoryFileSystemProvider } from "../index.js";
 import type { SystemCompileResult } from "../index.js";
-import { OWNABLE_LOGICAL_KINDS, OWNS_TARGET_KINDS, OWNS_TARGET_KIND_SET } from "../types/ast.js";
+import * as ast from "../types/ast.js";
+import {
+  DEPLOY_AFFORDANCE_KIND_SET,
+  OWNABLE_LOGICAL_KINDS,
+  OWNS_TARGET_KINDS,
+  OWNS_TARGET_KIND_SET,
+} from "../types/ast.js";
 import { Parser } from "../parser/parser.js";
 import { extractView } from "../view/view-extract.js";
 import { layout } from "./layout.js";
@@ -26,6 +32,13 @@ const OWNED_NODE_BY_KIND: Record<string, string> = {
   client: system(`  client X [web] { label "X" }`),
 };
 
+/** One minimal model per deploy-affordance kind, each declaring a node with id `X`. */
+const DEPLOYED_NODE_BY_KIND: Record<string, string> = {
+  service: system(`  service X { label "X" }`),
+  domain: system(`  domain X { label "X" }`),
+  client: system(`  client X [web] { label "X" }`),
+};
+
 function compileSystem(krs: string, nodeControls = false): SystemCompileResult {
   // The deploy button is live-viewer chrome (#2420), so the cases that assert
   // on it compile the way the app and the VS Code webview do.
@@ -33,6 +46,41 @@ function compileSystem(krs: string, nodeControls = false): SystemCompileResult {
   if (result.diagramType !== "system") throw new Error("expected a system compile result");
   return result;
 }
+
+/**
+ * Every kind set `types/ast.ts` exports, as its type sees them. The shared kind
+ * gates live there (TPL-2157), so a new one is a new key here.
+ */
+type KindSetName = {
+  [K in keyof typeof ast]: (typeof ast)[K] extends ReadonlySet<string> ? K : never;
+}[keyof typeof ast];
+
+/**
+ * What each exported kind set decides. A set that gates what a card presents
+ * maps to its per-kind model table, which the describes below iterate; any
+ * other set says why it has none. Satisfying `Record<KindSetName, …>` makes a
+ * new set in `ast.ts` fail typecheck until it is placed here, so a new card
+ * gate cannot land without a table its kinds are checked against.
+ */
+const KIND_SET_ROLE = {
+  OWNABLE_KIND_SET: OWNED_NODE_BY_KIND,
+  DEPLOY_AFFORDANCE_KIND_SET: DEPLOYED_NODE_BY_KIND,
+  INFRA_KIND_SET: "a kind group (what an infra block is), not a gate on what a card shows",
+  OWNS_TARGET_KIND_SET: "resolution of `owns`, iterated by the #2408 describe below",
+  REALIZES_TARGET_KIND_SET: "resolution of `realizes`, the same list as OWNS_TARGET_KINDS",
+} satisfies Record<KindSetName, Record<string, string> | string>;
+
+describe("every card gate has a model per kind (#2157)", () => {
+  const exported = new Map<string, unknown>(Object.entries(ast));
+
+  it.each(Object.entries(KIND_SET_ROLE).filter(([, role]) => typeof role !== "string"))(
+    "%s has a model for exactly its kinds",
+    (name, models) => {
+      const kinds = exported.get(name) as ReadonlySet<string>;
+      expect(Object.keys(models).sort()).toEqual([...kinds].sort());
+    },
+  );
+});
 
 describe("owner chip covers every ownable kind (#2157)", () => {
   it("has a model for exactly the kinds in OWNABLE_LOGICAL_KINDS", () => {
@@ -172,25 +220,24 @@ organization O { team T { label "Team T" owns Db owns Api } }`;
 });
 
 describe("deploy affordance covers every deploy-affordance kind (#2157)", () => {
-  const DEPLOYED_NODE_BY_KIND: Record<string, string> = {
-    service: system(`  service X { label "X" }`),
-    domain: system(`  domain X { label "X" }`),
-    client: system(`  client X [web] { label "X" }`),
-  };
+  it("has a model for exactly the kinds in DEPLOY_AFFORDANCE_KIND_SET", () => {
+    // Drift guard, as for the owner chip: the cases below iterate the constant,
+    // so a kind added to it without a model fails here instead of being skipped.
+    expect(Object.keys(DEPLOYED_NODE_BY_KIND).sort()).toEqual(
+      [...DEPLOY_AFFORDANCE_KIND_SET].sort(),
+    );
+  });
 
-  it.each(Object.keys(DEPLOYED_NODE_BY_KIND))(
-    "renders the deploy button on a realized %s",
-    (kind) => {
-      const result = compileSystem(
-        `${DEPLOYED_NODE_BY_KIND[kind]}\ndeploy "prod" {\n  assets Bundle { realizes X }\n}`,
-        true,
-      );
+  it.each([...DEPLOY_AFFORDANCE_KIND_SET])("renders the deploy button on a realized %s", (kind) => {
+    const result = compileSystem(
+      `${DEPLOYED_NODE_BY_KIND[kind]}\ndeploy "prod" {\n  assets Bundle { realizes X }\n}`,
+      true,
+    );
 
-      expect(result.warnings.filter((w) => w.kind === "unresolved-realizes")).toHaveLength(0);
-      expect(result.svg).toContain('data-deploy-button="X"');
-      expect(result.nodeMetadata.get("X")?.hasDeployContainer).toBe(true);
-    },
-  );
+    expect(result.warnings.filter((w) => w.kind === "unresolved-realizes")).toHaveLength(0);
+    expect(result.svg).toContain('data-deploy-button="X"');
+    expect(result.nodeMetadata.get("X")?.hasDeployContainer).toBe(true);
+  });
 
   it("draws the info button on the deploy view too, not just the system view", () => {
     // The deploy view renders through `renderDeploy`, a separate call site from

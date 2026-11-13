@@ -40,9 +40,9 @@ interface IconRule {
 
 /**
  * The canonical icon vocabulary. Order is significant for `client-variant`
- * entries: it defines {@link CLIENT_SUBTYPE_TAGS} and therefore the
- * first-match-wins order `applyClientSubtypeFirstMatch` in
- * `resolver/style-resolver.ts` relies on.
+ * entries: it defines {@link CLIENT_SUBTYPE_TAGS}. Which variant a multi-tag
+ * node shows follows the node's `tags` order, not this one
+ * ({@link VARIANT_ICONS_BY_KIND}).
  *
  * Exported for the package-internal parity test only — not re-exported from
  * `index.ts`. Consumers use {@link iconNameForNode} / {@link ICON_THEME_STYLE_SOURCE}.
@@ -94,10 +94,9 @@ function selectorFor(rule: IconRule): string {
 
 /**
  * Recognised `client` form-factor subtype tags, derived from the
- * `client-variant` entries of {@link ICON_RULES} in declaration order. The
- * style resolver imports this list to implement first-match-wins on
- * `node.tags` order for multi-tag clients (see `applyClientSubtypeFirstMatch`
- * in `resolver/style-resolver.ts`).
+ * `client-variant` entries of {@link ICON_RULES} in declaration order. Public
+ * API; the resolver's first-match-wins for multi-tag nodes reads
+ * {@link VARIANT_ICONS_BY_KIND} instead.
  */
 export const CLIENT_SUBTYPE_TAGS: readonly string[] = ICON_RULES.filter(
   (r) => r.scope === "client-variant",
@@ -157,15 +156,28 @@ const BASE_KIND_ICON = new Map<string, string>(
   ]),
 );
 
-/** `resource` tag variant → icon name. */
-const RESOURCE_TAG_ICON = new Map<string, string>(
-  ICON_RULES.filter((r) => r.scope === "resource-variant").map((r) => [r.tag as string, r.icon]),
-);
-
-/** `client` subtype tag → icon name. */
-const CLIENT_SUBTYPE_ICON = new Map<string, string>(
-  ICON_RULES.filter((r) => r.scope === "client-variant").map((r) => [r.tag as string, r.icon]),
-);
+/**
+ * `kind → (variant tag → icon name)` for every system-view kind with tag
+ * variants (`resource`, `client`), derived from {@link ICON_RULES}.
+ *
+ * Both readers of a multi-variant node go through this one table:
+ * {@link iconNameForNode} here, first-match-wins on the node's `tags` order, and
+ * {@link applyVariantFirstMatch}, which rewrites the
+ * cascade's pick (the variant declared last in the sheet) to the same first
+ * match for `client`. Two orders show one node with two icons, the renderer's
+ * and the Outline's (TPL-1415); a multi-variant `resource` still does, until
+ * its shape-mode rules follow the tag order too.
+ */
+const VARIANT_ICONS_BY_KIND: ReadonlyMap<string, ReadonlyMap<string, string>> = (() => {
+  const byKind = new Map<string, Map<string, string>>();
+  for (const r of ICON_RULES) {
+    if (r.scope !== "resource-variant" && r.scope !== "client-variant") continue;
+    const variants = byKind.get(r.kind) ?? new Map<string, string>();
+    variants.set(r.tag as string, r.icon);
+    byKind.set(r.kind, variants);
+  }
+  return byKind;
+})();
 
 /**
  * Resolves a node's `(kind, tags)` to the Icon Mode icon name the preview
@@ -173,31 +185,63 @@ const CLIENT_SUBTYPE_ICON = new Map<string, string>(
  * encodes as CSS. Surfaces other than the renderer (e.g. the app's Outline
  * view) call this so they show the same pictogram for a given node.
  *
- * Tag-driven variants take precedence over the base kind:
- * - a `client` with a recognised subtype tag → `client-<tag>`, using
- *   first-match-wins on `tags` order (matching `applyClientSubtypeFirstMatch`
- *   in `resolver/style-resolver.ts`);
- * - a `resource` with a recognised variant tag → the variant icon,
- *   first-match-wins on `tags` order. (Icon Mode resolves `resource[...]`
- *   through the CSS cascade; the two agree for the common single-variant
- *   case, which is the only one karasu's vocabulary expects.)
+ * Tag-driven variants take precedence over the base kind: a `client` or
+ * `resource` with a recognised variant tag → the variant icon, using
+ * first-match-wins on `tags` order. The renderer agrees for `client`
+ * ({@link applyVariantFirstMatch}); for a `resource`
+ * with several variant tags it still draws the last-declared variant (see
+ * {@link VARIANT_ICONS_BY_KIND}).
  *
  * Returns `undefined` for kinds with no Icon Mode pictogram (`system`,
  * deploy / org kinds, infra item kinds) — see {@link IconScope}.
  */
 export function iconNameForNode(kind: string, tags: readonly string[]): string | undefined {
-  if (kind === "client") {
-    for (const tag of tags) {
-      const icon = CLIENT_SUBTYPE_ICON.get(tag);
-      if (icon) return icon;
-    }
-  } else if (kind === "resource") {
-    for (const tag of tags) {
-      const icon = RESOURCE_TAG_ICON.get(tag);
-      if (icon) return icon;
-    }
+  const variants = VARIANT_ICONS_BY_KIND.get(kind);
+  for (const tag of variants ? tags : []) {
+    const icon = variants?.get(tag);
+    if (icon) return icon;
   }
   return BASE_KIND_ICON.get(kind);
+}
+
+/** Kinds whose multi-variant nodes {@link applyVariantFirstMatch} rewrites. */
+const FIRST_MATCH_VARIANT_KINDS: ReadonlySet<string> = new Set(["client"]);
+
+/**
+ * The style resolver's post-step, run on each node's merged properties.
+ * No-op for everything except a `client` carrying more than one of its variant
+ * tags ({@link VARIANT_ICONS_BY_KIND}): `client [mobile, desktop]`.
+ *
+ * CSS cascade alone resolves such a node to the variant rule declared latest
+ * in the icon theme; that contradicts the intuition that the *first* tag the
+ * user wrote should win, and it would disagree with `iconNameForNode`, which
+ * the Outline and other surfaces call (TPL-1415). This helper rewrites the
+ * resolved shape to the first variant in `tags` order. Single-tag and zero-tag
+ * nodes are handled correctly by the cascade and untouched here. User-defined
+ * shape overrides (anything that is not one of the kind's variant icon URLs)
+ * are left alone too.
+ *
+ * `resource` is deliberately not rewritten yet. Its shape-mode variants are
+ * keyword rules in the builtin sheet (`resource[api] { shape: hexagon; }`),
+ * which the cascade also resolves to the last-declared variant, so taking the
+ * first tag in icon mode alone would draw `resource [table, api]` as a hexagon
+ * in one mode and a table in the other. Until both modes follow the tag order,
+ * a multi-variant resource keeps the cascade's pick in both, and the Outline
+ * (`iconNameForNode`, first tag) still disagrees with it; `icon-theme.test.ts`
+ * holds that known gap in `CASCADE_ORDER_KINDS`.
+ */
+export function applyVariantFirstMatch(
+  node: { kind: string; tags: readonly string[] },
+  merged: Record<string, string>,
+): void {
+  const variants = VARIANT_ICONS_BY_KIND.get(node.kind);
+  if (!variants || !FIRST_MATCH_VARIANT_KINDS.has(node.kind)) return;
+  const present = node.tags.filter((t) => variants.has(t));
+  if (present.length < 2) return;
+  const currentShape = merged["shape"];
+  const variantShapes = [...variants.values()].map((icon) => `url("${icon}")`);
+  if (!currentShape || !variantShapes.includes(currentShape)) return;
+  merged["shape"] = `url("${variants.get(present[0])}")`;
 }
 
 let _cachedSheet: StyleSheet | null = null;

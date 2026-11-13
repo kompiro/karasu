@@ -72,10 +72,11 @@ scope:
 
 - [ ] モードを参照する描画面の一覧（legend / card frame / detail panel / footer / 各 builder / **Full View / export SVG など代替描画パス**）が洗い出されているか
 - [ ] **consumer（app / CLI / VS Code 拡張）の per-view 呼び出し口がすべてトグルを forward しているか** — app なら `useSystemView` / `useDeployView` / `useOrgView` / `useViewSvg` の全フック、CLI なら各サブコマンド、拡張なら各 panel。`displayMode` が既にどう配線されているかを写し取ると漏れにくい（既存のグローバル option は全呼び出し口に通っているはず）。debounce effect / `useMemo` の依存配列にトグルを追加することも忘れない
-- [ ] モード固有のテーマシート（`ICON_THEME_STYLE_SOURCE` など）が、ユーザー stylesheet より **後** に積まれる（= 高優先度になる）カスケード構成になっているか。または、モード支配下のプロパティが「ユーザーが上書きできない」と明示されているか
-- [ ] スタイル resolver / 診断ロジックが「モード由来の意図的な override」を warning から除外しているか（false-positive チェック）
+- [ ] モード固有のテーマシート（`ICON_THEME_STYLE_SOURCE` など）が、ユーザー stylesheet より **後** に積まれる（= 高優先度になる）カスケード構成になっているか。または、モード支配下のプロパティが「ユーザーが上書きできない」と明示されているか [guard: `packages/core/src/displaymode-meta.test.ts`]
+- [ ] スタイル resolver / 診断ロジックが「モード由来の意図的な override」を warning から除外しているか（false-positive チェック） [guard: `packages/core/src/displaymode-meta.test.ts`]
 - [ ] 同じ kind / data に対する表示が、すべての surface（icon card / NodeDetailPanel / legend / tooltip / etc.）で **同一のソース** から引かれているか（→ TPL-999 のチェックリストとも合わせて確認）
-- [ ] `.krs.style` でモードを破壊しようとする stylesheet を書いた fixture で、モードが正しく勝つことが回帰テストで担保されているか
+- [ ] `.krs.style` でモードを破壊しようとする stylesheet を書いた fixture で、モードが正しく勝つことが回帰テストで担保されているか [guard: `packages/core/src/displaymode-meta.test.ts`]
+- [ ] core の公開入口（各 builder / export / diff / 低レベルの `render*`）のうち `displayMode` を取るものが、すべてモードごとに違う SVG を返すか [guard: `packages/core/src/displaymode-meta.test.ts`]
 
 ## 既知の対処パターン
 
@@ -93,7 +94,8 @@ scope:
 - `packages/core/src/renderer/legend-footer.test.ts`
 - `packages/app/src/hooks/useViewSvg.test.tsx` — Full View / All Layers regression fence for #183 (`displayMode` threading from the hook into `buildAllLayersSvg`)
 - `packages/app/src/hooks/useSystemView.test.tsx` — consumer-layer regression fence for #1479 (`theme` threading from the view hook into `compileProject`)
-- `packages/core/src/displaymode-meta.test.ts` — curated meta-test enumerating every public SVG-producing entry point that consumes `displayMode`. **Adding a new SVG-producing entry to the public API requires registering it in `DISPLAY_MODE_CONSUMERS`** so the next #183-style missed surface is caught at code review
+- `packages/core/src/displaymode-meta.test.ts` — `index.ts` の export のうち `DisplayMode` の引数か `displayMode` の option を取るものを型から求め（`DisplayModeEntryName`）、`DISPLAY_MODE_CONSUMERS` が `satisfies Record<DisplayModeEntryName, …>` なので、モードを取る公開入口を足すと登録するまで typecheck が落ちる（チェックリスト 7 項目目。1 項目目のうち core の各 builder / export の部分で、app の描画面と renderer の中の部品（legend / footer）には閉じた集合が無いので 1 項目目は印なし）。各入口をすべてのモード（`DISPLAY_MODE_SHEETS` のキー）で呼び、SVG が互いに違うことを見る。シートを組み立てる入口では、モードのシートの全規則を同じ selector で上書きする作者シート（`fightingSheet`）を足しても SVG が変わらないこと（3・6 項目目）、モードが shape mode に無い warning / diagnostic を足さないこと（4 項目目）を見る。fixture は全規則の対象ノードを持つことを自ら確かめ、規則ごとには `withDisplayModeSheet` の組み立てを「モードのシートが最後」の順と突き合わせる。org の描画は icon mode のチームカードをモードから直接描くので、シートの順はそこでは観測されない
+- `packages/core/src/builtins/display-mode-sheets.ts` — モードが持ち込むシートの表（`Record<DisplayMode, …>`、新しいモードは typecheck で表への記入を求められる）と、シートを最後に積む唯一の組み立て `withDisplayModeSheet`。compile・diff・bundle の 3 か所がこれを呼ぶ
 - `packages/core/src/theme-meta.test.ts` — the same curated meta-test for the `theme` toggle (`THEME_CONSUMERS`). NOTE: both meta-tests fence the **library** layer only — they prove `core` threads the toggle, not that each app / CLI / extension call site forwards it (the #1479 gap)
 - `packages/core/src/badge-labels-meta.test.ts` — the same curated meta-test for `annotationBadgeLabels` (`BADGE_LABEL_CONSUMERS`, #1508)
 - `packages/vscode/src/webview-html.test.ts` / `packages/app/src/viewer/mount-viewer.test.tsx` — consumer-layer fence for the VS Code preview (#2074, #3312): the preview is the app's viewer in a webview, so it no longer builds its own panel. The extension hands VS Code's language and theme to the viewer as start values (`paints in the editor's theme and language before the script runs`) and later theme changes through the handle (`switches theme and language without losing the view`, `switches the display mode`), so each toggle reaches this consumer through one seam (the point-5 "each consumer forwards the toggle" gap)

@@ -99,6 +99,8 @@ karasu の boundary で実際にこうなった:
 - [ ] 上書きが**部分指定**されたときの残りの導出を決めて書いた（karasu では
       `border-color` だけの指定で塗りとタイトルも追従する）。「指定されなかったものは
       既定値」で済ませると、1 エンティティ 2 色が仕様として固定される。 [judgment]
+- [ ] karasu の boundary では、全ての描画面（枠・塗り・タイトル・`◇` タブ）が `resolveBoundaryPaint` から色を取り、
+      `palette.boundaryHues` を直接読まない。
 
 ## 関連テスト
 
@@ -107,6 +109,16 @@ karasu の boundary で実際にこうなった:
   フレームの両方に届くこと
 - `packages/core/src/renderer/legend-footer.test.ts` — 「lets a user rule outrank the builtin at equal specificity (Issue #2445)」と、
   その tag ref / annotation ref 版。凡例 swatch がカードと同じカスケード（シート横断の宣言順）で解決されること
+- `packages/core/src/renderer/boundary-paint-surfaces.test.ts` — `groupBy` を取る公開入口を `index.ts` の型から求め
+  （`BOUNDARY_SURFACES` が `satisfies Record<GroupByEntryName, …>`）、boundary を描く全モデル（`◇` タブの出るモデルと、
+  boundary で group したとき色相が出る同梱 example）を両テーマで描き、`boundary { border-color: … }` で全 boundary を
+  塗り直すと SVG に `palette.boundaryHues` の色が 1 つも残らないことを見る。色相を自分で引く面は、どの関数で描いても
+  色が残って落ちる（チェックリスト 6 項目目）。描く入口はそれぞれ、塗り直す前にどれかのモデルで色相を出すことも
+  確かめる（出さない入口では塗り直しが何も証明しない）。entity view（`renderEntityView`）は boundary を描かないので
+  理由付きで分け、どのモデルでも色相を出さないことを見る。boundary 以外のエンティティは見ない。描くのはモデルの集合で塗りの経路を列挙しないので、どのモデルも通らない分岐が `palette.boundaryHues` を直接読んでも落ちず、6 項目目のガードにはしない（PR #3778 のレビュー）（1 項目目は、エンティティごとに面の集合が違い閉じた集合が無いので印なし）
+- 4 項目目（解決規則を書き写していない）にはガードが無い。`StyleRule.sourceIndex` を外して `flattenSheetsInCascadeOrder` の
+  結果だけが順序を持つ型にする案は、#2445 の形（シートごとの index でのソート）は書けなくするが、specificity と配列の
+  位置で比べるソートは手で書けるので、新しい書き写しを止めない
 
 ## 派生元 spec
 

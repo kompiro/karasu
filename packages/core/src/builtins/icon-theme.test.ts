@@ -6,6 +6,9 @@ import {
   getIconThemeStyleSheet,
   iconNameForNode,
 } from "./icon-theme.js";
+import { getBuiltinStyleSheet } from "./default-style.js";
+import { resolveStyles } from "../resolver/style-resolver.js";
+import type { KrsNode } from "../types/ast.js";
 
 /** Scopes whose rules `iconNameForNode` resolves (the rest return `undefined`). */
 const SYSTEM_VIEW_SCOPES = new Set(["logical", "infra", "resource-variant", "client-variant"]);
@@ -95,7 +98,7 @@ describe("iconNameForNode (parity with ICON_RULES)", () => {
   });
 
   it("uses first-match-wins on tag order for a multi-subtype client", () => {
-    // Matches applyClientSubtypeFirstMatch in resolver/style-resolver.ts.
+    // Matches applyVariantFirstMatch in resolver/style-resolver.ts.
     expect(iconNameForNode("client", ["web", "mobile"])).toBe("client-web");
     expect(iconNameForNode("client", ["mobile", "web"])).toBe("client-mobile");
   });
@@ -114,5 +117,81 @@ describe("iconNameForNode (parity with ICON_RULES)", () => {
     expect(iconNameForNode("system", [])).toBeUndefined();
     expect(iconNameForNode("table", [])).toBeUndefined();
     expect(iconNameForNode("deploy-block", [])).toBeUndefined();
+  });
+});
+
+/**
+ * The renderer resolves a node's icon through the CSS cascade (plus the
+ * variant first-match post-step in `resolver/style-resolver.ts`, which covers
+ * every kind in `VARIANT_ICONS_BY_KIND`); every other surface
+ * calls {@link iconNameForNode}. Both have to pick the same icon when a node
+ * carries several variant tags, which is where their resolution orders can part
+ * (TPL-1415 item 6). Each variant tag alone, every ordered pair of a kind's
+ * variant tags, and each kind's variants in full in both orders are generated
+ * from ICON_RULES, so a new
+ * variant or a new kind with variants is compared without a new case here.
+ */
+describe("iconNameForNode agrees with the cascade on multi-variant nodes", () => {
+  // Every tagged rule on a kind `iconNameForNode` draws, whatever its scope, so a
+  // variant added under a new scope is compared too.
+  const VARIANT_TAGS = new Map<string, string[]>();
+  for (const r of ICON_RULES) {
+    if (!r.tag || iconNameForNode(r.kind, []) === undefined) continue;
+    VARIANT_TAGS.set(r.kind, [...(VARIANT_TAGS.get(r.kind) ?? []), r.tag]);
+  }
+
+  const single: [string, string[]][] = [];
+  const multi: [string, string[]][] = [];
+  for (const [kind, tags] of VARIANT_TAGS) {
+    for (const a of tags) single.push([kind, [a]]);
+    for (const a of tags) for (const b of tags) if (a !== b) multi.push([kind, [a, b]]);
+    multi.push([kind, tags], [kind, [...tags].reverse()]);
+  }
+
+  /**
+   * Kinds whose multi-variant nodes the renderer still resolves by cascade
+   * order (last-declared variant) while `iconNameForNode` takes the first tag.
+   * A known gap, not an agreement: shape mode resolves the same node by cascade
+   * order too, and making only icon mode follow the tags would split the two
+   * modes (see `FIRST_MATCH_VARIANT_KINDS` in the resolver). Each entry is
+   * checked to still disagree, so closing the gap fails until it is removed.
+   */
+  const CASCADE_ORDER_KINDS: Record<string, string> = {
+    resource: "shape mode's keyword variants would disagree with a first-tag icon",
+  };
+
+  function iconShapeOf(kind: string, tags: string[]) {
+    const node = {
+      id: "N",
+      kind,
+      label: "N",
+      tags,
+      annotations: [],
+      edges: [],
+      children: [],
+      properties: { links: [] },
+    } as unknown as KrsNode;
+    const styles = resolveStyles([node], [getBuiltinStyleSheet(), getIconThemeStyleSheet()]);
+    return styles.nodes.get("N")?.shape;
+  }
+
+  it("has a kind with variants to compare", () => {
+    expect(VARIANT_TAGS.size).toBeGreaterThan(0);
+  });
+
+  it.each([...single, ...multi.filter(([kind]) => !(kind in CASCADE_ORDER_KINDS))])(
+    "%s %j",
+    (kind, tags) => {
+      expect(iconShapeOf(kind, tags)).toEqual({ url: iconNameForNode(kind, tags) });
+    },
+  );
+
+  it.each(Object.keys(CASCADE_ORDER_KINDS))("%s still needs its exemption", (kind) => {
+    const disagreeing = multi.filter(
+      ([k, tags]) =>
+        k === kind &&
+        JSON.stringify(iconShapeOf(k, tags)) !== JSON.stringify({ url: iconNameForNode(k, tags) }),
+    );
+    expect(disagreeing, `${kind} agrees now; drop it from CASCADE_ORDER_KINDS`).not.toEqual([]);
   });
 });
