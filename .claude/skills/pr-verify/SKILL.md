@@ -61,10 +61,11 @@ $S/gate.sh <pr>
   から失敗の要点を 1〜2 行で添える。続けて、実装セッションへそのまま貼れる英語の依頼文を
   コードブロックで渡す（PR 番号、直すもの、各リンク）。**ここで終わる。** 手順 2 以降は行わない。
   実装セッションが直したあとに `/pr-verify` をもう一度実行すればよいことを一言添える
-- **`wait`**: 直す点は無いが、まだ落ち着いていないものがある（check が走っている・cancel された、
+- **`wait`**: 直す点は無いが、まだ落ち着いていないものがある（check が走っている・cancel された・
+  ready の PR で skip されたまま HEAD で走っていない、
   CodeRabbit がレビュー中か rate limit 中、CodeRabbit がまだ一度もレビューしていない、CodeRabbit の
   状態を読めなかった、GitHub がコンフリクトの有無をまだ出していない）。`reasons` を伝えて手順 2 へ進む。
-  cancel された check は最新の run を走り直せば済む（コードの修正は要らない）と添える。手順 6 の前に
+  cancel や skip で走っていない check は最新の run を走り直せば済む（コードの修正は要らない）と添える。手順 6 の前に
   `gate.sh` をもう一度実行する
 - **`proceed`**: 手順 2 へ進む
 
@@ -72,6 +73,13 @@ CodeRabbit がレビューするのは `risk: high`（または段階のラベ�
 それ以外では `coderabbit` は `null` になる。`coderabbitReviewedHead: false` は CodeRabbit の PR レビューが
 HEAD を見ていないことを表すので、手順 4 で使う。`otherFailedChecks`（必須でない check の失敗）は判定を
 変えないが、手順 6 の根拠で触れる。`isDraft: true` は差し戻しの理由にしないが、手順 6 で触れる。
+次の 2 つも判定を変えないが、実装セッションでは片付けられないので手順 6 の「マージ前に決めてほしいこと」に
+入れる。
+
+- `otherUnresolvedThreads`: CodeRabbit 以外（kompiro 自身のインラインの依頼、Copilot など）が開いた
+  未解決スレッド。各スレッドの `firstLine` と URL を挙げる
+- `coderabbitUnmarkedBodyFindings` が 1 以上: CodeRabbit がレビュー本文で数えたが ID を付けなかった指摘。
+  PR 上のコメントでは消せず、扱いは kompiro が決める
 `headSha` は手順 6 でマージする commit と照らし合わせるので控えておく。
 
 `gate.sh` が JSON を出さずに失敗したら、エラーを kompiro に伝えて終わる（判定できないまま先へ進まない）。
@@ -130,6 +138,8 @@ $S/preview-url.sh <pr>    # {"app":{"url","sha","matchesHead"}|null, "docs":…}
 
 `app` が `null` なら（Preview workflow は `packages/app` / `packages/core` を変えた PR にしか
 デプロイしない）この手順は行わず、「app の preview が無いため画面での確認は省いた」と書く。
+`preview-url.sh` が JSON を出さずに失敗したら、preview が無いとは書かず、読み取りの失敗として
+エラーを伝えて手順 5 を省く。
 docs サイトだけの preview も対象外。`matchesHead: false` なら preview が PR の HEAD より古いので、
 その旨をレポートの冒頭に書く。
 
@@ -241,8 +251,9 @@ Artifact を書く前に `artifact-design` スキルを読み込む。レポー�
 
 `wait` だった場合や手順に時間がかかった場合は、先に `$S/gate.sh <pr>` を実行し直す。`fix` に
 変わっていれば手順 1 の差し戻しに切り替える。`wait` のままなら、その理由を意見の根拠に入れる。
-`headSha` が手順 1 と違えば、確かめたあとにコミットが足されたので、そのことを伝えて手順 2〜5 を
-新しい HEAD でやり直すかを kompiro に聞く。
+`headSha` が手順 1 と違えば、確かめたあとにコミットが足されたので、そのことを伝えて新しい HEAD で
+やり直すかを kompiro に聞く。やり直すなら手順 1 から始め、`headSha` を控え直す（以下の「手順 1 で
+控えた `headSha`」は控え直したものを指す）。
 
 意見は **マージしてよい / 条件付き（kompiro の判断待ちの項目がある）/ マージしないほうがよい** の
 どれかを最初に書き、根拠を 3〜5 点で添える。根拠には手順 1〜5 のうち判断に効いたもの（判断が必要な
@@ -272,7 +283,9 @@ draft でなければ、最後に AskUserQuestion でマージするかを聞く
    `- [ ]` を `- [x]` にする。本文を `gh pr view <pr> --json body --jq .body > $OUT/body.md` で
    取り出し、その行だけを変えて `gh pr edit <pr> --body-file $OUT/body.md` で戻す。ほかの行は
    変えない。確認できなかった項目が残るなら、マージ前に kompiro にそのまま進めてよいか確かめる
-   （手順 5 を行わなかった PR はこの手順を飛ばす）
+   （手順 5 を行わなかった PR はこの手順を飛ばす）。preview が `matchesHead: false` だったときは、
+   確かめたのは HEAD より古いデプロイなのでチェックを入れず、「<preview の sha> で確認」と kompiro に
+   伝えてそのまま進めてよいか確かめる
 3. 本文を変えたら Review tier が本文を検査し直す。編集の直後は前の結果が残って見えるので、
    `gh pr checks <pr> --json name,bucket,startedAt` で Review tier の `startedAt` が編集より後に
    なったのを確かめてから `$S/gate.sh <pr>` をもう一度実行し、`proceed` になるまで待つ（`wait` の

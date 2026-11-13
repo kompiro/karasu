@@ -7,7 +7,9 @@
 #    "isCrossRepository":bool, "author":"login",
 #    "mergeable":"MERGEABLE"|"CONFLICTING"|"UNKNOWN", "mergeStateStatus":"…",
 #    "unresolvedThreads":[{"url","path","line","outdated","firstLine"}],
+#    "otherUnresolvedThreads":[{…,"author"}],
 #    "coderabbit": <await-review.ts --once output> | null,
+#    "coderabbitUnmarkedBodyFindings":N,
 #    "coderabbitReviews":N, "coderabbitReviewedHead":bool,
 #    "failedChecks":[{"name","link"}], "cancelledChecks":[…], "pendingChecks":[…],
 #    "otherFailedChecks":[…]}
@@ -16,11 +18,12 @@
 # verdict "superseded": another open PR's body says it replaces or supersedes this
 #   one, so fixing this PR would be wasted work; the other checks are still reported.
 # verdict "fix": work for the implementing session: an unresolved CodeRabbit thread,
-#   an unanswered CodeRabbit body finding or thread reply, a CodeRabbit rate limit
+#   an unanswered CodeRabbit body finding with an id, or thread reply, a CodeRabbit rate limit
 #   that has passed (someone has to re-request the review), a failed blocking check,
 #   or a conflict with the base.
 # verdict "wait": nothing to fix yet, but something has not settled: a blocking check
-#   running or cancelled (re-run the latest run), CodeRabbit still reviewing or
+#   running, or cancelled or skipped without running on the head (re-run the latest
+#   run), CodeRabbit still reviewing or
 #   rate-limited, a High/Design PR CodeRabbit has never answered (state "waiting" and
 #   no CodeRabbit review on the PR; a clean summary alone settles it), a CodeRabbit state
 #   that could not be read, or a mergeability GitHub has not computed.
@@ -71,10 +74,13 @@ threads=$(gh api graphql --paginate -F owner="$owner" -F name="$name" -F pr="$pr
   }' --jq '[.data.repository.pullRequest.reviewThreads.nodes[]
             | select(.isResolved | not)
             | .comments.nodes[0] as $c
-            | select(($c.author.login // "") | test("^coderabbitai"))
-            | {url: $c.url, path, line, outdated: .isOutdated,
+            | {url: $c.url, path, line, outdated: .isOutdated, author: ($c.author.login // ""),
                firstLine: ($c.body | split("\n") | map(select(test("\\S"))) | .[0:3] | join(" ") | .[0:200])}]' \
   | jq -cs 'add // []')
+# CodeRabbit's threads decide the verdict. Anyone else's (kompiro's inline request, a
+# Copilot review) are reported for the opinion without changing it.
+otherThreads=$(jq -c 'map(select(.author | test("^coderabbitai") | not))' <<<"$threads")
+threads=$(jq -c 'map(select(.author | test("^coderabbitai")) | del(.author))' <<<"$threads")
 
 # The commits CodeRabbit reviewed. Like review-state.ts isCommitReview, a dismissed
 # review and an empty-body COMMENTED review (GitHub's wrapper for a thread reply,
@@ -100,8 +106,8 @@ crReviews=$(gh api graphql --paginate -F owner="$owner" -F name="$name" -F pr="$
 superseded=$(gh pr list --state open --search "$pr in:body" --json number,title,url,body --limit 30 \
   | jq -c --arg pr "$pr" '[.[] | select(.number != ($pr | tonumber))
         | select(.body | test("(replac|supersed)(e|es|ed|ing)\\s+(PRs?\\s+)?(#\\d+(\\s*,\\s*|\\s+and\\s+|\\s*,\\s*and\\s+))*#" + $pr + "\\b"; "i"))
-        | {number, title, url}]' 2>/dev/null) || superseded='[]'
-[ -z "$superseded" ] && superseded='[]'
+        | {number, title, url}]') || {
+  echo "gate.sh: could not search for open PRs that replace #$pr" >&2; exit 1; }
 
 # CodeRabbit reviews only High (or no tier label) and Design PRs. For those, a state
 # that cannot be read is "unavailable", never null (null means "not reviewed by tier").
@@ -135,20 +141,31 @@ fi
 rm -f "$checksErr"
 
 jq -cn --argjson pr "$pr" --argjson meta "$meta" --argjson threads "$threads" \
+  --argjson other_threads "$otherThreads" \
   --argjson cr "$coderabbit" --argjson crTiered "$crTiered" --argjson crReviews "$crReviews" \
   --arg head "$head" --argjson checks "$checks" --argjson required "$required" \
   --argjson sup "$superseded" '
+  ($required + ["Review tier"]) as $blocking
+  # A blocking check did not run on the head when its real workflow (not a paired
+  # "… (skip)" stub) was cancelled, or was skipped on a PR that is not a draft: the
+  # only job-level skip on those workflows is the draft guard, so a skip on a ready PR
+  # means the run raced `gh pr ready`. A stub that passed beside it does not count.
+  | ($checks | map(
+      if (.name as $n | $blocking | index($n)) and ((.workflow // "") | endswith("(skip)") | not)
+         and (.bucket == "cancel" or (.bucket == "skipping" and ($meta.isDraft | not)))
+      then .bucket = "notrun" else . end)) as $checks
   # gh pr checks keeps the latest run per workflow, so a name that appears more than
   # once comes from different workflows (the required "Check" is reported by three).
-  # A name is failed when any of them failed, pending when any is pending, cancelled
-  # when one was cancelled and none passed, and settled otherwise.
-  ($checks | group_by(.name) | map(
+  # A name is failed when any of them failed, pending when any is pending, not run
+  # when a real workflow did not run (above) or when one was cancelled and none
+  # passed, and settled otherwise.
+  | ($checks | group_by(.name) | map(
       if any(.bucket == "fail") then (map(select(.bucket == "fail"))[0])
       elif any(.bucket == "pending") then (map(select(.bucket == "pending"))[0])
+      elif any(.bucket == "notrun") then (map(select(.bucket == "notrun"))[0] | .bucket = "cancel")
       elif any(.bucket == "pass") then empty
       elif any(.bucket == "cancel") then (map(select(.bucket == "cancel"))[0])
       else empty end)) as $reported
-  | ($required + ["Review tier"]) as $blocking
   # A blocking check that has not reported yet (just after a push or ready) is pending.
   | ($blocking - ($checks | map(.name)) | map({name: ., bucket: "pending", link: null})) as $missing
   | ($reported + $missing) as $open
@@ -160,14 +177,14 @@ jq -cn --argjson pr "$pr" --argjson meta "$meta" --argjson threads "$threads" \
   | ($cr.state.kind // null) as $kind
   | ([$head] + ($cr.sameChangeCommits // [])) as $sameChange
   | ([ (if ($threads | length) > 0 then "unresolved CodeRabbit threads: \($threads | length)" else empty end),
-       (if ($cr.bodyFindings // 0) > 0 then "unanswered CodeRabbit body findings: \($cr.bodyFindings)" else empty end),
+       (if ($cr.bodyFindingIds // [] | length) > 0 then "unanswered CodeRabbit body findings: \($cr.bodyFindingIds | length)" else empty end),
        (if ($cr.threadReplies // 0) > 0 then "CodeRabbit replies waiting on the author: \($cr.threadReplies)" else empty end),
        (if $kind == "limit_elapsed" then "CodeRabbit rate limit has passed; the implementing session has to re-request the review" else empty end),
        (if ($failed | length) > 0 then "failed checks: \($failed | map(.name) | join(", "))" else empty end),
        (if $meta.mergeable == "CONFLICTING" then "conflicts with the base branch" else empty end)
      ]) as $fix
   | ([ (if ($pending | length) > 0 then "checks still running: \($pending | map(.name) | join(", "))" else empty end),
-       (if ($cancelled | length) > 0 then "checks cancelled, re-run the latest run: \($cancelled | map(.name) | join(", "))" else empty end),
+       (if ($cancelled | length) > 0 then "checks cancelled or skipped without running on the head, re-run the latest run: \($cancelled | map(.name) | join(", "))" else empty end),
        (if $kind == "in_progress" or $kind == "rate_limited" then "CodeRabbit has not answered the head yet (\($kind))" else empty end),
        (if $kind == "unavailable" then "CodeRabbit state could not be read (\($cr.error))" else empty end),
        (if $crTiered and $kind == "waiting" and ($crReviews | length) == 0 then "CodeRabbit has not reviewed this PR yet" else empty end),
@@ -179,7 +196,11 @@ jq -cn --argjson pr "$pr" --argjson meta "$meta" --argjson threads "$threads" \
                elif ($fix | length) > 0 then "fix" elif ($wait | length) > 0 then "wait" else "proceed" end),
      reasons: ($replaced + $fix + $wait)}
     + $meta
-    + {supersededBy: $sup, unresolvedThreads: $threads, coderabbit: $cr,
+    + {supersededBy: $sup, unresolvedThreads: $threads, otherUnresolvedThreads: $other_threads,
+       coderabbit: $cr,
+       # Body findings a review declared without a cr-comment id: nothing in the PR can
+       # retire them, so they go to kompiro instead of the implementing session.
+       coderabbitUnmarkedBodyFindings: ((($cr.bodyFindings // 0) - ($cr.bodyFindingIds // [] | length)) | if . < 0 then 0 else . end),
        coderabbitReviews: ($crReviews | length),
        # Settled on the head: a review of the head or of a commit that differs from it only
        # by base merges, or a converged state (a clean summary settles a head too).

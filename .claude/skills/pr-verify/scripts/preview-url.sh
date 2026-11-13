@@ -20,6 +20,10 @@ url_of() { # deployment id -> environment_url of its latest successful status, o
     --jq '[.[] | select(.state == "success")][0].environment_url // empty'
 }
 
+# Read the list into a variable first: a failed read must stop the script rather
+# than look like a PR with no preview, which `done < <(…)` would hide.
+deps=$(gh api "repos/$repo/deployments?environment=preview&ref=$ref&per_page=30" \
+  --jq '.[] | "\(.id):\(.sha)"')
 app_url="" app_sha="" docs_url="" docs_sha=""
 while IFS=: read -r id dsha; do
   [ -z "$id" ] && continue
@@ -34,8 +38,7 @@ while IFS=: read -r id dsha; do
         docs_url=$u docs_sha=$dsha
       fi ;;
   esac
-done < <(gh api "repos/$repo/deployments?environment=preview&ref=$ref&per_page=30" \
-  --jq '.[] | "\(.id):\(.sha)"')
+done <<<"$deps"
 
 site() { # url sha -> JSON object or null
   if [ -z "$1" ]; then echo null; else
