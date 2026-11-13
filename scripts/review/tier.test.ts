@@ -878,6 +878,10 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     expect(swap("  - 関連 Design Doc: [x.md](x.md)（注）", `  - 関連 ADR: ${L}（注）`)).toBe(true);
     expect(swap("- **関連 Design Doc**: [x.md](x.md)", `- **関連 ADR**: ${L}`)).toBe(true);
     expect(swap("- 関連 Design Doc：[x.md](x.md)", `- 関連 ADR：${L}`)).toBe(true);
+    // the new ADR's file name as link text is no Design Doc left on the line
+    expect(swap("- 関連 Design Doc: [x.md](x.md)", "- 関連 ADR: [12-x.md](../adr/12-x.md)")).toBe(
+      true,
+    );
   });
 
   it("rejects any other label change", () => {
