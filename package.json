@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "license": "Apache-2.0",
+  "packageManager": "pnpm@11.20.0",
   "scripts": {
     "dev": "pnpm --filter @karasu-tools/app run dev",
     "build": "pnpm --filter @karasu-tools/core run build && pnpm --filter @karasu-tools/i18n run build && pnpm --filter @karasu-tools/lsp run build && pnpm --filter @karasu-tools/app run build && pnpm --filter ./packages/cli run build",
@@ -74,9 +75,6 @@
     "readme-demo:gif": "tsx scripts/readme-demo/make-gif.mts",
     "demo-video:record": "tsx scripts/demo-video/record.mts"
   },
-  "dependencies": {
-    "@resvg/resvg-wasm": "^2.6.2"
-  },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
     "@karasu-tools/core": "workspace:*",
@@ -93,5 +91,7 @@
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"
   },
-  "packageManager": "pnpm@11.20.0"
+  "dependencies": {
+    "@resvg/resvg-wasm": "^2.6.2"
+  }
 }
