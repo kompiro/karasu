@@ -886,6 +886,15 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     expect(swap("- 関連 Design Doc: [x.md](x.md)", "- 関連 ADR: [x.md](../adr/12-x.md)")).toBe(
       false,
     );
+    // ... even right after a slash or a period, where taking the link out would join them
+    for (const [before, after] of [
+      ["- 関連 Design Doc: /[x.md](x.md)", "- 関連 ADR: /[x.md](../adr/12-x.md)"],
+      ["- 関連 Design Doc: .[x.md](x.md)", "- 関連 ADR: .[x.md](../adr/12-x.md)"],
+      ["- 関連 Design Doc: /[x.md](x.md)z.md", "- 関連 ADR: /[ADR-12](../adr/12-x.md)z.md"],
+      ["- 関連 Design Doc: .[x.md](x.md)z.md", "- 関連 ADR: .[12-x.md](../adr/12-x.md)z.md"],
+    ]) {
+      expect(swap(before, after)).toBe(false);
+    }
   });
 
   it("rejects any other label change", () => {
