@@ -824,6 +824,165 @@ describe("isLinkSwap", () => {
     expect(isLinkSwap("see [x](../design/y.md)", "see [x](../adr/12-x.md)", D, A)).toBe(false);
   });
 });
+describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => {
+  const D = ["docs/design/x.md"];
+  const A = ["docs/adr/12-x.md"];
+  const IN = "docs/design/y.md";
+  const swap = (before: string, after: string, path = IN, d = D, a = A) =>
+    isLinkSwap(before, after, d, a, path);
+
+  it("reads a sibling's bare name as a whole link target or a whole code span", () => {
+    expect(swap("see [x.md](x.md)", "see [ADR-12](../adr/12-x.md)")).toBe(true);
+    expect(swap("see [x](./x.md#a)", "see [x](../adr/12-x.md#b)")).toBe(true);
+    expect(swap("see `x.md`", "see `docs/adr/12-x.md`")).toBe(true);
+    expect(swap("see [`x.md`](x.md)", "see [ADR-12](../adr/12-x.md)")).toBe(true);
+  });
+
+  it("keeps swaps it accepted before", () => {
+    expect(swap("`docs/design/x.md`", "`docs/adr/12-x.md`")).toBe(true);
+    expect(swap("See docs/design/x.md.", "See docs/adr/12-x.md.")).toBe(true);
+  });
+
+  it("does not read a bare name outside a whole target or code span, or outside docs/design/", () => {
+    expect(swap("see [a](old-x.md)", "see [a](../adr/12-x.md)")).toBe(false);
+    expect(swap("see [a](../other/x.md)", "see [a](../adr/12-x.md)")).toBe(false);
+    expect(swap("see [a](z.md)", "see [a](../adr/12-x.md)", IN, ["docs/design/x.md"])).toBe(false);
+    expect(swap("see x.md here", "see docs/adr/12-x.md here")).toBe(false);
+    expect(swap("run `cat x.md`", "run `cat docs/adr/12-x.md`")).toBe(false);
+    expect(swap("run `x.md foo`", "run `docs/adr/12-x.md foo`")).toBe(false);
+    for (const path of ["docs/acceptance/a.md", "docs/roadmap.md"]) {
+      expect(swap("see [x](x.md)", "see [x](../adr/12-x.md)", path)).toBe(false);
+      expect(swap("see `x.md`", "see ADR-12", path)).toBe(false);
+    }
+    // without the changed file's path, as before #3620
+    expect(isLinkSwap("see [x](x.md)", "see [x](../adr/12-x.md)", D, A)).toBe(false);
+  });
+
+  it("allows the item label 関連 Design Doc to become 関連 ADR on a swapped line", () => {
+    const L = "[ADR-12](../adr/12-x.md)";
+    expect(swap("  - 関連 Design Doc: [x.md](x.md)（注）", `  - 関連 ADR: ${L}（注）`)).toBe(true);
+    expect(swap("- **関連 Design Doc**: [x.md](x.md)", `- **関連 ADR**: ${L}`)).toBe(true);
+    expect(swap("- 関連 Design Doc：[x.md](x.md)", `- 関連 ADR：${L}`)).toBe(true);
+  });
+
+  it("rejects any other label change", () => {
+    const L = "[ADR-12](../adr/12-x.md)";
+    const S = "[x.md](x.md)";
+    // the label alone, the reverse direction, another word
+    expect(swap(`- 関連 Design Doc: ${L}`, `- 関連 ADR: ${L}`)).toBe(false);
+    expect(swap(`- 関連 ADR: ${S}`, `- 関連 Design Doc: ${L}`)).toBe(false);
+    expect(swap(`- 関連 Design Doc: ${S}`, `- 承認済み ADR: ${L}`)).toBe(false);
+    // not at the item's label position
+    expect(swap(`- 注: 関連 Design Doc ${S}`, `- 注: 関連 ADR ${L}`)).toBe(false);
+    expect(swap(`See 関連 Design Doc: ${S}`, `See 関連 ADR: ${L}`)).toBe(false);
+    // indentation, the list marker, bold or the colon moved
+    expect(swap(`- 関連 Design Doc: ${S}`, `  - 関連 ADR: ${L}`)).toBe(false);
+    expect(swap(`- 関連 Design Doc: ${S}`, `* 関連 ADR: ${L}`)).toBe(false);
+    expect(swap(`- 関連 Design Doc: ${S}`, `- **関連 ADR**: ${L}`)).toBe(false);
+    expect(swap(`- 関連 Design Doc: ${S}`, `- 関連 ADR：${L}`)).toBe(false);
+  });
+
+  it("rejects the label change while the line still refers to a Design Doc", () => {
+    const L = "[ADR-12](../adr/12-x.md)";
+    for (const rest of [
+      "[z](../design/z.md)",
+      "[z](./z.md)",
+      "[z](z.md#a)",
+      "`z.md`",
+      "z.md",
+      "docs/design/z.md",
+    ]) {
+      expect(swap(`- 関連 Design Doc: [x.md](x.md)、${rest}`, `- 関連 ADR: ${L}、${rest}`)).toBe(
+        false,
+      );
+    }
+  });
+
+  it("allows a code span holding the Design Doc's reference to become ADR-<n>", () => {
+    expect(swap("（`x.md` の D5）", "（ADR-12 の D5）")).toBe(true);
+    expect(swap("（`./x.md#d5` の D5）", "（ADR-12 の D5）")).toBe(true);
+    expect(swap("see `docs/design/x.md`.", "see ADR-12.", "docs/roadmap.md")).toBe(true);
+  });
+
+  it("rejects ADR-<n> that is not a standalone name of the same-stem ADR", () => {
+    expect(swap("see `x.md`", "see ADR-12", IN, D, ["docs/adr/12-other.md"])).toBe(false);
+    for (const line of [
+      "see ADR-120",
+      "see ADR-12a",
+      "see /ADR-12",
+      "see :ADR-12",
+      "see ADR-12.md",
+      "see ADR-12/x",
+      "see `ADR-12`",
+      "see [ADR-12](https://e.example/x)",
+    ]) {
+      expect(swap("see `x.md`", line)).toBe(false);
+    }
+    // a name outside a code span, and the reverse direction
+    expect(swap("see x.md", "see ADR-12")).toBe(false);
+    expect(swap("see ADR-12 and [x](x.md)", "see `x.md` and [x](../adr/12-x.md)")).toBe(false);
+  });
+
+  it("pairs each ADR-<n> with the Design Doc of the same stem, by position", () => {
+    const d = ["docs/design/foo.md", "docs/design/bar.md"];
+    const a = ["docs/adr/12-foo.md", "docs/adr/13-bar.md"];
+    expect(swap("`foo.md`、`bar.md`", "ADR-12、ADR-13", IN, d, a)).toBe(true);
+    expect(swap("`foo.md`、`bar.md`", "ADR-13、ADR-12", IN, d, a)).toBe(false);
+    // swapping positions within the line
+    expect(swap("`foo.md` と ADR-13", "ADR-13 と `foo.md`", IN, d, a)).toBe(false);
+  });
+
+  it("no longer accepts a whole-path code span swapped to an ADR of another stem", () => {
+    expect(
+      swap("`docs/design/x.md`", "`docs/adr/12-y.md`", "docs/roadmap.md", D, ["docs/adr/12-y.md"]),
+    ).toBe(false);
+  });
+
+  describe("the promotions that motivated it", () => {
+    const hunk = (before: string, after: string) => ({
+      oldStart: 9,
+      removed: [before],
+      newStart: 9,
+      added: [after],
+    });
+
+    it("classifies #3621 (ADR-3038) as Low", () => {
+      const recall = modified("docs/design/tpl-changed-files-recall.md", {
+        hunks: [
+          hunk(
+            "  - 関連 Design Doc: [`tpl-enforcement-status.md`](tpl-enforcement-status.md)（#3038。D5 で本件を分けた）",
+            "  - 関連 ADR: [ADR-3038](../adr/3038-tpl-enforcement-status.md)（#3038。D5 で本件を分けた）",
+          ),
+          hunk(
+            "TPL を結ぶ鍵が無いので、設計を分けた（`tpl-enforcement-status.md` の D5）。",
+            "TPL を結ぶ鍵が無いので、設計を分けた（ADR-3038 の D5）。",
+          ),
+        ],
+      });
+      expect(
+        tierOf(
+          added("docs/adr/3038-tpl-enforcement-status.md"),
+          deleted("docs/design/tpl-enforcement-status.md"),
+          recall,
+        ),
+      ).toBe("low");
+    });
+
+    it("keeps #3352 (ADR-2922) out of Low, because it also rewrites a note", () => {
+      const channel = modified("docs/design/vscode-pre-release-channel.md", {
+        hunks: [
+          hunk(
+            "  - 関連 Design Doc: [monthly-release-train.md](monthly-release-train.md)（月次トレイン。ADR 昇格待ち）",
+            "  - 関連 ADR: [ADR-2922](../adr/2922-monthly-release-train.md)（月次トレイン）",
+          ),
+        ],
+      });
+      const adr = added("docs/adr/2922-monthly-release-train.md");
+      const design = deleted("docs/design/monthly-release-train.md");
+      expect(tierOf(adr, design, channel)).toBe("design");
+    });
+  });
+});
 
 describe("isLinkInsert", () => {
   const A = ["docs/adr/12-x.md"];
