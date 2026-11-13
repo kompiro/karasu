@@ -629,7 +629,7 @@ export function isLinkSwap(
     const plain = (text: string) => {
       let out = text;
       if (side === "added") {
-        out = out.replace(/(?<![\w./:-])ADR-(\d+)(?![\w/-]|\.[\w-])/g, (m, n: string) => {
+        out = out.replace(/(?<![\w./:?=#&-])ADR-(\d+)(?![\w/-]|\.[\w-])/g, (m, n: string) => {
           const stem = numbered.get(n);
           if (stem === undefined) return m;
           seen.new = true;
@@ -667,7 +667,8 @@ export function isLinkSwap(
         out += m[0];
       } else {
         seen[ref.old ? "old" : "new"] = true;
-        out += `[${isName(m[1]) ? "⟦name⟧" : m[1]}](⟦ref⟧)`;
+        const text = isName(m[1]) ? "⟦name⟧" : m[1].replace(bare(either), "⟦ref⟧");
+        out += `[${text}](⟦ref⟧)`;
       }
       last = m.index + m[0].length;
     }

@@ -840,6 +840,13 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
 
   it("keeps swaps it accepted before", () => {
     expect(swap("`docs/design/x.md`", "`docs/adr/12-x.md`")).toBe(true);
+    // a path in the text of a link to the reference
+    expect(
+      swap(
+        "see [see docs/design/x.md](../design/x.md)",
+        "see [see docs/adr/12-x.md](../adr/12-x.md)",
+      ),
+    ).toBe(true);
     expect(swap("See docs/design/x.md.", "See docs/adr/12-x.md.")).toBe(true);
   });
 
@@ -906,17 +913,22 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
 
   it("rejects ADR-<n> that is not a standalone name of the same-stem ADR", () => {
     expect(swap("see `x.md`", "see ADR-12", IN, D, ["docs/adr/12-other.md"])).toBe(false);
-    for (const line of [
-      "see ADR-120",
-      "see ADR-12a",
-      "see /ADR-12",
-      "see :ADR-12",
-      "see ADR-12.md",
-      "see ADR-12/x",
-      "see `ADR-12`",
-      "see [ADR-12](https://e.example/x)",
+    expect(swap("see `x.md`", "see ADR-120")).toBe(false);
+    expect(swap("see `x.md`", "see `ADR-12`")).toBe(false);
+    expect(swap("see `x.md`", "see [ADR-12](https://e.example/x)")).toBe(false);
+    // The neighbouring character stays on both lines, so only the boundary rejects.
+    for (const [before, after] of [
+      ["see 1`x.md`", "see 1ADR-12"],
+      ["see /`x.md`", "see /ADR-12"],
+      ["see :`x.md`", "see :ADR-12"],
+      ["see `x.md`a", "see ADR-12a"],
+      ["see `x.md`.md", "see ADR-12.md"],
+      ["see `x.md`/x", "see ADR-12/x"],
+      ["https://e.example/?id=`x.md`", "https://e.example/?id=ADR-12"],
+      ["https://e.example/#`x.md`", "https://e.example/#ADR-12"],
+      ["<https://e.example/?a=1&`x.md`>", "<https://e.example/?a=1&ADR-12>"],
     ]) {
-      expect(swap("see `x.md`", line)).toBe(false);
+      expect(swap(before, after)).toBe(false);
     }
     // a name outside a code span, and the reverse direction
     expect(swap("see x.md", "see ADR-12")).toBe(false);
@@ -928,7 +940,8 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     const a = ["docs/adr/12-foo.md", "docs/adr/13-bar.md"];
     expect(swap("`foo.md`、`bar.md`", "ADR-12、ADR-13", IN, d, a)).toBe(true);
     expect(swap("`foo.md`、`bar.md`", "ADR-13、ADR-12", IN, d, a)).toBe(false);
-    // swapping positions within the line
+    // swapping positions within the line, with one stem and with two
+    expect(swap("`x.md` と ADR-12", "ADR-12 と `x.md`")).toBe(false);
     expect(swap("`foo.md` と ADR-13", "ADR-13 と `foo.md`", IN, d, a)).toBe(false);
   });
 
