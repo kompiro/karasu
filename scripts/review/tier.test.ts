@@ -983,6 +983,60 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     ).toBe(false);
   });
 
+  it("rewrites a code span to ADR-<n> only on a line of plain prose", () => {
+    for (const [before, after] of [
+      // links, footnotes and autolinks, whatever the words around the number
+      [
+        'see [the `x.md` doc](https://e.example/x "t")',
+        'see [the ADR-12 doc](https://e.example/x "t")',
+      ],
+      ["see [the `x.md` doc][r]", "see [the ADR-12 doc][r]"],
+      ["see [^a `x.md` b]", "see [^a ADR-12 b]"],
+      [
+        "see [a [b `x.md` c] d](https://e.example/x)",
+        "see [a [b ADR-12 c] d](https://e.example/x)",
+      ],
+      ["(www.e.example/a,`x.md`)", "(www.e.example/a,ADR-12)"],
+      ["<b>設計は`x.md`の</b>", "<b>設計はADR-12の</b>"],
+      ["`@import`の扱いは`x.md`の D5", "`@import`の扱いは ADR-12の D5"],
+      // whitespace a link destination does not end at
+      ["see [a](https://e.example/x\u3000`x.md`)", "see [a](https://e.example/x\u3000ADR-12)"],
+      ["[r]: https://e.example/x\u3000`x.md`", "[r]: https://e.example/x\u3000ADR-12"],
+      // code spans the single-backtick pattern misreads
+      ["`` a ` `x.md` ``", "`` a ` ADR-12 ``"],
+      ["`a [l](t) `x.md` b`", "`a [l](t) ADR-12 b`"],
+    ]) {
+      expect(swap(before, after)).toBe(false);
+    }
+  });
+
+  it("accepts ADR-<n> beside a full-width paren, in bold, and after a label's full-width colon", () => {
+    expect(
+      swap("既存設計は`x.md`（拡張ホスト）を参照", "既存設計はADR-12（拡張ホスト）を参照"),
+    ).toBe(true);
+    expect(swap("**`x.md`** を読む", "**ADR-12** を読む")).toBe(true);
+    expect(swap("- 関連 Design Doc：`x.md`", "- 関連 ADR：ADR-12")).toBe(true);
+  });
+
+  it("requires the added line to refer to a new ADR, and ADR-<n> to share a deleted stem", () => {
+    expect(swap("[x.md](../design/x.md)", "[docs/design/x.md](../design/x.md)")).toBe(false);
+    expect(
+      swap(
+        "`docs/adr/12-other.md` と docs/design/x.md",
+        "ADR-12 と docs/adr/12-other.md",
+        "docs/roadmap.md",
+        D,
+        ["docs/adr/12-other.md"],
+      ),
+    ).toBe(false);
+  });
+
+  it("swaps a path inside a link target that is not a whole reference, as before", () => {
+    expect(
+      swap("[a](../design/x.md?plain=1)", "[a](../adr/12-x.md?plain=1)", "docs/roadmap.md"),
+    ).toBe(true);
+  });
+
   describe("the promotions that motivated it", () => {
     const hunk = (before: string, after: string) => ({
       oldStart: 9,

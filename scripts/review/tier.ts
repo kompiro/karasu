@@ -591,17 +591,22 @@ function segmentsOf(line: string): Segment[] {
 }
 
 /** What may stand right before a prose `ADR-<n>`, and right after it (#3620). */
-const PROSE_BEFORE = /[\s(（「『、。，,：；぀-ヿ㐀-鿿]/;
-const PROSE_AFTER = /[\s)）」』、。，,：；！？぀-ヿ㐀-鿿]/;
+const PROSE_BEFORE = /[\s(（「『、。，,：；*぀-ヿ㐀-鿿]/;
+const PROSE_AFTER = /[\s)）（」』、。，,：；！？*぀-ヿ㐀-鿿]/;
 /** Sentence punctuation that may follow `ADR-<n>` only before a space or the line's end. */
 const SENTENCE_END = /[.:;!?]/;
-/** A whitespace-delimited word that is, or holds, a URL, an address, a tag or link brackets. */
-const URL_LIKE = /:\/\/|^www\.|[@<>[\]]/;
+/**
+ * What keeps a line from rewriting a code span to `ADR-<n>` at all: link or
+ * footnote brackets, HTML or autolink angle brackets, an address, a URL, or a
+ * double-backtick code span. The whole line is judged, because markdown
+ * structure does not follow words.
+ */
+const NOT_PROSE_LINE = /[[\]<>@]|:\/\/|www\.|``/;
 
 /**
  * Whether `line[start, end)` is an `ADR-<n>` written as a name in prose: the
- * characters around it are prose ones listed above, and its word is no URL.
- * An allowlist, so a URL character not thought of keeps the line out of Low.
+ * characters around it are prose ones listed above. An allowlist, so a
+ * character not thought of keeps the line out of Low.
  */
 function isStandaloneName(line: string, start: number, end: number): boolean {
   const before = line[start - 1];
@@ -611,10 +616,7 @@ function isStandaloneName(line: string, start: number, end: number): boolean {
     const next = line[end + 1];
     if (!SENTENCE_END.test(after) || (next !== undefined && !/\s/.test(next))) return false;
   }
-  let [from, to] = [start, end];
-  while (from > 0 && !/\s/.test(line[from - 1])) from -= 1;
-  while (to < line.length && !/\s/.test(line[to])) to += 1;
-  return !URL_LIKE.test(line.slice(from, to));
+  return true;
 }
 
 /**
@@ -675,6 +677,8 @@ export function isLinkSwap(
   // the file name or path (in backticks or not), or the ADR's number.
   const names = namesOf([...deletedDesigns, ...newAdrs]);
   const isName = (text: string) => isNameIn(names, text);
+  // A code span may become `ADR-<n>` only on lines of plain prose (D3).
+  const proseLines = !NOT_PROSE_LINE.test(removed) && !NOT_PROSE_LINE.test(added);
 
   // Links first, so a code span in link text stays with the link rule; then
   // whole-reference code spans; then, on the added line only, a standalone
@@ -691,7 +695,7 @@ export function isLinkSwap(
       if (seg.kind === "link") {
         const ref = wholeRef(seg.target);
         if (ref === undefined) {
-          out += `[${swapPaths(seg.body)}](${seg.target})`;
+          out += `[${swapPaths(seg.body)}](${swapPaths(seg.target)})`;
         } else {
           seen[ref.old ? "old" : "new"] = true;
           out += `[${isName(seg.body) ? "⟦name⟧" : swapPaths(seg.body)}](⟦ref⟧)`;
@@ -706,7 +710,7 @@ export function isLinkSwap(
         }
       } else {
         let text = seg.body;
-        if (side === "added") {
+        if (side === "added" && proseLines) {
           text = text.replace(/ADR-(\d+)/g, (m: string, n: string, offset: number) => {
             const stem = numbered.get(n);
             const start = seg.start + offset;
@@ -728,14 +732,17 @@ export function isLinkSwap(
   if (
     r?.[3] === "関連 Design Doc" &&
     a?.[3] === "関連 ADR" &&
-    r[1] === a[1] &&
     r[2] === a[2] &&
     r[4] === a[4] &&
     !DESIGN_PATH.test(added) &&
     !(inDesignDir && BARE_MD_NAME.test(added))
   ) {
-    from = `${r[1]}⟦label⟧${removed.slice(r[0].length)}`;
-    to = `${a[1]}⟦label⟧${added.slice(a[0].length)}`;
+    // Only the label word is replaced: the indent, bold marks and colon stay in
+    // both lines, so they must match, and the colon still precedes the value.
+    const word = (m: RegExpExecArray, line: string) =>
+      `${m[1]}${m[2] ?? ""}⟦label⟧${line.slice(m[0].length - (m[2] ?? "").length - m[4].length)}`;
+    from = word(r, removed);
+    to = word(a, added);
   }
   const before = normalize(from, "removed");
   const after = normalize(to, "added");
