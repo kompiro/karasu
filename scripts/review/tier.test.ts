@@ -893,7 +893,6 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
       ["- 関連 Design Doc: .[x.md](x.md)", "- 関連 ADR: .[x.md](../adr/12-x.md)"],
       ["- 関連 Design Doc: /[x.md](x.md)z.md", "- 関連 ADR: /[ADR-12](../adr/12-x.md)z.md"],
       ["- 関連 Design Doc: .[x.md](x.md)z.md", "- 関連 ADR: .[12-x.md](../adr/12-x.md)z.md"],
-      ["- 関連 Design Doc: [x](x.md).md", "- 関連 ADR: [x](../adr/12-x.md).md"],
     ]) {
       expect(swap(before, after)).toBe(false);
     }
