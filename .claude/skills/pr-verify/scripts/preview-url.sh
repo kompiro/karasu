@@ -16,13 +16,17 @@ repo=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
 read -r ref sha < <(gh pr view "$pr" --json headRefName,headRefOid --jq '"\(.headRefName) \(.headRefOid)"')
 
 url_of() { # deployment id -> environment_url of its latest successful status, or empty
-  gh api "repos/$repo/deployments/$1/statuses" \
-    --jq '[.[] | select(.state == "success")][0].environment_url // empty'
+  # Statuses come newest first; read every page so a success past the first is seen.
+  gh api --paginate "repos/$repo/deployments/$1/statuses?per_page=100" \
+    --jq '.[] | select(.state == "success") | .environment_url // empty' | sed -n 1p
 }
 
 # Read the list into a variable first: a failed read must stop the script rather
-# than look like a PR with no preview, which `done < <(…)` would hide.
-deps=$(gh api "repos/$repo/deployments?environment=preview&ref=$ref&per_page=30" \
+# than look like a PR with no preview, which `done < <(…)` would hide. Every page
+# is read, newest first. The ref goes in as a field so that a branch name with
+# a URI delimiter (feature/#12) is encoded rather than cut at the "#".
+deps=$(gh api --paginate -X GET "repos/$repo/deployments" \
+  -f environment=preview -f ref="$ref" -f per_page=100 \
   --jq '.[] | "\(.id):\(.sha)"')
 app_url="" app_sha="" docs_url="" docs_sha=""
 while IFS=: read -r id dsha; do
@@ -38,6 +42,8 @@ while IFS=: read -r id dsha; do
         docs_url=$u docs_sha=$dsha
       fi ;;
   esac
+  # Both sites found at the head: older deployments cannot change the answer.
+  if [ "$app_sha" = "$sha" ] && [ "$docs_sha" = "$sha" ]; then break; fi
 done <<<"$deps"
 
 site() { # url sha -> JSON object or null

@@ -103,7 +103,7 @@ crReviews=$(gh api graphql --paginate -F owner="$owner" -F name="$name" -F pr="$
   | jq -cs 'add // []')
 
 # An open PR whose body says "replaces #N" / "supersedes PRs #M and #N" (any tense).
-superseded=$(gh pr list --state open --search "$pr in:body" --json number,title,url,body --limit 30 \
+superseded=$(gh pr list --state open --search "$pr in:body" --json number,title,url,body --limit 200 \
   | jq -c --arg pr "$pr" '[.[] | select(.number != ($pr | tonumber))
         | select(.body | test("(replac|supersed)(e|es|ed|ing)\\s+(PRs?\\s+)?(#\\d+(\\s*,\\s*|\\s+and\\s+|\\s*,\\s*and\\s+))*#" + $pr + "\\b"; "i"))
         | {number, title, url}]') || {
@@ -127,7 +127,8 @@ fi
 # A read that fails must not look like "nothing required" or "no checks": exit
 # without JSON instead (SKILL.md stops and reports the error).
 base=$(gh pr view "$pr" --json baseRefName --jq .baseRefName)
-required=$(gh api "repos/$repo/rules/branches/$base" \
+# The base goes in as one encoded path segment (a stacked PR's base has a "/").
+required=$(gh api "repos/$repo/rules/branches/$(jq -rn --arg b "$base" '$b | @uri')" \
   --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context]') || {
   echo "gate.sh: could not read the required checks of $base" >&2; exit 1; }
 # `gh pr checks` exits 1 when a check failed and 8 when one is pending, and still
