@@ -924,6 +924,8 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
       "`z.md`",
       "z.md",
       "docs/design/z.md",
+      "docs/design/ 配下",
+      "my-design/z.md",
     ]) {
       expect(swap(`- 関連 Design Doc: [x.md](x.md)、${rest}`, `- 関連 ADR: ${L}、${rest}`)).toBe(
         false,

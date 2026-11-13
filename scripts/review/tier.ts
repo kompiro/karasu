@@ -553,8 +553,8 @@ const stemOf = (path: string, isAdr: boolean): string => {
 
 /** The leading label of a list item: indent, `- `, optional bold, the label, the colon. */
 const ITEM_LABEL = /^(\s*- )(\*\*)?(関連 Design Doc|関連 ADR)\2([:：])/;
-/** A Design Doc path anywhere on a line. */
-const DESIGN_PATH = /(?<![\w-])design\/[\w.-]/;
+/** A Design Doc path anywhere on a line: counted broadly, since it only holds the label back. */
+const DESIGN_PATH = /design\//;
 /** A `.md` name with no directory, which inside docs/design/ may name a sibling Design Doc. */
 const BARE_MD_NAME = /(?<![\w./-])(?:\.\/)?[\w-][\w.-]*\.md(?![\w-])/;
 /** A markdown link, and a code span. */
