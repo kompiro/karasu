@@ -135,7 +135,9 @@ describe("raster paths (TPL-1799)", () => {
         .filter((dir) => existsSync(dir)),
     ];
     expect(await rasterizerLoaders(REPO_ROOT, roots)).toEqual(Object.keys(RASTER_PATHS).sort());
-  });
+    // madge parses every runtime source file in the repo: about 2 s locally,
+    // 6 to 8 s on a CI runner, past vitest's 5 s test default.
+  }, 60_000);
 
   it("draws every corpus model on every path, with no model dropped", () => {
     // A model that stopped compiling would otherwise leave the checks below
