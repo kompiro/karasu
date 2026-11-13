@@ -652,12 +652,14 @@ export function isLinkSwap(
       return {
         re: target(inDesignDir ? `(?:${dirRef}|${sibling})` : dirRef),
         stem: stemOf(p, false),
+        path: p,
         old: true,
       };
     }),
     ...newAdrs.map((p) => ({
       re: target(referenceSource([p]) ?? ""),
       stem: stemOf(p, true),
+      path: p,
       old: false,
     })),
   ];
@@ -665,10 +667,11 @@ export function isLinkSwap(
   // The ADR numbers a standalone `ADR-<n>` may stand for, keyed to the stem the
   // ADR shares with a deleted Design Doc.
   const designStems = new Set(deletedDesigns.map((p) => stemOf(p, false)));
-  const numbered = new Map<string, string>();
+  const numbered = new Map<string, { stem: string; path: string }>();
   for (const p of newAdrs) {
     const n = /^docs\/adr\/(\d+)-/.exec(p)?.[1];
-    if (n !== undefined && designStems.has(stemOf(p, true))) numbered.set(n, stemOf(p, true));
+    if (n !== undefined && designStems.has(stemOf(p, true)))
+      numbered.set(n, { stem: stemOf(p, true), path: p });
   }
   const either = `(?:${oldRef}|${newRef})`;
   // A link's text may change only from one name of what it points at to another:
@@ -685,13 +688,23 @@ export function isLinkSwap(
   // the ADR, or stay. Links first, so a code span in link text stays with the
   // link rule; then whole-reference code spans; then prose `ADR-<n>`; then
   // directory-bearing paths in what is left.
-  type Ref = { kind: "old" | "new" | "num"; form: "link" | "code" | "bare"; stem: string };
+  type Ref = {
+    kind: "old" | "new" | "num";
+    form: "link" | "code" | "bare";
+    stem: string;
+    path: string;
+  };
   const normalize = (line: string) => {
     const refs: Ref[] = [];
     const swapPaths = (text: string) =>
       text.replace(bare(either), (m: string) => {
         const ref = wholeRef(m);
-        refs.push({ kind: ref?.old ? "old" : "new", form: "bare", stem: ref?.stem ?? "" });
+        refs.push({
+          kind: ref?.old ? "old" : "new",
+          form: "bare",
+          stem: ref?.stem ?? "",
+          path: ref?.path ?? "",
+        });
         return "⟦ref⟧";
       });
     let out = "";
@@ -701,7 +714,12 @@ export function isLinkSwap(
         if (ref === undefined) {
           out += `[${swapPaths(seg.body)}](${swapPaths(seg.target)})`;
         } else {
-          refs.push({ kind: ref.old ? "old" : "new", form: "link", stem: ref.stem });
+          refs.push({
+            kind: ref.old ? "old" : "new",
+            form: "link",
+            stem: ref.stem,
+            path: ref.path,
+          });
           out += `[${isName(seg.body) ? "⟦name⟧" : swapPaths(seg.body)}](⟦ref⟧)`;
         }
       } else if (seg.kind === "code") {
@@ -709,17 +727,22 @@ export function isLinkSwap(
         if (ref === undefined) {
           out += `\`${swapPaths(seg.body)}\``;
         } else {
-          refs.push({ kind: ref.old ? "old" : "new", form: "code", stem: ref.stem });
+          refs.push({
+            kind: ref.old ? "old" : "new",
+            form: "code",
+            stem: ref.stem,
+            path: ref.path,
+          });
           out += "`⟦ref⟧`";
         }
       } else {
         let text = seg.body;
         if (proseLines) {
           text = text.replace(/ADR-(\d+)/g, (m: string, n: string, offset: number) => {
-            const stem = numbered.get(n);
+            const adr = numbered.get(n);
             const start = seg.start + offset;
-            if (stem === undefined || !isStandaloneName(line, start, start + m.length)) return m;
-            refs.push({ kind: "num", form: "code", stem });
+            if (adr === undefined || !isStandaloneName(line, start, start + m.length)) return m;
+            refs.push({ kind: "num", form: "code", ...adr });
             return "`⟦ref⟧`";
           });
         }
@@ -730,8 +753,9 @@ export function isLinkSwap(
   };
   // Which pairs of references, in order, a swap may make (#3620).
   const pairs = (r: Ref, a: Ref) =>
-    (r.kind === "new" && a.kind === "new" && (r.form !== "code" || r.stem === a.stem)) ||
-    (r.kind === "num" && a.kind === "num" && r.stem === a.stem) ||
+    // A reference already at a new ADR stays at that ADR, in any form.
+    (r.kind === "new" && a.kind === "new" && r.path === a.path) ||
+    (r.kind === "num" && a.kind === "num" && r.path === a.path) ||
     (r.kind === "old" && a.kind === "new" && (r.form !== "code" || r.stem === a.stem)) ||
     (r.kind === "old" && a.kind === "num" && r.form === "code" && r.stem === a.stem);
 

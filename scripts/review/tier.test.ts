@@ -1079,12 +1079,41 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     expect(swap("see `x.md` (ADR-12).", "see ADR-12 (ADR-12).")).toBe(true);
   });
 
-  it("pairs a code span between two new ADRs only within one stem", () => {
+  it("keeps a reference already at a new ADR at that ADR, in any form", () => {
     const a = ["docs/adr/12-x.md", "docs/adr/5-a.md", "docs/adr/6-b.md"];
     expect(swap("`x.md` `docs/adr/5-a.md`", "`docs/adr/12-x.md` `docs/adr/6-b.md`", IN, D, a)).toBe(
       false,
     );
     expect(swap("`x.md` `docs/adr/5-a.md`", "`docs/adr/12-x.md` `docs/adr/5-a.md`", IN, D, a)).toBe(
+      true,
+    );
+    // a link or a bare path moved to another new ADR
+    expect(
+      swap(
+        "see [x](x.md) and [a](../adr/5-a.md)",
+        "see [x](../adr/12-x.md) and [a](../adr/6-b.md)",
+        IN,
+        D,
+        a,
+      ),
+    ).toBe(false);
+    expect(
+      swap(
+        "see [x](x.md) and docs/adr/5-a.md",
+        "see [x](../adr/12-x.md) and docs/adr/6-b.md",
+        IN,
+        D,
+        a,
+      ),
+    ).toBe(false);
+    // two new ADRs with the same slug are still two records
+    const twins = ["docs/adr/12-x.md", "docs/adr/13-x.md"];
+    expect(
+      swap("`x.md` `docs/adr/12-x.md`", "`docs/adr/12-x.md` `docs/adr/13-x.md`", IN, D, twins),
+    ).toBe(false);
+    expect(swap("`x.md` ADR-12 の D5", "ADR-12 ADR-13 の D5", IN, D, twins)).toBe(false);
+    // the same ADR in another path form or anchor stays
+    expect(swap("`x.md` `docs/adr/5-a.md`", "`docs/adr/12-x.md` `../adr/5-a.md#b`", IN, D, a)).toBe(
       true,
     );
   });
