@@ -50,9 +50,16 @@ interface FacetOverlayEntry {
   color: string;
 }
 
+/**
+ * At least one entry. An active overlay always has a selected facet: "nothing
+ * selected" is `undefined`, never an overlay with no rows, so an empty legend
+ * band or a stray attribute has no type to be written in (TPL-2174).
+ */
+type NonEmpty<T> = readonly [T, ...T[]];
+
 export interface FacetOverlay {
   /** Selected facets in known-facet order — the legend rows, in the order shown. */
-  entries: FacetOverlayEntry[];
+  entries: NonEmpty<FacetOverlayEntry>;
   /**
    * Selected-facet ids per bare node id, in known-facet order. Non-members are
    * absent. A union over every node sharing the id (`KrsFile.facetIndex`), so
@@ -181,10 +188,20 @@ export function resolveFacetOverlay(
     }
     return out;
   };
-  const membership = selectedOf(file.facetIndex);
-  if (membership.size === 0 && entries.length === 0) return undefined;
+  // `active` is non-empty here, and so is `entries`; the check is what lets the
+  // type say so.
+  if (!isNonEmpty(entries)) return undefined;
 
-  return { entries, membership, membershipByPath: selectedOf(file.facetIndexByPath), colorOf };
+  return {
+    entries,
+    membership: selectedOf(file.facetIndex),
+    membershipByPath: selectedOf(file.facetIndexByPath),
+    colorOf,
+  };
+}
+
+function isNonEmpty<T>(items: readonly T[]): items is NonEmpty<T> {
+  return items.length > 0;
 }
 
 /**
