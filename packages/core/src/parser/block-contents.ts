@@ -10,6 +10,7 @@ import type {
 import { INFRA_KIND_SET } from "../types/ast.js";
 import { LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
 import { stitchKebabTail } from "./kebab-name.js";
+import { opensEdgeOnLaterLine } from "./node-path.js";
 import { consumeRejected, rejectConstruct, rejectEdge, rejectNode } from "./rejected-construct.js";
 import { handleNestedLegend } from "./legend-parser.js";
 import {
@@ -196,8 +197,9 @@ export function parseBlockContentsWithProperties(
         loc: ctx.range(token.loc),
       });
       ctx.advance();
-      // Consume the value string (if any) so the rest of the block still parses.
-      if (ctx.peek().type === TokenType.StringLiteral) {
+      // Consume the value string (if any) so the rest of the block still parses,
+      // but not the quoted source of an edge on the next line (#3752).
+      if (ctx.peek().type === TokenType.StringLiteral && !opensEdgeOnLaterLine(ctx, token)) {
         ctx.advance();
       }
       continue;
