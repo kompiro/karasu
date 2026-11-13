@@ -36,7 +36,7 @@ import { BOT_LOGIN, noticeFor, parseVerdicts, wantsNotice } from "./low-pr-merge
 import { BASE, REPO } from "../adr/regenerate-pr-flow.ts";
 import { checkPr } from "./tier.ts";
 
-function gh(args: string[]): string {
+export function gh(args: string[]): string {
   try {
     return execFileSync("gh", ["api", ...args], {
       encoding: "utf-8",
@@ -50,7 +50,7 @@ function gh(args: string[]): string {
 }
 
 /** Every item of a paginated list endpoint. */
-const ghList = <T>(path: string, jq: string): T[] =>
+export const ghList = <T>(path: string, jq: string): T[] =>
   gh(["--paginate", path, "--jq", `${jq} | tojson`])
     .split("\n")
     .filter((l) => l !== "")
@@ -61,7 +61,7 @@ const PULL_FIELDS =
   "head: {ref: .head.ref, sha: .head.sha, " +
   "repo: (if .head.repo then {full_name: .head.repo.full_name} else null end)}}";
 
-const restGitHub: GitHub = {
+export const restGitHub: GitHub = {
   openPulls: () =>
     ghList<Pull>(`repos/${REPO}/pulls?state=open&per_page=100`, `.[] | ${PULL_FIELDS}`),
   // `mergeable` is only on a single PR's read.
@@ -92,12 +92,15 @@ const git = (...args: string[]): string =>
   execFileSync("git", args, { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] });
 
 /** Fetches the PR head's objects (no ref, no checkout) and runs `tier.ts check` on `sha`. */
-function checkTier(pr: number, sha: string): TierResult {
+export function checkTier(
+  pr: number,
+  sha: string,
+  log: (line: string) => void = console.log,
+): TierResult {
   git("fetch", "--quiet", "--no-tags", "origin", `refs/pull/${pr}/head`);
   const result = checkPr(String(pr), sha);
   if (result.state === "moved") return { state: "moved" };
-  for (const w of result.waivers)
-    console.log(`#${pr} passed by a reason line: ${w.label}: ${w.reason}`);
+  for (const w of result.waivers) log(`#${pr} passed by a reason line: ${w.label}: ${w.reason}`);
   if (result.errors.length > 0) return { state: "fail", errors: result.errors };
   if (result.unreadable.length > 0) return { state: "unreadable", messages: result.unreadable };
   return { state: "pass" };
