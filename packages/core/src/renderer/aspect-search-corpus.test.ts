@@ -114,57 +114,64 @@ afterEach(() => {
 });
 
 let entries: ExampleEntry[] = [];
+// Resolves every example once; 120 s leaves the same CI headroom as the tests.
 beforeAll(async () => {
   entries = await loadExampleCorpus();
 }, 120_000);
 
-describe("the width-budget search over every view of every example (TPL-2593)", () => {
-  it("draws the same SVG with the clock, randomness, viewport and render order moved", () => {
-    const first = drawAll(entries, { now: 0, random: 0.25, viewport: 800 });
-    vi.useRealTimers();
-    vi.restoreAllMocks();
-    const second = drawAll([...entries].reverse(), {
-      now: 9_000_000_000_000,
-      random: 0.75,
-      viewport: 3000,
-      primer: true,
+// Each test walks every view of every example. Under coverage instrumentation
+// on a CI runner that outlasts vitest's 5 s default, hence the explicit budget.
+describe(
+  "the width-budget search over every view of every example (TPL-2593)",
+  { timeout: 60_000 },
+  () => {
+    it("draws the same SVG with the clock, randomness, viewport and render order moved", () => {
+      const first = drawAll(entries, { now: 0, random: 0.25, viewport: 800 });
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      const second = drawAll([...entries].reverse(), {
+        now: 9_000_000_000_000,
+        random: 0.75,
+        viewport: 3000,
+        primer: true,
+      });
+      const differing = [...first].filter(([key, svg]) => second.get(key) !== svg).map(([k]) => k);
+      expect(first.size).toBeGreaterThan(200);
+      // The primer moves the search off the floor, so it leaves a different
+      // result behind than the examples, nearly all of which keep the floor.
+      const widened = replays.widened;
+      renderEveryView(PRIMER, "none");
+      expect(replays.widened).toBeGreaterThan(widened);
+      expect(differing).toEqual([]);
     });
-    const differing = [...first].filter(([key, svg]) => second.get(key) !== svg).map(([k]) => k);
-    expect(first.size).toBeGreaterThan(200);
-    // The primer moves the search off the floor, so it leaves a different
-    // result behind than the examples, nearly all of which keep the floor.
-    const widened = replays.widened;
-    renderEveryView(PRIMER, "none");
-    expect(replays.widened).toBeGreaterThan(widened);
-    expect(differing).toEqual([]);
-  });
 
-  it("every candidate a search tried places the same again afterwards", () => {
-    // The search runs during the draws above as well; these counts and the
-    // list cover all of them.
-    drawAll(entries, { now: 0, random: 0.5, viewport: 1200 });
-    expect(replays.searches).toBeGreaterThan(1000);
-    // Some views try more than one budget, so a trial that dirties shared
-    // state for the next one has a next one to dirty.
-    expect(replays.trials).toBeGreaterThan(replays.searches);
-    expect(impure).toEqual([]);
-  });
+    it("every candidate a search tried places the same again afterwards", () => {
+      // The search runs during the draws above as well; these counts and the
+      // list cover all of them.
+      drawAll(entries, { now: 0, random: 0.5, viewport: 1200 });
+      expect(replays.searches).toBeGreaterThan(1000);
+      // Some views try more than one budget, so a trial that dirties shared
+      // state for the next one has a next one to dirty.
+      expect(replays.trials).toBeGreaterThan(replays.searches);
+      expect(impure).toEqual([]);
+    });
 
-  it("rejects a placement that reuses one mutable result (negative control)", () => {
-    // One object returned for every budget: each trial overwrites the run an
-    // earlier trial returned. The replay alone would match (it overwrites the
-    // object again); the copy taken when the run was made does not.
-    const run = { width: 0, height: 900 };
-    const before = impure.length;
-    searchWidthBudget(
-      (budget) => {
-        run.width = budget;
-        return run;
-      },
-      (r) => ({ width: r.width, height: r.height }),
-      { floor: 1200 },
-    );
-    const caught = impure.splice(before);
-    expect(caught.length).toBeGreaterThan(0);
-  });
-});
+    it("rejects a placement that reuses one mutable result (negative control)", () => {
+      // One object returned for every budget: each trial overwrites the run an
+      // earlier trial returned. The replay alone would match (it overwrites the
+      // object again); the copy taken when the run was made does not.
+      const run = { width: 0, height: 900 };
+      const before = impure.length;
+      searchWidthBudget(
+        (budget) => {
+          run.width = budget;
+          return run;
+        },
+        (r) => ({ width: r.width, height: r.height }),
+        { floor: 1200 },
+      );
+      const caught = impure.splice(before);
+      expect(caught.length).toBeGreaterThan(0);
+    });
+  },
+);

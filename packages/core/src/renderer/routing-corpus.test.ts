@@ -64,6 +64,7 @@ interface Canvas {
 
 const canvases: Canvas[] = [];
 
+// Resolves and renders the whole corpus once; 120 s leaves the same CI headroom as the tests.
 beforeAll(async () => {
   for (const entry of await loadExampleCorpus()) {
     for (const mode of GROUP_BY_MODES) {
@@ -118,7 +119,9 @@ function crossingsOf(res: LayoutResult): { at: Point; edges: [number, number] }[
   return out;
 }
 
-describe("routing over every view of every example (TPL-1927)", () => {
+// Each test walks every view of every example. Under coverage instrumentation
+// on a CI runner that outlasts vitest's 5 s default, hence the explicit budget.
+describe("routing over every view of every example (TPL-1927)", { timeout: 60_000 }, () => {
   it("lays out a corpus that exercises the router in every mode", () => {
     const perMode = GROUP_BY_MODES.map((mode) => {
       const ofMode = canvases.filter((c) => c.mode === mode);
@@ -137,18 +140,26 @@ describe("routing over every view of every example (TPL-1927)", () => {
       const hops = res.crossingMarks?.hops ?? [];
       const crossings = crossingsOf(res);
       // Where three or more edges cross at one point, the mark pass keeps one
-      // arc there, hosted by whichever edge it chose; that arc marks every pair.
-      const pairsAt = new Map<string, number>();
+      // arc there, hosted by whichever of those edges it chose; that arc marks
+      // every pair at the point. So a crossing's own edges are its pair, or, at
+      // such a point, every edge that crosses there.
       const spot = (p: Point) => `${p.x.toFixed(3)},${p.y.toFixed(3)}`;
-      for (const { at } of crossings) pairsAt.set(spot(at), (pairsAt.get(spot(at)) ?? 0) + 1);
+      const cluster = new Map<string, { pairs: number; edges: Set<number> }>();
       for (const { at, edges } of crossings) {
-        const concurrent = (pairsAt.get(spot(at)) ?? 0) > 1;
+        const c = cluster.get(spot(at)) ?? { pairs: 0, edges: new Set<number>() };
+        c.pairs++;
+        for (const k of edges) c.edges.add(k);
+        cluster.set(spot(at), c);
+      }
+      for (const { at, edges } of crossings) {
+        const c = cluster.get(spot(at))!;
+        const hosts = c.pairs > 1 ? c.edges : new Set(edges);
         // The arc rides one of the two crossing edges and lies along it: the
         // crossing sits on the arc's axis (no offset across it) and within its
         // half-width along it. A clustered arc spans its crossings, so the
         // half-width is half their spread plus the radius.
         const marked = hops.some((h) => {
-          if (!concurrent && !edges.includes(h.edge)) return false;
+          if (!hosts.has(h.edge)) return false;
           const rad = (h.angle * Math.PI) / 180;
           const dx = at.x - h.x;
           const dy = at.y - h.y;

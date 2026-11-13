@@ -122,6 +122,7 @@ vi.mock("./svg-renderer.js", async (importOriginal) => {
   return { ...mod, render };
 });
 
+// Resolves and renders the whole corpus once; 120 s leaves the same CI headroom as the tests.
 beforeAll(async () => {
   for (const entry of await loadExampleCorpus()) {
     for (const m of GROUP_BY_MODES) {
@@ -177,7 +178,9 @@ function stubsOf(unfolded: LayoutResult, endpoint: string): string[] {
 const stubsTagged = (res: LayoutResult, tag: string) =>
   [...res.nodes.values()].filter((n) => n.tags?.includes(tag));
 
-describe("collapse-all over every view of every example", () => {
+// Each test walks every view of every example. Under coverage instrumentation
+// on a CI runner that outlasts vitest's 5 s default, hence the explicit budget.
+describe("collapse-all over every view of every example", { timeout: 60_000 }, () => {
   it("folds groups in every Group-by mode and categories, with ghost edges on the folded canvases", () => {
     const folds = (pred: (r: Redraw) => boolean) => redraws.some(pred);
     // No example extracts a ghost edge whose endpoint is a group or category

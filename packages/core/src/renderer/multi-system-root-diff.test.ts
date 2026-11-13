@@ -345,6 +345,8 @@ ${adminEdge ? "  Api -> Db\n" : ""}}
     });
     const states = edgeStates(r.svg);
     expect(states["Api->__collapsed_Admin_infra__"]).toBe(state);
-    expect(states["Api->__collapsed_Shop_infra__"] ?? null).toBeNull();
+    // Drawn, and drawn undecorated: a missing edge must not pass as undecorated.
+    expect(Object.keys(states)).toContain("Api->__collapsed_Shop_infra__");
+    expect(states["Api->__collapsed_Shop_infra__"]).toBeNull();
   });
 });
