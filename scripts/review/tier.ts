@@ -730,7 +730,7 @@ export function isLinkSwap(
   };
   // Which pairs of references, in order, a swap may make (#3620).
   const pairs = (r: Ref, a: Ref) =>
-    (r.kind === "new" && a.kind === "new") ||
+    (r.kind === "new" && a.kind === "new" && (r.form !== "code" || r.stem === a.stem)) ||
     (r.kind === "num" && a.kind === "num" && r.stem === a.stem) ||
     (r.kind === "old" && a.kind === "new" && (r.form !== "code" || r.stem === a.stem)) ||
     (r.kind === "old" && a.kind === "num" && r.form === "code" && r.stem === a.stem);

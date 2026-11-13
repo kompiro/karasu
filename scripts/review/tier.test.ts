@@ -982,7 +982,7 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     }
     // a name outside a code span, and the reverse direction
     expect(swap("see x.md", "see ADR-12")).toBe(false);
-    expect(swap("see ADR-12 and [x](x.md)", "see `x.md` and [x](../adr/12-x.md)")).toBe(false);
+    expect(swap("see ADR-12 and `x.md`", "see `x.md` and ADR-12")).toBe(false);
   });
 
   it("pairs each ADR-<n> with the Design Doc of the same stem, by position", () => {
@@ -1016,7 +1016,7 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
       ],
       ["(www.e.example/a,`x.md`)", "(www.e.example/a,ADR-12)"],
       ["<b>設計は`x.md`の</b>", "<b>設計はADR-12の</b>"],
-      ["`@import`の扱いは`x.md`の D5", "`@import`の扱いは ADR-12の D5"],
+      ["`@import`の扱いは`x.md`の D5", "`@import`の扱いはADR-12の D5"],
       // whitespace a link destination does not end at
       ["see [a](https://e.example/x\u3000`x.md`)", "see [a](https://e.example/x\u3000ADR-12)"],
       ["[r]: https://e.example/x\u3000`x.md`", "[r]: https://e.example/x\u3000ADR-12"],
@@ -1077,6 +1077,30 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
       ),
     ).toBe(true);
     expect(swap("see `x.md` (ADR-12).", "see ADR-12 (ADR-12).")).toBe(true);
+  });
+
+  it("pairs a code span between two new ADRs only within one stem", () => {
+    const a = ["docs/adr/12-x.md", "docs/adr/5-a.md", "docs/adr/6-b.md"];
+    expect(swap("`x.md` `docs/adr/5-a.md`", "`docs/adr/12-x.md` `docs/adr/6-b.md`", IN, D, a)).toBe(
+      false,
+    );
+    expect(swap("`x.md` `docs/adr/5-a.md`", "`docs/adr/12-x.md` `docs/adr/5-a.md`", IN, D, a)).toBe(
+      true,
+    );
+  });
+
+  it("never lowers a High path through the new forms", () => {
+    const spec = modified("docs/spec/syntax.md", {
+      hunks: [
+        {
+          oldStart: 3,
+          removed: ["- 関連 Design Doc: `docs/design/x.md` の D5"],
+          newStart: 3,
+          added: ["- 関連 ADR: ADR-12 の D5"],
+        },
+      ],
+    });
+    expect(tierOf(added("docs/adr/12-x.md"), deleted("docs/design/x.md"), spec)).toBe("high");
   });
 
   describe("the promotions that motivated it", () => {
