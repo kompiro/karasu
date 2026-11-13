@@ -735,11 +735,12 @@ export function isLinkSwap(
     (r.kind === "old" && a.kind === "new" && (r.form !== "code" || r.stem === a.stem)) ||
     (r.kind === "old" && a.kind === "num" && r.form === "code" && r.stem === a.stem);
 
-  // A link to a new ADR may carry the ADR's file name as its text; that name is
-  // no Design Doc, so it does not hold the label back.
+  // A link to a new ADR may carry the ADR's own name as its text; that name is
+  // no Design Doc, so it does not hold the label back. Any other text stays.
+  const adrNames = namesOf(newAdrs);
   const withoutAdrLinks = (line: string) =>
-    line.replace(LINK, (link: string, _text: string, href: string) =>
-      wholeRef(href)?.old === false ? "" : link,
+    line.replace(LINK, (link: string, text: string, href: string) =>
+      wholeRef(href)?.old === false ? (isNameIn(adrNames, text) ? "" : text) : link,
     );
   // The item label pair, compared only when nothing else in the label moved and
   // the added line no longer refers to any Design Doc.
