@@ -45,7 +45,7 @@ system-view の forced layout は、ノードを kind/タグで複数のティ�
 
 - [ ] 新たに段を跨ぐようになったエッジを列挙し、各々が直交ルーティングまたは pull-up で救済される（中間カードを直線貫通しない）ことを確認した [guard: `packages/core/src/renderer/routing-parity.test.ts`]
 - [ ] 既存ティアの pull-up/pull-down post-pass（#974 / #967）の不変条件が保たれている（新ティア用の floor/clamp が既存の引き上げを抑止していない）
-- [ ] 単一種別しか無いモデル（infra のみ / external のみ）で空ティアが phantom gap を作らない（高さが無駄に増えない）ことを確認した
+- [ ] 単一種別しか無いモデル（infra のみ / external のみ）で空ティアが phantom gap を作らない（高さが無駄に増えない）ことを確認した [guard: `packages/core/src/renderer/system-tier-placement.test.ts`]
 - [ ] ティア間で同一始点からファンアウトするエッジ群が、行メンバーシップ変化で交差や x 位置を悪化させていないか確認した
 - [ ] shape / icon 両 displayMode でティア構造が成立することを確認した（[TPL-1001](TPL-1001-display-mode-cross-surface.md)）
 
@@ -63,6 +63,9 @@ system-view の forced layout は、ノードを kind/タグで複数のティ�
   - `does not add an empty infra band when a model has only external deps (#1724)`
   - `pulls a dep used only by an upper service up to one row below its consumer (Issue #974)`（既存 pull-up が温存されていることの回帰ガード）
 - `packages/core/src/renderer/edge-routing-channels.test.ts`（skip-layer 直交ルーティング）
+- `packages/core/src/renderer/system-tier-placement.test.ts`（項目 3 のガード）: `systemTier` が返す全ティアを
+  `REFERENCE_DATA.nodeKinds` から導き、その空でない全部分集合を、呼び出しの連鎖あり / なし、単一 system と
+  multi-system root の両パイプラインで配置する。行数が存在するティア数と一致し、行間と内容の外の高さが全ティアのモデルと同じであること
 - `packages/core/src/renderer/routing-parity.test.ts`（`shared routing chain — ungrouped fences (#2362, TPL-1927)` › `%s: no edge pierces a node card`: ティア構造を含む実サンプル群で、段を跨ぐエッジがノードカードを貫通しないことを assert する）
 
 ## 派生元 spec / ADR
