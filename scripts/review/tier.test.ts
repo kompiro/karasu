@@ -1116,6 +1116,24 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     expect(swap("`x.md` `docs/adr/5-a.md`", "`docs/adr/12-x.md` `../adr/5-a.md#b`", IN, D, a)).toBe(
       true,
     );
+    expect(
+      swap(
+        "see [x](x.md) and docs/adr/5-a.md",
+        "see [x](../adr/12-x.md) and ../adr/5-a.md",
+        IN,
+        D,
+        a,
+      ),
+    ).toBe(true);
+    expect(
+      swap(
+        "see [x](x.md) and [a](./adr/5-a.md)",
+        "see [x](../adr/12-x.md) and [a](adr/5-a.md#d1)",
+        IN,
+        D,
+        a,
+      ),
+    ).toBe(true);
   });
 
   it("never lowers a High path through the new forms", () => {

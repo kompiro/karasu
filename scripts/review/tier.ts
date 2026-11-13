@@ -644,7 +644,7 @@ export function isLinkSwap(
   // character follows it.
   const bare = (ref: string) => new RegExp(`(?<![\\w./:-])${ref}(?![\\w-]|\\.[\\w-])`, "g");
   const target = (ref: string) => new RegExp(`^${ref}$`);
-  // Each record a whole link target or a whole code span may name, with its stem.
+  // Each record a whole reference may name, with its stem and its path.
   const wholeRefs = [
     ...deletedDesigns.map((p) => {
       const sibling = `(?:\\./)?${escapeRe(p.split("/").at(-1) ?? p)}(?:#[\\w-]*)?`;
@@ -664,8 +664,8 @@ export function isLinkSwap(
     })),
   ];
   const wholeRef = (text: string) => wholeRefs.find((r) => r.re.test(text));
-  // The ADR numbers a standalone `ADR-<n>` may stand for, keyed to the stem the
-  // ADR shares with a deleted Design Doc.
+  // Number to the new ADR (stem and path) a standalone `ADR-<n>` may stand for:
+  // only an ADR whose stem a deleted Design Doc shares.
   const designStems = new Set(deletedDesigns.map((p) => stemOf(p, false)));
   const numbered = new Map<string, { stem: string; path: string }>();
   for (const p of newAdrs) {
