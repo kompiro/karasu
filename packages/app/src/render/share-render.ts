@@ -4,6 +4,7 @@ import {
   type DiagramType,
   type DiagramTheme,
   type DisplayMode,
+  wrapSvgForOgpFrame,
 } from "@karasu-tools/core";
 import { decodeShare } from "../utils/inline-share.js";
 
@@ -93,4 +94,68 @@ export function renderSharePayload(params: URLSearchParams): ShareRenderResult {
       body: `Render error: ${err instanceof Error ? err.message : String(err)}`,
     };
   }
+}
+
+/** How resvg sizes the image: to a width, or at the SVG's own size. */
+export type RasterFit = { mode: "width"; value: number } | { mode: "original" };
+
+declare const SHARE_PNG_SVG: unique symbol;
+
+/**
+ * An SVG only {@link sharePngSource} makes. The `/render` rasterizer
+ * (`functions/_lib/share-raster.ts`) accepts nothing else, so every PNG the
+ * Pages Function draws is one the raster-input guard
+ * (`scripts/ci/raster-input.test.ts`, TPL-1799) runs over the whole corpus: a
+ * caller cannot hand resvg the all-views SVG, whose `:target` tabs draw as an
+ * empty body, without a cast that says so.
+ */
+export type SharePngSvg = string & { readonly [SHARE_PNG_SVG]: true };
+
+/** What `/render?format=png` hands resvg, or the answer when there is nothing to draw. */
+export type SharePngSource =
+  | { status: 200; svg: SharePngSvg; fitTo: RasterFit; background: string | undefined }
+  | ShareRenderResult;
+
+const positiveCapped = (raw: string | null): number | undefined => {
+  const value = Number(raw);
+  // Capped so a huge `?width=` can't trigger a giant allocation.
+  return Number.isFinite(value) && value > 0 ? Math.min(value, 4096) : undefined;
+};
+
+/**
+ * Choose the SVG `/render?format=png` rasterizes and how to fit it. Everything
+ * the Pages Function does before resvg lives here, so the raster-input guard
+ * (`scripts/ci/raster-input.test.ts`, TPL-1799) checks the SVG this picks and
+ * not one the test picked.
+ *
+ * Query params as {@link renderSharePayload}, plus `width` / `height` (capped
+ * at 4096), `bg`, and `fit=contain` (with width and height: letterbox the
+ * whole diagram into a fixed frame, for OGP cards that would otherwise crop a
+ * width-fit portrait diagram to its top band).
+ */
+export function sharePngSource(params: URLSearchParams): SharePngSource {
+  // The default (no `view`) SVG is the bundled all-views diagram, whose CSS
+  // `:target` tab navigation is interactive: rasterized to a static PNG it
+  // shows only the tab bar with an empty body. PNG needs one concrete view, so
+  // default to `system` when none is given. (SVG keeps the all-views default.)
+  const own = new URLSearchParams(params);
+  if (!own.get("view")) own.set("view", "system");
+
+  const result = renderSharePayload(own);
+  if (result.status !== 200) return result;
+
+  const width = positiveCapped(own.get("width"));
+  const height = positiveCapped(own.get("height"));
+  const background = own.get("bg") ?? undefined;
+  if (own.get("fit") === "contain" && width && height) {
+    const svg = wrapSvgForOgpFrame(result.body, width, height, background ?? "#ffffff");
+    return {
+      status: 200,
+      svg: svg as SharePngSvg,
+      fitTo: { mode: "width", value: width },
+      background,
+    };
+  }
+  const fitTo: RasterFit = width ? { mode: "width", value: width } : { mode: "original" };
+  return { status: 200, svg: result.body as SharePngSvg, fitTo, background };
 }

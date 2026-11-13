@@ -9,7 +9,7 @@
  *
  * PNG exists only inside this Worker, as it does inside the app's `/render`
  * Pages Function: core, the CLI and the app stay SVG-only (ADR-105, ADR-1805).
- * This file mirrors `functions/render.ts` deliberately, fonts included, so the
+ * This file mirrors `functions/_lib/share-raster.ts` deliberately, fonts included, so the
  * gallery's card and the app's `/s` card are drawn the same way.
  */
 import { Resvg, initWasm } from "@resvg/resvg-wasm";
@@ -17,6 +17,7 @@ import { Resvg, initWasm } from "@resvg/resvg-wasm";
 import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm";
 import type { AssetsFetcherLike } from "../env.js";
 import { OG_FONT_PATHS, OG_IMAGE_WIDTH } from "./og-image.js";
+import type { OgImageSvg } from "./render.js";
 
 // Cached per isolate, so wasm init and the ~8MB of fonts are paid once rather
 // than per image. A failure clears the cache, so a transient asset fetch error
@@ -47,13 +48,15 @@ function loadFonts(assets: AssetsFetcherLike, base: URL): Promise<Uint8Array[]> 
 }
 
 /**
- * Rasterize an SVG already framed to the OGP size.
+ * Rasterize an SVG already framed to the OGP size. Only {@link OgImageSvg}:
+ * what the card shows is chosen in `ogImageSource`, where the raster-input
+ * guard can run it (TPL-1799).
  *
  * `base` is any URL on this deploy; the fonts are read through the `ASSETS`
  * binding, which only looks at the path.
  */
 export async function rasterizeOgPng(
-  svg: string,
+  svg: OgImageSvg,
   assets: AssetsFetcherLike,
   base: URL,
 ): Promise<Uint8Array<ArrayBuffer>> {

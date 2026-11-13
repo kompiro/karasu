@@ -11,7 +11,7 @@ import base from "./vite.config";
 /**
  * The files from `public/` that `index.html` references, copied by name.
  * The rest of `public/` serves Pages only: its routing (`_redirects`,
- * `_routes.json`), the OGP image, and the fonts `functions/render.ts` draws
+ * `_routes.json`), the OGP image, and the fonts `functions/_lib/share-raster.ts` draws
  * PNGs with.
  */
 export const SERVE_PUBLIC_FILES = ["favicon.svg"] as const;
