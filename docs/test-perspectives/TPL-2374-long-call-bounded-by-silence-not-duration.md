@@ -46,7 +46,7 @@ scope:
 - [ ] 応答が分単位になりうるか。判定は願望ではなく**要求している上限**（`max_tokens`・ページサイズ・期間）で行う。なりうるならストリーミングを既定にする [judgment]
 - [ ] 自前のタイムアウトは**無通信の継続時間**（または最初のイベントまで）で測っているか。総所要時間で測っていないか
 - [ ] 経路上の中間層のタイムアウトが**何を起点に何を測るか**を一次情報で確認したか（「最初の応答まで」か「完了まで」か） [judgment]
-- [ ] 一過性の上流失敗（5xx・overloaded・切断）と決定的失敗を、リトライ方針の上で区別しているか。区別しないなら、どちらの損を選んだのか書いたか [guard: `packages/app/src/hooks/useChatSession.retry.test.tsx`]
+- [ ] 一過性の上流失敗（5xx・overloaded・切断）と決定的失敗を、リトライ方針の上で区別しているか。区別しないなら、どちらの損を選んだのか書いたか
 - [ ] 沈黙するストリームのテストがあるか。モックが即座に解決するテストだけなら、この観点は 1 つも検証されていない
 
 ## 既知の対処パターン
@@ -59,8 +59,8 @@ scope:
 
 - `packages/app/src/hooks/useChatSession.retry.test.tsx`：chat の `runTurn` を本物の SDK のまま `fetch` を差し替えて
   呼び、529 / 500 / 503 の後の 200 は再試行して成功し、400 / 401 は 1 回しか送らないことを確かめる。chat が
-  SDK の client を作るのは `runTurn` だけなので、`runTurn` を通る呼び出しはすべてこの方針を受け継ぐ。`runTurn`
-  を経ずに client を作る新しい箇所は、このテストでは赤くならない
+  SDK の client を作るのは `runTurn` だけなので、`runTurn` を通る呼び出しはすべてこの方針を受け継ぐ。ただし
+  `runTurn` を経ずに client を作る新しい箇所（app の別の hook や nest）は赤くならないので、4 つ目の項目は印なし
 - `packages/app/src/hooks/useChatSession.cancel.test.tsx`：中断（`AbortController`）の柵。無通信の timeout は検証しない
 
 ## 由来

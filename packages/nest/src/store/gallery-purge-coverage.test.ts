@@ -186,9 +186,11 @@ describe("account purge under a listing that lags its deletes (TPL-2284)", () =>
     // still hands them back, tells someone their account is gone on the
     // strength of one look; it has to fail so the purge is run again. A space
     // whose purge never lists its prefix (the account record, deleted by
-    // exact key) is not asked this, and at least one space must list, or the
-    // case says nothing.
-    const swept: GalleryKeySpace[] = [];
+    // exact key) has to have removed its records for real instead, so a sweep
+    // that listed the wrong prefix cannot hide in that branch. At least one
+    // space must list, or the case says nothing.
+    const results: { space: GalleryKeySpace; swept: boolean; outcome: string; left: string[] }[] =
+      [];
     for (const space of SPACES) {
       const kv = new LaggingListKV(Infinity);
       await SEEDERS[space](kv, ACCOUNT);
@@ -198,10 +200,17 @@ describe("account purge under a listing that lags its deletes (TPL-2284)", () =>
         () => "rejected",
       );
       const prefix = `${GALLERY_KEY_SPACES[space].prefix}/`;
-      if (!kv.listed.some((listed) => listed.startsWith(prefix))) continue;
-      swept.push(space);
-      expect({ space, outcome }).toEqual({ space, outcome: "rejected" });
+      const swept = kv.listed.some((listed) => listed.startsWith(prefix));
+      results.push({ space, swept, outcome, left: kv.keys() });
     }
+    const swept = results.filter((result) => result.swept);
+    const exact = results.filter((result) => !result.swept);
+    expect(swept.map(({ space, outcome }) => ({ space, outcome }))).toEqual(
+      swept.map(({ space }) => ({ space, outcome: "rejected" })),
+    );
+    expect(exact.map(({ space, outcome, left }) => ({ space, outcome, left }))).toEqual(
+      exact.map(({ space }) => ({ space, outcome: "resolved", left: [] })),
+    );
     expect(swept.length).toBeGreaterThan(0);
   });
 });

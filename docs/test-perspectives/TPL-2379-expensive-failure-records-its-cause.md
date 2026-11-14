@@ -45,8 +45,8 @@ scope:
 失敗経路を書く・変えるときに確認する:
 
 - [ ] この処理を**もう一度動かすコスト**（時間・実費）を言えるか。言えないなら記録の厚みを決める根拠が無い [judgment]
-- [ ] 外部エラーのうち **固定語彙のフィールド**（type・code・status）を残しているか。捨てているのは自由文だけか [guard: `packages/app/src/hooks/useChatSession/errors.test.ts`]
-- [ ] 固定語彙のつもりのフィールドに自由文が来たときの扱いを決めたか（形で検査して落とす、が既定） [guard: `packages/app/src/hooks/useChatSession/errors.test.ts`]
+- [ ] 外部エラーのうち **固定語彙のフィールド**（type・code・status）を残しているか。捨てているのは自由文だけか
+- [ ] 固定語彙のつもりのフィールドに自由文が来たときの扱いを決めたか（形で検査して落とす、が既定）
 - [ ] 多段処理なら、**落ちた段の名前**が記録に入るか。成功した段の一覧からの引き算になっていないか
 - [ ] その記録だけで原因の切り分けができるか。ソースツリーや別システムとの突き合わせを前提にしていないか [judgment]
 
@@ -64,6 +64,10 @@ scope:
 - `packages/app/src/hooks/useChatSession.retry.test.tsx`：本物の SDK を通した 400 / 401 の失敗で、記録に
   `apiErrorType` が載ることを確かめる
 
+2 つ目と 3 つ目の項目は印なしのまま。守るのは `makeErrorMessage` だけで、記録を直接組み立てる新しい箇所は
+`apiErrorType: null` と書けば型検査を通り、`err.type` を形の検査なしで書いても赤くならない。chat の外の失敗記録
+（nest など）も覆わない
+
 ## 由来
 
 - karasu-nest の server-side reverse（[ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md)）が
@@ -77,5 +81,5 @@ scope:
   API の固定語彙の `error.type` を `apiErrorType` に持つ。`apiErrorType` は `/^[a-z][a-z0-9_]{0,39}$/` の形を
   通った値だけで、通らない値（中間層の散文や HTML）と、API の本文から来ていない失敗は `null` にする。
   失敗した呼び出しを記録に変えるのは `makeErrorMessage` だけで、`apiErrorType` は必須のフィールドなので、
-  記録を直接組み立てる新しい箇所も値を書かないと型検査で落ちる。`console.error` には API error body と散文の
+  記録を直接組み立てる新しい箇所も何かを書かないと型検査で落ちる（`null` と書けば通る）。`console.error` には API error body と散文の
   `message` がまだそのまま流れる。1 回の実費は利用者の API key 持ちで小さいので、観点の重みは弱い。
