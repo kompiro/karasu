@@ -1,23 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { decodeShare, fitsUnfurlPayload } from "../utils/inline-share.js";
+import { decodeShare, MAX_UNFURL_PAYLOAD } from "../utils/inline-share.js";
 import {
   parseRepoPermalink,
   resolveRepoPermalink,
   GitHubRawFileSystemProvider,
 } from "./repo-permalink.js";
-
-/** The longest payload `fitsUnfurlPayload` accepts, found from the predicate itself. */
-function unfurlCap(): number {
-  let fits = 0;
-  let overflows = 1 << 20;
-  while (overflows - fits > 1) {
-    const mid = Math.floor((fits + overflows) / 2);
-    if (fitsUnfurlPayload("x".repeat(mid))) fits = mid;
-    else overflows = mid;
-  }
-  return fits;
-}
-const MAX_UNFURL_PAYLOAD = unfurlCap();
 
 const SINGLE_KRS = `system Shop {
   service Web { label "Web" }

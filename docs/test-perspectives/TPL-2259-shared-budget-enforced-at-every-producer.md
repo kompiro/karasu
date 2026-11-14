@@ -54,7 +54,7 @@ scope:
 
 共有の上限・予算を扱うコードを追加・改修するとき:
 
-- [ ] 上限は**判定関数**として export されているか（定数だけを export して各所で比較を書いていないか） [guard: `packages/app/src/utils/unfurl-budget.test.ts`]
+- [ ] 上限は**判定関数**として export されているか（定数だけを export して各所で比較を書いていないか）
 - [ ] その形を組み立てている箇所を **grep で列挙**し、producer と reflector を仕分けたか。producer がすべて判定を通っているか [guard: `packages/app/src/utils/unfurl-budget.test.ts`]
 - [ ] 強制は**生成側**にあるか（受信側の検査で代用していないか） [judgment]
 - [ ] 上限を超えたときに返るものが、**原因と対処を名指ししている**か（黙って degrade する場合、失われるもの — 別機能・別の保証 — を列挙して意図的に選んだか） [judgment]
@@ -71,4 +71,3 @@ scope:
 - `packages/app/src/utils/unfurl-budget.test.ts` — `/s?s=` 生成点の allowlist ドリフトガード
 - `packages/app/src/utils/inline-share.test.ts` › `fitsUnfurlPayload` — 判定の境界
 - `packages/app/src/render/repo-permalink.test.ts` › `resolveRepoPermalink — unfurl payload cap` — resolver が上限で拒否し、原因を名指しすること
-- `packages/app/src/utils/unfurl-budget.test.ts` › `exports no number` — `/s?s=` の予算を持つ `inline-share.ts` が数値を 1 つも export しないこと。上限は `fitsUnfurlPayload` と、拒否の文面に上限を入れる `describeUnfurlOverflow` だけから使え、モジュールの外で上限と比べる式は書けない。守るのはこの予算だけで、別の予算を足したときはその予算のモジュールに同じ検査を置く
