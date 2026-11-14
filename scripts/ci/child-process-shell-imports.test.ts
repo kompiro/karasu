@@ -91,7 +91,9 @@ describe("no file imports the shell-string child_process API (TPL-168)", () => {
     mkdirSync(probe, { recursive: true });
     writeFileSync(join(probe, "probe.ts"), lines.join("\n"));
     const report = lint(probe, ".");
-    const hitLines = report.diagnostics.map((d) => d.labels?.[0]?.span.line).sort((a, b) => (a ?? 0) - (b ?? 0));
+    const hitLines = report.diagnostics
+      .map((d) => d.labels?.[0]?.span.line)
+      .sort((a, b) => (a ?? 0) - (b ?? 0));
     expect(hitLines).toEqual([1, 2, 3, 4, 5]);
   });
 
