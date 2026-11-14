@@ -66,9 +66,9 @@ system 直下の `a ->` / `"x y" -> b` は `a -> "x y"` と `unexpected-token-in
 - 位置の規則も 1 つで済む。診断は直すべき場所（値を書き足す場所）を指し、次の行の edge で止まったときも `}` で止まったときも同じ位置になる。正しく書けた次の行の edge の source に error の波線が付かない。範囲が構文の先頭から始まるのは TPL-3072 に合う
 - 読んでいない token を値にしないことで、TPL-3072（error は拒否した構文をちょうど 1 つ分だけモデルから除く）に合う。判定で止めても読まずに残した token が値になると、次の行の edge の source がモデルに 2 回現れる
 - target の無い edge は、tag・`#id`・property block まで読み切ってから除く。property block を外の block に流すと、中の `label` が node の label になり、`}` が node を早く閉じる。positional label は読まない
-- 同じ行の矢印（`-> b "x" -> c`、`link "u" "Docs" -> b`、`domain A { usecase u {} -> v }`）は書いた通りに読まれており、テストが受理を確かめている形がある。改行の書き忘れか 2 本目の edge のつもりかは parser には区別できない
+- 同じ行の矢印（`-> b "x" -> c`、`link "u" "Docs" -> b`、`domain A { usecase u {} -> v }`）は書いた通りに読まれており、テストが受理を確かめている（`resolver/warnings.test.ts` の `domain A { usecase u {} -> v }` と、`parser.test.ts` の拒否した `role` の後の `role "A" -> B`）。改行の書き忘れか 2 本目の edge のつもりかは parser には区別できない
 - organization 系の宣言の id が無く、次の行が edge を始めるときは、キーワードで止めて body の無い宣言として残す（kompiro が #3787 のマージで採用）。Design Doc は id を `__missing_id` にして残すとだけ書いていた。それだけでは宣言が開いていない `{` と body を読み、次の行の edge を中に取り込む。service の中の `boundary` は、その body の `}` で service を早く閉じる。id の無い node の宣言と同じ残し方にそろえ、id の後の positional label の reader も次の行の edge の source を読まないようにした
-- edge の後の `#id`（author id）の suffix も、後の行の `#next -> c` を読まない（kompiro が #3787 のマージで採用）。これは値が欠けていない入力の読み方を変えるので、Design Doc の制約「変わるのは、値が欠けた入力の回復だけ」から外れる。ただし任意で続く要素であり、ADR-3752 が直したのと同じ「黙って読み替わる」失敗である。修正前は `-> b` / `#next -> c` が `a -> b` に author id `next` を付け、`-> c` を 2 本目の暗黙の source の edge にして、診断を出さなかった
+- edge と `resource` の行の後の `#id`（author id）の suffix も、後の行の `#next -> c` を読まない（kompiro が #3787 のマージで採用）。これは値が欠けていない入力の読み方を変えるので、Design Doc の制約「変わるのは、値が欠けた入力の回復だけ」から外れる。ただし任意で続く要素であり、ADR-3752 が直したのと同じ「黙って読み替わる」失敗である。修正前は `-> b` / `#next -> c` が `a -> b` に author id `next` を付け、`-> c` を 2 本目の暗黙の source の edge にして、診断を出さなかった
 
 ## 影響
 
@@ -76,7 +76,8 @@ system 直下の `a ->` / `"x y" -> b` は `a -> "x y"` と `unexpected-token-in
 - 値が欠けて `}` が続く入力でも、診断の位置が次の token から構文の先頭に移る。コードと params は変わらない
 - `link` の URL が無いときの診断が `token-type-mismatch` から `expected-string-after`（`property: "link"`）に変わる。`expected-string-after` の `property` の型に `"link"` を足した。i18n のメッセージは `property` をそのまま差し込むので、変更は要らなかった
 - `parseEdge` は `KrsEdge | undefined` を返し、`ctx.tryParseEdge` は「edge を始めない」と「edge を読んだが target が無い」を区別して返す。edge を受け付けない block の `rejectEdge` は、target の無い edge を読み切ったものとして扱い、2 件目の error を出さない。トップレベルの `a ->` は今どおり `top-level-declaration` も出し、error は 2 件になる（直す場所が 2 つあるため）
-- `-> b` / `#next -> c` は、`a -> b` と、source が `#next` の edge（`edge-source-mismatch`）として読まれる
+- node の block の中の `-> b` / `#next -> c` は、`a -> b` と、source が `#next` の edge（`edge-source-mismatch`）として読まれる
+- 暗黙の source を持てない場所では、`#id` の suffix の修正で error が warning だけになる入力がある。system 直下の `a -> b` / `#next -> c` は、修正前は `unexpected-token-in-block` 2 件だったが、修正後は `a -> b` と `#next -> c` の 2 本になり、`#next` が解決できない warning（`unresolved-edge-endpoint`）だけが出る。usecase の中の `resource R` / `#next -> c` も、修正前の `unexpected-token-in-block` 2 件が、`#next` が解決できず usecase から届かないという warning だけになる。どちらも 2 行を別の文として書いた通りに読んだ結果である
 - 書いた通りに読めていた入力は、上の `#id` の suffix を除いて変わらない
 - spec に変える記述は無い（値を必ず書くことは spec の通り）。`docs/spec/diagnostics.md` の各コードの説明も変わらない
 - TPL-3752 を「任意で続く要素」から「値を読む reader（任意でも必須でも）」に広げ、チェックリストに `readValueAfter` / `ctx.expect` の grep と、対象外の場所の理由を足した
@@ -96,4 +97,4 @@ system 直下の `a ->` / `"x y" -> b` は `a -> "x y"` と `unexpected-token-in
 - node と organization 系の宣言の id が無いときに `__missing_id` で残す回復は変えない。TPL-3072 に照らすと宣言ごと除くのが筋だが、宣言の回復は本件の外で、変えると LSP の outline などにも影響する
 - 末尾のドットの後の段が無いとき、`parseEdge` が読んでいない token の値を target に連ねる回復（`-> S.` / `}` が target `S.}` になる）は変えない。ADR-3752 で残すとした箇所で、次の行の edge は `readNodeIdPathTail` がすでに読まない
 - `ctx.expect` で値を読む場所（`import` の path、deploy・deploy unit の id、legend の entry、capability の名前、client の `resource` の名前）は対象にしない。どれも edge を書けない場所か、edge を持たない block にあり、残った矢印は error になる。`ctx.expect` の診断 `token-type-mismatch` は次の token を `got` に出すので、同じ判定で止めるには診断を変える必要がある
-- 次の行に書いた label の扱いと、`handles` などの「値はキーワードと同じ行」との違いは #3766 で決める
+- 次の行に書いた label の扱いと、`handles` などの「値はキーワードと同じ行」との違いは #3766 で決める。本 ADR の後も、矢印の続かない次の行の値は reader によって読み方が違う。`label` / `"x"` は label として読み、`handles` / `Order` は値の無い error をキーワードの位置に出す（`handles` / `delivers` / `table` は矢印が続くかどうかを見ない。TPL-2542）
