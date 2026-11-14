@@ -57,7 +57,7 @@ scope:
 - [ ] 判定ロジックは per-file / merged の双方から呼べる純粋関数か（Parser の private に閉じていないか）
 - [ ] ImportResolver が該当コードを per-file から抑止し（`MERGED_SPACE_REFERENCE_CODES`）、マージ後に再導出しているか
 - [ ] **cross-file で「1 件出る」ことを assert したか**（沈黙する失敗なので、absence assertion だけでは検出できない）。単一ファイルで「二重に出ない」ことも併せて固定する
-- [ ] assert は利用者が実際に通る surface（`compileProject` / `compile`）で行ったか。Parser 直呼びのテストは per-file の答えしか見ない
+- [ ] assert は利用者が実際に通る surface（`compileProject` / `compile`）で行ったか。Parser 直呼びのテストは per-file の答えしか見ない [guard: `packages/core/src/fs/merged-space-codes.test.ts`]
 
 ## 既知の対処パターン
 
@@ -82,6 +82,7 @@ scope:
   （wildcard + named の二重 import / edge 参照で 2 system に載る service）、
   named import が持ち込まなかった部分に閉じた衝突は project では報告しないこと（判定空間の境界）。
 - 先例: `duplicate-facet-id` の cross-file 重複（#2173 / #2199）
+- `packages/core/src/fs/merged-space-codes.test.ts`：resolver が export する `MERGED_SPACE_REFERENCE_CODES` を鍵にした表 `FIXTURES`（`satisfies Record<MergedSpaceReferenceCode, …>` と、表の鍵と集合の一致の assert）で、コードごとに 2 ファイルに分けたモデルを `compileProject` に通し、片方の版でちょうど 1 件、もう片方の版で 0 件出ることを whole-file / directory / named（bare・path）/ 兄弟ファイル 2 本の import で assert する。集合にコードを足すと、表に行を足すまで型検査が落ちる（チェックリスト 5 項目目のガード）。集合に入れ忘れたコードは表に現れないので、チェックリスト 3 項目目は守らない
 
 ## 派生元 spec
 

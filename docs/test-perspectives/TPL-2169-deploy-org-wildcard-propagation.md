@@ -60,6 +60,11 @@ karasu は論理 (`system`)・物理 (`deploy`)・組織 (`organization`) の三
   blocks from wildcard import」
 
 - `packages/core/src/fs/import-merge-tables.test.ts` — `every top-level KrsFile array reaches the importer`：`KrsFile` の配列のキーごとの表 `TOP_LEVEL` を `satisfies Record<ArrayKeys<KrsFile>, …>` で型付けし、各行を whole-file / directory などの import で取り込んで、importer に imported ファイルと同じ要素が現れることを assert する。新しい top-level block を `KrsFile` に足すと、表に行を足すまで型検査が落ち、足した行は merge に載っていなければ落ちる（チェックリスト 1・2 項目目のガード。TPL-1383 と同じ表）
+- `packages/core/src/fs/merged-space-codes.test.ts` の「both halves imported from sibling files」の行：`owns` と
+  `realizes` を書いたファイルと参照先のファイルを、entry が兄弟として import しても、マージ後に参照が解決する
+  （not-found も ambiguous の取り違えも出ない）ことを固定する。チェックリスト 3 項目目には印を付けない。新しい入れ子の
+  relation がこの表に入るのは、その存在検証のコードを `MERGED_SPACE_REFERENCE_CODES` に足したときだけで、
+  `realizes` の未解決（`unresolved-realizes`）のように集合の外で判定するものは加わらない
 
 ## 派生元 spec
 

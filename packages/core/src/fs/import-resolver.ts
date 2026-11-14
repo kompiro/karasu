@@ -70,7 +70,7 @@ import type { StyleSheet } from "../types/style.js";
  * once the importing file's wildcard or `system` reopen adds the node. Its
  * per-file verdict is real and wrong, and only this strip removes it.
  */
-const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
+export const MERGED_SPACE_REFERENCE_CODES = [
   "contains-target-not-found",
   "owns-target-not-found",
   // Ambiguity is decided against the same declared-node space as existence,
@@ -112,7 +112,14 @@ const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
   // silently kept whichever file merged first. Re-derived below together with
   // the index it explains.
   "node-id-multiple-locations",
-]);
+] as const satisfies readonly DiagnosticCode[];
+
+/** A diagnostic decided on the merged model only (see {@link MERGED_SPACE_REFERENCE_CODES}). */
+export type MergedSpaceReferenceCode = (typeof MERGED_SPACE_REFERENCE_CODES)[number];
+
+const MERGED_SPACE_REFERENCE_CODE_SET: ReadonlySet<DiagnosticCode> = new Set(
+  MERGED_SPACE_REFERENCE_CODES,
+);
 
 export interface ResolvedProject {
   /** マージ済みの KrsFile（全ファイルの system / deploy を統合） */
@@ -371,7 +378,7 @@ export class ImportResolver {
     // after Pass 2, so drop the per-file verdict here — a member/owned id
     // declared in another file would otherwise falsely warn (Issue #2032).
     this.diagnostics.push(
-      ...parseResult.diagnostics.filter((d) => !MERGED_SPACE_REFERENCE_CODES.has(d.code)),
+      ...parseResult.diagnostics.filter((d) => !MERGED_SPACE_REFERENCE_CODE_SET.has(d.code)),
     );
     fileMap.set(filePath, parseResult.value);
     this.recordDeclaringFile(parseResult.value, filePath);

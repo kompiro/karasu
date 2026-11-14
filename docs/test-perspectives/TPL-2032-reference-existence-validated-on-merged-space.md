@@ -101,7 +101,7 @@ per-file で消してよいのは **他ファイルの宣言で解決が変わ�
 - [ ] 「cross-file で在る → 出ない」「どこにも無い → 出る」の両方を、code + severity を
       明示した absence/presence assertion で固定したか（[[TPL-1608]]）
 - [ ] **import 形ごとにケースがあるか** — wildcard / named（bare id・path 形）/ ディレクトリ。
-      wildcard だけ緑で named が赤という経路依存を、テストの形で禁止する
+      wildcard だけ緑で named が赤という経路依存を、テストの形で禁止する [guard: `packages/core/src/fs/merged-space-codes.test.ts`]
 
 ## 既知の対処パターン
 
@@ -121,6 +121,12 @@ per-file で消してよいのは **他ファイルの宣言で解決が変わ�
   top-level service の 4 形 + ghost control — #2082）
 - `packages/core/src/renderer/group-by-drilldown-render.test.ts`（cross-file member の
   frame と診断沈黙を同居で固定）
+- `packages/core/src/fs/merged-space-codes.test.ts`：マージ後に判定するコード（resolver が export する
+  `MERGED_SPACE_REFERENCE_CODES`）ごとに、参照する側を entry に、参照先を import する側に置いたモデルを、
+  whole-file / directory / named（bare・path）/ 兄弟ファイル 2 本の各形で `compileProject` に通し、参照先があれば 0 件、
+  無ければ 1 件であることを assert する。表は `satisfies Record<MergedSpaceReferenceCode, …>` なので、存在検証の
+  コードを集合に足すと表に行を足すまで型検査が落ち、足した行はすべての形を通る（チェックリスト「import 形ごとに
+  ケースがあるか」のガード）。形の一覧はテスト側の表なので、新しい import の形は自動では加わらない
 
 ## 派生元 spec
 
