@@ -106,6 +106,18 @@ export const DIAGNOSTIC_SEVERITY = {
   "boundary-membership-not-drawn": "info",
   "app-project-compile-error": "error",
   "app-org-parse-error": "error",
-  // Tests and ad-hoc callers build this one with whatever severity they need.
+  // Tests build this one with whatever severity they need. No production code
+  // emits it, which is the only reason its catalog row can say error.
   "generic-text": "error" as DiagnosticSeverity,
 } as const;
+
+/**
+ * The codes emitted as errors. Helpers that write `severity: "error"` for the
+ * code they are given (`ctx.error`, `rejectConstruct`, ...) take only these, so
+ * a warning or info code cannot reach the catalog's error rows through them.
+ */
+export type ErrorDiagnosticCode = {
+  [K in keyof typeof DIAGNOSTIC_SEVERITY]: (typeof DIAGNOSTIC_SEVERITY)[K] extends "error"
+    ? K
+    : never;
+}[keyof typeof DIAGNOSTIC_SEVERITY];

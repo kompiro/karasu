@@ -99,7 +99,7 @@ spec に診断の約束を書く / 約束済み領域の実装を変更すると
   実装の全診断コードと warning kind が `docs/spec/diagnostics.md` / `.ja.md` に載っていること、
   逆に実装から消えたコードが catalog の表に残っていないこと（「names no retired code」）。
   診断の削除・rename で spec 側を更新し忘れると落ちる。spec の散文が約束した診断の存在そのものは対象外
-- `packages/core/src/types/diagnostics-catalog.test.ts` — `diagnostics catalog severity (TPL-2171)`。`Diagnostic` の `severity` はコードごとに `packages/core/src/types/diagnostic-severity.ts` の `DIAGNOSTIC_SEVERITY` から型が決まるので、発行箇所が別の severity を書くと型検査で落ちる。その表と `warningSeverity()` を catalog の Severity 列と突き合わせる
+- `packages/core/src/types/diagnostics-catalog.test.ts` — `diagnostics catalog severity (TPL-2171)`。`Diagnostic` の `severity` はコードごとに `packages/core/src/types/diagnostic-severity.ts` の `DIAGNOSTIC_SEVERITY` から型が決まるので、発行箇所が別の severity を書くと CI の `pnpm typecheck` で落ちる。`severity: "error"` を固定で書く helper（`ctx.error`・`rejectConstruct` など）は `ErrorDiagnosticCode` しか受け取らない。その表と `warningSeverity()` を catalog の Severity 列と突き合わせる
 
 ## 派生元 spec
 
