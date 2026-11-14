@@ -53,25 +53,26 @@ service KarasuApp {
 | 構文 | `client` の中で `resource <storageKind> "<name>"`。`<storageKind>` は `localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `file` / `keychain` の 6 つで、それ以外は `client-resource-invalid-kind`（error）。parser は 1 つ目の token が `resource`、2 つ目が Identifier、3 つ目（`peekAt(2)`）が StringLiteral のときにこの形として読む |
 | AST | `ClientResource { storageKind, name, loc }`。id も property block も無い。`ClientNode.properties.resources` に入るだけでノードではない |
 | 描画 | client カードの `×N` チップ（package glyph）と、`NodeDetailPanel` の "Storage resources" 一覧（[AT 0069-client-resource-badge-and-detail-panel](../acceptance/0069-client-resource-badge-and-detail-panel.md)） |
-| infra への dot-notation | `ResourceNode.ref = { parent, child }`。`reference-validation.ts` が `indexDeclaredInfra`（`spec/infra-index.ts`。全 root を走査するので system をまたいで解決し、import を merge した木でも作り直す）に照らし、無ければ `unresolved-resource-ref`（KRS048、`missing: "block" \| "leaf"`）。entity の `table X.Y` も同じ検査を通る |
+| infra への dot-notation | `ResourceNode.ref = { parent, child }`。`reference-validation.ts` が `indexDeclaredInfra`（`spec/infra-index.ts`。渡された root を走査する。`validatePhysicalRefs` は全 root を渡すので system をまたいで解決し、import を merge した木でも作り直す）に照らし、無ければ `unresolved-resource-ref`（KRS048、`missing: "block" \| "leaf"`）。entity の `table X.Y` も同じ検査を通る |
 | client を指す dot-notation（今日） | `resource WebApp.ApiKey { operations create }` は parse でき、KRS048 が出る。ほかはすでに infra と同じに扱われる。domain view への昇格は `ref` の有無で決まり（`resource-promotion.ts`）、CRUD matrix は usecase の resource をすべて column にし（`WebApp.ApiKey` の column に `CU`）、coverage の `resourceRefs` も 1 と数える。canvas の label は `buildResourceLabelMap` が infra しか見ないので `WebApp.ApiKey` のまま。`[external]` を付けると KRS048 も消える |
 | bare の `resource X` | 同名の entity に解決し、無ければ `unassigned-resource`。昇格しない |
 | `[read]` / `[write]` | `resource-promotion.ts` の `deriveUsecaseResourceNodes` が `operations` から usecase→resource のエッジに付ける |
-| infra かどうかの判定（検証の外） | `buildEntityResolver(...).resolve(res)`（`resolver/resource-entity.ts`）は dotted の参照について `res.ref.parent` をそのまま `infraParentId` として返す。これを読むのは `deriveInfraEdges`、coverage の `collectPhysical`、`shared-infra-fan-in`、`cross-domain-store-access` で、どれも parent が本当に infra かを確かめない |
-| 派生エッジ | `derived-edges.ts` の `deriveInfraEdges` が、上の `infraParentId` から `service → database / queue / storage` を派生する |
+| infra かどうかの判定（検証の外） | `buildEntityResolver(...).resolve(res)`（`resolver/resource-entity.ts`）は dotted の参照について `res.ref.parent` をそのまま `infraParentId` として返す。これを読む `deriveInfraEdges`・`shared-infra-fan-in`・`cross-domain-store-access` は、それぞれ自分の scope の infra id の集合に parent があるかを確かめ、`collectPhysical` は宣言した infra の leaf だけを数える。今日 client を infra と取り違えることは無いが、「parent が infra か」の判定は読む側ごとに別々に書かれている。`buildEntityResolver` に渡す root も呼び出し元ごとに違う（system ごと、container の children、`[...systems, ...orphans]`、`file.clients` を含まない組み合わせ） |
+| 派生エッジ | `derived-edges.ts` の `deriveInfraEdges` が、infra の id の集合にある `infraParentId` から `service → database / queue / storage` を派生する |
 | canvas の label | `buildResourceLabelMap` / `buildResourceInferredTagsMap`（`resource-promotion.ts`）は `system.children` の infra だけを見る。layout は `resourceLabelMap.get(id) ?? 参照の label ?? id` の順に読むので、infra に解決した参照では map の label が参照の側の label より勝つ |
 | CRUD matrix | column は `resourceId`・`label`・`infraKind`・`external`。`infraFilter` を指定すると `infraKind` の無い column は落ちる。CLI の `--infra` は database / queue / storage しか受けない。`karasu render` も matrix を作る |
 | coverage | domain ごとの `resourceRefs` は `parent.child` をキーにした重複なしの数。`physical` 節は宣言した infra の leaf ごとに mapped / referenced を数える。infra が 1 つも無ければ `collectPhysical` が早く返り、CLI（`cli/src/coverage.ts`）も `physical.infra` が空なら節ごと出さない |
 | containment | `client` の `canContain` は空（ADR-2165 が `canContain` を containment 規則の唯一の定義にした。違反は `node-not-in-context`） |
-| 同じ id の衝突 | 同じ scope で同じ id を 2 度宣言すると KRS016（error）。scope が違う（system 内の `storage WebApp` とトップレベルの `client WebApp`）と診断は出ない。同じ id の client を複数の場所で宣言すると KRS030 だけが出る。同じ id の infra block は leaf を和集合にする（S4.5） |
+| 同じ id の衝突 | 同じ scope で同じ id を 2 度宣言すると KRS016（error）。scope が違う（system 内の `storage WebApp` とトップレベルの `client WebApp`）と衝突の診断は出ない。同じ id の client は、同じ system に import で 2 度入ると KRS018（error）、別の path にあると KRS030 で、model はそれぞれを別のノード（別のカード、`nodePathIndex` の勝者）として扱う。client は merge されない。同じ id の infra block は leaf を和集合にする（S4.5。先勝ちで、同じ leaf の再宣言は `infra-leaf-redeclared-silently` の info、同じ宣言を複数の import の経路で拾ったものは黙って 1 つにする） |
+| 呼び出し元に届く model | `extractCrudMatrix` / `extractCoverage`（CLI の `matrix` / `coverage` / `render`）と `buildResourceLabelMap` は `systems` だけを受け取る。トップレベルの client（KRS059 の orphan）とトップレベルの infra はここに届かない |
 | client 内の重複 | `client-capability-duplicate`（KRS097）は resolver の warning（`resolver/warnings.ts` の `detectDuplicateClientCapabilities`）。1 つの client ノードの中だけを見る |
 | client の storage を見せる面 | client カードの tooltip（`renderer/node-text.ts`）、`NodeDetailPanel` に渡る node metadata（`compile/compile.ts`） |
 
-つまり、参照する側の形（dot-notation、`operations`、昇格、matrix、coverage の数）は今日すでに動いている。欠けているのは **解決先**であり、そのために KRS048 が誤って出て、宣言した storage との結びつき（綴りの検査、storage の名前と kind の表示）が無い。もう 1 つ、「参照先が infra かどうか」を決める場所が検証（`indexDeclaredInfra`）と読む側（`buildEntityResolver`）に分かれている。client を解決先に足すと、この 2 つが食い違わないようにする必要がある（TPL-1720）。
+つまり、参照する側の形（dot-notation、`operations`、昇格、matrix、coverage の数）は今日すでに動いている。欠けているのは **解決先**であり、そのために KRS048 が誤って出て、宣言した storage との結びつき（綴りの検査、storage の名前と kind の表示）が無い。もう 1 つ、「参照先が infra かどうか」を決める場所が検証（`indexDeclaredInfra`）と読む側（`buildEntityResolver` と、それを読む各所の infra id の集合）に分かれている。client を解決先に足すときに 3 つ目の判定を各所に書き足すと、判定の分岐が増える（TPL-1720）。
 
 ## 制約・前提
 
-- 言語版は 2.0（`KRS_LANGUAGE_VERSION`）。今日パースが通るファイルは通り続けること。新しい記法は既定で experimental とし、後方互換を約束する層への昇格は証拠をもとに別に判断する（ADR-1820）。昇格するときに後方互換な追加なら minor（v2.1）に載せる（ADR-2124）。
+- 言語版は 2.0（`KRS_LANGUAGE_VERSION`）。今日パースが通るファイルは通り続けること。後方互換を約束する層に載せるかは ADR-1820 の promotion gate で判断する（既定は experimental 据え置きで、昇格に渋い）。昇格するときに後方互換な追加なら minor（v2.1）に載せる（ADR-2124）。
 - 論理と物理の分離を崩さない。client の storage は「client が端末で持つ、操作に結びつく storage」（ADR-823）であり、system の共有 infra（ADR-316）ではない。
 - ADR-316 は infra を system 直下に限り、`service` 直下に resource を宣言して ID で参照する案を「担当 domain との概念コンフリクト、定義の散在」で却下している。どの案もこの却下に触れるかどうかを確かめる。
 - ADR-823 は `client → domain → usecase → resource` のフル階層（案 ii）を将来の別 Issue に回した。
@@ -210,52 +211,56 @@ storage WebAppLocal {
 resource <storageKind> [<Id>] "<name>"
 ```
 
-- `<Id>` は省略できる。parser は `resource` / Identifier（kind）/ Identifier（id）/ StringLiteral の並びを新しい形として読む。今の判定（3 つ目の token が StringLiteral）はそのまま残す。
-- 名前（文字列）は省略不可のまま。storage のキーやパスは事実として残したい。名前は id と同じ行に書く。次の行の文字列を名前として読まないよう、TPL-3752 の共有の読み手（`opensEdgeOnLaterLine` / `readValueAfter` / `reportMissingValue`）を通す。今日の 3 token の判定もこれに揃える。
-- id の位置に置けるのは Identifier の token だけである。キーワードとして字句解析される語（`table`、`storage` など）を id の位置に置いた場合と、名前の無い `resource opfs Projects` は、今日はどちらも KRS010 などの分かりにくい error になる。実装の PR でこの 2 つをテストで固定し、client resource の形として読んだうえで専用の error（名前が無い、id に使えない語）を出す。
+- `<Id>` は省略できる。名前（文字列）は省略不可のまま。storage のキーやパスは事実として残したい。
+- **client の storage の形として読む条件**: client の中の `resource` で、次の token が 6 つの storage kind のどれかであるか、3 つ目の token が StringLiteral である（今日の条件）とき。どちらでもなければ今日どおり通常の `resource` の宣言として読み、KRS010 になる（`resource Foo { }` の扱いは変わらない）。
+- この形として読んだ後、id の位置には Identifier を置く。キーワードとして字句解析される語（`table`、`storage` など）がそこにあれば、id に使えない語の error を出す。名前が無い（`resource opfs Projects` で行が終わる）ときは、名前が無い error を出す。どちらも今日は KRS010 + KRS100 になる。
+- 名前は `resource` と同じ行に書く。次の行の文字列を名前として読まないよう、TPL-3752 の共有の読み手（`opensEdgeOnLaterLine` / `readValueAfter` / `reportMissingValue`）を通す。今日の 3 token の判定もこれに揃える。client の block は明示した source のエッジを受け付けるので、今日 `resource opfs` の次の行に `"WebApp" -> A` を書くと、文字列が名前として読まれて `->` で KRS100 になる。TPL-3752 のチェックリストは「client の `resource` の名前」を `ctx.expect` でよい箇所に挙げているので、同じ PR でこの例を添えて直す。
 - formatter は id を含めて round-trip する（TPL-1101）。
 
 ### 2. 参照の解決
 
-**到達状態**: 「`<Parent>.<Child>` が infra の leaf か、client の storage か、どちらでもないか」を決める関数が 1 つだけあり、検証・昇格の label・派生エッジ・matrix・coverage・`shared-infra-fan-in`・`cross-domain-store-access`・LSP がその結果だけを読む（TPL-1720）。
+**到達状態**: 「`<Parent>.<Child>` が infra の leaf か、client の storage か、どちらでもないか」を決める関数が 1 つだけあり、検証・昇格の label・派生エッジ・matrix・coverage・`shared-infra-fan-in`・`cross-domain-store-access`・LSP がその結果だけを読む（TPL-1720）。今日の読む側は、それぞれ自分で infra の id の集合を確かめていて、client を取り違えてはいない。この節は取り違えを直すのではなく、判定を 1 つに畳んで client を足すためのものである。
 
-- 解決の範囲は infra と同じにする（TPL-2088）。`spec/infra-index.ts` に client の storage の index を足し、全 root（トップレベルの client と、どの system の中の client も）を走査する。import を merge した木でも作り直す。
-- 解決結果は `{ kind: "infra", infraId, leafId } | { kind: "client", clientId, storageId } | unresolved` の形で返す。`buildEntityResolver` の `resolve()` もこの関数を通し、client に解決した参照では `infraParentId` を undefined にする。今日 `infraParentId` を読んでいる `deriveInfraEdges`・`collectPhysical`・`shared-infra-fan-in`・`cross-domain-store-access` は、これで client の storage を infra と取り違えなくなる。
+- **index は model 全体で 1 つ**作り、解決の関数に渡す（TPL-2088）。`spec/infra-index.ts` に client の storage の index を足し、全 root（トップレベルの client と、どの system の中の client も）を走査する。import を merge した木でも作り直す。`buildEntityResolver` は呼び出し元ごとに違う root で作られるので、client の storage を自分の root から探させず、この index を受け取る。
+- 解決結果は `{ kind: "infra", infraId, leafId } | { kind: "client", clientId, storageId } | { kind: "unresolved" }` の形で返す。`buildEntityResolver` の `resolve()` もこの関数を通し、client に解決した参照では `infraParentId` を undefined にする。`unresolved` のときは今日どおり `infraParentId = parent` を返す（ほかの scope に宣言された infra を各所が今日どおりに扱うため）。
 - usecase の `resource <Parent>.<Child>` で、`<Parent>` が client なら、その client の storage のうち id が `<Child>` のものに解決する。
-- **同じ id の client** が複数の場所で宣言されたとき（2 つの system、トップレベルと import した先など）は、infra の block と同じく storage を和集合にする（S4.5 と同じ扱い）。
-- **同じ id の storage**: 和集合にした client の中で storage の id が重なったら `client-resource-duplicate-id`（warning）を出す。client の id ごとに merge した後の model で見る（`client-capability-duplicate` は 1 ノードの中だけを見るが、こちらは参照の解決先を決めるので merge 後の model で見る）。解決先は S7 の決定的な順序で最初のもの。resolver の warning として出し、LSP の `SINGLE_DOCUMENT_CONTEXT` に行を足す。
-- **infra block と client が同じ id**（scope が違うので KRS016 にならない場合）: 解決先は今日どおり infra とする。`<Child>` が infra にあってもなくても infra として解決・報告し、client 側は見ない。そのうえで `resource-target-ambiguous`（warning）を出し、両方の宣言を示す。この warning は KRS048 と同じく parser 側の診断にし、`MERGED_SPACE_REFERENCE_CODES` に入れる（`owns-target-ambiguous` / `realizes-target-ambiguous` と同じく、merge した宣言の空間で決める）。infra を優先するのは、今日 infra に解決しているファイルの意味を変えないためである。同じ scope での衝突は今日すでに KRS016 になる。
-- `<Parent>` が client で `<Child>` が見つからないときは、既存の `unresolved-resource-ref` を `missing: "leaf"` で出す。params の `infraId` を `parentId` に改め、`parentKind: "infra" | "client"` を足す（`missing: "leaf"` のときだけ持つ）。メッセージを「client "WebApp" に id "X" の storage resource が無い」と言い分ける。`missing: "block"` のメッセージは「database / queue / storage block も client も宣言していない」に直す（en / ja）。
+- **同じ id の client が複数のノードとしてある**とき（KRS030 の場合。同じ system に 2 度入る場合は KRS018 の error）、model はそれらを別のノードとして扱うので、storage を和集合にはしない。index は client の id ごとに、各ノードの storage を宣言の単位で持つ（同じ宣言を複数の import の経路で拾ったものは 1 つに数える）。`<Child>` を持つ宣言が 1 つだけならそれに解決し、2 つ以上なら解決せず `resource-target-ambiguous` を出す。
+- **同じ client の中で storage の id が重なった**ら `client-resource-duplicate-id`（warning）を出し、2 つ目以降を解決先にしない。`client-capability-duplicate` と同じく 1 つの client ノードの中だけを見る resolver の warning で、LSP の `SINGLE_DOCUMENT_CONTEXT` の行も `client-capability-duplicate` と同じ（`LOCAL`）にする。
+- **infra block と client が同じ id**（scope が違うので KRS016 にならない場合）: 解決先は今日どおり infra とする。その client の storage は index・matrix・label の map・`clientStores` のどれにも入れず、`resource-target-ambiguous`（warning）でだけ示す。infra を優先するのは、今日 infra に解決しているファイルの意味を変えないためである。同じ scope での衝突は今日すでに KRS016 になる。
+- `resource-target-ambiguous` は KRS048 と同じく parser 側の診断にし、`MERGED_SPACE_REFERENCE_CODES` に入れる（`owns-target-ambiguous` / `realizes-target-ambiguous` と同じく、merge した宣言の空間で決める）。
+- `<Parent>` が client で `<Child>` が見つからないときは、既存の `unresolved-resource-ref` を `missing: "leaf"` で出す。params の `infraId` は名前を変えずに残し（`unresolved-table-ref` と揃え、JSON の出力を変えない）、`parentKind: "infra" | "client"` を足す（`missing: "leaf"` のときだけ持つ）。メッセージを「client "WebApp" に id "X" の storage resource が無い」と言い分ける。`missing: "block"` のメッセージは「database / queue / storage block も client も宣言していない」に直す（en / ja）。
 - entity の `table X.Y` は同じ検査の関数（`validatePhysicalRefs`）を通るが、client の storage には解決させない。`table WebApp.ApiKey` は今日どおり未解決にし、テストで固定する（domain の所有は Q3 で決めない）。
-- 参照の側の `[external]`: client の storage に解決した参照に `[external]` が付いていたら、今日の KRS048 よけの名残なので info の診断で外すよう促す。matrix の `external` の印は付けない（system の中で宣言された storage なので）。
+- 参照の側の `[external]` は今日の意味のまま変えない（`validatePhysicalRefs` は `[external]` の参照を検査せず、matrix の `external` は参照の tags から付く）。新しい診断は足さない。KRS048 よけに `[external]` を付けていた参照は、id を足した後に `[external]` を外すよう guide に書く。
 - usecase と client の関係（`delivers` / `handles` / エッジ）は検査しない（未解決の問い Q1）。
 
 ### 3. 派生エッジ（system view）
 
-派生しない。infra への参照は `deriveInfraEdges` が `service → database` を派生するが、client の storage への参照から `service → client` を派生すると、service が client に依存する向きの絵になる。BFF の配信関係は既に `delivers` が描いている。§2 の 1 つの関数を通すことで `deriveInfraEdges` は client への解決を拾わなくなる。infra block と client が同じ id のときも含めて、テストで固定する。
+派生しない。infra への参照は `deriveInfraEdges` が `service → database` を派生するが、client の storage への参照から `service → client` を派生すると、service が client に依存する向きの絵になる。BFF の配信関係は既に `delivers` が描いている。`deriveInfraEdges` は今日も client を拾わないが、§2 の関数に畳んだ後もそうであることを、infra block と client が同じ id の fixture も含めてテストで固定する。
 
 ### 4. 描画
 
 - 昇格・`[read]` / `[write]`（`resource-promotion.ts`）は今日すでに効いているので変えない。shape tag は推論しない（infra の `table → [table]` のような対応を client の storage kind に持たせない）。
-- canvas の label は infra と同じ優先順にする（TPL-2088）。`buildResourceLabelMap` に client の storage を足し、その label を `<storageKind> "<name>"`（例: `sessionStorage "karasu.ai.anthropic.apiKey"`）にする。同じ名前の storage が kind 違いで 2 つあっても区別できる。参照の側に書いた `label` は infra の場合と同じく map に負ける。この優先順を infra と client の両方で変えるかは、本 Design Doc では決めない。
-- `buildResourceLabelMap` / `buildResourceInferredTagsMap` は今日 `system.children` しか見ないので、トップレベルの client も含めて §2 の index から引くように直す。
-- `NodeDetailPanel`: client の "Storage resources" 一覧に id を出し、参照している usecase を並べる（`compile/compile.ts` の node metadata に足す）。resource 側の detail には「client WebApp の sessionStorage」と出す。client カードの tooltip（`renderer/node-text.ts`）にも id を出す。
+- canvas の label は infra と同じ優先順にする（TPL-2088）。`buildResourceLabelMap` に client の storage を足し、その label を `<name> (<storageKind>)`（例: `karasu.ai.anthropic.apiKey (sessionStorage)`）にする。引用符を入れないので SVG / draw.io の escape を気にしなくてよく、同じ名前の storage が kind 違いで 2 つあっても区別できる。参照の側に書いた `label` は infra の場合と同じく map に負ける。この優先順を infra と client の両方で変えるかは、本 Design Doc では決めない。
+- `buildResourceLabelMap` / `buildResourceInferredTagsMap` は今日 `systems` の `system.children` しか見ないので、§2 の model 全体の index から引くように直す。その結果、トップレベルの infra に解決した参照も infra の label で描かれるようになる（影響範囲に書く）。
+- `NodeDetailPanel`: client の "Storage resources" 一覧に id を出し、そのノードの storage を参照している usecase を並べる（`compile/compile.ts` の node metadata に足す）。resource 側の detail には「client WebApp の sessionStorage」と出す。client カードの tooltip（`renderer/node-text.ts`）にも id を出す。
 
 ### 5. CRUD matrix
 
-- 参照された client の storage は今日すでに column になっている。`CrudMatrixColumn` に `clientId` と `storageKind` を足す（`infraKind` は undefined のまま）。column の key は `<ClientId>.<Id>` で、infra の leaf と同じ形である。infra block と client が同じ id のときは §2 で infra に解決するので、key がぶつかっても 1 つの column（infra）になる。
+- 参照された client の storage は今日すでに column になっている。`CrudMatrixColumn` に `clientId` と `storageKind` を足す（`infraKind` は undefined のまま）。column の key は `<ClientId>.<Id>` で、infra の leaf と同じ形である。infra と id が重なる client の storage は §2 で index に入らないので、key はぶつからない。
 - id を持つ client の storage は、参照されていなくても column にする（参照されていない infra の leaf と同じ扱い）。id の無い storage は column にしない。
-- `infraFilter` は infra の種類で絞る機能のままにし、指定したときに client の storage の column が落ちる今日の挙動を変えない。CLI の `--infra` も変えない。client の storage で絞る option は、要望が出たら別に足す。`karasu render` が作る matrix も同じ extract を通るので、同じ結果になる。
+- `infraFilter` は infra の種類で絞る機能のままにし、指定したときに client の storage の column が落ちる今日の挙動を変えない。CLI の `--infra` も変えない。client の storage で絞る option は、要望が出たら別に足す。
+- `extractCrudMatrix` は今日 `systems` だけを受け取るので、トップレベルの client の storage が届かない。model 全体（または §2 の index）を受け取るように signature を変え、CLI の `matrix` / `render` の呼び出しも直す。
 
 ### 6. coverage
 
 - domain の `resourceRefs` は今日すでに client を指す参照を数えているので変えない。
 - report の最上位に `clientStores` を足す（`physical` の中には入れない）。client は論理のノードで、`physical` は共有の data store と system of record の回収を測る節なので、端末の storage はその対象ではない。client ごとに「id のある storage」「参照された storage」「参照されていない storage」「id の無い storage（参照できない）」を出す。最後の 1 つは reverse の harness が「id を付ければ参照できる storage」を見つけるために要る。
 - `clientStores` は infra の有無と独立に出す。`collectPhysical` の早い return、CLI の markdown の `physical.infra.length > 0` の条件、`CoverageReport.physical` の docstring は `physical` の節の中の話なので変えず、`clientStores` 用の出力を CLI に足す。
+- `extractCoverage` も `systems` だけを受け取るので、matrix と同じく model 全体を受け取るように変える。
 
-### 7. 言語版と experimental
+### 7. 言語版と promotion gate
 
-ADR-1820 の既定どおり、client の storage の id と、それを解決先にする規則は **experimental** として入れる。`docs/roadmap.md` の「watch 対象の experimental notation」に 1 行登録し、昇格のトリガー（karasu-nest の corpus での利用、混乱や bug の Issue）を書く。`KRS_LANGUAGE_VERSION` は 2.0 のまま変えない。昇格すると決めたら、そのときに v2.1 に載せる（後方互換な追加。ADR-2124）。v2.1 に上げる PR は、`language-version.test.ts` が見る 4 つの spec（`docs/spec/syntax.md` / `.ja.md`、`docs/spec/style.md` / `.ja.md`）の `.krs language v<version>` と、changeset・CHANGELOG での言語版の移行の記載を含む。
+client の storage の id と、それを解決先にする規則を `docs/roadmap.md` の「watch 対象の experimental notation」に登録し、ADR-1820 の promotion gate で評価する。登録する行には、昇格のトリガー（karasu-nest の corpus での利用、混乱や bug の Issue、この記法に触れるリリースの直前）を書く。gate の既定（experimental 据え置き）に従い、`KRS_LANGUAGE_VERSION` は 2.0 のまま変えない。昇格すると決めたら、そのときに v2.1 に載せる（後方互換な追加。ADR-2124）。v2.1 に上げる PR は、`language-version.test.ts` が見る 4 つの spec（`docs/spec/syntax.md` / `.ja.md`、`docs/spec/style.md` / `.ja.md`）の `.krs language v<version>` と、changeset・CHANGELOG での言語版の移行の記載を含む。
 
 stable（v2.1）として今すぐ入れるかは未解決の問い Q4 で kompiro に確かめる。
 
@@ -263,19 +268,19 @@ stable（v2.1）として今すぐ入れるかは未解決の問い Q4 で kompi
 
 1 PR で出す（parser から coverage まで揃わないと、受理した語彙が効果を持たない。TPL-1503）。
 
-1. core: `ClientResource` に `id?: string`。`parseClientResource` で id を読み、TPL-3752 の共有の読み手を通す。名前の無い場合と id に使えない語の場合の error を足す。
+1. core: `ClientResource` に `id?: string`。`parseClientResource` で id を読み、§1 の条件で形を決め、TPL-3752 の共有の読み手を通す。名前の無い場合と id に使えない語の場合の error を足す。TPL-3752 のチェックリストを §1 の例を添えて直す。
 2. core: formatter の round-trip。
-3. core: `spec/infra-index.ts` に client の storage の index と、§2 の解決の関数。`reference-validation.ts`（`validatePhysicalRefs`）と `resolver/resource-entity.ts`（`buildEntityResolver`）をそこに通す。`unresolved-resource-ref` の params とメッセージ、`resource-target-ambiguous`（parser の診断、`MERGED_SPACE_REFERENCE_CODES`）、`client-resource-duplicate-id`（resolver の warning、`SINGLE_DOCUMENT_CONTEXT`）、`[external]` の info。それぞれ diagnostic id、i18n（en / ja）、`docs/spec/diagnostics.md` / `.ja.md`。entity の `table` は client に解決させない。
-4. core: `deriveInfraEdges`・`collectPhysical`・`shared-infra-fan-in`・`cross-domain-store-access` が client への解決を infra と取り違えないことを、infra block と client が同じ id の fixture も含めてテストで固定する。`resource-promotion.ts` の `buildResourceLabelMap` / `buildResourceInferredTagsMap` を §2 の index から引く。
-5. core: `crud-matrix-extract.ts` / `crud-matrix-format.ts`、`coverage-extract.ts`（`clientStores`）。CLI の `karasu matrix` / `karasu coverage` / `karasu render` の出力。
-6. テスト: import で client を別ファイルに置いた場合（`examples/*/ec-platform/02.5-clients.krs` の形）の解決。system をまたぐ解決。同じ id の client の和集合と storage の id の重複。
+3. core: `spec/infra-index.ts` に client の storage の index と、§2 の解決の関数。`reference-validation.ts`（`validatePhysicalRefs`）と `resolver/resource-entity.ts`（`buildEntityResolver`、index を受け取る）をそこに通す。`unresolved-resource-ref` の `parentKind` とメッセージ、`resource-target-ambiguous`（parser の診断、`MERGED_SPACE_REFERENCE_CODES`）、`client-resource-duplicate-id`（resolver の warning、`SINGLE_DOCUMENT_CONTEXT` は `LOCAL`）。それぞれ diagnostic id、i18n（en / ja）、`docs/spec/diagnostics.md` / `.ja.md`。entity の `table` は client に解決させない。
+4. core: `deriveInfraEdges`・`collectPhysical`・`shared-infra-fan-in`・`cross-domain-store-access` が §2 の関数を読み、client への解決を infra と扱わないことを、infra block と client が同じ id の fixture も含めてテストで固定する。`resource-promotion.ts` の `buildResourceLabelMap` / `buildResourceInferredTagsMap` を §2 の index から引く。
+5. core: `crud-matrix-extract.ts` / `crud-matrix-format.ts`、`coverage-extract.ts`（`clientStores`）。`extractCrudMatrix` / `extractCoverage` が model 全体を受け取るよう signature を変え、CLI の `karasu matrix` / `karasu coverage` / `karasu render` の呼び出しと出力を直す。
+6. テスト: import で client を別ファイルに置いた場合（`examples/*/ec-platform/02.5-clients.krs` の形）の解決。トップレベルの client。system をまたぐ解決。同じ id の client が別のノードとしてある場合（同じ宣言を複数の経路で拾った場合は 1 つに数える）。同じ client の中の storage の id の重複。
 7. app: `NodeDetailPanel` の client の storage 一覧と resource 側の表示（`compile/compile.ts` の node metadata）。client カードの tooltip（`renderer/node-text.ts`）。`CrudMatrixPanel`。
-8. lsp: `packages/lsp/src/position-resolver.ts` の補完の id 一覧（`collectAllIdentifiers`）と、定義・hover の検索（`findRangeOfNode` / `getNodeDescription`）に client の storage を足す。storage の id は他のノードや他の client の storage と名前がぶつかりうるので、`<ClientId>.<Id>` をキーにする。client の storage はノードではないので、列挙の側に足す。
-9. docs: `docs/spec/syntax.md` / `.ja.md`（client resource の節、infra layer の dot-notation の節と「promotion is what resolving the reference buys」の行、§S6 の dot-notation の検証規則。experimental であることを明記する）、`docs/spec/tags-annotations.md` / `.ja.md`（client resource の形と、system-assigned の `[read]` / `[write]` の節）、`docs/concepts.md` / `.ja.md`（`resource` の行）、`docs/spec/diagnostics.md` / `.ja.md`、`docs/guide/04-access-paths.md` / `.ja.md`（client resource の書き方の節）、`docs/guide/notation-cookbook.md`（usecase から client の storage を参照する書き方。skill の reference に同梱される）、`docs/roadmap.md`（watch 対象の experimental notation）。skill の reference bundle を `pnpm run lint:skill-reference-bundle-sync --write` で揃え、reverse-architecture / karasu-author スキルの本文に書き方を足す。
-10. TPL: 新しい spec の節には既存の TPL-1720・TPL-2088・TPL-1625 を `> Related TPLs:` で back-ref し、各 TPL の「派生元 spec」に節を足す。この設計が破りうる原則（解決先の列挙の分岐、参照サイト間の解決規則のずれ、client の語彙の実装への滑り落ち）は 3 つの TPL が既に持っているので、新しい proactive TPL は起こさない。
+8. lsp: infra の leaf と同じ引き方にする（TPL-2088）。infra の leaf は今日、カーソルの下の語（`getWordAtPosition` は `.` を含まない）をそのまま id として `findRangeOfNode` / `getNodeDescription` で引かれ、補完も `collectAllIdentifiers` の平たい id の一覧から出る。client の storage も同じく、id を一覧と検索の対象に足す（`packages/lsp/src/position-resolver.ts`）。client の storage はノードではないので、列挙の側に足す。同じ id が他のノードや他の client の storage にもあるときの扱いは infra の leaf と同じ（今日の挙動を変えない）。
+9. docs: `docs/spec/syntax.md` / `.ja.md`（client resource の節、infra layer の dot-notation の節と「promotion is what resolving the reference buys」の行、§S6 の dot-notation の検証規則。experimental であることを明記する）、`docs/spec/tags-annotations.md` / `.ja.md`（client resource の形と、system-assigned の `[read]` / `[write]` の節）、`docs/concepts.md` / `.ja.md`（`resource` の行）、`docs/spec/diagnostics.md` / `.ja.md`、`docs/guide/04-access-paths.md` / `.ja.md`（client resource の書き方の節）、`docs/guide/notation-cookbook.md` / `.ja.md`（usecase から client の storage を参照する書き方と、`[external]` を外す話。skill の reference に同梱される）、`docs/roadmap.md`（watch 対象の experimental notation）。skill の reference bundle を `pnpm run lint:skill-reference-bundle-sync --write` で揃え、reverse-architecture / karasu-author スキルの本文に書き方を足す。
+10. TPL: 新しい spec の節には既存の TPL-1720・TPL-2088・TPL-1625 を `> Related TPLs:` で back-ref し、各 TPL の「派生元 spec」に節を足す。この設計が破りうる原則（解決先の列挙の分岐、参照サイト間の解決規則のずれ、client の語彙の実装への滑り落ち）は 3 つの TPL が既に持っているので、新しい proactive TPL は起こさない。TPL-3752 の修正は手順 1。
 11. examples: `examples/en/ec-platform/02.5-clients.krs` と ja 版に、id のある storage と参照の例を足すか、実装の PR で決める（足すなら `pnpm gen:examples`）。
 12. AT: `docs/acceptance/` に新規。TC は次のとおり（人間の確認が要るものだけ）:
-    - app で、client の storage を参照する usecase の domain view に `<storageKind> "<name>"` の label で resource が出て、detail panel に client と storage kind が出る
+    - app で、client の storage を参照する usecase の domain view に `<name> (<storageKind>)` の label で resource が出て、detail panel に client と storage kind が出る
     - CRUD matrix panel に client の storage の column が出る
 13. changeset: `@karasu-tools/core` / `karasu` を minor、`karasu-skills` を patch。experimental のあいだは言語版の移行を書かない。`karasu-vscode` は core の cascade で patch になるが、LSP の補完が変わるので、拡張の利用者に見える変更として名指すかを実装の PR で確かめる。
 14. ADR 昇格: 実装の PR がマージされたら `docs/adr/3794-client-local-store-reference.md` に昇格し、本 Design Doc を同じ PR で削除する。
@@ -283,13 +288,15 @@ stable（v2.1）として今すぐ入れるかは未解決の問い Q4 で kompi
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: id の無い client resource は今日と同じに読まれ、描かれる。今日 `resource <ClientId>.<X>` と書いているファイルは、client の storage に id `X` を足すと KRS048 が消える。足さなければ今日どおり KRS048 が出る（メッセージは client を含む形に変わる）。infra block と client が同じ id のファイルは、解決先は変わらず `resource-target-ambiguous` が増える。
+- トップレベルの infra に解決した参照は、canvas の label が参照の id から infra の label に変わる（§4）。描画が変わるので、実装の PR は before / after を添える。
+- `extractCrudMatrix` / `extractCoverage` の signature が変わる（core の公開 API）。changeset に書く。
 - ドキュメント更新: 実装の指針 9 を参照。
-- テスト・examples への影響: 既存の examples は変わらない。
+- テスト・examples への影響: 既存の examples は変わらない（トップレベルの infra を参照する example があれば label が変わるので、実装の PR で確かめる）。
 
 ## 未解決の問い / 決めないこと
 
 - **Q1. usecase と client の関係を検査するか。** 方針は「検査しない」。純粋な SPA は `delivers` する service を持たず（ADR-823）、domain が system 直下やトップレベルにあることもあるので、`delivers` / `handles` を前提にすると正しいモデルを警告してしまう。kompiro の判断を仰ぎたい。
 - **Q2. client の storage に `facets` を付けられるようにするか。** Issue の 3 つ目の帰結（`facets secret` を storage の枠に付けたい）。ADR-823 Q8 は安全属性のために `resource <kind> "<name>" { ... }` のネストを予約している。property block を足すと、facet の解決先にノードでないもの（client の storage）が入る。本 Design Doc では決めず、案 A が入ったあとに別 Issue で扱う。
 - **Q3. client の storage を domain が所有するか。** entity の `table` 対応（ADR-1870）を client の storage に広げるかどうか。`cross-domain-store-access` は対象外のまま。
-- **Q4. experimental で入れるか、stable（v2.1）で入れるか。** 方針は ADR-1820 の既定どおり experimental。reverse で 6 つの domain が同じ穴を報告したことを、すでに十分な利用の証拠とみなして stable にする選択肢もある。kompiro の判断を仰ぎたい。
+- **Q4. experimental で入れるか、stable（v2.1）で入れるか。** 方針は ADR-1820 の gate の既定どおり experimental で登録する。reverse で 6 つの domain が同じ穴に触れたことを、すでに十分な利用の証拠とみなして stable にする選択肢もある。kompiro の判断を仰ぎたい。
 - 案 D（client のフル階層）は引き続き将来の検討に残す。案 A はそれを妨げない。
