@@ -111,7 +111,12 @@ deprecation 診断を追加する PR で確認する:
   検査が捕まえる。ただし表は `NON_AUTHOR_SHEET_IDS` に登録されたシートにしか閉じておらず、新しく注入したのに
   登録しなかったシートは見えない。compile が実際に注入するシートを観測して導く案は、注入が compile の
   オプション（表示モード・テーマ・ビュー・今後足すもの）ごとに分かれ、オプションの組み合わせが閉じた集合に
-  ならないので採らなかった。このためチェックリスト 6 項目目のガードではない。生成コードは閉じた集合が無いので覆わない
+  ならないので採らなかった。このためチェックリスト 6 項目目のガードではない。生成コードは閉じた集合が無いので覆わない。
+  `StyleParser.parse` の sheet id を、登録済みの id か branded な author id だけを受ける型にすれば、新しい sentinel id は
+  登録するまで typecheck で落ちる。ただし `StyleParser.parse` は `@karasu-tools/core` の公開 API で型を狭める変更になり、
+  id を渡さずに parse したシート（既定の `<anonymous>` で author と区別できない）は素通りするので、これも採っていない（#3644）。
+  位置で除外する懸念は 2026-11-14 に確かめた: compile と all-layers は mode シートを足す前のシート列を `analyze()` に渡し、
+  mode シートは `withDisplayModeSheet` で解決にだけ加わる。上のテストが固定しているのは compile の側だけで、all-layers の側は読んで確かめた
 
 旧記法が v1.x で動き続けることの固定（チェックリスト 3 項目目）は、言語 v2.0（#2677）で任意名セレクタを
 無効にしたため、現在は同じ describe の「no longer applies a rule whose selector names a non-builtin tag (v2.0)」が
