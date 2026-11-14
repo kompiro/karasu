@@ -969,16 +969,12 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
       ["https://e.example/a;`x.md`", "https://e.example/a;ADR-12"],
       ["https://e.example/~`x.md`", "https://e.example/~ADR-12"],
       ["https://e.example/a%`x.md`", "https://e.example/a%ADR-12"],
-      ["mailto:a@`x.md`", "mailto:a@ADR-12"],
       ["see <`x.md`>", "see <ADR-12>"],
-      // prose neighbours, but the word is a URL or an address
+      // inside a URL that markdown links
       ["https://e.example/（`x.md`）", "https://e.example/（ADR-12）"],
-      ["a@e.example（`x.md`）", "a@e.example（ADR-12）"],
-      // link text the link pattern does not see
+      // links and autolinks the link pattern does not see, read by the parser
       ['see [`x.md`](https://e.example/x "t")', 'see [ADR-12](https://e.example/x "t")'],
-      ["see [`x.md`][r]", "see [ADR-12][r]"],
       ["see [a [`x.md`] b](https://e.example/x)", "see [a [ADR-12] b](https://e.example/x)"],
-      ["see [^`x.md`]", "see [^ADR-12]"],
     ]) {
       expect(swap(before, after)).toBe(false);
     }
@@ -1003,30 +999,37 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     ).toBe(false);
   });
 
-  it("rewrites a code span to ADR-<n> only on a line of plain prose", () => {
+  it("rewrites a code span to ADR-<n> only where markdown reads prose", () => {
     for (const [before, after] of [
-      // links, footnotes and autolinks, whatever the words around the number
+      // links and autolinks, whatever the words around the number
       [
         'see [the `x.md` doc](https://e.example/x "t")',
         'see [the ADR-12 doc](https://e.example/x "t")',
       ],
-      ["see [the `x.md` doc][r]", "see [the ADR-12 doc][r]"],
-      ["see [^a `x.md` b]", "see [^a ADR-12 b]"],
       [
         "see [a [b `x.md` c] d](https://e.example/x)",
         "see [a [b ADR-12 c] d](https://e.example/x)",
       ],
       ["(www.e.example/a,`x.md`)", "(www.e.example/a,ADR-12)"],
-      ["<b>設計は`x.md`の</b>", "<b>設計はADR-12の</b>"],
-      ["`@import`の扱いは`x.md`の D5", "`@import`の扱いはADR-12の D5"],
-      // whitespace a link destination does not end at
       ["see [a](https://e.example/x\u3000`x.md`)", "see [a](https://e.example/x\u3000ADR-12)"],
-      ["[r]: https://e.example/x\u3000`x.md`", "[r]: https://e.example/x\u3000ADR-12"],
       // code spans the single-backtick pattern misreads
       ["`` a ` `x.md` ``", "`` a ` ADR-12 ``"],
       ["`a [l](t) `x.md` b`", "`a [l](t) ADR-12 b`"],
     ]) {
       expect(swap(before, after)).toBe(false);
+    }
+  });
+
+  it("accepts ADR-<n> that the parser reads as text (kompiro on #3781: no domain can change)", () => {
+    for (const [before, after] of [
+      ["<b>設計は`x.md`の</b>", "<b>設計はADR-12の</b>"],
+      ["`@import`の扱いは`x.md`の D5", "`@import`の扱いはADR-12の D5"],
+      // a reference link or footnote whose definition is on another line reads as text
+      ["see [the `x.md` doc][r]", "see [the ADR-12 doc][r]"],
+      ["see [^a `x.md` b]", "see [^a ADR-12 b]"],
+      ["mailto:a@`x.md`", "mailto:a@ADR-12"],
+    ]) {
+      expect(swap(before, after)).toBe(true);
     }
   });
 
@@ -1057,85 +1060,38 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     ).toBe(true);
   });
 
-  it("pairs references in order, so each one only moves from the Design Doc to the ADR or stays", () => {
-    // back from the ADR to the Design Doc, in a code span and in a sibling link
-    expect(swap("`x.md` と `docs/adr/12-x.md`", "ADR-12 と `x.md`")).toBe(false);
-    expect(swap("[x](x.md) と [x](../adr/12-x.md)", "[x](../adr/12-x.md) と [x](x.md)")).toBe(
-      false,
-    );
-    // a reference to the deleted Design Doc left on the added line
+  it("compares references as symbols, as the Design Doc does (kompiro on #3781)", () => {
+    // a swap back to the Design Doc happens only in a revert, which is meant
+    expect(swap("`x.md` と `docs/adr/12-x.md`", "ADR-12 と `x.md`")).toBe(true);
+    expect(swap("[x](x.md) と [x](../adr/12-x.md)", "[x](../adr/12-x.md) と [x](x.md)")).toBe(true);
     expect(
       swap(
         "see [a](../design/x.md) and [b](../design/x.md)",
         "see [a](../adr/12-x.md) and [b](../design/x.md)",
       ),
-    ).toBe(false);
-    // an ADR-<n> that was already there stays as it was
+    ).toBe(true);
+    // an ADR-<n> already on the line is not one the swap wrote, so it stays out of Low
     expect(
       swap(
         "see `docs/design/x.md` (ADR-12).",
         "see `docs/adr/12-x.md` (ADR-12).",
         "docs/roadmap.md",
       ),
-    ).toBe(true);
-    expect(swap("see `x.md` (ADR-12).", "see ADR-12 (ADR-12).")).toBe(true);
+    ).toBe(false);
+    expect(swap("see `x.md` (ADR-12).", "see ADR-12 (ADR-12).")).toBe(false);
   });
 
-  it("keeps a reference already at a new ADR at that ADR, in any form", () => {
+  it("pairs a code span between two new ADRs only within one stem", () => {
     const a = ["docs/adr/12-x.md", "docs/adr/5-a.md", "docs/adr/6-b.md"];
     expect(swap("`x.md` `docs/adr/5-a.md`", "`docs/adr/12-x.md` `docs/adr/6-b.md`", IN, D, a)).toBe(
       false,
     );
-    expect(swap("`x.md` `docs/adr/5-a.md`", "`docs/adr/12-x.md` `docs/adr/5-a.md`", IN, D, a)).toBe(
-      true,
-    );
-    // a link or a bare path moved to another new ADR
-    expect(
-      swap(
-        "see [x](x.md) and [a](../adr/5-a.md)",
-        "see [x](../adr/12-x.md) and [a](../adr/6-b.md)",
-        IN,
-        D,
-        a,
-      ),
-    ).toBe(false);
-    expect(
-      swap(
-        "see [x](x.md) and docs/adr/5-a.md",
-        "see [x](../adr/12-x.md) and docs/adr/6-b.md",
-        IN,
-        D,
-        a,
-      ),
-    ).toBe(false);
-    // two new ADRs with the same slug are still two records
-    const twins = ["docs/adr/12-x.md", "docs/adr/13-x.md"];
-    expect(
-      swap("`x.md` `docs/adr/12-x.md`", "`docs/adr/12-x.md` `docs/adr/13-x.md`", IN, D, twins),
-    ).toBe(false);
-    expect(swap("`x.md` ADR-12 の D5", "ADR-12 ADR-13 の D5", IN, D, twins)).toBe(false);
-    // the same ADR in another path form or anchor stays
     expect(swap("`x.md` `docs/adr/5-a.md`", "`docs/adr/12-x.md` `../adr/5-a.md#b`", IN, D, a)).toBe(
       true,
     );
-    expect(
-      swap(
-        "see [x](x.md) and docs/adr/5-a.md",
-        "see [x](../adr/12-x.md) and ../adr/5-a.md",
-        IN,
-        D,
-        a,
-      ),
-    ).toBe(true);
-    expect(
-      swap(
-        "see [x](x.md) and [a](./adr/5-a.md)",
-        "see [x](../adr/12-x.md) and [a](adr/5-a.md#d1)",
-        IN,
-        D,
-        a,
-      ),
-    ).toBe(true);
+    // ADR-<n> stands for the one same-stem ADR it names
+    const twins = ["docs/adr/12-x.md", "docs/adr/13-x.md"];
+    expect(swap("`x.md` ADR-12 の D5", "ADR-12 ADR-13 の D5", IN, D, twins)).toBe(false);
   });
 
   it("never lowers a High path through the new forms", () => {
