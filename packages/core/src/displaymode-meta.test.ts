@@ -599,6 +599,11 @@ describe("meta: drill levels paint their controls over the level canvas (#2044)"
     expect(controlsUnderCanvas((await consumer.invoke("shape")).svg)).toEqual([]);
   });
 
+  it("exempts only entries that bundle levels", () => {
+    const bundling = new Set<string>(BUNDLES_LEVELS.map((c) => c.name));
+    expect(Object.keys(DRAWS_NO_CONTROLS).filter((name) => !bundling.has(name))).toEqual([]);
+  });
+
   // The fixture has the level kinds known today; the shipped examples bring the
   // shapes nobody wrote a fixture for, and a new example joins on its own.
   describe.each(BUNDLES_LEVELS)("$name, on every shipped example", (consumer) => {
