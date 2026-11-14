@@ -1,4 +1,4 @@
-import { TokenType, type Token } from "../types/tokens.js";
+import { TokenType, type Token, type SourceRange } from "../types/tokens.js";
 import type {
   OrganizationBlock,
   BoundaryBlock,
@@ -34,6 +34,15 @@ import type { ParseContext } from "./parse-context.js";
 export function parseOrganizationBlock(ctx: ParseContext): OrganizationBlock {
   const start = ctx.advance(); // organization
   const idToken = parseIdOrString(ctx, "organization", start.loc);
+  if (!idToken && opensNextEdge(ctx)) {
+    return {
+      id: MISSING_ID,
+      label: undefined,
+      properties: { links: [] },
+      teams: [],
+      loc: keywordOnly(ctx, start),
+    };
+  }
   let label = parseRetiredPositionalLabel(ctx, "organization");
   ctx.expect(TokenType.LeftBrace);
 
@@ -71,12 +80,26 @@ export function parseOrganizationBlock(ctx: ParseContext): OrganizationBlock {
   collectTeamIds(ctx, teams, seen);
 
   return {
-    id: idToken?.value ?? "__missing_id",
+    id: idToken?.value ?? MISSING_ID,
     label,
     properties,
     teams,
     loc: ctx.range(start.loc, end.loc),
   };
+}
+
+/** The id a declaration whose id is missing is kept under, as node declarations are. */
+const MISSING_ID = "__missing_id";
+
+/**
+ * The range of a declaration that stopped at its keyword: its id is missing and
+ * the next line opens an edge, so it has no `{` and no body to read. Reading
+ * them anyway would take the edge into the body and, inside a node block,
+ * close that block at the body's `}` (#3767). The declaration is kept, like a
+ * node declaration with no id.
+ */
+function keywordOnly(ctx: ParseContext, keyword: Token): SourceRange {
+  return ctx.range(keyword.loc, keyword.end ?? keyword.loc);
 }
 
 /**
@@ -115,6 +138,17 @@ function parseRetiredPositionalLabel(ctx: ParseContext, construct: string): stri
 export function parseBoundaryBlock(ctx: ParseContext): BoundaryBlock {
   const start = ctx.advance(); // boundary
   const idToken = parseIdOrString(ctx, "boundary", start.loc);
+  if (!idToken && opensNextEdge(ctx)) {
+    const loc = keywordOnly(ctx, start);
+    return {
+      kind: "boundary" as const,
+      id: MISSING_ID,
+      label: undefined,
+      properties: { links: [] },
+      contains: [],
+      loc,
+    };
+  }
   let label: string | undefined;
   // The positional label form is removed on boundary (ADR-19 / #2133;
   // experimental construct, so no deprecation window). Consume the stray
@@ -182,7 +216,7 @@ export function parseBoundaryBlock(ctx: ParseContext): BoundaryBlock {
 
   return {
     kind: "boundary" as const,
-    id: idToken?.value ?? "__missing_id",
+    id: idToken?.value ?? MISSING_ID,
     label,
     properties,
     contains,
@@ -200,6 +234,16 @@ export function parseBoundaryBlock(ctx: ParseContext): BoundaryBlock {
 export function parseFacetBlock(ctx: ParseContext): FacetBlock {
   const start = ctx.advance(); // facet
   const idToken = parseIdOrString(ctx, "facet", start.loc);
+  if (!idToken && opensNextEdge(ctx)) {
+    const loc = keywordOnly(ctx, start);
+    return {
+      kind: "facet" as const,
+      id: MISSING_ID,
+      label: undefined,
+      properties: { links: [] },
+      loc,
+    };
+  }
   let label: string | undefined;
   // Positional label is not part of the grammar (ADR-19 / #2133). `facet` is
   // new, so there is nothing to deprecate — reject and consume, as `boundary`
@@ -244,7 +288,7 @@ export function parseFacetBlock(ctx: ParseContext): FacetBlock {
 
   return {
     kind: "facet" as const,
-    id: idToken?.value ?? "__missing_id",
+    id: idToken?.value ?? MISSING_ID,
     label,
     properties,
     loc: ctx.range(start.loc, end.loc),
@@ -302,6 +346,17 @@ export function rejectNestedFacetBlock(ctx: ParseContext, blockKind: string): vo
 function parseTeamBlock(ctx: ParseContext): TeamNode {
   const start = ctx.advance(); // team
   const idToken = parseIdOrString(ctx, "team", start.loc);
+  if (!idToken && opensNextEdge(ctx)) {
+    return {
+      kind: "team" as const,
+      id: MISSING_ID,
+      label: undefined,
+      annotations: [],
+      properties: { links: [], owns: [] },
+      children: [],
+      loc: keywordOnly(ctx, start),
+    };
+  }
   let label = parseRetiredPositionalLabel(ctx, "team");
   const { names: annotations, params: annotationParams } = parseAnnotations(ctx);
   ctx.expect(TokenType.LeftBrace);
@@ -356,7 +411,7 @@ function parseTeamBlock(ctx: ParseContext): TeamNode {
 
   return {
     kind: "team" as const,
-    id: idToken?.value ?? "__missing_id",
+    id: idToken?.value ?? MISSING_ID,
     label,
     annotations,
     ...(Object.keys(annotationParams).length > 0 ? { annotationParams } : {}),
@@ -369,6 +424,16 @@ function parseTeamBlock(ctx: ParseContext): TeamNode {
 function parseMemberBlock(ctx: ParseContext): MemberNode {
   const start = ctx.advance(); // member
   const idToken = parseIdOrString(ctx, "member", start.loc);
+  if (!idToken && opensNextEdge(ctx)) {
+    return {
+      kind: "member" as const,
+      id: MISSING_ID,
+      label: undefined,
+      properties: { links: [] },
+      children: [] as const,
+      loc: keywordOnly(ctx, start),
+    };
+  }
   let label = parseRetiredPositionalLabel(ctx, "member");
   ctx.expect(TokenType.LeftBrace);
 
@@ -406,7 +471,7 @@ function parseMemberBlock(ctx: ParseContext): MemberNode {
 
   return {
     kind: "member" as const,
-    id: idToken?.value ?? "__missing_id",
+    id: idToken?.value ?? MISSING_ID,
     label,
     properties,
     children: [] as const,

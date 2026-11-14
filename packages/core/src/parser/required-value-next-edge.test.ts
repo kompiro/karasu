@@ -120,7 +120,54 @@ describe("a required value stops at an edge on a later line (#3767)", () => {
     expect(missing.map(rangeOf)).toEqual([[start, end]]);
     // Neither the id nor a retired positional label takes the string.
     expect(JSON.stringify(parsed.value)).not.toContain('"x y"');
-    expect(parsed.errors).not.toContain("positional-label-removed");
+    // The declaration stops at its keyword instead of taking the edge into a
+    // body it never opened: the edge is reported once, on its own, as an edge
+    // that cannot be written here.
+    const others = parsed.diagnostics.filter((d) => d.code !== "expected-id-or-string");
+    expect(others.map((d) => d.code)).toHaveLength(1);
+    expect(others.map((d) => d.code)[0]).toMatch(
+      /^(top-level-declaration|unexpected-token-in-block)$/,
+    );
+    expect(others[0].loc?.start.offset).toBe(source.indexOf('"x y"'));
+  });
+
+  it("keeps the service open after a scoped boundary with no id", () => {
+    const { source, start, end } = mark(IN_SERVICE("«boundary»"));
+    const parsed = parse(source);
+    expect(parsed.errors).toEqual(["expected-id-or-string", "edge-source-mismatch"]);
+    expect(rangeOf(parsed.diagnostics[0])).toEqual([start, end]);
+    expect(parsed.edges).toEqual(["x y -> b"]);
+    expect((parsed.value.systems[0] as SystemNode).children.map((c) => c.id)).toEqual(["a", "b"]);
+  });
+
+  it.each([
+    ["child node id", IN_SERVICE("«domain»").replace(NEXT, "x --> b")],
+    ["edge target", IN_SERVICE("«->»").replace(NEXT, "x --> b")],
+    [
+      "contains",
+      `boundary B {
+  «contains»
+  x -> b
+}
+`,
+    ],
+    [
+      "deploy node property",
+      `deploy P {
+  oci app {
+    «image»
+    x --> b
+  }
+}
+`,
+    ],
+  ])("does not read a plain-id source or a `-->` edge as the %s", (_name, marked) => {
+    const { source, start, end } = mark(marked);
+    const parsed = parse(source);
+    const missing = parsed.diagnostics.filter((d) => /^expected-/.test(d.code));
+    expect(missing.map(rangeOf)).toEqual([[start, end]]);
+    const json = JSON.stringify(parsed.value);
+    expect(json.split('"x"').length - 1).toBe(json.split('"from":"x"').length - 1);
   });
 
   it.each([
@@ -213,6 +260,20 @@ describe("an edge with no target (#3767)", () => {
     expect(rangeOf(parsed.diagnostics[0])).toEqual([start, end]);
   });
 
+  it("is reported once before the next line's edge in a block that takes no edges", () => {
+    const { source, start, end } = mark(`organization O {\n  «a ->»\n  "x y" -> b\n}\n`);
+    const parsed = parse(source);
+    expect(parsed.errors).toEqual(["expected-id-or-string", "unexpected-token-in-block"]);
+    expect(rangeOf(parsed.diagnostics[0])).toEqual([start, end]);
+    expect(parsed.diagnostics[1].loc?.start.offset).toBe(source.indexOf('"x y"'));
+  });
+
+  it("does not take the next line's `#id` source as its author id", () => {
+    const parsed = parse(BLOCK(`    ->\n    #next -> b`));
+    expect(parsed.edges).toEqual(["#next -> b"]);
+    expect(parsed.errors).toEqual(["expected-id-or-string", "edge-source-mismatch"]);
+  });
+
   it("reports a top-level edge with no target where it is placed and where it lacks a target", () => {
     const parsed = parse(`a ->\n`);
     expect(parsed.errors).toEqual(["top-level-declaration", "expected-id-or-string"]);
@@ -271,6 +332,15 @@ describe("input that reads as written is unchanged (#3767)", () => {
     const parsed = parse(BLOCK(`    ->\n    b`));
     expect(parsed.edges).toEqual(["a -> b"]);
     expect(parsed.errors).toEqual([]);
+  });
+
+  it("keeps an author id on the edge's line, and not one that opens the next line's edge", () => {
+    const sameLine = Parser.parse(BLOCK(`    -> b #mine`));
+    const edge = (sameLine.value.systems[0] as SystemNode).children[0].edges[0];
+    expect(edge.authorId).toBe("mine");
+    const nextLine = parse(BLOCK(`    -> b\n    #next -> c`));
+    expect(nextLine.edges).toEqual(["#next -> c", "a -> b"]);
+    expect(nextLine.errors).toEqual(["edge-source-mismatch"]);
   });
 
   it("reads a label and a second implicit-source edge on one line", () => {

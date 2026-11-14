@@ -219,13 +219,18 @@ function parseEdgeBlock(
  * Optional `#<id>` author identifier for edges and resource rows. The lexer
  * already emits `#foo` as a single Identifier token, so we just check the
  * leading `#`. Returns the id without the leading `#`, or undefined if the
- * next token is something else.
+ * next token is something else. Like every optional trailing token, it is not
+ * taken from the source of an edge that starts on a later line (#3767,
+ * TPL-3752): `a -> b` / `#next -> c` would otherwise give `a -> b` the author id
+ * and leave `-> c` behind as an implicit-source edge.
  */
 export function parseAuthorIdSuffix(ctx: ParseContext): string | undefined {
   const next = ctx.peek();
   if (next.type !== TokenType.Identifier) return undefined;
   if (!next.value.startsWith("#")) return undefined;
   if (next.value.length === 1) return undefined;
+  const last = ctx.previous();
+  if (last && opensEdgeOnLaterLine(ctx, last)) return undefined;
   ctx.advance();
   return next.value.slice(1);
 }
