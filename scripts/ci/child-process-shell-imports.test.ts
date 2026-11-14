@@ -58,10 +58,12 @@ interface OxlintReport {
   number_of_files: number;
 }
 
-function lint(cwd: string, target: string): OxlintReport {
-  const run = spawnSync(OXLINT, ["-c", configPath, "-f", "json", target], {
+/** Lint exactly `targets`: `--no-ignore` so no ignore rule can drop one. */
+function lint(cwd: string, targets: string[]): OxlintReport {
+  const run = spawnSync(OXLINT, ["-c", configPath, "-f", "json", "--no-ignore", ...targets], {
     cwd,
     encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
   });
   if (run.error) throw run.error;
   try {
@@ -90,7 +92,7 @@ describe("no file imports the shell-string child_process API (TPL-168)", () => {
     rmSync(probe, { recursive: true, force: true });
     mkdirSync(probe, { recursive: true });
     writeFileSync(join(probe, "probe.ts"), lines.join("\n"));
-    const report = lint(probe, ".");
+    const report = lint(probe, ["probe.ts"]);
     const hitLines = report.diagnostics
       .map((d) => d.labels?.[0]?.span.line)
       .sort((a, b) => (a ?? 0) - (b ?? 0));
@@ -101,10 +103,11 @@ describe("no file imports the shell-string child_process API (TPL-168)", () => {
     const tracked = execFileSync("git", ["ls-files"], { cwd: ROOT, encoding: "utf8" })
       .split("\n")
       .filter((f) => SOURCE.test(f));
-    const report = lint(ROOT, ".");
-    // A walk that silently skipped the tree (a changed ignore rule, a wrong
-    // cwd) would also report nothing, so it must have read every tracked file.
-    expect(report.number_of_files).toBeGreaterThanOrEqual(tracked.length);
+    // The tracked paths are the input, not a directory walk, and every one of
+    // them must have been read: a run that skipped files would also report
+    // nothing.
+    const report = lint(ROOT, tracked);
+    expect(report.number_of_files).toBe(tracked.length);
     expect(report.diagnostics.map((d) => `${d.filename}: ${d.message}`)).toEqual([]);
   });
 });
