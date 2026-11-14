@@ -45,8 +45,8 @@ scope:
 cross-reference を持つ宣言の検証 / resolver 経路を実装 / 変更するときに確認する:
 
 - [ ] endpoint 未解決時に warning を出すテストがある
-- [ ] 同じケースで **source / target のうち解決できた側のノードが残る** ことを直接 assert している（TPL-907 の「正しい参照に warning を出さない」と対称）
-- [ ] 1 つの import 漏れが「最大何個のノードを消すか」をテストで上限抑止している（理想は 0、実装上は warning 経由でユーザーに見える状態を保つ）
+- [ ] 同じケースで **source / target のうち解決できた側のノードが残る** ことを直接 assert している（TPL-907 の「正しい参照に warning を出さない」と対称） [guard: `packages/core/src/compile/dangling-reference-corpus.test.ts`]
+- [ ] 1 つの import 漏れが「最大何個のノードを消すか」をテストで上限抑止している（理想は 0、実装上は warning 経由でユーザーに見える状態を保つ） [guard: `packages/core/src/compile/dangling-reference-corpus.test.ts`]
 - [ ] `realizes` / `owns` / `handles` などの他の cross-reference にも同じ規則を適用しているか
 
 ## 既知の対処パターン
@@ -60,8 +60,15 @@ cross-reference を持つ宣言の検証 / resolver 経路を実装 / 変更す�
   warning が出て params に `from` / `to` / `unresolvedId` が載ること、両 endpoint が解決できれば出ないこと。
   他の cross-reference は同じファイルの `unresolved-realizes warning` と `unresolved-handles warning` が見ている
 
-解決できた側のノードが残ることを直接 assert するテスト（チェックリスト 2 項目目）と、1 つの import 漏れで消える
-ノード数の上限を抑えるテスト（3 項目目）はまだ無い。
+- `packages/core/src/compile/dangling-reference-corpus.test.ts` — 出荷している全 example を変異させて回す
+  （2・3 項目目のガード）。各 example が読み込む全ファイルの、model に入っている全エッジについて、片方の endpoint を
+  どこにも無い id に書き換え、`unresolved-edge-endpoint` がその id を名指すことと、変異前に描かれていた全ノードが
+  まだ描かれていることを確かめる。また各 import 行を 1 本ずつ落とし、entry が丸ごと読み込むファイル（whole-file と
+  ディレクトリ import を辿る）で宣言された全ノードが merge 結果と描画に残ることを確かめる。新しい example・エッジ・
+  import は追加した日から加わる。corpus が形を持つこと（変異したエッジが 500 本を超えること、import を落とすと
+  参照が宙に浮く example があること）もテストが確かめる。named import で読み込んだ top-level service は、それを
+  名指すエッジの `system` に置かれる（`resolveBareIdImport` の規則 2）。そのエッジを書き換えると service は
+  top-level に移るので、描画の比較では root の segment だけ違う path を「残った」と数える
 
 ## 派生元 spec
 
