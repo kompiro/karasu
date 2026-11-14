@@ -41,6 +41,7 @@ import {
 } from "../parser/node-path.js";
 
 import { MERGED_SPACE_REFERENCE_CODE_SET } from "./merged-space-codes.js";
+import { INFRA_UNION_FIELDS, type InfraUnionField } from "./infra-merge.js";
 
 /** One candidate chain of an imported file: the nodes, and their id path. */
 interface ImportChain {
@@ -580,39 +581,36 @@ export class ImportResolver {
   }
 
   /**
-   * Same-id infra reopen: merge `table` (or other leaf) children by id.
-   * The infra body is intentionally flat — declaring
-   * `database UserDB { table users }` in two files leaves one merged
-   * node with a single `users` child. Identity-identical re-arrival
-   * (DAG hit) dedups silently. A same-`(id, kind)` collision between
-   * **different instances** emits an `infra-leaf-redeclared-silently`
-   * info diagnostic so the dropped declaration's existence is at least
-   * surfaced — silent loss of information would be debug-hostile.
+   * Same-id infra reopen (S4.5): applies the `union` fields of
+   * `INFRA_MERGE_POLICY` (`infra-merge.ts`); the `Record` below does not
+   * typecheck while one of them has no merge. Leaves merge by `(id, kind)`, the
+   * same instance (a DAG re-arrival) dedups silently, and a collision between
+   * different instances emits an `infra-leaf-redeclared-silently` info.
    */
   private mergeInfraBody(target: KrsNode & { id: string; kind: string }, source: KrsNode): void {
     if (target === source) return;
-    this.mergeScopedBoundaries(target, source);
-    for (const child of source.children) {
-      if (target.children.includes(child)) continue;
-      const dup = target.children.find((c) => c.id === child.id && c.kind === child.kind);
-      if (dup) {
-        this.reportInfraLeafCollision(target, child);
-        continue;
-      }
-      target.children.push(child);
-    }
-    // A `database` body holds edges as well as leaves (`sessions -> users`),
-    // and the union owes them the same treatment it gives the leaves: merging
-    // the tables but dropping the relations between them leaves a block that
-    // looks complete and has quietly lost information (#2754).
-    //
-    // A true duplicate ({@link isSameEdge}) keeps the first entry's body
-    // properties, the same root-entry-wins reconcile the block's own `label` /
-    // `description` already use.
-    for (const edge of source.edges) {
-      if (target.edges.includes(edge)) continue;
-      if (!target.edges.some((e) => isSameEdge(e, edge))) target.edges.push(edge);
-    }
+    const unions: Record<InfraUnionField, () => void> = {
+      boundaries: () => this.mergeScopedBoundaries(target, source),
+      children: () => {
+        for (const child of source.children) {
+          if (target.children.includes(child)) continue;
+          const dup = target.children.find((c) => c.id === child.id && c.kind === child.kind);
+          if (dup) this.reportInfraLeafCollision(target, child);
+          else target.children.push(child);
+        }
+      },
+      // A `database` body holds edges as well as leaves (`sessions -> users`):
+      // merging the tables but dropping the relations between them leaves a
+      // block that looks complete and has quietly lost information (#2754). A
+      // true duplicate ({@link isSameEdge}) keeps the first entry's.
+      edges: () => {
+        for (const edge of source.edges) {
+          if (target.edges.includes(edge)) continue;
+          if (!target.edges.some((e) => isSameEdge(e, edge))) target.edges.push(edge);
+        }
+      },
+    };
+    for (const field of INFRA_UNION_FIELDS) unions[field]();
   }
 
   /**
