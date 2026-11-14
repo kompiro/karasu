@@ -16,9 +16,9 @@ import { afterAll, describe, expect, it } from "vitest";
 // text match), run with a config of its own that holds only this rule, so the
 // shared `.oxlintrc.json` stays untouched. What it does not see, and why it is
 // a related test of TPL-168 rather than a guard: `spawn(..., { shell: true })`,
-// `execFile("sh", ["-c", line])` (the ready-gate test does this on purpose),
-// `require` and `import()` of the module, and strings built for anything
-// other than a shell.
+// a shell run as the command (`spawnSync("bash", ["-c", line])`, which some
+// tests here do on purpose), `require`, `import cp = require(...)` and
+// `import()` of the module, and strings built for anything other than a shell.
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const OXLINT = join(ROOT, "node_modules/.bin/oxlint");
@@ -64,7 +64,12 @@ function lint(cwd: string, target: string): OxlintReport {
     encoding: "utf8",
   });
   if (run.error) throw run.error;
-  return JSON.parse(run.stdout) as OxlintReport;
+  try {
+    return JSON.parse(run.stdout) as OxlintReport;
+  } catch {
+    // A rejected config or a crash leaves no JSON; show oxlint's own words.
+    throw new Error(`oxlint exited ${run.status} without a JSON report:\n${run.stderr}`);
+  }
 }
 
 const SOURCE = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
@@ -86,7 +91,7 @@ describe("no file imports the shell-string child_process API (TPL-168)", () => {
     mkdirSync(probe, { recursive: true });
     writeFileSync(join(probe, "probe.ts"), lines.join("\n"));
     const report = lint(probe, ".");
-    const hitLines = report.diagnostics.map((d) => d.labels?.[0]?.span.line).sort();
+    const hitLines = report.diagnostics.map((d) => d.labels?.[0]?.span.line).sort((a, b) => (a ?? 0) - (b ?? 0));
     expect(hitLines).toEqual([1, 2, 3, 4, 5]);
   });
 
