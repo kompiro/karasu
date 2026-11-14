@@ -101,6 +101,11 @@ core の関数が「名前 → 実装」のレジストリを引くとき、**�
 - `packages/core/src/style/value-validator.test.ts` — 未登録の名前が `style-unknown-icon` になり、組み込みの名前は
   ホストの登録なしに通ること
 - `packages/cli/src/render.e2e.test.ts` — `karasu render` が `url("database")` をアイコンで描き、typo を warning にすること
+- `packages/cli/pack/serve-from-tarball.test.ts` — 「karasu render from the tarball draws every built-in icon」。
+  `pnpm pack` した CLI の単一バンドルで、生成マニフェストの全アイコン名を `url()` で描き、`style-unknown-icon` が
+  出ないことと各アイコンのパスが出力にあることを見る（CI の Pack test step）。チェックリスト 4 のガードにはしていない:
+  見ているのは CLI のバンドルだけで、`.vsix` の webview と nest の Worker バンドルは覆わず、新しい配布物も表に
+  載らない
 - `packages/cli/src/lint-style.test.ts` — `karasu lint-style` が typo を宣言位置つきの warning にすること
 - `packages/lsp/src/diagnostics.test.ts` — 描画しない LSP でも同じ判定になり、組み込みの名前を誤検知しないこと
 - VS Code の preview は #3312 以降、webview の中で app の viewer が compile する。拡張ホストに compile の経路はもう無く、app と同じ経路として上の fence に含まれる

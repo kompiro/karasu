@@ -14,7 +14,7 @@
     "lint:fix": "oxlint --fix packages/ scripts/",
     "format": "oxfmt --write packages/ scripts/",
     "format:check": "oxfmt --check packages/ scripts/",
-    "typecheck": "pnpm -r run typecheck && tsc --noEmit -p scripts/tsconfig.json",
+    "typecheck": "pnpm -r run typecheck && tsc --noEmit -p scripts/tsconfig.json && tsc --noEmit -p functions/tsconfig.json",
     "knip": "knip",
     "changeset": "changeset",
     "version-packages": "changeset version && pnpm install --lockfile-only",

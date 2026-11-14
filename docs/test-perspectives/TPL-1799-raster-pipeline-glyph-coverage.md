@@ -11,7 +11,7 @@ known_consumers:
   - svg-renderer
 discovered_from:
   - issue: "#1799"
-  - root_cause_file: "functions/render.ts:FONT_PATHS"
+  - root_cause_file: "functions/_lib/share-raster.ts:FONT_PATHS"
 related_to:
   - TPL-1001
   - TPL-219
@@ -46,15 +46,15 @@ scope:
 
 - [ ] ソース側レンダラーが出力しうる **非 ASCII グリフを全列挙**したか（絵文字・記号バッジ・アイコン。`grep -rnP '[\x{2190}-\x{1FAFF}]'` 等で機械的に洗い出す）
 - [ ] その全グリフを、ラスタ経路に供給するフォント/アセットがカバーしているか（カバーするフォントをフル同梱するか、subset なら全コードポイントを含めたか）
-- [ ] **ブラウザ確認だけで済ませず**、ラスタ経路（resvg-wasm 等）で実際に描画して豆腐が無いか目視・自動検証したか
-- [ ] ブラウザ専用機能（CSS `:target` / Web フォント / アニメーション）に依存していないか。依存するなら静的経路で縮退させたか
+- [ ] **ブラウザ確認だけで済ませず**、ラスタ経路（resvg-wasm 等）で実際に描画して豆腐が無いか目視・自動検証したか [guard: `scripts/ci/raster-input.test.ts`]
+- [ ] ブラウザ専用機能（CSS `:target` / Web フォント / アニメーション）に依存していないか。依存するなら静的経路で縮退させたか [guard: `scripts/ci/raster-input.test.ts`]
 - [ ] レンダラーに新グリフを足す変更は、ラスタ経路のカバレッジ拡張も同 PR で行う運用になっているか [judgment]
 
 ## 既知の対処パターン
 
 - **フォントはフル同梱で将来堅牢に**: subset は新マーカー追加で再発しやすい。monochrome Noto Emoji（~2MB）をフル同梱して全絵文字をカバー（#1799）。resvg は与えた全 buffer をフォールバック走査するので、buffer 配列に積むだけで per-family 指定は不要。
 - **Node + resvg-wasm で事前確認**: Workers にデプロイする前に、Node から同じフォント buffer でラスタライズして豆腐が無いか確認する（CI の vitest では Workers ランタイムを再現できないため）。
-- **ブラウザ専用 SVG の縮退**: CSS `:target` タブ束ね SVG は静的ラスタで本体が空白になるため、PNG では単一 view にフォールバック（`functions/render.ts` の `view` 既定 = `system`）。
+- **ブラウザ専用 SVG の縮退**: CSS `:target` タブ束ね SVG は静的ラスタで本体が空白になるため、PNG では単一 view にフォールバック（`share-render.ts` の `sharePngSource` の `view` 既定 = `system`）。
 
 ## 関連テスト
 
@@ -62,5 +62,25 @@ scope:
 - `packages/app/src/render/share-render.test.ts` — SVG 経路の生成（ラスタ前段）
 - `packages/app/src/render/png-font-coverage.test.ts` — `PNG raster font coverage (TPL-1799, #1799)`。
   同梱フォントの cmap の和集合がレンダラーの出す非 ASCII マーカー（バッジ・ghost バッジ・縮退タブ）を
-  すべてカバーすることと、`BUNDLED_FONTS` が `functions/render.ts` の読み込むフォント集合と一致することを
+  すべてカバーすることと、`BUNDLED_FONTS` が `functions/_lib/share-raster.ts` の読み込むフォント集合と一致することを
   assert する。マーカーの列挙はテスト内の手書きリストなので、新グリフを足すときはここへの追加が要る
+- `scripts/ci/raster-input.test.ts` — チェックリスト 3・4 のガード。ラスタライザ（`@resvg/*`・`sharp`・`canvas` など）を
+  読み込むモジュールを `functions/` と全 workspace パッケージの `src` の import graph（madge）から導き、ラスタ経路の表と
+  一致させる。ラスタライザを読み込むモジュールは経路ごとに 1 つ（`/render` は `functions/_lib/share-raster.ts`、
+  nest の OGP 画像は `gallery/og-rasterize.ts`）で、それぞれ resvg を呼ぶ関数を 1 つだけ export し、その関数は
+  branded 型の SVG（`SharePngSvg` / `OgImageSvg`）しか受け取らない。その型を作れるのは、何をラスタライズするかを
+  決める関数（`sharePngSource` / `ogImageSource`）だけで、表の各行はその関数を呼ぶ。登録済みのファイルで別の SVG を
+  ラスタライズしようとすると型エラーになり（`functions/` も root の `typecheck` が見る）、別のファイルで resvg を
+  読み込めば表との突き合わせで落ちる。そのうえで Render equivalence と同じコーパス（examples の全 entry と AT の全 `krs` fence を
+  `synthesizeSharePayload` で 1 つの payload にしたもの）を各経路の入口に通し、view 指定なし・各 view × light / dark ×
+  shape / icon × OGP 枠の有無で、全モデルが描けること、出力の全文字（数値文字参照も展開）が経路のフォントの cmap の
+  和集合に入ること、静的ラスタで落ちる要素・CSS（許可リスト外の要素と CSS プロパティ、`:` を含むセレクタ、at-rule、
+  文書外への参照）が無いことを assert する。判定は出力に対して行うので、グリフの書き方（リテラル・エスケープ・
+  `String.fromCodePoint`）を問わない。PNG の view 既定（`system`）を外すと all-views の `:target` で落ちる。
+  - 3 をガードとする理由: 3 の「新しい箇所」はラスタ経路そのもの。新しい経路は表に載るまで落ち、載せればその入口に
+    コーパス全体が通る。経路の発見は静的に解決できる import に限る（実行時に組み立てた specifier と、`functions/`・
+    `packages/*/src` の外のファイルは見えない。後者は build と CI のスクリプトで、利用者に届く画像を描かない）
+  - 1 をガードにしない理由: 1 の「新しい箇所」はグリフで、検査するのはコーパスが描いたものだけ。どのモデルも通らない
+    分岐のグリフは、レンダラーが出しうるものの全列挙にならない。例: 縮退タブの `◇`（`degraded-tabs.ts`）は team /
+    boundary でグループ化したときだけ描かれ、ラスタ経路はグループ化しない。同じ `◇` は `@planned` バッジとして
+    ラスタ経路に来るので文字としては検査されるが、縮退タブの記号だけを別の文字に変えてもこのテストは落ちない

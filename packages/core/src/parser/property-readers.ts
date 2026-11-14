@@ -2,7 +2,7 @@ import { TokenType, type Token, type SourceRange, type SourceLocation } from "..
 import type { LinkEntry, NodeIdPath, HandlesTarget } from "../types/ast.js";
 import { isRecognizedResourceOperation } from "../spec/operations.js";
 import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
-import { readNodeIdPathTail, pathPastLeaf } from "./node-path.js";
+import { opensEdgeOnLaterLine, readNodeIdPathTail, pathPastLeaf } from "./node-path.js";
 import type { ParseContext } from "./parse-context.js";
 import { rejectConstruct, rejectProperty } from "./rejected-construct.js";
 
@@ -41,7 +41,10 @@ export function parseLink(ctx: ParseContext): LinkEntry {
   const url = ctx.expect(TokenType.StringLiteral);
   let label: string | undefined;
   let end = url.loc;
-  if (ctx.peek().type === TokenType.StringLiteral) {
+  // A quoted id that opens the next line's edge is not this link's label
+  // (#3752): inside a node block it would leave the arrow behind as an
+  // implicit-source edge, and the model would change with no diagnostic.
+  if (ctx.peek().type === TokenType.StringLiteral && !opensEdgeOnLaterLine(ctx, url)) {
     const labelToken = ctx.advance();
     label = labelToken.value;
     end = labelToken.loc;
@@ -358,13 +361,9 @@ export function rejectMisplacedProperty(ctx: ParseContext, nodeKind: string): bo
   switch (ctx.peek().type) {
     case TokenType.Role:
       // A bare `role` must not take the source of an edge on the next line;
-      // a string on its own line is still its value (`role "A" -> B`).
+      // a string on the same line is still its value (`role "A" -> B`).
       rejectProperty(ctx, "role", nodeKind, (keyword) => {
-        const arrow = ctx.peekAt(1).type;
-        const edgeStart = arrow === TokenType.Arrow || arrow === TokenType.DashedArrow;
-        const nextLine = ctx.peek().loc.line !== keyword.loc.line;
-        if (!(nextLine && isIdOrString(ctx.peek()) && edgeStart))
-          ctx.match(TokenType.StringLiteral);
+        if (!opensEdgeOnLaterLine(ctx, keyword)) ctx.match(TokenType.StringLiteral);
       });
       return true;
     case TokenType.Handles:

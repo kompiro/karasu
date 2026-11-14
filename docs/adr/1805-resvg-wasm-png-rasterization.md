@@ -11,7 +11,7 @@ scope:
   concerns: [dependencies, deployment, performance]
 assumptions:
   - "file: functions/render.ts"
-  - "grep: functions/render.ts :: @resvg/resvg-wasm"
+  - "grep: functions/_lib/share-raster.ts :: @resvg/resvg-wasm"
   - "grep: package.json :: @resvg/resvg-wasm"
   - "file: packages/app/public/fonts/NotoEmoji.ttf"
   - "file: packages/app/src/render/png-font-coverage.test.ts"

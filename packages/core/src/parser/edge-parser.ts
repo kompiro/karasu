@@ -1,6 +1,6 @@
 import { TokenType, type Token, type SourceLocation } from "../types/tokens.js";
 import type { KrsEdge, LinkEntry, NodeIdPath } from "../types/ast.js";
-import { readNodeIdPathTail } from "./node-path.js";
+import { opensEdgeOnLaterLine, readNodeIdPathTail } from "./node-path.js";
 import { parseTags } from "./annotation-parser.js";
 import { parseDescriptionValue, parseLink, parseIdOrString } from "./property-readers.js";
 import { parseFacetsList } from "./org-parser.js";
@@ -62,8 +62,14 @@ export function parseEdge(ctx: ParseContext, implicitFrom?: string): KrsEdge {
     toEnd = (tail.dangling ?? tail.end).loc;
   }
 
+  // A quoted id that opens the next line's edge is not this edge's label
+  // (#3752). Compare against the token read last, not `toEnd`: after a
+  // dangling dot, `toEnd` is the unconsumed token on the next line.
   let label: string | undefined;
-  if (ctx.peek().type === TokenType.StringLiteral) {
+  if (
+    ctx.peek().type === TokenType.StringLiteral &&
+    !opensEdgeOnLaterLine(ctx, ctx.previous() ?? toToken)
+  ) {
     label = ctx.advance().value;
   }
 
