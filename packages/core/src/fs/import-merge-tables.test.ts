@@ -25,7 +25,7 @@ import type { DiagnosticParamsByCode, KrsFile } from "../types/ast";
 // them to enumerate. What is closed is the set of `KrsFile` arrays.
 
 type ArrayKeys<T> = {
-  [K in keyof T]-?: T[K] extends readonly unknown[] ? K : never;
+  [K in keyof T]-?: NonNullable<T[K]> extends readonly unknown[] ? K : never;
 }[keyof T];
 type TopLevelKey = ArrayKeys<KrsFile>;
 
@@ -187,6 +187,15 @@ async function resolveShape(
 }
 
 describe("every top-level KrsFile array reaches the importer (TPL-1383, TPL-2169)", () => {
+  // `skip` is an escape hatch the type cannot narrow, so the skipped keys are
+  // pinned here: a new array cannot opt out of the rows below unnoticed.
+  it("skips only nodeImports", () => {
+    const skipped = Object.entries(TOP_LEVEL as Record<TopLevelKey, TopLevelCase>).flatMap(
+      ([key, c]) => ("skip" in c ? [key] : []),
+    );
+    expect(skipped).toEqual(["nodeImports"]);
+  });
+
   it("has a case for every array-valued KrsFile key", () => {
     expect(Object.keys(TOP_LEVEL).sort()).toEqual(arrayKeysOfEmptyKrsFile().sort());
   });
@@ -209,6 +218,11 @@ describe("every top-level KrsFile array reaches the importer (TPL-1383, TPL-2169
     // dropped, and a cached re-reach adds no second copy.
     expect(identities(merged.krsFile, key)).toEqual(identities(alone.krsFile, key));
     expect(identities(alone.krsFile, key).length).toBeGreaterThan(0);
+  });
+
+  it("every KNOWN_GAPS entry names a row", () => {
+    const names = new Set(rows.map((r) => r.name));
+    expect(Object.keys(KNOWN_GAPS).filter((name) => !names.has(name))).toEqual([]);
   });
 
   it.each(rows.filter((r) => KNOWN_GAPS[r.name]))(
@@ -249,8 +263,13 @@ type ReopenProperty = DiagnosticParamsByCode["system-property-conflict"]["proper
 interface ReopenCase {
   /** The `KrsFile` array the kind's blocks live in. */
   key: TopLevelKey;
-  /** The properties S3 reconciles for this kind. */
-  properties: readonly ReopenProperty[];
+  /**
+   * Every property `system-property-conflict` can name: reconciled for this
+   * kind, or the reason the kind does not have it.
+   */
+  properties: Record<ReopenProperty, true | { absent: string }>;
+  /** The error two same-id children of this kind's block draw. */
+  collision: string;
   /** Block `B` with the given properties and one child per id. */
   block(props: Partial<Record<ReopenProperty, string>>, children: readonly string[]): string;
   read(file: KrsFile, property: ReopenProperty): string | undefined;
@@ -276,7 +295,8 @@ function blockB<T extends { id: string }>(blocks: readonly T[]): T | undefined {
 const REOPEN = {
   system: {
     key: "systems",
-    properties: ["label", "description"],
+    properties: { label: true, description: true },
+    collision: "duplicate-node-in-system",
     block: (props, children) =>
       `system B {\n${propLines(props)}${children.map((c) => `  service ${c}\n`).join("")}}\n`,
     read: (f, p) => {
@@ -287,8 +307,8 @@ const REOPEN = {
   },
   deploy: {
     key: "deploys",
-    // `DeployBlock` has no description.
-    properties: ["label"],
+    properties: { label: true, description: { absent: "`DeployBlock` has no description" } },
+    collision: "duplicate-node-in-deploy",
     block: (props, children) =>
       `deploy B {\n${propLines(props)}${children
         .map((c) => `  oci ${c} {\n    runtime "Docker"\n  }\n`)
@@ -298,7 +318,8 @@ const REOPEN = {
   },
   organization: {
     key: "organizations",
-    properties: ["label", "description"],
+    properties: { label: true, description: true },
+    collision: "duplicate-team-in-organization",
     block: (props, children) =>
       `organization B {\n${propLines(props)}${children.map((c) => `  team ${c} { label "${c}" }\n`).join("")}}\n`,
     read: (f, p) => {
@@ -354,7 +375,10 @@ describe("every block kind reopened across files follows S3 / S4 (TPL-2168)", ()
   });
 
   describe.each(REOPEN_ROWS)("%s", (kind, c) => {
-    for (const property of c.properties) {
+    const reconciled = (Object.keys(c.properties) as ReopenProperty[]).filter(
+      (property) => c.properties[property] === true,
+    );
+    for (const property of reconciled) {
       // Item 1 and 2: y.krs carries a value from two levels down, x.krs one
       // from a single level down. x is closer and wins in either order, and
       // the warning names both values and points at the losing declaration.
@@ -434,7 +458,7 @@ describe("every block kind reopened across files follows S3 / S4 (TPL-2168)", ()
         }),
       );
       expect(outcomes[0].children).toEqual(["P", "Q", "R", "Shared"]);
-      expect(outcomes[0].errors).toHaveLength(1);
+      expect(outcomes[0].errors).toEqual([c.collision]);
       for (const outcome of outcomes) expect(outcome).toEqual(outcomes[0]);
     });
   });

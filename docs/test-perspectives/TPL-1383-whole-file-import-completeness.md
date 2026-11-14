@@ -40,7 +40,7 @@ scope:
 
 - [ ] imported ファイルの top-level ノード（`system` / `service` / `client` / `database` / `queue` / `storage` / `legend` / `deploy` / `organization`）が **すべて** merged 結果に現れるテストがある [guard: `packages/core/src/fs/import-merge-tables.test.ts`]
 - [ ] 同じファイルを named + whole-file 両方で import したとき、whole-file 側で imported ファイルの全内容が importer に流入することを assert している [guard: `packages/core/src/fs/import-merge-tables.test.ts`]
-- [ ] memo / cache を導入する場合、再到達時に空でなく完全な resolved KrsFile を返すことを直接 assert している [guard: `packages/core/src/fs/import-merge-tables.test.ts`]
+- [ ] memo / cache を導入する場合、再到達時に空でなく完全な resolved KrsFile を返すことを直接 assert している
 - [ ] `@import` で参照されたスタイルシートも cascade に追加されることを確認している
 
 ## 既知の対処パターン
@@ -55,7 +55,7 @@ scope:
 - `packages/core/src/fs/import-resolver.test.ts` — `style imports` › `resolves @import for style files`：`@import` で参照したスタイルシートが `styleSheets` に入ることを固定する（チェックリスト項目 4）
 - `packages/core/src/fs/import-resolver.test.ts` — `style imports carried through the import graph (#3513, #3714)`：import した `.krs` が持つ `@import` も cascade に入ること、そのパスが宣言したファイルを基準に解決されることを whole-file / named / directory import で固定する（チェックリスト項目 4。形の一覧はテスト側の表なので、新しい import の形は自動では加わらない）
 
-- `packages/core/src/fs/import-merge-tables.test.ts` — `every top-level KrsFile array reaches the importer`：`KrsFile` の配列のキーごとに 1 件ずつ宣言を持つ表 `TOP_LEVEL` を `satisfies Record<ArrayKeys<KrsFile>, …>` で型付けし、`createEmptyKrsFile()` のキーとも突き合わせる。`KrsFile` に配列を足すと、表に行を足すまで型検査が落ちる。各行を whole-file / directory / 同じファイルの named と whole-file（両方の順）/ 2 経路の diamond（named の枝と whole-file の枝、whole-file の枝 2 本）で import し、importer の配列が imported ファイル単体の配列とちょうど一致することを assert する（チェックリスト 1・2・3 項目目のガード）。diamond と named が先の行では 2 回目の到達がキャッシュから返るので、キャッシュが空や一部を返すと落ちる。whole-file の後に named で同じ system を import すると system が 2 つになる #3801 は、表の `KNOWN_GAPS` に入れ、まだ食い違うことを assert している（直ったら外さないと落ちる）
+- `packages/core/src/fs/import-merge-tables.test.ts` — `every top-level KrsFile array reaches the importer`：`KrsFile` の配列のキーごとに 1 件ずつ宣言を持つ表 `TOP_LEVEL` を `satisfies Record<ArrayKeys<KrsFile>, …>` で型付けし、`createEmptyKrsFile()` のキーとも突き合わせる。`KrsFile` に配列を足すと、表に行を足すまで型検査が落ちる。各行を whole-file / directory / 同じファイルの named と whole-file（両方の順）/ 2 経路の diamond（named の枝と whole-file の枝、whole-file の枝 2 本）で import し、importer の配列が imported ファイル単体の配列とちょうど一致することを assert する（チェックリスト 1・2 項目目のガード。守るのは新しい top-level の配列で、新しい import の形ではない）。diamond と named が先の行では 2 回目の到達が既存のキャッシュ（`resolvedCache`）から返るので、それが空や一部を返すと落ちる。3 項目目には印を付けない。新しい箇所に当たるのは新しく入れるキャッシュで、テストの形の一覧が再到達させない経路（同じディレクトリの 2 回の import など）に置かれたキャッシュは捕まらない。whole-file の後に named で同じ system を import すると system が 2 つになる #3801 は、表の `KNOWN_GAPS` に入れ、まだ食い違うことを assert している（直ったら外さないと落ちる）
 - 同じテストの `a sheet the imported file @imports is in the cascade, once`：上の形に named import だけの形を足し、imported ファイルの `@import` したシートが `styleSheets` にちょうど 1 枚入ることを assert する。チェックリスト 4 項目目には印を付けない。新しい箇所に当たるのは新しい import の形だが、形の一覧はテスト側の表で、コードに閉じた集合が無い（TPL-1381 と同じ理由）
 
 ## 派生元 spec
