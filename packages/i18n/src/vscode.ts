@@ -6,20 +6,23 @@
  */
 
 export type VscodeTranslations = {
-  /** The language server bundle is at none of the paths the extension tried (TPL-1024). */
-  "vscode.server.notFound": (params: { tried: readonly string[] }) => string;
+  /**
+   * A file the extension loads from its own folder (the language server, the
+   * preview bundle) is at none of the paths it tried (TPL-1024).
+   */
+  "vscode.asset.notFound": (params: { tried: readonly string[] }) => string;
 };
 
 const list = (tried: readonly string[]) => tried.map((path) => `  ${path}`).join("\n");
 
 export const vscodeEn: VscodeTranslations = {
-  "vscode.server.notFound": ({ tried }) =>
-    `karasu: the language server was not found. Tried:\n${list(tried)}\n` +
+  "vscode.asset.notFound": ({ tried }) =>
+    `karasu: a file the extension needs was not found. Tried:\n${list(tried)}\n` +
     "Rebuild the extension (pnpm --filter karasu-vscode run build) or reinstall it.",
 };
 
 export const vscodeJa: Partial<VscodeTranslations> = {
-  "vscode.server.notFound": ({ tried }) =>
-    `karasu: language server が見つかりません。次の場所を探しました:\n${list(tried)}\n` +
+  "vscode.asset.notFound": ({ tried }) =>
+    `karasu: 拡張機能が使うファイルが見つかりません。次の場所を探しました:\n${list(tried)}\n` +
     "拡張機能をビルドし直す（pnpm --filter karasu-vscode run build）か、入れ直してください。",
 };

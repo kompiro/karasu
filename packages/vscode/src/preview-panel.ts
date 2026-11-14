@@ -7,6 +7,7 @@ import type {
   WebviewHighlightAttribute,
   WebviewMessage,
 } from "@karasu-tools/app/vscode-webview-protocol";
+import type { ExtensionAssets } from "./extension-assets.js";
 import {
   allowedRoots,
   checkRequestedPath,
@@ -20,16 +21,17 @@ import {
 } from "./host-files.js";
 import { isAllowedExternalUrl, parseWebviewMessage } from "./message-validation.js";
 import { coalesce } from "./message-queue.js";
+import type { PackagedAsset } from "./packaged-assets.js";
 import { minimalEdit } from "./text-edit.js";
 import { diagramThemeFromColorTheme } from "./theme-mapping.js";
-import { WEBVIEW_DIR, WEBVIEW_SCRIPT, WEBVIEW_STYLESHEET } from "./webview-assets.js";
 import { buildWebviewHtml, generateNonce } from "./webview-html.js";
 
 type FsRequest = Extract<WebviewMessage, { type: "fs" }>;
 
 /** What the panel needs from the extension that the panel itself does not own. */
 export interface PreviewPanelHost {
-  extensionUri: vscode.Uri;
+  /** Where the preview bundle is (TPL-1024). */
+  assets: ExtensionAssets;
   /** Jump the editor to `nodeId`, defined in `filePath` (already checked to be readable). */
   onRevealNode(nodeId: string, filePath: string): void;
   onDispose(): void;
@@ -80,13 +82,12 @@ export class PreviewPanel {
     );
 
     const webview = this._panel.webview;
-    const asset = (name: string) =>
-      webview.asWebviewUri(vscode.Uri.joinPath(host.extensionUri, ...WEBVIEW_DIR, name)).toString();
+    const asset = (name: PackagedAsset) => webview.asWebviewUri(host.assets.uri(name)).toString();
     webview.html = buildWebviewHtml({
       cspSource: webview.cspSource,
       nonce: generateNonce(),
-      scriptUri: asset(WEBVIEW_SCRIPT),
-      styleUri: asset(WEBVIEW_STYLESHEET),
+      scriptUri: asset("webviewScript"),
+      styleUri: asset("webviewStylesheet"),
       init: {
         entryPath,
         theme: this._theme,
@@ -106,7 +107,7 @@ export class PreviewPanel {
         enableScripts: true,
         retainContextWhenHidden: true,
         // The page loads only the staged bundle (#2996 decision 2).
-        localResourceRoots: [vscode.Uri.joinPath(host.extensionUri, ...WEBVIEW_DIR)],
+        localResourceRoots: [host.assets.uri("webviewDir")],
       },
     );
     return new PreviewPanel(panel, host, entry.uri.fsPath);

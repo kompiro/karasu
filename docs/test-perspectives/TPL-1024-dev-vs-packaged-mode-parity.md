@@ -15,7 +15,7 @@ related_to:
   - TPL-976
 discovered_from:
   - issue: "#1024"
-  - root_cause_file: "packages/vscode/src/extension.ts:serverModuleCandidates"
+  - root_cause_file: "packages/vscode/src/packaged-assets.ts:assetCandidates"
   - issue: "#3017"
   - root_cause_file: "packages/cli/src/serve.ts"
   - issue: "#3303"
@@ -66,7 +66,9 @@ dev tree の relative path（`asAbsolutePath(path.join("..", "lsp", "out", "serv
 ## 関連テスト
 
 - `packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts` — installed extension で LSP が動くかの E2E
-- `packages/vscode/src/server-module.test.ts` — 拡張が起動する language server の候補がどれも無いとき、試した全パスを挙げてエラーを記録する（それまでは黙って先頭の候補にフォールバックしていた）。この解決箇所だけを固定するテストで、ほかのパス解決箇所の silent fallback では赤くならないため、チェックリスト 4 のガードではなく関連テスト
+- `packages/vscode/src/extension-root-access.test.ts` — 拡張が自分のフォルダを読む経路（`asAbsolutePath` / `extensionUri` / `extensionPath` / `__dirname` / `import.meta` / `require.resolve` / `cwd`）を、ビルドと同じ esbuild で全ソースを parse して探し、`extension-assets.ts` の外に 1 つでもあれば落ちる。`extension-assets.ts` は名前を `PACKAGED_ASSETS`（`packages/vscode/src/packaged-assets.ts`）からしか引かないので、拡張が実行時に読むものはすべてこの表に載る
+- `packages/vscode/src/packaged-assets.test.ts` — `PACKAGED_ASSETS` の全要素について、候補がどれも無いとき試した全パスを挙げて報告すること、packaged の候補が拡張フォルダの外（`..`）を指さないことを確かめる（それまでは language server だけが報告し、preview の bundle が無いと黙って白い画面になっていた）
+- `packages/vscode/scripts/vsix-layout.test.ts` — 実物の `package.json` と `.vscodeignore` で vsce の `listFiles` に `PACKAGED_ASSETS` の全要素が載ることを確かめる。`packages/vscode/scripts/assert-packaged-assets.ts`（`postbuild`）はビルドが全要素を作ったことを確かめる。この 3 本で VS Code 拡張についてはチェックリスト 2 と 4 を新しい箇所でも赤くできるが、`karasu serve` の `findAppDistDir` のような CLI の解決箇所は閉じた集合に入っておらず覆わないため、どちらも印なしのまま関連テストに置く
 - `packages/vscode/scripts/` — packaging 関連スクリプト（bundling step がここに入る）
 - `packages/cli/pack/serve-from-tarball.test.ts`（`pnpm --filter ./packages/cli run test:pack`）— 実際の `prepack` を通した tarball を展開して `karasu serve` を起動する packaged mode のスモーク。#3017 では `serve` が app の build を monorepo 相対の `../../app/dist` で探し、npm 版で全リクエストが 503 になっていた
 - `packages/cli/src/serve.test.ts` › `findAppDistDir` — packaged（`dist/app/`）と dev（`packages/app/dist`）の候補探索、install 先の無関係な `node_modules/app` を拾わないこと

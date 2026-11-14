@@ -1,5 +1,4 @@
 import * as fs from "fs";
-import * as path from "path";
 import * as vscode from "vscode";
 import {
   LanguageClient,
@@ -11,7 +10,7 @@ import { resolveLocaleTag, translate } from "@karasu-tools/i18n";
 import { NodeAtPositionRequest, PositionOfNodeRequest } from "@karasu-tools/lsp/protocol";
 import { isKarasuSourcePath } from "./host-files.js";
 import { PreviewPanel } from "./preview-panel.js";
-import { resolveServerModule } from "./server-module.js";
+import { extensionAssets } from "./extension-assets.js";
 
 const CURSOR_DEBOUNCE_MS = 150;
 
@@ -29,28 +28,29 @@ export function activate(context: vscode.ExtensionContext): void {
   let previewPanel: PreviewPanel | undefined;
   let cursorDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
-  // --- LSP ---
-  // The vscode build script copies the bundled server into `out/server.js`
-  // so installed extensions can load it from inside the .vsix. In the
-  // dev tree (F5 from packages/vscode) that copy might not exist yet;
-  // fall back to packages/lsp's build output as a sibling of the
-  // extension folder.
-  const serverModuleCandidates: [string, string] = [
-    context.asAbsolutePath(path.join("out", "server.js")),
-    context.asAbsolutePath(path.join("..", "lsp", "out", "server.js")),
-  ];
-  // A missing server is reported in the extension host log at once, and in the
-  // client's output channel ("karasu Language Server") once the client exists,
-  // ahead of the client's own failure (TPL-1024).
-  const missingServer: string[] = [];
-  const serverModule = resolveServerModule(serverModuleCandidates, fs.existsSync, (tried) => {
-    const message = translate(resolveLocaleTag(vscode.env.language), "vscode.server.notFound", {
+  // --- Assets ---
+  // Everything the extension loads from its own folder resolves through
+  // `assets` (TPL-1024). A missing asset is reported in the extension host log
+  // at once, and in the client's output channel ("karasu Language Server")
+  // once the client exists, ahead of the failure it causes.
+  const reportedMissing: string[] = [];
+  let reportToClient: ((message: string) => void) | undefined;
+  const assets = extensionAssets(context, fs.existsSync, (tried) => {
+    const message = translate(resolveLocaleTag(vscode.env.language), "vscode.asset.notFound", {
       tried,
     });
     // eslint-disable-next-line no-console
     console.error(message);
-    missingServer.push(message);
+    if (reportToClient) reportToClient(message);
+    else reportedMissing.push(message);
   });
+
+  // --- LSP ---
+  // The vscode build script copies the bundled server into `out/server.js`
+  // so installed extensions can load it from inside the .vsix. In the dev tree
+  // (F5 from packages/vscode) that copy might not exist yet; the asset table
+  // falls back to packages/lsp's build output there.
+  const serverModule = assets.path("languageServer");
 
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.ipc },
@@ -69,7 +69,9 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   client = new LanguageClient("karasu", "karasu Language Server", serverOptions, clientOptions);
-  for (const message of missingServer) client.outputChannel.appendLine(message);
+  const outputChannel = client.outputChannel;
+  for (const message of reportedMissing) outputChannel.appendLine(message);
+  reportToClient = (message) => outputChannel.appendLine(message);
   // Wire the deactivate stop-path to the client as soon as it is *constructed*,
   // before `start()`. The client spawns the language-server child process, so
   // `deactivate()` (window reload / uninstall) must be able to stop it even if
@@ -135,7 +137,7 @@ export function activate(context: vscode.ExtensionContext): void {
     if (!previewPanel || previewPanel.isDisposed) {
       previewPanel = PreviewPanel.create(
         {
-          extensionUri: context.extensionUri,
+          assets,
           onRevealNode: (nodeId, filePath) => {
             // A file deleted since it was drawn, or an LSP that is not up:
             // the jump does nothing rather than leave a rejection unhandled.
