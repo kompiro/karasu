@@ -29,13 +29,13 @@ function node(kind: string, id: string, children: KrsNode[] = []): KrsNode {
   } as unknown as KrsNode;
 }
 
-describe.each(["dark", "light"] as DiagramTheme[])("infra leaf colours (%s theme)", (theme) => {
-  // `INFRA_SUB_KIND_TO_TAG` keys are the leaf kinds; a leaf added there without
-  // a store here fails before its colours go unchecked.
-  it("names the store of every infra leaf kind", () => {
-    expect(Object.keys(STORE_OF_LEAF).sort()).toEqual(Object.keys(INFRA_SUB_KIND_TO_TAG).sort());
-  });
+// `INFRA_SUB_KIND_TO_TAG` keys are the leaf kinds; a leaf added there without
+// a store here fails before its colours go unchecked.
+it("names the store of every infra leaf kind", () => {
+  expect(Object.keys(STORE_OF_LEAF).sort()).toEqual(Object.keys(INFRA_SUB_KIND_TO_TAG).sort());
+});
 
+describe.each(["dark", "light"] as DiagramTheme[])("infra leaf colours (%s theme)", (theme) => {
   it.each(Object.entries(STORE_OF_LEAF))("%s takes the colours of its %s", (leaf, store) => {
     const system = node("system", "S", [node(store, "Store", [node(leaf, "Leaf")])]);
     const styles = resolveStyles([system], [getBuiltinStyleSheet(theme)]);

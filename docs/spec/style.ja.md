@@ -489,12 +489,6 @@ service[external] {
 
 規則は 2 つ、それに色相表が付きます。
 
-infra のリーフ（`table` / `queue-item` / `bucket`）は自分の色を持ちません。
-ビルトインシートはテーマごとに、そのストア（`database` / `queue` / `storage`）の
-色だけをリーフにも当てるので、形はリーフのままです。ストアへのユーザールールは
-リーフには届きません。まとめて色を変えるときは両方の kind を書きます
-（`database, table { background-color: …; }`）。
-
 ### 規則 1 — 論理層は色相ではなく塗りで区別する
 
 `domain` / `usecase` / `resource` / `member` は同じシステムを同じ視点から語る
@@ -566,6 +560,12 @@ canvas を基準に規則を書いているので、1 つの文で両テーマ�
 > `job` は `edge[cyclic]` と赤を共有しています。この衝突は本節より前から存在する
 > もので、既存の kind 色を組み替えるより維持を選びました。新しい kind でこれ以上
 > 衝突を増やさないでください。
+
+infra のリーフ（`table` / `queue-item` / `bucket`）は自分の色を持ちません。
+ビルトインシートはテーマごとに、そのストア（`database` / `queue` / `storage`）の
+色だけをリーフにも当てるので、形はリーフのままです。ストアへのユーザールールは
+リーフには届きません。まとめて色を変えるときは両方の kind を書きます
+（`database, table { background-color: …; }`）。
 
 > Related TPLs: [TPL-2421](../test-perspectives/TPL-2421-kind-color-hue-table.md)
 > — kind の追加は色相表への行追加であり、fill / text はその行から導出する。hex は

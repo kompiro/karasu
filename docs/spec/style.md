@@ -516,12 +516,6 @@ later inherits a rule instead of a fresh guess.
 
 Two rules, plus a hue table.
 
-An infra leaf (`table`, `queue-item`, `bucket`) has no colors of its own: in
-each theme the builtin sheet gives it the colors of its store (`database`,
-`queue`, `storage`), and only the colors, so the leaf keeps its own shape. A
-user rule on the store does not reach the leaf; name both kinds to recolor them
-together (`database, table { background-color: …; }`).
-
 ### Rule 1 — the logical layer separates by fill, not by hue
 
 `domain`, `usecase`, `resource` and `member` all describe one system from one
@@ -598,6 +592,12 @@ three colors from that row — the guard verifies the result
 > Note that `job` shares red with `edge[cyclic]`. That collision predates this
 > section and is kept rather than reshuffling established kind colors; new kinds
 > should not add another one.
+
+An infra leaf (`table`, `queue-item`, `bucket`) has no colors of its own: in
+each theme the builtin sheet gives it the colors of its store (`database`,
+`queue`, `storage`), and only the colors, so the leaf keeps its own shape. A
+user rule on the store does not reach the leaf; name both kinds to recolor them
+together (`database, table { background-color: …; }`).
 
 > Related TPLs: [TPL-2421](../test-perspectives/TPL-2421-kind-color-hue-table.md)
 > — adding a kind means adding a hue-table row and deriving fill / text from it,
