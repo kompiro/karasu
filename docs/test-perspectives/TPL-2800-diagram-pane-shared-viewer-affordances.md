@@ -67,7 +67,8 @@ scope:
 - [ ] その面は共有ビューアコンポーネントを通っているか（アプリ内で
       `dangerouslySetInnerHTML` を検索し、新しい呼び出しが増えていないか確認する）。
       CI の `pnpm run lint`（oxlint）が、`InjectedHtml` 以外の流し込み、`AllLayersFrame` 以外の `srcDoc`、
-      `.oxlintrc.json` の許可リストに無いファイルからの `InjectedHtml` の import を拒む [guard: `.github/workflows/ci.yml`]
+      `.oxlintrc.json` の許可リストに無いファイルからの `InjectedHtml` の import を拒む（`srcdoc` の代入と
+      `React.createElement` も拒む） [guard: `.github/workflows/ci.yml`]
 - [ ] レンダラが返す診断・警告を受け取って表示しているか（返り値を捨てていないか）
 - [ ] ペインの構造そのものをテストで固定したか（「ノードが描かれている」ではなく
       「共有コンテナの中にあり、ペイン幅に収まり、ホイールで transform が変わる」）

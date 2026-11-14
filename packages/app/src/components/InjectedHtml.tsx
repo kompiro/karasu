@@ -1,6 +1,19 @@
 import { useMemo, type HTMLAttributes, type Ref } from "react";
 
-type Common = Omit<HTMLAttributes<HTMLElement>, "children" | "dangerouslySetInnerHTML"> & {
+type Common = Omit<
+  HTMLAttributes<HTMLElement>,
+  | "children"
+  | "dangerouslySetInnerHTML"
+  // React registers the listeners below as passive (TPL-1537). Lint forbids
+  // them on DOM elements and components; leaving them out here makes them a
+  // type error on this component too.
+  | "onWheel"
+  | "onWheelCapture"
+  | "onTouchStart"
+  | "onTouchStartCapture"
+  | "onTouchMove"
+  | "onTouchMoveCapture"
+> & {
   /** The markup to inject. Re-injected only when this string changes. */
   html: string;
 };

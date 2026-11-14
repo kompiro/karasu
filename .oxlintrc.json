@@ -27,7 +27,20 @@
           { "propName": "onTouchStartCapture", "message": "React registers touchstart listeners as passive; register a native non-passive listener instead (TPL-1537)." },
           { "propName": "onTouchMove", "message": "React registers touchmove listeners as passive; register a native non-passive listener instead (TPL-1537)." },
           { "propName": "onTouchMoveCapture", "message": "React registers touchmove listeners as passive; register a native non-passive listener instead (TPL-1537)." },
-          { "propName": "srcDoc", "message": "A diagram surface goes through PreviewPane, not a raw iframe (TPL-2800). Only AllLayersFrame.tsx sets srcDoc." }
+          { "propName": "srcDoc", "message": "Only AllLayersFrame.tsx sets srcDoc: a diagram surface goes through PreviewPane, not a raw iframe (TPL-2800)." }
+        ]
+      }
+    ],
+    "react/forbid-component-props": [
+      "error",
+      {
+        "forbid": [
+          { "propName": "onWheel", "message": "React registers wheel listeners as passive, so preventDefault() does nothing and a stopPropagation() opt-out never reaches a native listener. Register a native listener with addEventListener(\"wheel\", h, { passive: false }) in an effect, and opt children out with data-wheel-zoom-ignore (TPL-1537)." },
+          { "propName": "onWheelCapture", "message": "React registers wheel listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchStart", "message": "React registers touchstart listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchStartCapture", "message": "React registers touchstart listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchMove", "message": "React registers touchmove listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchMoveCapture", "message": "React registers touchmove listeners as passive; register a native non-passive listener instead (TPL-1537)." }
         ]
       }
     ]
@@ -49,7 +62,12 @@
           "error",
           { "property": "innerHTML", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
           { "property": "outerHTML", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
-          { "property": "insertAdjacentHTML", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." }
+          { "property": "insertAdjacentHTML", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
+          { "property": "setHTMLUnsafe", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
+          { "property": "createContextualFragment", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
+          { "object": "document", "property": "write", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
+          { "property": "srcdoc", "message": "Only AllLayersFrame.tsx sets srcDoc (TPL-2800)." },
+          { "object": "React", "property": "createElement", "message": "Write JSX: lint checks dangerouslySetInnerHTML, srcDoc and passive listeners on JSX only (TPL-1537, TPL-2789, TPL-2800)." }
         ],
         "no-restricted-imports": [
           "error",
@@ -90,12 +108,12 @@
           "error",
           {
             "forbid": [
-              { "propName": "onWheel" },
-              { "propName": "onWheelCapture" },
-              { "propName": "onTouchStart" },
-              { "propName": "onTouchStartCapture" },
-              { "propName": "onTouchMove" },
-              { "propName": "onTouchMoveCapture" }
+              { "propName": "onWheel", "message": "React registers wheel listeners as passive, so preventDefault() does nothing and a stopPropagation() opt-out never reaches a native listener. Register a native listener with addEventListener(\"wheel\", h, { passive: false }) in an effect, and opt children out with data-wheel-zoom-ignore (TPL-1537)." },
+              { "propName": "onWheelCapture", "message": "React registers wheel listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+              { "propName": "onTouchStart", "message": "React registers touchstart listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+              { "propName": "onTouchStartCapture", "message": "React registers touchstart listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+              { "propName": "onTouchMove", "message": "React registers touchmove listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+              { "propName": "onTouchMoveCapture", "message": "React registers touchmove listeners as passive; register a native non-passive listener instead (TPL-1537)." }
             ]
           }
         ]
