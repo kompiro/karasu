@@ -1012,6 +1012,16 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
       ],
       ["(www.e.example/a,`x.md`)", "(www.e.example/a,ADR-12)"],
       ["see [a](https://e.example/x\u3000`x.md`)", "see [a](https://e.example/x\u3000ADR-12)"],
+      // raw HTML, whose inner text the lexer reads as text
+      ["<b>設計は`x.md`の</b>", "<b>設計はADR-12の</b>"],
+      ["see <code>`x.md`</code>", "see <code>ADR-12</code>"],
+      [
+        'see <a href="https://e.example/">`x.md`</a>',
+        'see <a href="https://e.example/">ADR-12</a>',
+      ],
+      // an identifier joined by underscores
+      ["prefix_`x.md`", "prefix_ADR-12"],
+      ["`x.md`_suffix", "ADR-12_suffix"],
       // code spans the single-backtick pattern misreads
       ["`` a ` `x.md` ``", "`` a ` ADR-12 ``"],
       ["`a [l](t) `x.md` b`", "`a [l](t) ADR-12 b`"],
@@ -1022,12 +1032,14 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
 
   it("accepts ADR-<n> that the parser reads as text (kompiro on #3781: no domain can change)", () => {
     for (const [before, after] of [
-      ["<b>設計は`x.md`の</b>", "<b>設計はADR-12の</b>"],
       ["`@import`の扱いは`x.md`の D5", "`@import`の扱いはADR-12の D5"],
       // a reference link or footnote whose definition is on another line reads as text
       ["see [the `x.md` doc][r]", "see [the ADR-12 doc][r]"],
       ["see [^a `x.md` b]", "see [^a ADR-12 b]"],
       ["mailto:a@`x.md`", "mailto:a@ADR-12"],
+      // a nested item indented four spaces is prose in its document, not code
+      ["    設計は`x.md`の D5", "    設計はADR-12の D5"],
+      ["    3. 詳細は `x.md` の D5", "    3. 詳細は ADR-12 の D5"],
     ]) {
       expect(swap(before, after)).toBe(true);
     }

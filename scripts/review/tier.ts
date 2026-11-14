@@ -607,6 +607,7 @@ const ADR_NUMBER = /ADR-(\d+)/g;
  */
 function proseNumbers(line: string): boolean[] {
   const flags: boolean[] = [];
+  let hasHtml = false;
   const walk = (tokens: readonly Token[]) => {
     for (const t of tokens) {
       const inner = (t as { tokens?: Token[] }).tokens ?? (t as { items?: Token[] }).items;
@@ -614,19 +615,25 @@ function proseNumbers(line: string): boolean[] {
         walk(inner);
         continue;
       }
+      if (t.type === "html") hasHtml = true;
       const prose = t.type === "text" || t.type === "escape";
       for (const _ of t.raw.matchAll(ADR_NUMBER)) flags.push(prose);
     }
   };
-  walk(Lexer.lex(line, { gfm: true }));
+  // A line is lexed without its context, so its indent is dropped: a nested
+  // list item indented four spaces is prose in its document, not a code block.
+  walk(Lexer.lex(line.trimStart(), { gfm: true }));
   const total = [...line.matchAll(ADR_NUMBER)].length;
-  return flags.length === total ? flags : Array.from({ length: total }, () => false);
+  // Text inside raw HTML (`<code>`, `<a>`) reads as text to the lexer, so a
+  // line with any HTML does not count as prose at all.
+  if (hasHtml || flags.length !== total) return Array.from({ length: total }, () => false);
+  return flags;
 }
 
 /** The Design Doc's boundary around a prose `ADR-<n>`: no name or path character next to it. */
 const isNumberEdge = (line: string, start: number, end: number): boolean =>
-  !/[A-Za-z0-9./:-]/.test(line[start - 1] ?? "") &&
-  !/[A-Za-z0-9/-]/.test(line[end] ?? "") &&
+  !/[\w./:-]/.test(line[start - 1] ?? "") &&
+  !/[\w/-]/.test(line[end] ?? "") &&
   !(line[end] === "." && /[A-Za-z0-9]/.test(line[end + 1] ?? ""));
 
 /**
