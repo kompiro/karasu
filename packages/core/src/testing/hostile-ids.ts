@@ -1,7 +1,7 @@
-import { KRS_KEYWORD_NAMES, Lexer } from "../../lexer/lexer.js";
-import { Parser } from "../../parser/parser.js";
-import { TokenType } from "../../types/tokens.js";
-import { quoteId } from "../quote-id.js";
+import { KRS_KEYWORD_NAMES, Lexer } from "../lexer/lexer.js";
+import { Parser } from "../parser/parser.js";
+import { TokenType } from "../types/tokens.js";
+import { quoteId } from "../formatter/quote-id.js";
 
 /**
  * Ways to respell an id so that it must be quoted (TPL-2707). Each targets a

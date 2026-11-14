@@ -85,7 +85,7 @@ lexer / tokenizer を追加・変更するとき、または値や名前を読�
 - `packages/core/src/parser/annotation-params.test.ts` › `annotation parameter values that are not one token (#2707)`
 - `packages/core/src/parser/parser.test.ts` › `digit-led words outside vocabulary positions (#2707)`
 - `packages/core/src/formatter/annotation-params-round-trip.test.ts` › `reads back every reference it prints bare (#2707)`
-- `packages/core/src/formatter/formatter-top-level-coverage.test.ts` / `formatter-property-coverage.test.ts` › `… with ids that need quotes`（型から導いた fixture 表の各 fixture について、宣言された id をすべて `-` と空白を含む綴りと予約語の綴りに書き換え、`fmt` の round trip を確かめる。id を持つ位置を手で列挙しないので、新しい構文の fixture も同じ書き換えを受ける。書き換えは `packages/core/src/formatter/fixtures/hostile-ids.ts`）
+- `packages/core/src/formatter/formatter-top-level-coverage.test.ts` / `formatter-property-coverage.test.ts` › `… with ids that need quotes`（型から導いた fixture 表の各 fixture について、宣言された id をすべて `-` と空白を含む綴りと予約語の綴りに書き換え、`fmt` の round trip を確かめる。id を持つ位置を手で列挙しないので、新しい構文の fixture も同じ書き換えを受ける。書き換えは `packages/core/src/testing/hostile-ids.ts`）
 - `packages/core/src/formatter/quote-id.test.ts` › `needsQuotes`（裸で出せる id の判定を lexer から導く: `returns true for every keyword the lexer reserves (#2707)` は `KRS_KEYWORD_NAMES` から、BMP 外・結合文字・ZWNJ のケースは #2848 / #3093 の lexer の読み方に合わせて固定する）
 - `packages/core/src/lexer/style-lexer.test.ts`（`.krs.style` の lexer が捨てる印字可能 ASCII の集合の固定と、符号付きの値 #3032）
 - `packages/core/src/integration/style-sheet-signed-values.test.ts`（シートの文字列から描画までの符号付きの値 #3032）

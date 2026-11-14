@@ -4,7 +4,7 @@ import {
   HOSTILE_RESPELLINGS,
   withHostileIds,
   type HostileRespelling,
-} from "./fixtures/hostile-ids.js";
+} from "../testing/hostile-ids.js";
 import { Parser } from "../parser/parser.js";
 import type { KrsNode } from "../types/ast.js";
 
