@@ -55,7 +55,7 @@ karasu の AST には `BaseNodeFields`（`packages/core/src/types/ast.ts`）と�
 - [ ] その field を持つべき全 node kind が `BaseNodeFields` のような **共通基底を extends している** か（していないなら、まず継承構造の修正から）
 - [ ] parser 側の `*_PROPERTY_KEYWORDS` セット（system / deploy / org など各 kind 群）すべてに新 field の keyword が含まれているか
 - [ ] 各 `parseXxxNode` が field を AST に書き込むコードを持っているか（keyword だけ追加して書き込みを忘れていないか）
-- [ ] renderer / layout で `node.<field> ?? fallback` のような **defensive な default** が使われているか。`node.id` を直接表示している箇所が無いか
+- [ ] renderer / layout で `node.<field> ?? fallback` のような **defensive な default** が使われているか。`node.id` を直接表示している箇所が無いか [guard: `packages/core/src/renderer/kind-label-render.test.ts`]
 - [ ] `sampleKrs` / `examples/` / `docs/spec/syntax.md` の記述と実装が一致しているか（spec が先行している場合、実装の遅れに気づける）
 
 ## 既知の対処パターン
@@ -70,6 +70,7 @@ karasu の AST には `BaseNodeFields`（`packages/core/src/types/ast.ts`）と�
 - `packages/core/src/parser/parser.test.ts`
 - `packages/core/src/parser/base-node-fields-coverage.test.ts` — `BaseNodeFields` のユーザー入力フィールド × 全 kind の coverage meta-test。`BaseNodeFields` に新 field を追加すると compile-time の `Equal<keyof BaseNodeFields, ExpectedKeys>` 契約で fail し、新 kind を追加すると `Equal<_Covered, KrsNode["kind"]>` で fail する（gap G12-1 / #1233）
 - `packages/core/src/renderer/deploy-layout.test.ts`
+- `packages/core/src/renderer/kind-label-render.test.ts` — `KrsNode["kind"]` 全体の `Record`（描かれる面を kind ごとに列挙）× `DisplayMode` 全体で、`label` を付けたモデルでは canvas の文字にラベルが出て id が出ないこと、`label` を外したモデルでは id に fallback することを確かめる。`DiagramType` も `Record` で列挙し、kind のカードを描く図は少なくとも 1 行が届くこと、描かない図（org。`owns` の行は書いた参照をそのまま出す、#2088）は理由を持つことを要求する。新しい kind や図の種類は表に載るまで typecheck が通らない
 - `packages/core/src/builtins/reference.test.ts` — sample との整合
 - `packages/core/src/builtins/reference-parser-sync.test.ts` — `REFERENCE_DATA.nodeKinds ↔ parser`：各 kind × 各 property を最小 `.krs` で宣言し、reference の property 一覧と parser が受理する keyword が双方向で一致することを固定する（lexer の新 keyword が判断なしに入ると `covers every property keyword the lexer knows` が fail）
 - `scripts/lint/krs-fences.ts` — `docs/spec` / guide / concepts / acceptance の `krs` フェンスを parser に通し、spec の記述が実装より先行・乖離したら fail する
