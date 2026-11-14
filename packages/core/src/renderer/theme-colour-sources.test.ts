@@ -110,6 +110,8 @@ function themeColours(theme: DiagramTheme): Set<string> {
  * sheet (`database, table { … }`). Before that, nothing painted them and they
  * fell to the resolver's dark `DEFAULT_NODE_STYLE` in both themes (#3777), so
  * the scan below has to reach every one of them for the check to cover it.
+ * `INFRA_SUB_KIND_TO_TAG` is keyed by leaf kind (its values are the shape tags
+ * a dot-notation `resource` infers), so its keys are the closed set of leaves.
  */
 const INFRA_LEAF_KINDS = Object.keys(INFRA_SUB_KIND_TO_TAG);
 

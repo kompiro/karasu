@@ -489,6 +489,12 @@ service[external] {
 
 規則は 2 つ、それに色相表が付きます。
 
+infra のリーフ（`table` / `queue-item` / `bucket`）は自分の色を持ちません。
+ビルトインシートはテーマごとに、そのストア（`database` / `queue` / `storage`）の
+色だけをリーフにも当てるので、形はリーフのままです。ストアへのユーザールールは
+リーフには届きません。まとめて色を変えるときは両方の kind を書きます
+（`database, table { background-color: …; }`）。
+
 ### 規則 1 — 論理層は色相ではなく塗りで区別する
 
 `domain` / `usecase` / `resource` / `member` は同じシステムを同じ視点から語る
