@@ -1,10 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { onRequest } from "../../functions/[[path]].ts";
-import {
-  resolveRepoPermalink,
-  type ResolveStatus,
-} from "../../packages/app/src/render/repo-permalink.ts";
-import { RESERVED_TOP_SEGMENTS } from "../../packages/app/src/routes.ts";
+import { onRequest } from "../../../../functions/[[path]].js";
+import { resolveRepoPermalink, type ResolveStatus } from "./repo-permalink.js";
+import { RESERVED_TOP_SEGMENTS } from "../routes.js";
 
 // The bare-permalink catch-all (`functions/[[path]].ts`), driven as Pages runs
 // it: a request, `context.next()` for "hand it back to the SPA", the zone cache
