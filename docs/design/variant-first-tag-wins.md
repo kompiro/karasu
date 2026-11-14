@@ -59,7 +59,7 @@ client だけは icon mode と Outline が一致している。style resolver �
 **デメリット**
 
 - author のルールにも効く。`resource[api] { color: red; }` と `resource[table] { color: blue; }` を書いた author にとって、今は後に書いた方が勝つ（CSS と同じ。style.md「When scores are equal, the later declaration wins」）。それが `[table, api]` のノードでだけ逆になる。仕様に例外を 1 つ足すことになる。
-- legend の色の解決（`resolveLegendRefColor`）など、カスケードを読む面すべてに同じ例外を入れる必要がある。
+- 同点の規則はカスケードの中心にあり、node・edge・deploy・org のどれにも効く。variant の問題は node の 2 つの kind にしか無いのに、変更の範囲がカスケード全体に広がる。
 
 ### 案2: 後段を resource に広げ、shape mode の variant も書き換える
 
@@ -110,16 +110,16 @@ client だけは icon mode と Outline が一致している。style resolver �
 | `resource [table, api]`                                                          | shape        | hexagon         | cylinder         |
 | `resource [table, api]`                                                          | icon         | `api`           | `table`          |
 | `resource [api, table]`                                                          | shape / icon | hexagon / `api` | 変わらない       |
-| `client [mobile, desktop]` に author の `#App { shape: url("client-desktop"); }` | icon         | `client-mobile` | `client-desktop` |
+| `client [mobile, desktop]` に author の `#App { shape: url("client-desktop"); }` | shape / icon | `client-mobile` | `client-desktop` |
 | variant タグが 1 つ以下のノード                                                  | すべて       | —               | 変わらない       |
 
 ### 実装の指針
 
-1. `icon-theme.ts` に `losingVariantTags(kind, tags)` を置く。`VARIANT_ICONS_BY_KIND` から、`tags` 順で 2 つ目以降の variant タグを返す（同じタグの重複は 1 つに数える）。`applyVariantFirstMatch` と `FIRST_MATCH_VARIANT_KINDS` は消す。
+1. `icon-theme.ts` に `losingVariantTags(kind, tags)` を置く。`VARIANT_ICONS_BY_KIND` から、`tags` に現れる variant タグの集合から最初の 1 つ（`tags` 順）を除いたものを返す。`[table, api, table]` では `api` だけが負けたタグで、勝った `table` は位置にかかわらず負けたタグに入らない。`applyVariantFirstMatch` と `FIRST_MATCH_VARIANT_KINDS` は消し、後段に触れている JSDoc（`VARIANT_ICONS_BY_KIND`・`iconNameForNode`・`CLIENT_SUBTYPE_TAGS`）を新しい規則に合わせる。`ICON_THEME_STYLE_SOURCE` の「Applied before user stylesheets」も、author のシートの後に積む `withDisplayModeSheet` と食い違っているので直す。
 2. `resolver/variant-rules.ts` に `withoutLosingBuiltinVariants(node, rules)` を置き、`NON_AUTHOR_SHEET_IDS` のルールで負けたタグを名指すものを外す。`non-author-sheets.ts` は `icon-theme.ts` を import しているので、循環を避けて resolver 側に置く。
 3. `style-resolver.ts` の `mergeMatchingProperties` が、一致したルールをこの関数に通してから `mergeInCascadeOrder` に渡す。後段の呼び出しは消す。
 4. テスト:
-   - `icon-theme.test.ts` の `CASCADE_ORDER_KINDS` から resource を外す。既存の parity テストが resource の全組み合わせを、icon mode のカスケードと `iconNameForNode` で比べるようになる。
+   - `icon-theme.test.ts` の `CASCADE_ORDER_KINDS` と「still needs its exemption」のテストを消す（resource を外すと表が空になる）。既存の parity テストが resource の全組み合わせを、icon mode のカスケードと `iconNameForNode` で比べるようになる。
    - shape mode でも、variant の全組み合わせで「最初のタグの単一 variant と同じ shape になる」ことを確かめる。組み合わせは `ICON_RULES` から生成する。
    - author の id セレクタで variant を指定したノードで、全組み合わせについて author の値が勝つことを確かめる（#3776）。
    - 組み込みシートの variant ルールが、`VARIANT_ICONS_BY_KIND` の語彙の外のタグを使っていないことを確かめる（shape mode の 4 行と `ICON_RULES` の一致）。
