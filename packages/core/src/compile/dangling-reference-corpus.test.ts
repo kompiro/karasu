@@ -21,6 +21,7 @@ import { InMemoryFileSystemProvider } from "../fs/in-memory-provider.js";
 import { resolvePath } from "../fs/path-utils.js";
 import { ImportResolver } from "../fs/import-resolver.js";
 import { Parser } from "../parser/parser.js";
+import { nodePathRefId } from "../parser/node-path.js";
 import type { KrsEdge, KrsFile, KrsNode } from "../types/ast.js";
 import { buildAllViewsSvgProject } from "./compile.js";
 
@@ -57,12 +58,12 @@ function edgesOf(file: KrsFile): KrsEdge[] {
   return containers(file).flatMap(visit);
 }
 
-/** Every node path a file declares, as `A.B.C`. */
+/** Every node path a file declares, in the `data-node-path` form (`nodePathRefId`). */
 function declaredPaths(file: KrsFile): Set<string> {
   const out = new Set<string>();
   const visit = (node: KrsNode, prefix: string[]) => {
     const path = [...prefix, node.id];
-    out.add(path.join("."));
+    out.add(nodePathRefId(path));
     for (const child of node.children) visit(child, path);
   };
   for (const node of containers(file)) visit(node, []);
@@ -71,7 +72,11 @@ function declaredPaths(file: KrsFile): Set<string> {
 
 /** Every node the rendered views carry, by `data-node-path` (or `data-node-id` where a card has no path). */
 function drawnNodes(svg: string): Set<string> {
-  return new Set([...svg.matchAll(/data-node-(?:path|id)="([^"]*)"/g)].map((m) => m[1]));
+  return new Set(
+    [...svg.matchAll(/data-node-(?:path|id)="([^"]*)"/g)].map((m) =>
+      m[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&"),
+    ),
+  );
 }
 
 /**
@@ -99,9 +104,9 @@ function mergedEdges(file: KrsFile): Set<string> {
   return new Set(edgesOf(file).map(edgeKey));
 }
 
-/** Whether a node declared at `path` is drawn, at that path or under a placement root (`__unassigned__`). */
+/** Whether a node declared at `path` is drawn, at that path or, outside any `system`, under `__unassigned__`. */
 function isDrawn(path: string, drawn: Set<string>): boolean {
-  return drawn.has(path) || [...drawn].some((p) => p.endsWith(`.${path}`));
+  return drawn.has(path) || drawn.has(`__unassigned__.${path}`);
 }
 
 /** One mutation of one file's parse, or none. */
@@ -243,13 +248,7 @@ describe("a dangling reference drops the reference, not a node (TPL-2170)", () =
           // here too.
           const { paths: expected } = await wholeReach(entry);
 
-          const merged = new Set<string>();
-          const visit = (node: KrsNode, prefix: string[]) => {
-            const p = [...prefix, node.id];
-            merged.add(p.join("."));
-            for (const child of node.children) visit(child, p);
-          };
-          for (const node of containers(after.krsFile)) visit(node, []);
+          const merged = declaredPaths(after.krsFile);
           const missing = [...expected].filter((p) => !merged.has(p));
           if (missing.length > 0) failures.push(`${label}: model lost ${missing.join(", ")}`);
 
