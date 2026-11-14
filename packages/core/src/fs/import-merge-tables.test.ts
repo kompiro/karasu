@@ -232,7 +232,7 @@ describe("every top-level KrsFile array reaches the importer (TPL-1383, TPL-2169
   it.each(rows.filter((r) => KNOWN_GAPS[r.name]))(
     "$name still differs (known gap, remove from KNOWN_GAPS when fixed)",
     async ({ name, shape, key, c }) => {
-      const { alone, merged } = await resolveShape(c, shape);
+      const { merged } = await resolveShape(c, shape);
       expect(identities(merged.krsFile, key)).toEqual(KNOWN_GAPS[name].actual);
     },
   );
