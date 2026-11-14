@@ -70,7 +70,7 @@ kind 語彙が色として空洞化していた。deploy 側では `war` の茶�
 
 `default-style.ts` の kind ルールを追加・変更するとき:
 
-- [ ] `docs/spec/style.md` / `style.ja.md` の色相表に、その kind の行があるか
+- [ ] `docs/spec/style.md` / `style.ja.md` の色相表に、その kind の行があるか [guard: `packages/core/src/builtins/deploy-kind-hue-table.test.ts`]
 - [ ] 3 色をその色相から導いたか（accent = 彩度そのまま / fill = 明度の両端のうち
       **canvas に近い側** / text = その反対端）。地だけ別系統の色になっていないか。
       「低明度が fill」と絶対値で覚えると light テーマで反転して破綻する
@@ -112,6 +112,9 @@ kind 語彙が色として空洞化していた。deploy 側では `war` の茶�
   対の存在と 4.5:1、塗りなし kind の枠線 3:1 / 文字 4.5:1 を素の canvas と全
   boundary tint 合成に対して検証する。kind 数は exact 一致で pin してあり、
   片テーマから kind が落ちてもカバレッジが黙って縮まない。
+- `packages/core/src/builtins/deploy-kind-hue-table.test.ts` — `style.md`（Rule 2）と
+  `style.ja.md`（規則 2）の色相表の kind 列が `REFERENCE_DATA.deployUnitKinds` と完全に一致し、
+  各行に色相があることを確かめる。新しい deploy kind に行が無い場合も、消えた kind の行が残る場合も落ちる。
 - `packages/core/src/renderer/legend-footer.test.ts` — `swatches a fill-less kind
   with its border color (Issue #2421)`。
 
