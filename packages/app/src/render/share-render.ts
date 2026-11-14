@@ -132,9 +132,9 @@ const positiveCapped = (raw: string | null): number | undefined => {
  *
  * Query params as {@link renderSharePayload}, plus `width` / `height` (capped
  * at 4096), `bg` (a hex colour: `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`;
- * anything else is ignored, #3773), and `fit=contain` (with width and height: letterbox the
- * whole diagram into a fixed frame, for OGP cards that would otherwise crop a
- * width-fit portrait diagram to its top band).
+ * anything else is ignored, #3773), and `fit=contain` (with width and height:
+ * letterbox the whole diagram into a fixed frame, for OGP cards that would
+ * otherwise crop a width-fit portrait diagram to its top band).
  */
 export function sharePngSource(params: URLSearchParams): SharePngSource {
   // The default (no `view`) SVG is the bundled all-views diagram, whose CSS
