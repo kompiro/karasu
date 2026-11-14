@@ -98,6 +98,7 @@ karasu の `karasu serve` のような HTTP API、VS Code 拡張の message hand
 
 - `packages/cli/src/serve.test.ts`（path traversal の negative test を含む）
 - `packages/cli/src/serve-traversal.test.ts`（`karasu serve` の全 route prefix と静的アセット経路へ、符号化した `../`・backslash・NUL を含む traversal payload を送り、配信ルート外の sentinel が一度も返らないことを確かめる。route を手で列挙しており、serve 以外の入口（VS Code の host files、app の zip import）も覆わないので、チェックリスト 2 の新しい箇所では赤くならない。ガードではなく関連テスト）
+- `scripts/ci/child-process-shell-imports.test.ts`（repo が追跡する全 TS / JS ファイルの import を oxlint の `no-restricted-imports` で読み、`child_process` の `exec` / `execSync`（別名を含む）と、`cp.exec` に届く namespace / default import を 1 つでも見つけたら落とす。設定が効いていることも probe ファイルで確かめる。ただし `spawn(..., { shell: true })`・shell をコマンドにした `spawnSync("bash", ["-c", line])`・`require` / `import cp = require(...)` / `import()` 経由と、shell 以外（SQL・serialized 文字列）の組み立ては見ないので、チェックリスト 4 項目目の新しい箇所で必ず赤くなるわけではない。ガードではなく関連テスト）
 - `packages/cli/src/serve-host.test.ts`（`Host` の形・正規化・`--allowed-host` の negative test — #3418）
 - `packages/cli/src/render-fetch.test.ts`（解決後のアドレス・リダイレクトの各ホップ・proxy・本文の上限の negative test — #3426）
 - `packages/app/src/utils/import-project-zip.test.ts`（zip-slip / 解凍爆弾・エントリ数キャップの negative test を含む — #1526 / #1527）
