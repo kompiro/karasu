@@ -567,6 +567,27 @@ const EXAMPLE_FILES = readdirSync(EXAMPLES_ROOT, { recursive: true, encoding: "u
   .filter((path) => path.endsWith(".krs"))
   .sort();
 
+/**
+ * Entries that bundle levels but draw no control in any of them, so the order
+ * check has nothing to look at there. Each is checked to still draw none on any
+ * example: one that starts drawing a control fails until it is removed here,
+ * and its controls are then checked like every other entry's.
+ */
+const DRAWS_NO_CONTROLS: Partial<Record<DisplayModeEntryName, string>> = {
+  buildAllViewsSvgDiffProject:
+    "bundles one level per view (system, deploy, org) with no drill-down, so no back button, and diff cards carry no link",
+};
+
+/** The first example on which `consumer` draws a control inside a level, if any. */
+async function exampleWithControl(consumer: (typeof BUNDLES_LEVELS)[number]) {
+  for (const path of EXAMPLE_FILES) {
+    const krs = readFileSync(resolve(EXAMPLES_ROOT, path), "utf8");
+    const { svg } = await consumer.invoke("shape", undefined, krs);
+    if (drillLevels(svg).some(({ text }) => text.includes("<a "))) return path;
+  }
+  return undefined;
+}
+
 describe("meta: drill levels paint their controls over the level canvas (#2044)", () => {
   it("has entry points that bundle drill levels, with a back button among them", async () => {
     expect(BUNDLES_LEVELS.length).toBeGreaterThan(0);
@@ -581,6 +602,18 @@ describe("meta: drill levels paint their controls over the level canvas (#2044)"
   // The fixture has the level kinds known today; the shipped examples bring the
   // shapes nobody wrote a fixture for, and a new example joins on its own.
   describe.each(BUNDLES_LEVELS)("$name, on every shipped example", (consumer) => {
+    // Without a control inside some example's level, every check below passes
+    // on nothing.
+    const exemption = DRAWS_NO_CONTROLS[consumer.name as DisplayModeEntryName];
+    it("draws a control inside a level on some example, unless DRAWS_NO_CONTROLS exempts it", async () => {
+      const path = await exampleWithControl(consumer);
+      const message =
+        exemption === undefined
+          ? "no example draws a control in a level"
+          : `${consumer.name} draws a control on ${path} now (exempt because it ${exemption}); drop it from DRAWS_NO_CONTROLS`;
+      expect(path !== undefined, `${message}`).toBe(exemption === undefined);
+    }, 60_000);
+
     it.each(EXAMPLE_FILES)("%s", async (path) => {
       const krs = readFileSync(resolve(EXAMPLES_ROOT, path), "utf8");
       expect(controlsUnderCanvas((await consumer.invoke("shape", undefined, krs)).svg)).toEqual([]);

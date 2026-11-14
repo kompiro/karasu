@@ -100,6 +100,8 @@ scope:
   `currentColor` / `inherit` / `url(…)` は色を名指さないので除き、hex は 3〜8 桁を `#rrggbb` にそろえ（alpha は見ない）、
   名前の色は表で値に直す。表に無い名前と `rgb(…)` などはそのまま報告する。片テーマのリテラルやベース style に落ちる要素は、
   どれかの example が描けば反対のテーマ（ベース style なら両方）で落ちる（チェックリスト 1 項目目）。
+  テーマごとに、どのルールも塗らない 2 種類の枠（合成 id の group 枠と ghost の祖先）を、どれかの example がそのテーマの
+  fallback の role（タイトル `textPrimary`、枠線 `mutedBorder`）で描くことも確かめる（無ければ検査は fallback の経路を通らずに通る）。
   見るのは `buildAllViewsSvg` の出力だけで、live viewer の chrome（`nodeControls` のボタン）、diff、facet 選択でだけ
   出る要素は描かない。たまたまそのテーマの色と同じ値のリテラルは区別できない。
   導入時点で `table` / `queue-item` / `bucket` のカードは builtin の規則が無く、resolver の `DEFAULT_NODE_STYLE`

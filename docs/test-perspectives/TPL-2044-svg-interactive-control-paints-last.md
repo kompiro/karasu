@@ -56,7 +56,7 @@ SVG は **document order でペイントする**（CSS `z-index` は SVG のジ�
 - [ ] control（`<a>`/ボタン/タブ群）を `innerContent` の**後**に連結したか
       （`${innerContent}${control}`、`${control}${innerContent}` になっていないか） [guard: `packages/core/src/displaymode-meta.test.ts`]
 - [ ] 同じ control を出力する**並行関数すべて**（standalone / bundled / entity 等）で
-      同じ順序不変条件を満たしたか [guard: `packages/core/src/displaymode-meta.test.ts`]
+      同じ順序不変条件を満たしたか
 - [ ] control の位置（例: back button の `<g class="…">` index）が、level canvas の
       先頭 `<rect>` の index より**後**であることを unit で検証したか（存在確認だけで
       終えていないか）
@@ -78,7 +78,9 @@ control を最後に描くことで最前面に来て hit-testable を保つ。`
   `displayMode` を取る公開入口の表（`DISPLAY_MODE_CONSUMERS`、`index.ts` の型から求めた `Record` なので新しい入口は登録するまで
   typecheck が落ちる）のうち、出力に drill level（`<g class="krs-view…">`）を持つものを出力から選び、fixture と同梱の全 example で、
   各 level の `<a>`（back button・カードのリンク）がその level の canvas（最初の `<rect>`）より後にあることを見る。
-  連結の順を逆にした箇所・新しい並行 builder・新しい level の種類は、どれかの入口と example を通れば落ちる（チェックリスト 1・2 項目目）。
+  入口ごとに、どれかの example の level に `<a>` があることも確かめる（無ければ順序の検査は何も見ずに通る）。level を持つが
+  control を描かない入口（diff project）は `DRAWS_NO_CONTROLS` に理由付きで分け、描き始めたら落ちる。
+  連結の順を逆にした箇所と新しい level の種類は、どれかの入口と example を通れば落ちる（チェックリスト 1 項目目）。
   見る control は `<a>` だけで、`<a>` を使わない control は見ない。入口の集合は「公開の SVG 入口はすべて `displayMode` を取る」
   という前提で `displayMode` の表から取っており（`BUNDLES_LEVELS`）、この前提を強制するものは無い。`displayMode` を取らない
-  SVG 入口と、fixture で level を出さない入口は見ない
+  SVG 入口と、fixture で level を出さない入口は見ない。このため、新しい並行 builder がこの集合に入るとは限らず、2 項目目は印なし

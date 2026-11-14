@@ -6,6 +6,7 @@ import { buildAllViewsSvg } from "../index.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import { FACET_OVERLAY_COLORS } from "./facet-overlay.js";
 import { resolvePalette, type DiagramTheme } from "./palette.js";
+import { GHOST_OPACITY } from "./rendering-constants.js";
 
 /**
  * Every colour a themed render draws has to come from somewhere that knows the
@@ -114,6 +115,18 @@ const BASE_CARD_KINDS: Record<string, string> = {
   bucket: "infra leaf inside a storage level; no builtin rule paints it",
 };
 
+/** The index just past the `</g>` that closes the `<g` opening at `start`. */
+function groupEnd(svg: string, start: number): number {
+  const tag = /<g[\s>]|<\/g>/g;
+  tag.lastIndex = start;
+  let depth = 0;
+  for (let m = tag.exec(svg); m; m = tag.exec(svg)) {
+    depth += m[0] === "</g>" ? -1 : 1;
+    if (depth === 0) return m.index + m[0].length;
+  }
+  return svg.length;
+}
+
 /** `svg` split into the node groups of `kinds` (each cut at its matching `</g>`) and the rest. */
 function splitNodeGroups(svg: string, kinds: readonly string[]): { rest: string; cut: string[] } {
   let rest = svg;
@@ -123,17 +136,7 @@ function splitNodeGroups(svg: string, kinds: readonly string[]): { rest: string;
     let at: number;
     while ((at = rest.indexOf(marker)) !== -1) {
       const start = rest.lastIndexOf("<g ", at);
-      const tag = /<g[\s>]|<\/g>/g;
-      tag.lastIndex = start;
-      let depth = 0;
-      let end = rest.length;
-      for (let m = tag.exec(rest); m; m = tag.exec(rest)) {
-        depth += m[0] === "</g>" ? -1 : 1;
-        if (depth === 0) {
-          end = m.index + m[0].length;
-          break;
-        }
-      }
+      const end = groupEnd(rest, start);
       cut.push(rest.slice(start, end));
       rest = rest.slice(0, start) + rest.slice(end);
     }
@@ -159,6 +162,26 @@ function draw(krs: string, theme: DiagramTheme, groupBy: (typeof GROUPINGS)[numb
   );
 }
 
+/**
+ * Which of the two frames no rule paints `svg` draws in `theme`'s fallback roles
+ * (title `textPrimary`, outline `mutedBorder`): a group frame, whose id is
+ * synthesized and so misses the style lookup, and a ghost ancestor, whose kind
+ * no builtin rule paints (`containerStyleOf`, TPL-2662).
+ */
+function fallbackFrames(svg: string, theme: DiagramTheme): { group: boolean; ghost: boolean } {
+  const { textPrimary, mutedBorder } = resolvePalette(theme);
+  const found = { group: false, ghost: false };
+  for (const m of svg.matchAll(/<g data-container-id="[^"]*"[^>]*>/g)) {
+    const frame = svg.slice(m.index, groupEnd(svg, m.index));
+    if (!frame.includes(`fill="${textPrimary}"`) || !frame.includes(`stroke="${mutedBorder}"`)) {
+      continue;
+    }
+    if (m[0].includes('data-group="true"')) found.group = true;
+    else if (m[0].includes(`opacity="${GHOST_OPACITY}"`)) found.ghost = true;
+  }
+  return found;
+}
+
 describe("every colour of a themed render comes from that theme or the model (TPL-2662)", () => {
   it("scans a non-trivial number of examples", () => {
     expect(EXAMPLES.length).toBeGreaterThan(50);
@@ -166,6 +189,25 @@ describe("every colour of a themed render comes from that theme or the model (TP
 
   describe.each(THEMES)("%s theme", (theme) => {
     const supplied = themeColours(theme);
+
+    // Without both frames in the scan, the check below passes without reaching
+    // the path that paints what no rule named.
+    it("draws both frames no rule paints, in the theme's fallback roles", () => {
+      const found = { group: false, ghost: false };
+      for (const [, krs] of EXAMPLES) {
+        for (const groupBy of GROUPINGS) {
+          const svg = splitNodeGroups(draw(krs, theme, groupBy), Object.keys(BASE_CARD_KINDS)).rest;
+          const frames = fallbackFrames(svg, theme);
+          found.group ||= frames.group;
+          found.ghost ||= frames.ghost;
+          if (found.group && found.ghost) return;
+        }
+      }
+      expect(found, "no example draws a group frame and a ghost frame no rule paints").toEqual({
+        group: true,
+        ghost: true,
+      });
+    });
 
     it.each(EXAMPLES)("%s", (_path, krs) => {
       const allowed = new Set([...supplied, ...hexesIn(krs)]);
