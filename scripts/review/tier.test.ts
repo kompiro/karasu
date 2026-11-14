@@ -938,7 +938,8 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     // prose neighbours: Japanese text, brackets, a colon or period before a space
     expect(swap("設計は`x.md`の D5", "設計はADR-12の D5")).toBe(true);
     expect(swap("「`x.md`」", "「ADR-12」")).toBe(true);
-    expect(swap("see (`x.md`)", "see (ADR-12)")).toBe(true);
+    // ASCII parentheses may close a link destination opened on the line before
+    expect(swap("see (`x.md`)", "see (ADR-12)")).toBe(false);
     expect(swap("`x.md`: the design", "ADR-12: the design")).toBe(true);
     expect(swap("（`./x.md#d5` の D5）", "（ADR-12 の D5）")).toBe(true);
     expect(swap("see `docs/design/x.md`.", "see ADR-12.", "docs/roadmap.md")).toBe(true);
@@ -1022,6 +1023,11 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
       // an identifier joined by underscores
       ["prefix_`x.md`", "prefix_ADR-12"],
       ["`x.md`_suffix", "ADR-12_suffix"],
+      // a sibling's bare name in the text of a link the link pattern misses
+      [
+        'see [`x.md`](https://e.example/x "t")',
+        'see [`docs/adr/12-x.md`](https://e.example/x "t")',
+      ],
       // code spans the single-backtick pattern misreads
       ["`` a ` `x.md` ``", "`` a ` ADR-12 ``"],
       ["`a [l](t) `x.md` b`", "`a [l](t) ADR-12 b`"],
@@ -1041,8 +1047,16 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
       ["mailto:a@`x.md`", "mailto:a@ADR-12"],
       // a URL with an invisible character, which GitHub keeps inside the URL
       ["https://e.example\uFEFF`x.md`", "https://e.example\uFEFFADR-12"],
-      // the second line of an HTML attribute opened on the line before
+      // the rest of a link destination, a title or an HTML attribute opened on
+      // an earlier line, which a line pair cannot see
+      ["`x.md`)", "ADR-12)"],
+      ["foo `x.md`?q=1)", "foo ADR-12?q=1)"],
+      ['foo `x.md` "title"', 'foo ADR-12 "title"'],
+      ["foo `x.md`'", "foo ADR-12'"],
+      ["href=`x.md`", "href=ADR-12"],
       ['`x.md`">link</a>', 'ADR-12">link</a>'],
+      // a reference definition's destination on its own line
+      ["`x.md`", "ADR-12"],
     ]) {
       expect(swap(before, after)).toBe(false);
     }
@@ -1094,6 +1108,10 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
       ),
     ).toBe(false);
     expect(swap("see `x.md` (ADR-12).", "see ADR-12 (ADR-12).")).toBe(false);
+    // ... also on a line that does not take D3
+    expect(
+      swap("see [x](../design/x.md) ADR-12", "see [x](../adr/12-x.md) ADR-12", "docs/roadmap.md"),
+    ).toBe(false);
   });
 
   it("pairs a code span between two new ADRs only within one stem", () => {

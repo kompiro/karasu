@@ -596,11 +596,14 @@ const ADR_NUMBER = /ADR-(\d+)/g;
  * What keeps a line from rewriting a code span to `ADR-<n>` at all (#3620, D3):
  * anything a browser or GitHub may read as a URL or as markup around one: link
  * and footnote brackets, HTML and autolink angle brackets, an address, a
- * scheme, `www.`, and a double-backtick code span. The whole line is judged,
- * because markdown structure does not follow words, and no parser is used, so
- * the check needs no install.
+ * scheme, `www.`, and a double-backtick code span. A link destination, a link
+ * title or an HTML attribute may continue from an earlier line, which a line
+ * pair cannot see, so ASCII parentheses, quotes and `=`, and a line that is
+ * only a code span (a reference definition's destination), are kept out too. The whole line is judged, because
+ * markdown structure does not follow words, and no parser is used, so the
+ * check needs no install.
  */
-const NOT_PROSE_LINE = /[[\]<>@]|:\/\/|www\.|``/;
+const NOT_PROSE_LINE = /[[\]<>@()"'=]|:\/\/|www\.|``|^\s*`[^`]*`\s*$/;
 
 /** The Design Doc's boundary around a prose `ADR-<n>`: no name or path character next to it. */
 const isNumberEdge = (line: string, start: number, end: number): boolean =>
@@ -639,20 +642,25 @@ export function isLinkSwap(
   const wholeRefs = [
     ...deletedDesigns.map((p) => {
       const sibling = `(?:\\./)?${escapeRe(p.split("/").at(-1) ?? p)}(?:#[\\w-]*)?`;
-      const dirRef = referenceSource([p]) ?? "";
       return {
-        re: target(inDesignDir ? `(?:${dirRef}|${sibling})` : dirRef),
+        re: target(referenceSource([p]) ?? ""),
+        siblingRe: inDesignDir ? target(sibling) : undefined,
         stem: stemOf(p, false),
         old: true,
       };
     }),
     ...newAdrs.map((p) => ({
       re: target(referenceSource([p]) ?? ""),
+      siblingRe: undefined,
       stem: stemOf(p, true),
       old: false,
     })),
   ];
-  const wholeRef = (text: string) => wholeRefs.find((r) => r.re.test(text));
+  // A sibling's bare name (D1) counts where the caller says it may: always as a
+  // link target, and as a code span only on a line of plain prose, since a
+  // link the link pattern misses (one with a title) would hide its text.
+  const wholeRef = (text: string, sibling: boolean) =>
+    wholeRefs.find((r) => r.re.test(text) || (sibling && r.siblingRe?.test(text) === true));
   // Number to the stem of the new ADR a prose `ADR-<n>` may stand for:
   // only an ADR whose stem a deleted Design Doc shares.
   const designStems = new Set(deletedDesigns.map((p) => stemOf(p, false)));
@@ -685,7 +693,7 @@ export function isLinkSwap(
     let out = "";
     for (const seg of segmentsOf(line)) {
       if (seg.kind === "link") {
-        const ref = wholeRef(seg.target);
+        const ref = wholeRef(seg.target, true);
         if (ref === undefined) {
           out += `[${swapPaths(seg.body)}](${swapPaths(seg.target)})`;
         } else {
@@ -693,7 +701,7 @@ export function isLinkSwap(
           out += `[${isName(seg.body) ? "⟦name⟧" : swapPaths(seg.body)}](⟦ref⟧)`;
         }
       } else if (seg.kind === "code") {
-        const ref = wholeRef(seg.body);
+        const ref = wholeRef(seg.body, proseLines);
         if (ref === undefined) {
           out += `\`${swapPaths(seg.body)}\``;
         } else {
@@ -704,8 +712,11 @@ export function isLinkSwap(
         const text = seg.body.replace(ADR_NUMBER, (m: string, n: string, offset: number) => {
           const start = seg.start + offset;
           const stem = numbered.get(n);
-          if (stem === undefined || !prose) return m;
+          if (stem === undefined || side === "removed") return m;
           if (!isNumberEdge(line, start, start + m.length)) return m;
+          // Off a prose line, an ADR-<n> already there still keeps the line out
+          // of Low, so it becomes a mark the removed line cannot match.
+          if (!prose) return "⟦not prose⟧";
           seen.new = true;
           return `\`${refToken(stem)}\``;
         });
