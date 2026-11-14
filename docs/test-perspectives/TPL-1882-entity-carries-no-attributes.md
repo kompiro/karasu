@@ -59,7 +59,7 @@ label / description** のみである。**属性（カラム・型・インデ�
 - [ ] `table` 物理対応は infra サブリソースへの **参照**（`<Infra>.<sub>`）に
   留まり、カラム列挙の受け皿になっていないか。
 - [ ] `translate --from db` の entity 出力に **カラム情報が混ざっていない**か
-  （出力は名前・関連・物理対応のみか）。
+  （出力は名前・関連・物理対応のみか）。 [guard: `packages/core/src/translate/db.test.ts`]
 - [ ] 関連 edge に載せる情報が、v1 ではラベル（将来は多重度タグ）に留まり、
   型・制約などスキーマ詳細を持ち込んでいないか。
 
@@ -78,7 +78,7 @@ label / description** のみである。**属性（カラム・型・インデ�
 - `packages/core/src/parser/parser.test.ts` › `entity declarations (#1870)` — 属性なしの entity がパースされること、`table <Infra>.<sub>` が `tableRef` に入ること、entity 内の論理ノード子が拒否されること
 - `packages/core/src/builtins/reference-parser-sync.test.ts` › `REFERENCE_DATA.nodeKinds ↔ parser` — `entity` を含む各 kind について、Reference が載せる property とパーサが受理する property が双方向に一致する（属性的 property を黙って受理し始めると落ちる）
 - `packages/core/src/parser/physical-ref-validation.test.ts` — entity の `table` 物理対応が infra サブリソースへの参照として解決されること（未宣言の block / leaf は `unresolved-table-ref`、`table` なしの entity は沈黙）
-- `packages/core/src/translate/db.test.ts` › `entity scaffold (aggregate granularity)` — `translate --from db` の entity 出力が名前・`table` 物理対応・関連 edge の形で出ることを固定する（カラムが混ざらないことを直接 assert するケースは無い）
+- `packages/core/src/translate/db.test.ts` › `entity scaffold (aggregate granularity)` — `translate --from db` の entity 出力が名前・`table` 物理対応・関連 edge の形で出ることを固定する。同ファイルの translate 呼び出しはすべて `entityShapeChecked` を通り、出力を parse して全 entity が名前・関連・`table` 物理対応以外を持たないことを確かめる（新しいケースも自動で加わり、entity を 1 つも見なければ `afterAll` が落とす）
 
 ## 派生元 spec
 

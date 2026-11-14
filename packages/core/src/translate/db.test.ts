@@ -3,13 +3,109 @@ import { DbTranslator } from "./db.js";
 import type { TranslatorContext } from "./translator.js";
 import { Parser } from "../parser/parser.js";
 import { analyze } from "../resolver/warnings.js";
+import type { KrsNode } from "../types/ast.js";
 
 const ctx: TranslatorContext = {
   inputName: "schema",
 };
 
+// TPL-1882: an `entity` carries a name, its relations and its physical
+// `table` mapping, never columns, types or keys. Every translate call in this
+// file goes through `entityShapeChecked`, which parses the output and checks
+// every entity it finds, so a new test case joins the check without asking.
+// The last test in the file makes sure the cases did emit entities, so the
+// check cannot pass by never seeing one.
+let entitiesChecked = 0;
+
+/**
+ * Keys an entity node may carry when `translate --from db` writes it: its name
+ * (`id`, `label`), relations (`edges`), physical mapping (`tableRef`) and the
+ * fields every node has. A column list has to land somewhere outside this set.
+ */
+const ENTITY_KEYS = new Set([
+  "id",
+  "label",
+  "kind",
+  "tags",
+  "annotations",
+  "children",
+  "edges",
+  "properties",
+  "tableRef",
+  "loc",
+]);
+/** Keys a relation edge on an entity may carry: no label, no property block. */
+const RELATION_KEYS = new Set(["from", "to", "kind", "tags", "loc"]);
+
+/** The keys the parser set to a value (it writes some optional fields as `undefined`). */
+function definedKeys(value: object): string[] {
+  return Object.entries(value).flatMap(([k, v]) => (v === undefined ? [] : [k]));
+}
+
+/** What is wrong with the entities in `out`, one line per problem. */
+function entityAttributeProblems(out: string): string[] {
+  const parsed = Parser.parse(out);
+  const problems = parsed.diagnostics
+    .filter((d) => d.severity === "error")
+    .map((d) => `parse error ${d.code}`);
+  const extra = (where: string, keys: string[]) =>
+    keys.length === 0 ? [] : [`${where} carries ${keys.join(", ")}`];
+  const visit = (node: KrsNode): void => {
+    if (node.kind === "entity") {
+      entitiesChecked++;
+      const where = `entity ${node.id}`;
+      problems.push(
+        ...extra(
+          where,
+          definedKeys(node).filter((k) => !ENTITY_KEYS.has(k)),
+        ),
+        ...extra(
+          where,
+          node.children.map((c) => `child ${c.kind} ${c.id}`),
+        ),
+        ...extra(where, [...node.tags, ...node.annotations]),
+        ...extra(where, node.properties.description === undefined ? [] : ["a description"]),
+        ...extra(
+          where,
+          node.properties.links.map((l) => `link ${l.url}`),
+        ),
+        ...extra(
+          where,
+          definedKeys(node.properties).filter((k) => k !== "links" && k !== "description"),
+        ),
+      );
+      for (const edge of node.edges) {
+        const relation = `${where} relation to ${edge.to}`;
+        problems.push(
+          ...extra(
+            relation,
+            definedKeys(edge).filter((k) => !RELATION_KEYS.has(k)),
+          ),
+          ...extra(
+            relation,
+            edge.tags.filter((t) => t !== "inferred"),
+          ),
+        );
+      }
+    }
+    node.children.forEach(visit);
+  };
+  parsed.value.domains.forEach(visit);
+  return problems;
+}
+
+function entityShapeChecked(translator: DbTranslator): Pick<DbTranslator, "translate"> {
+  return {
+    translate: async (input, context) => {
+      const out = await translator.translate(input, context);
+      expect(entityAttributeProblems(out)).toEqual([]);
+      return out;
+    },
+  };
+}
+
 describe("DbTranslator", () => {
-  const translator = new DbTranslator();
+  const translator = entityShapeChecked(new DbTranslator());
 
   describe("flat output (--granularity table)", () => {
     it("generates a database block with table entries", async () => {
@@ -698,5 +794,12 @@ DROP TABLE ORDERS;
 `);
       expect(tableIds(out)).toEqual([]);
     });
+  });
+});
+
+// Runs after every case above (vitest runs a file's tests in order).
+describe("entity shape check (TPL-1882)", () => {
+  it("saw entities in the output of the cases above", () => {
+    expect(entitiesChecked).toBeGreaterThan(0);
   });
 });
