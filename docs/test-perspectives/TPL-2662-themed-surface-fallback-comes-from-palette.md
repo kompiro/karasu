@@ -105,5 +105,6 @@ scope:
   見るのは `buildAllViewsSvg` の出力だけで、live viewer の chrome（`nodeControls` のボタン）、diff、facet 選択でだけ
   出る要素は描かない。たまたまそのテーマの色と同じ値のリテラルは区別できない。
   導入時点で `table` / `queue-item` / `bucket` のカードは builtin の規則が無く、resolver の `DEFAULT_NODE_STYLE`
-  （dark 向けのカード）に両テーマで落ちていた。色を決めるのは別の判断なので `BASE_CARD_KINDS` に理由付きで免除し、
-  免除が要らなくなったら落ちるようにしている
+  （dark 向けのカード）に両テーマで落ちていたので免除していた。#3777 で各テーマの builtin シートが親の store の色を
+  これらにも当てるようにし、免除を外した。この 3 つを描く example は限られるので、テーマごとに
+  どれかの example が各 kind のカードを描くことも確かめる（kind の一覧は `INFRA_SUB_KIND_TO_TAG` から取る）。
