@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { InMemoryFileSystemProvider } from "./in-memory-provider";
-import { MERGED_SPACE_REFERENCE_CODES, type MergedSpaceReferenceCode } from "./import-resolver";
+import { MERGED_SPACE_REFERENCE_CODES, type MergedSpaceReferenceCode } from "./merged-space-codes";
 import { compileProject } from "../compile/compile";
 
 // Every diagnostic the resolver decides on the merged model only, run as a
