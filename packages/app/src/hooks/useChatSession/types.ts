@@ -28,6 +28,13 @@ export interface ErrorChatMessage {
   id: string;
   role: "error";
   errorType: "auth" | "rate_limit" | "server";
+  /**
+   * The API's fixed-vocabulary `error.type` (for example `overloaded_error`),
+   * kept so the record tells two `server` failures apart. `null` when the
+   * failure did not come from the API or its type was not a type name
+   * (TPL-2379). Required so a new failure path has to state it.
+   */
+  apiErrorType: string | null;
   content: string;
   retryMessageId?: string;
 }

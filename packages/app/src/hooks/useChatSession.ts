@@ -16,13 +16,12 @@ import {
   reviewTriggerMessage,
   interviewTriggerMessage,
 } from "./useChatSession/prompt.js";
-import { classifyError, errorMessage } from "./useChatSession/errors.js";
+import { makeErrorMessage } from "./useChatSession/errors.js";
 import { buildApiMessages } from "./useChatSession/apiMessages.js";
 import type {
   ChatMessage,
   UserChatMessage,
   AssistantChatMessage,
-  ErrorChatMessage,
   PatchProposal,
   SessionPhase,
 } from "./useChatSession/types.js";
@@ -94,24 +93,6 @@ function markPatchResolved(
     return [...resolved, { id: crypto.randomUUID(), role: "assistant" as const, content: text }];
   }
   return resolved;
-}
-
-// Builds the ErrorChatMessage shown in the chat log for a failed API call.
-// Shared by every catch block in this hook so error shape/translation stays
-// in one place; callers decide whether to append or replace `messages`.
-function makeErrorMessage(
-  err: unknown,
-  t: Parameters<typeof errorMessage>[1],
-  retryMessageId?: string,
-): ErrorChatMessage {
-  const errorType = classifyError(err);
-  return {
-    id: crypto.randomUUID(),
-    role: "error",
-    errorType,
-    content: errorMessage(errorType, t),
-    retryMessageId,
-  };
 }
 
 // Appends a `tool_result` user turn to `history`, the shape the Anthropic API
@@ -460,6 +441,7 @@ export function useChatSession({
             id: crypto.randomUUID(),
             role: "error" as const,
             errorType: "server" as const,
+            apiErrorType: null,
             content: tRef.current("chat.error.patchFailed", { detail: patchResult.error }),
           },
         ]);

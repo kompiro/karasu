@@ -45,8 +45,8 @@ scope:
 失敗経路を書く・変えるときに確認する:
 
 - [ ] この処理を**もう一度動かすコスト**（時間・実費）を言えるか。言えないなら記録の厚みを決める根拠が無い [judgment]
-- [ ] 外部エラーのうち **固定語彙のフィールド**（type・code・status）を残しているか。捨てているのは自由文だけか
-- [ ] 固定語彙のつもりのフィールドに自由文が来たときの扱いを決めたか（形で検査して落とす、が既定）
+- [ ] 外部エラーのうち **固定語彙のフィールド**（type・code・status）を残しているか。捨てているのは自由文だけか [guard: `packages/app/src/hooks/useChatSession/errors.test.ts`]
+- [ ] 固定語彙のつもりのフィールドに自由文が来たときの扱いを決めたか（形で検査して落とす、が既定） [guard: `packages/app/src/hooks/useChatSession/errors.test.ts`]
 - [ ] 多段処理なら、**落ちた段の名前**が記録に入るか。成功した段の一覧からの引き算になっていないか
 - [ ] その記録だけで原因の切り分けができるか。ソースツリーや別システムとの突き合わせを前提にしていないか [judgment]
 
@@ -55,6 +55,14 @@ scope:
 - エラー型の形を正規表現で検査してから載せる（`/^[a-z][a-z0-9_]{0,39}$/` 程度）。通らない値は「型名ではない＝散文」とみなして捨てる
 - 「試行中の段」を開始時に記録し、完了時に消す。失敗記録には消えなかったものが残る
 - 失敗した入力そのものを短い TTL で別ストアに置く（`failed/` prefix、24 時間）。ただし置ける対象は方針で決まる — 生成物は置けても、他人のソースは置けない
+
+## 関連テスト
+
+- `packages/app/src/hooks/useChatSession/errors.test.ts`：`makeErrorMessage`（失敗した chat の呼び出しを
+  `ErrorChatMessage` に変える唯一の箇所）に `APIError` を渡し、型名の形をした `error.type` は分類と並んで残り、
+  散文・HTML・大文字・数字始まり・40 文字超・空・文字列でない値は `null` になることを確かめる
+- `packages/app/src/hooks/useChatSession.retry.test.tsx`：本物の SDK を通した 400 / 401 の失敗で、記録に
+  `apiErrorType` が載ることを確かめる
 
 ## 由来
 
@@ -65,9 +73,9 @@ scope:
   当時の呼び出し元 `packages/nest/src/reverse/llm.ts` は、[ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)
   が server-side reverse を廃止した際に削除された。
 - 現在の適用先は app の chat session の失敗経路（`packages/app/src/hooks/useChatSession/errors.ts`）。
-  失敗記録（`ErrorChatMessage`）は `401 → auth`、`429 → rate_limit`、それ以外（他の `APIError`・接続エラー・
-  abort・`APIError` でない例外）をすべて `server` に畳み、固定語彙の `error.type` はどこからも読まれない。
-  一方 `console.error` には API error body（`error.type` を含む）と散文の `message` がそのまま流れる。線が
-  「固定語彙と自由文の間」ではなく「記録は status 3 分類だけ、console は全部」に引かれている。1 回の実費は
-  利用者の API key 持ちで小さいので観点の重みは弱いが、chat の失敗記録を厚くするときは `classifyError` で
-  `error.type` を形で検査して記録に載せ、console から散文を落とすところから始める。
+  失敗記録（`ErrorChatMessage`）は `401 → auth`、`429 → rate_limit`、それ以外を `server` に畳む分類に加えて、
+  API の固定語彙の `error.type` を `apiErrorType` に持つ。`apiErrorType` は `/^[a-z][a-z0-9_]{0,39}$/` の形を
+  通った値だけで、通らない値（中間層の散文や HTML）と、API の本文から来ていない失敗は `null` にする。
+  失敗した呼び出しを記録に変えるのは `makeErrorMessage` だけで、`apiErrorType` は必須のフィールドなので、
+  記録を直接組み立てる新しい箇所も値を書かないと型検査で落ちる。`console.error` には API error body と散文の
+  `message` がまだそのまま流れる。1 回の実費は利用者の API key 持ちで小さいので、観点の重みは弱い。
