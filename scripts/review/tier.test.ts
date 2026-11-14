@@ -964,7 +964,7 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
       ["see x.`x.md`", "see x.ADR-12"],
       ["see x-`x.md`", "see x-ADR-12"],
       ["see `x.md`-y", "see ADR-12-y"],
-      // URL characters nobody listed: the allowlist keeps them out
+      // URLs: no line holding one counts as prose
       ["<https://e.example/?q=a+`x.md`>", "<https://e.example/?q=a+ADR-12>"],
       ["https://e.example/a;`x.md`", "https://e.example/a;ADR-12"],
       ["https://e.example/~`x.md`", "https://e.example/~ADR-12"],
@@ -972,7 +972,7 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
       ["see <`x.md`>", "see <ADR-12>"],
       // inside a URL that markdown links
       ["https://e.example/（`x.md`）", "https://e.example/（ADR-12）"],
-      // links and autolinks the link pattern does not see, read by the parser
+      // links and autolinks the link pattern does not see
       ['see [`x.md`](https://e.example/x "t")', 'see [ADR-12](https://e.example/x "t")'],
       ["see [a [`x.md`] b](https://e.example/x)", "see [a [ADR-12] b](https://e.example/x)"],
     ]) {
@@ -1012,7 +1012,7 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
       ],
       ["(www.e.example/a,`x.md`)", "(www.e.example/a,ADR-12)"],
       ["see [a](https://e.example/x\u3000`x.md`)", "see [a](https://e.example/x\u3000ADR-12)"],
-      // raw HTML, whose inner text the lexer reads as text
+      // raw HTML
       ["<b>設計は`x.md`の</b>", "<b>設計はADR-12の</b>"],
       ["see <code>`x.md`</code>", "see <code>ADR-12</code>"],
       [
@@ -1030,18 +1030,21 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     }
   });
 
-  it("accepts ADR-<n> that the parser reads as text (kompiro on #3781: no domain can change)", () => {
+  it("rewrites a code span to ADR-<n> on a nested item, but not on a line a browser may read a URL in", () => {
+    // a nested item indented four spaces is prose in its document
+    expect(swap("    設計は`x.md`の D5", "    設計はADR-12の D5")).toBe(true);
+    expect(swap("    3. 詳細は `x.md` の D5", "    3. 詳細は ADR-12 の D5")).toBe(true);
     for (const [before, after] of [
       ["`@import`の扱いは`x.md`の D5", "`@import`の扱いはADR-12の D5"],
-      // a reference link or footnote whose definition is on another line reads as text
       ["see [the `x.md` doc][r]", "see [the ADR-12 doc][r]"],
       ["see [^a `x.md` b]", "see [^a ADR-12 b]"],
       ["mailto:a@`x.md`", "mailto:a@ADR-12"],
-      // a nested item indented four spaces is prose in its document, not code
-      ["    設計は`x.md`の D5", "    設計はADR-12の D5"],
-      ["    3. 詳細は `x.md` の D5", "    3. 詳細は ADR-12 の D5"],
+      // a URL with an invisible character, which GitHub keeps inside the URL
+      ["https://e.example\uFEFF`x.md`", "https://e.example\uFEFFADR-12"],
+      // the second line of an HTML attribute opened on the line before
+      ['`x.md`">link</a>', 'ADR-12">link</a>'],
     ]) {
-      expect(swap(before, after)).toBe(true);
+      expect(swap(before, after)).toBe(false);
     }
   });
 
@@ -1101,7 +1104,7 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
     expect(swap("`x.md` `docs/adr/5-a.md`", "`docs/adr/12-x.md` `../adr/5-a.md#b`", IN, D, a)).toBe(
       true,
     );
-    // ADR-<n> stands for the one same-stem ADR it names
+    // an ADR-<n> already on the line keeps it out, even with same-stem twins
     const twins = ["docs/adr/12-x.md", "docs/adr/13-x.md"];
     expect(swap("`x.md` ADR-12 の D5", "ADR-12 ADR-13 の D5", IN, D, twins)).toBe(false);
   });

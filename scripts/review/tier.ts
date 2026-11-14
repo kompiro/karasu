@@ -21,7 +21,6 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
 import { matchesGlob, posix } from "node:path";
-import { Lexer, type Token } from "marked";
 import {
   CONFIG_FILES,
   type ConfigTexts,
@@ -591,44 +590,17 @@ function segmentsOf(line: string): Segment[] {
   return segs;
 }
 
-/**
- * Containers whose text is not prose: a link's text and an image's alt text.
- * Other pieces count as prose only when they are plain text, so a code span,
- * raw HTML, a code block or a link definition never does.
- */
-const OPAQUE = new Set(["link", "image"]);
 const ADR_NUMBER = /ADR-(\d+)/g;
 
 /**
- * For each `ADR-<n>` on a line, in order, whether markdown reads it as prose:
- * plain text, not inside a link, an autolink, a code span or raw HTML (#3620,
- * D3). A parser decides, because markdown structure does not follow word
- * boundaries. When its pieces do not account for every occurrence, none counts.
+ * What keeps a line from rewriting a code span to `ADR-<n>` at all (#3620, D3):
+ * anything a browser or GitHub may read as a URL or as markup around one: link
+ * and footnote brackets, HTML and autolink angle brackets, an address, a
+ * scheme, `www.`, and a double-backtick code span. The whole line is judged,
+ * because markdown structure does not follow words, and no parser is used, so
+ * the check needs no install.
  */
-function proseNumbers(line: string): boolean[] {
-  const flags: boolean[] = [];
-  let hasHtml = false;
-  const walk = (tokens: readonly Token[]) => {
-    for (const t of tokens) {
-      const inner = (t as { tokens?: Token[] }).tokens ?? (t as { items?: Token[] }).items;
-      if (!OPAQUE.has(t.type) && inner !== undefined && inner.length > 0) {
-        walk(inner);
-        continue;
-      }
-      if (t.type === "html") hasHtml = true;
-      const prose = t.type === "text" || t.type === "escape";
-      for (const _ of t.raw.matchAll(ADR_NUMBER)) flags.push(prose);
-    }
-  };
-  // A line is lexed without its context, so its indent is dropped: a nested
-  // list item indented four spaces is prose in its document, not a code block.
-  walk(Lexer.lex(line.trimStart(), { gfm: true }));
-  const total = [...line.matchAll(ADR_NUMBER)].length;
-  // Text inside raw HTML (`<code>`, `<a>`) reads as text to the lexer, so a
-  // line with any HTML does not count as prose at all.
-  if (hasHtml || flags.length !== total) return Array.from({ length: total }, () => false);
-  return flags;
-}
+const NOT_PROSE_LINE = /[[\]<>@]|:\/\/|www\.|``/;
 
 /** The Design Doc's boundary around a prose `ADR-<n>`: no name or path character next to it. */
 const isNumberEdge = (line: string, start: number, end: number): boolean =>
@@ -695,6 +667,8 @@ export function isLinkSwap(
   const names = namesOf([...deletedDesigns, ...newAdrs]);
   const isName = (text: string) => isNameIn(names, text);
 
+  const proseLines = !NOT_PROSE_LINE.test(removed) && !NOT_PROSE_LINE.test(added);
+
   // The Design Doc's comparison: references become symbols and the rest of the
   // line must stay as it was. Links first, so a code span in link text stays
   // with the link rule; then whole-reference code spans, which keep their stem;
@@ -707,8 +681,7 @@ export function isLinkSwap(
       if (bare(newRef).test(text)) seen.new = true;
       return text.replace(bare(either), "⟦ref⟧");
     };
-    const starts = [...line.matchAll(ADR_NUMBER)].map((m) => m.index);
-    const prose = side === "added" ? proseNumbers(line) : [];
+    const prose = side === "added" && proseLines;
     let out = "";
     for (const seg of segmentsOf(line)) {
       if (seg.kind === "link") {
@@ -731,7 +704,7 @@ export function isLinkSwap(
         const text = seg.body.replace(ADR_NUMBER, (m: string, n: string, offset: number) => {
           const start = seg.start + offset;
           const stem = numbered.get(n);
-          if (stem === undefined || !prose[starts.indexOf(start)]) return m;
+          if (stem === undefined || !prose) return m;
           if (!isNumberEdge(line, start, start + m.length)) return m;
           seen.new = true;
           return `\`${refToken(stem)}\``;
