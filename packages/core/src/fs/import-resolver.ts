@@ -896,7 +896,13 @@ export class ImportResolver {
       }
 
       if (system.id === id) {
-        mergedFile.systems.push(system);
+        // Look the id up first, as the wildcard path does (#3801): the importer
+        // may already hold this block, from a whole-file import of the same
+        // file or an earlier named import, and pushing it again draws it twice.
+        // A different block with the same id reopens.
+        const existing = mergedFile.systems.find((s) => s.id === system.id);
+        if (existing) this.mergeSystemIntoExisting(existing, system);
+        else mergedFile.systems.push(system);
         found = true;
       }
     }

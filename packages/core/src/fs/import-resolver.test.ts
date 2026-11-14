@@ -3274,4 +3274,30 @@ facet pii {
       expect(mismatch!.loc!.start.line).toBe(7);
     });
   });
+
+  describe("a named system the importer already holds is not added twice (#3801)", () => {
+    const lib = `system Anchor {\n  service A\n}\n`;
+    it.each([
+      ["whole-file, then named", `import "lib.krs"\nimport { Anchor } from "lib.krs"\n`],
+      ["named, then whole-file", `import { Anchor } from "lib.krs"\nimport "lib.krs"\n`],
+      ["named twice", `import { Anchor } from "lib.krs"\nimport { Anchor } from "lib.krs"\n`],
+    ])("%s", async (_name, index) => {
+      await fs.writeFile("/project/index.krs", index);
+      await fs.writeFile("/project/lib.krs", lib);
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.krsFile.systems.map((s) => s.id)).toEqual(["Anchor"]);
+      expect(result.diagnostics.filter((d) => d.severity !== "info")).toEqual([]);
+    });
+
+    it("a same-id system from another file reopens, as through a whole-file import", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { Anchor } from "lib.krs"\nsystem Anchor {\n  service B\n}\n`,
+      );
+      await fs.writeFile("/project/lib.krs", lib);
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.krsFile.systems).toHaveLength(1);
+      expect(result.krsFile.systems[0].children.map((c) => c.id).sort()).toEqual(["A", "B"]);
+    });
+  });
 });
