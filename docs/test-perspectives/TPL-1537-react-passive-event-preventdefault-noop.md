@@ -39,11 +39,13 @@ React 17 以降、ルートに委譲される `wheel` / `touchstart` / `touchmov
 
 スクロール／ズーム／ジェスチャ系の UI を実装するとき、以下を確認する:
 
-- [ ] `preventDefault()` を呼びたい `wheel` / `touchstart` / `touchmove` は、`useEffect` 内で `el.addEventListener(type, handler, { passive: false })` として **ネイティブ非 passive** で登録しているか（React の `onWheel=` 属性に頼っていないか）
+- [ ] `preventDefault()` を呼びたい `wheel` / `touchstart` / `touchmove` は、`useEffect` 内で `el.addEventListener(type, handler, { passive: false })` として **ネイティブ非 passive** で登録しているか（React の `onWheel=` 属性に頼っていないか）。
+      CI の `pnpm run lint`（oxlint `react/forbid-dom-props`）が DOM 要素の `onWheel` / `onTouchStart` / `onTouchMove`（と capture 版）を拒む [guard: `.github/workflows/ci.yml`]
 - [ ] そのネイティブリスナーに **cleanup（`removeEventListener`）** があるか
 - [ ] テストで `cancelable: true` のネイティブイベントを `dispatchEvent` し、`event.defaultPrevented === true` を assert しているか（ハンドラの副作用だけでなく preventDefault が効いていることを直接検証する）
 - [ ] unmount 後にイベントを投げて `defaultPrevented` が `false` のまま（＝リスナーが外れている）ことを確認しているか
-- [ ] その native リスナーの子に、これまで React synthetic の `onWheel`/`onTouchMove` で `stopPropagation` してジェスチャを **opt-out** していた要素はないか。あるなら、native ハンドラ側で opt-out 属性（例 `data-wheel-zoom-ignore`）を `e.target.closest(...)` で見て早期 return しているか。子のスクロール領域上で「スクロールせずズームする」回帰のテストがあるか
+- [ ] その native リスナーの子に、これまで React synthetic の `onWheel`/`onTouchMove` で `stopPropagation` してジェスチャを **opt-out** していた要素はないか。あるなら、native ハンドラ側で opt-out 属性（例 `data-wheel-zoom-ignore`）を `e.target.closest(...)` で見て早期 return しているか。子のスクロール領域上で「スクロールせずズームする」回帰のテストがあるか。
+      synthetic の `onWheel` / `onTouchMove` は CI の `pnpm run lint`（oxlint `react/forbid-dom-props`）が拒むので、opt-out は属性しか書けない [guard: `.github/workflows/ci.yml`]
 
 ## 既知の対処パターン
 

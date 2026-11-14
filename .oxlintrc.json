@@ -15,7 +15,22 @@
       "error",
       { "assertFunctionNames": ["expect", "expect*", "assert*"] }
     ],
-    "no-underscore-dangle": "off"
+    "no-underscore-dangle": "off",
+    "react/no-danger": "error",
+    "react/forbid-dom-props": [
+      "error",
+      {
+        "forbid": [
+          { "propName": "onWheel", "message": "React registers wheel listeners as passive, so preventDefault() does nothing and a stopPropagation() opt-out never reaches a native listener. Register a native listener with addEventListener(\"wheel\", h, { passive: false }) in an effect, and opt children out with data-wheel-zoom-ignore (TPL-1537)." },
+          { "propName": "onWheelCapture", "message": "React registers wheel listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchStart", "message": "React registers touchstart listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchStartCapture", "message": "React registers touchstart listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchMove", "message": "React registers touchmove listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchMoveCapture", "message": "React registers touchmove listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "srcDoc", "message": "A diagram surface goes through PreviewPane, not a raw iframe (TPL-2800). Only AllLayersFrame.tsx sets srcDoc." }
+        ]
+      }
+    ]
   },
   "overrides": [
     {
@@ -24,6 +39,66 @@
         "react/no-object-type-as-default-prop": "off",
         "react/globals": "off",
         "react/immutability": "off"
+      }
+    },
+    {
+      "files": ["packages/app/src/**/*.{ts,tsx}"],
+      "excludeFiles": ["**/*.{test,spec}.{ts,tsx}"],
+      "rules": {
+        "no-restricted-properties": [
+          "error",
+          { "property": "innerHTML", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
+          { "property": "outerHTML", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
+          { "property": "insertAdjacentHTML", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "(^|/)InjectedHtml(\\.js)?$",
+                "message": "InjectedHtml is the app's only markup injection point. A surface that draws a diagram goes through PreviewPane instead (TPL-2800); add this file to the InjectedHtml allowlist in .oxlintrc.json only for content that is not a diagram."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "packages/app/src/components/PreviewPane.tsx",
+        "packages/app/src/components/focus-canvas/FocusCanvas.tsx",
+        "packages/app/src/components/NodeDetailPanel.tsx",
+        "packages/app/src/components/EdgeDetailPanel.tsx",
+        "packages/app/src/components/ChatPane.tsx",
+        "packages/app/src/components/OutlineView.tsx"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    },
+    {
+      "files": ["packages/app/src/components/InjectedHtml.tsx"],
+      "rules": {
+        "react/no-danger": "off"
+      }
+    },
+    {
+      "files": ["packages/app/src/components/AllLayersFrame.tsx"],
+      "rules": {
+        "react/forbid-dom-props": [
+          "error",
+          {
+            "forbid": [
+              { "propName": "onWheel" },
+              { "propName": "onWheelCapture" },
+              { "propName": "onTouchStart" },
+              { "propName": "onTouchStartCapture" },
+              { "propName": "onTouchMove" },
+              { "propName": "onTouchMoveCapture" }
+            ]
+          }
+        ]
       }
     },
     {
@@ -85,7 +160,7 @@
         "max-lines": ["error", { "max": 600 }]
       }
     },
-    { "files": ["packages/app/src/components/PreviewPane.tsx"], "rules": { "max-lines": ["error", { "max": 850 }] } },
+    { "files": ["packages/app/src/components/PreviewPane.tsx"], "rules": { "max-lines": ["error", { "max": 846 }] } },
     { "files": ["packages/app/src/components/focus-canvas/build.ts"], "rules": { "max-lines": ["error", { "max": 860 }] } },
     { "files": ["packages/app/src/hooks/useChatSession.ts"], "rules": { "max-lines": ["error", { "max": 626 }] } },
     { "files": ["packages/app/src/hooks/useChatSession/prompt.ts"], "rules": { "max-lines": ["error", { "max": 610 }] } },

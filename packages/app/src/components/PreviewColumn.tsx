@@ -3,6 +3,7 @@ import type { NodeMetadata } from "@karasu-tools/core";
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";
 import { PreviewPane } from "./PreviewPane.js";
+import { AllLayersFrame } from "./AllLayersFrame.js";
 import { WarningPanel } from "./WarningPanel.js";
 import { openReferenceWindow } from "../utils/open-reference-window.js";
 import { CrudMatrixPanel } from "./CrudMatrixPanel.js";
@@ -414,12 +415,7 @@ export function PreviewColumn() {
           displayRoot={displayRoot}
         />
       ) : showAllLayersIframe ? (
-        <iframe
-          srcDoc={activeAllLayersSvg}
-          sandbox="allow-same-origin"
-          style={{ width: "100%", height: "100%", border: "none" }}
-          title="Full diagram view"
-        />
+        <AllLayersFrame svg={activeAllLayersSvg} />
       ) : (
         <PreviewPane
           key="diagram"
