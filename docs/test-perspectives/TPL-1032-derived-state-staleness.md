@@ -51,7 +51,7 @@ scope:
 
 - [ ] 派生先の表示を駆動する **入力次元** がすべて列挙されているか（`nodeId` だけでなく `nodeMetadata` の中身、`compile result version`、`displayMode` など） [judgment]
 - [ ] memoization / `useMemo` / `useEffect` の依存配列がそれら全次元を含んでいるか（reference equality だけで済むか、deep な version key が要るか）
-- [ ] recompile 結果の **publish が無条件** か（debounce drop / 条件 skip / ref stale で落ちないか）。落ちうる経路にはログまたはテストを置く
+- [ ] recompile 結果の **publish が無条件** か（debounce drop / 条件 skip / ref stale で落ちないか）。落ちうる経路にはログまたはテストを置く [guard: `packages/app/src/hooks/useAppViews.matrix.test.tsx`]
 - [ ] **両方向**（追加された / 消えた / 変わった）の編集を 1 つの test で連続適用し、派生先がそのたびに正しく更新されることを assert しているか
 - [ ] 同じ source 状態を消費する複数の派生先（panel / 警告 / legend / matrix）の更新タイミングが揃っているか（片方だけ stale にならないか）
 

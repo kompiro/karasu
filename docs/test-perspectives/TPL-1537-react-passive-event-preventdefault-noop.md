@@ -40,7 +40,7 @@ React 17 以降、ルートに委譲される `wheel` / `touchstart` / `touchmov
 スクロール／ズーム／ジェスチャ系の UI を実装するとき、以下を確認する:
 
 - [ ] `preventDefault()` を呼びたい `wheel` / `touchstart` / `touchmove` は、`useEffect` 内で `el.addEventListener(type, handler, { passive: false })` として **ネイティブ非 passive** で登録しているか（React の `onWheel=` 属性に頼っていないか）
-- [ ] そのネイティブリスナーに **cleanup（`removeEventListener`）** があるか
+- [ ] そのネイティブリスナーに **cleanup（`removeEventListener`）** があるか [guard: `packages/app/src/test-guards/listener-leak-setup.ts`, `packages/app/src/test-guards/listener-leak.test.tsx`]
 - [ ] テストで `cancelable: true` のネイティブイベントを `dispatchEvent` し、`event.defaultPrevented === true` を assert しているか（ハンドラの副作用だけでなく preventDefault が効いていることを直接検証する）
 - [ ] unmount 後にイベントを投げて `defaultPrevented` が `false` のまま（＝リスナーが外れている）ことを確認しているか
 - [ ] その native リスナーの子に、これまで React synthetic の `onWheel`/`onTouchMove` で `stopPropagation` してジェスチャを **opt-out** していた要素はないか。あるなら、native ハンドラ側で opt-out 属性（例 `data-wheel-zoom-ignore`）を `e.target.closest(...)` で見て早期 return しているか。子のスクロール領域上で「スクロールせずズームする」回帰のテストがあるか
@@ -59,3 +59,4 @@ React 17 以降、ルートに委譲される `wheel` / `touchstart` / `touchmov
 ## 関連テスト
 
 - `packages/app/src/components/PreviewPane.test.tsx`（`wheel zoom (#1537)` describe ブロック）
+- `packages/app/src/test-guards/listener-leak-setup.ts` — app の全テストで、React が描いた要素にネイティブリスナーを足したまま unmount したら落とす（チェックリスト項目 2）。`listener-leak.test.tsx` が、cleanup の無い effect で赤くなること、ある effect と React 以外が作った要素では黙ること、`PreviewPane` の実際の wheel リスナーを追跡できていること（corpus にこの形があること）を確かめる

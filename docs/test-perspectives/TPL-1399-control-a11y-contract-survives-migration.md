@@ -45,7 +45,7 @@ interactive control（button / tab / list item / menu item / toggle）は、ク�
 ## チェックリスト
 
 - [ ] 移行・リファクタ対象の control が持っていた `aria-*` 属性・`role`・`type` を、移行後の要素がすべて引き継いでいるか差分で確認した [judgment]
-- [ ] `role` を持つ要素は、その role が要素タグおよび親コンテナの role と ARIA 仕様上整合しているか（`listitem`→`list` の子、`menuitem`→menu の子、`button` に `listitem` を付けていない 等）
+- [ ] `role` を持つ要素は、その role が要素タグおよび親コンテナの role と ARIA 仕様上整合しているか（`listitem`→`list` の子、`menuitem`→menu の子、`button` に `listitem` を付けていない 等） [guard: `packages/app/src/test-guards/a11y-sweep-setup.ts`, `packages/app/src/test-guards/a11y-sweep.test.tsx`]
 - [ ] すべてのボタンに可視テキストラベルがあるか（アイコンのみは不可。`aria-label` は補助であって代替ではない）
 - [ ] toggle は `aria-pressed` を持ち、かつ可視ラベルまたはスタイルでも押下状態が区別できるか
 
@@ -63,3 +63,4 @@ interactive control（button / tab / list item / menu item / toggle）は、ク�
 - `packages/app/src/components/DiffModeBanner.test.tsx` — Swap トグルの可視ラベルが状態に応じて「⇄ Swap」/「⇄ Swap back」に変わり、`aria-pressed` も `false` / `true` で一致することを固定する（`aria-pressed` だけでなく可視ラベルでも押下状態が区別できること。#1399）
 - `packages/app/src/components/PreviewViewControls.test.tsx` — `PreviewViewControls — contracts the move must not drop` › `keeps aria-pressed on the toggles it carries, in both states (TPL-1399, TPL-1402)`：toolbar から移したトグルが両状態で `aria-pressed` を引き継いでいることを固定する（移行で a11y 契約を落とさない）
 - `packages/e2e/tests/at-0058-graphical-diff-viewer.spec.ts` — diff の Swap ボタンを押すと `aria-pressed="true"` になり diff の向きも反転することを E2E で固定する
+- `packages/app/src/test-guards/a11y-sweep-setup.ts` — app の全テストで、描いた DOM の role を ARIA 1.2 の Required Context / Required Owned と ARIA in HTML の許可 role の表に照らす（チェックリスト項目 2）。同じ sweep がボタンの可視テキスト（`aria-hidden` と `sr-only` を除き、文字か数字を含む）も見る（項目 3）。項目 3 は印なし：既存の icon-only ボタン（パネル隅の ×、split button の ▾、図の ⊕/⊖）を `button-label.ts` の例外表で外しており、パネル隅の × を例外にしてよいかが決まっていない
