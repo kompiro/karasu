@@ -6,7 +6,7 @@
   - 引き金 Issue: [#3775](https://github.com/kompiro/karasu/issues/3775)（multi-variant の resource が Outline と違うアイコンを描く）, [#3776](https://github.com/kompiro/karasu/issues/3776)（first-match の段階が author の明示した variant アイコンを上書きする）
   - 関連 ADR: [ADR-1415](../adr/1415-outline-icon-variants.md)（Outline は `iconNameForNode` で variant を解決し、client は `tags` 順の first-match にする）, [ADR-351](../adr/351-resource-shape-and-infra-icon-mode.md)（resource のタグ → shape）, [ADR-8](../adr/8-builtin-style-and-reference.md)（組み込みシートが先、author のシートが後）
   - 関連 TPL: [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md)（解決順序が表現間で一致するか。項目 6 のガードが resource を例外にしている）, [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)（表示モードの precedence）, [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md)（1 つのエンティティの見た目は 1 つの関数で決める）
-  - コード: `packages/core/src/builtins/icon-theme.ts`, `packages/core/src/resolver/style-resolver.ts`, `packages/core/src/builtins/default-style.ts`
+  - コード: `packages/core/src/builtins/icon-theme.ts`, `packages/core/src/resolver/style-resolver.ts`, `packages/core/src/builtins/default-style.ts`, `packages/core/src/builtins/non-author-sheets.ts`, `packages/core/src/builtins/display-mode-sheets.ts`
 
 ## 背景・課題
 
@@ -115,11 +115,11 @@ client だけは icon mode と Outline が一致している。style resolver �
 
 ### 実装の指針
 
-1. `icon-theme.ts` に `losingVariantTags(kind, tags)` を置く。`VARIANT_ICONS_BY_KIND` から、`tags` に現れる variant タグの集合から最初の 1 つ（`tags` 順）を除いたものを返す。`[table, api, table]` では `api` だけが負けたタグで、勝った `table` は位置にかかわらず負けたタグに入らない。`applyVariantFirstMatch` と `FIRST_MATCH_VARIANT_KINDS` は消し、後段に触れている JSDoc（`VARIANT_ICONS_BY_KIND`・`iconNameForNode`・`CLIENT_SUBTYPE_TAGS`）を新しい規則に合わせる。`ICON_THEME_STYLE_SOURCE` の「Applied before user stylesheets」も、author のシートの後に積む `withDisplayModeSheet` と食い違っているので直す。
+1. `icon-theme.ts` に `losingVariantTags(kind, tags)` を置く。`VARIANT_ICONS_BY_KIND` から、`tags` に現れる variant タグの集合から最初の 1 つ（`tags` 順）を除いたものを返す。`[table, api, table]` では `api` だけが負けたタグで、勝った `table` は位置にかかわらず負けたタグに入らない。`applyVariantFirstMatch` と `FIRST_MATCH_VARIANT_KINDS` は消し、後段に触れている JSDoc（`VARIANT_ICONS_BY_KIND`・`iconNameForNode`・`CLIENT_SUBTYPE_TAGS`）と `ICON_RULES` の client variant の行のコメント（first-match-wins）を新しい規則に合わせる。`ICON_THEME_STYLE_SOURCE` の「Applied before user stylesheets」も、author のシートの後に積む `withDisplayModeSheet` と食い違っているので直す。
 2. `resolver/variant-rules.ts` に `withoutLosingBuiltinVariants(node, rules)` を置き、`NON_AUTHOR_SHEET_IDS` のルールで負けたタグを名指すものを外す。`non-author-sheets.ts` は `icon-theme.ts` を import しているので、循環を避けて resolver 側に置く。
 3. `style-resolver.ts` の `mergeMatchingProperties` が、一致したルールをこの関数に通してから `mergeInCascadeOrder` に渡す。後段の呼び出しは消す。
 4. テスト:
-   - `icon-theme.test.ts` の `CASCADE_ORDER_KINDS` と「still needs its exemption」のテストを消す（resource を外すと表が空になる）。既存の parity テストが resource の全組み合わせを、icon mode のカスケードと `iconNameForNode` で比べるようになる。
+   - `icon-theme.test.ts` の `CASCADE_ORDER_KINDS` と「still needs its exemption」のテストを消す（resource を外すと表が空になる）。その `describe` の上のコメント（後段が `VARIANT_ICONS_BY_KIND` の全 kind を覆うと書いている）も、ルールを外す形に書き直す。既存の parity テストが resource の全組み合わせを、icon mode のカスケードと `iconNameForNode` で比べるようになる。
    - shape mode でも、variant の全組み合わせで「最初のタグの単一 variant と同じ shape になる」ことを確かめる。組み合わせは `ICON_RULES` から生成する。
    - author の id セレクタで variant を指定したノードで、全組み合わせについて author の値が勝つことを確かめる（#3776）。
    - 組み込みシートの variant ルールが、`VARIANT_ICONS_BY_KIND` の語彙の外のタグを使っていないことを確かめる（shape mode の 4 行と `ICON_RULES` の一致）。
