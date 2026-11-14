@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import * as inlineShare from "./inline-share.js";
 
 /**
  * Meta-test — every site that builds a server-visible `/s?s=<payload>` URL must
@@ -93,5 +94,17 @@ describe("unfurl payload budget — /s?s= builders", () => {
     // A broken path or glob would make the assertion above pass vacuously
     // against an empty allowlist edit; anchor it to a builder that must exist.
     expect(findBuilders()).toContain("packages/app/src/utils/inline-share.ts");
+  });
+});
+
+describe("the unfurl budget's module", () => {
+  // TPL-2259: the limit is exported as a judgement (`fitsUnfurlPayload`), never
+  // as the number, so a new producer cannot write its own comparison against
+  // it. Re-exporting the constant, under any name, fails here.
+  it("exports no number", () => {
+    const numbers = Object.entries(inlineShare)
+      .filter(([, value]) => typeof value === "number")
+      .map(([name]) => name);
+    expect(numbers).toEqual([]);
   });
 });
