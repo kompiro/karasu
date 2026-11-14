@@ -268,7 +268,13 @@ Low でなければ、出た段階のラベルを付けて draft で作り、`gh
      `docs/spec/` / `docs/test-perspectives/` / `docs/roadmap.md`
      のいずれでもよい。削除でリンク切れになるものを繋ぎ直すのは昇格の一部で
      あって、別の判断ではない）。変えてよいのはリンク先と、リンクの文字列のうち
-     ファイル名・パス・`ADR-<n>` の言い換えだけ。High のパス（`docs/spec/**` など）は
+     ファイル名・パス・`ADR-<n>` の言い換えと、次の 2 つだけ。その行の先頭のラベル
+     `関連 Design Doc` を `関連 ADR` にすること（行に Design Doc への参照が残らないとき）。
+     削除した Design Doc の参照だけを入れたコードスパンを、ファイル名の語幹が同じ新 ADR の
+     `ADR-<n>` を地の文に書いた形にすること（リンクやコードスパンの中、URL やパスの一部は除く）。
+     どちらも逆向きは許さない。`docs/design/` の直下のファイルが隣の Design Doc を
+     ディレクトリなしの名前（`<name>.md`・`./<name>.md`）で書いていれば、リンク先の全体か
+     コードスパンの中身の全体のときだけ参照として張り替える。High のパス（`docs/spec/**` など）は
      張り替えだけでも High のままで、人間がレビューする
    - **AT（`docs/acceptance/*.md`）の ADR の行に、新 ADR へのリンクを足すだけの差分**。
      AT は Design Doc ではなく Issue を指すので（`.claude/rules/acceptance.md`）、

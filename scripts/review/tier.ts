@@ -545,44 +545,209 @@ function namesOf(paths: readonly string[]): Set<string> {
 const isNameIn = (names: ReadonlySet<string>, text: string): boolean =>
   names.has(text.trim().replace(/^`(.*)`$/, "$1"));
 
+/** The file stem a Design Doc or an ADR is named after: `x` of `x.md` and of `12-x.md`. */
+const stemOf = (path: string, isAdr: boolean): string => {
+  const file = (path.split("/").at(-1) ?? path).replace(/\.md$/, "");
+  return isAdr ? file.replace(/^\d+-/, "") : file;
+};
+
+/** The leading label of a list item: indent, `- `, optional bold, the label, the colon. */
+const ITEM_LABEL = /^(\s*- )(\*\*)?(関連 Design Doc|関連 ADR)\2([:：])/;
+/** A Design Doc path anywhere on a line: counted broadly, since it only holds the label back. */
+const DESIGN_PATH = /design\//;
+/** A `.md` name with no directory, which inside docs/design/ may name a sibling Design Doc. */
+const BARE_MD_NAME = /(?<![\w./-])(?:\.\/)?[\w-][\w.-]*\.md(?![\w-])/;
+/** A markdown link, and a code span. */
+const LINK = /\[([^\]]*)\]\(([^)\s]+)\)/g;
+const CODE_SPAN = /`([^`]+)`/g;
+const refToken = (stem: string) => `⟦ref:${stem}⟧`;
+
+type Segment =
+  | { kind: "link"; start: number; body: string; target: string }
+  | { kind: "code" | "plain"; start: number; body: string };
+
+/** A line cut into markdown links, code spans outside them, and the plain text between. */
+function segmentsOf(line: string): Segment[] {
+  const segs: Segment[] = [];
+  const text = (start: number, body: string) => {
+    let last = 0;
+    for (const m of body.matchAll(CODE_SPAN)) {
+      if (m.index > last)
+        segs.push({ kind: "plain", start: start + last, body: body.slice(last, m.index) });
+      segs.push({ kind: "code", start: start + m.index, body: m[1] });
+      last = m.index + m[0].length;
+    }
+    if (last < body.length)
+      segs.push({ kind: "plain", start: start + last, body: body.slice(last) });
+  };
+  let last = 0;
+  for (const m of line.matchAll(LINK)) {
+    text(last, line.slice(last, m.index));
+    segs.push({ kind: "link", start: m.index, body: m[1], target: m[2] });
+    last = m.index + m[0].length;
+  }
+  text(last, line.slice(last));
+  return segs;
+}
+
+const ADR_NUMBER = /ADR-(\d+)/g;
+
+/**
+ * What keeps a line from rewriting a code span to `ADR-<n>` at all (#3620, D3):
+ * anything a browser or GitHub may read as a URL or as markup around one: link
+ * and footnote brackets, HTML and autolink angle brackets, an address, a
+ * scheme, `www.`, and a double-backtick code span. A link destination, a link
+ * title or an HTML attribute may continue from an earlier line, which a line
+ * pair cannot see, so ASCII parentheses, quotes and `=`, and a line that is
+ * only a code span (a reference definition's destination), are kept out too. The whole line is judged, because
+ * markdown structure does not follow words, and no parser is used, so the
+ * check needs no install.
+ */
+const NOT_PROSE_LINE = /[[\]<>@()"'=]|:\/\/|www\.|``|^\s*`[^`]*`\s*$/;
+
+/** The Design Doc's boundary around a prose `ADR-<n>`: no name or path character next to it. */
+const isNumberEdge = (line: string, start: number, end: number): boolean =>
+  !/[\w./:-]/.test(line[start - 1] ?? "") &&
+  !/[\w/-]/.test(line[end] ?? "") &&
+  !(line[end] === "." && /[A-Za-z0-9]/.test(line[end + 1] ?? ""));
+
 /**
  * Whether one changed line pair only swaps a reference to a deleted Design Doc for
  * a reference to the ADR that replaced it (ADR-2331's "張り替え"). Only the
  * reference itself may change: a markdown link's target, whole, or a bare path
  * that stands on its own (not inside a URL or a longer name). Link text and
- * every other character must stay as they were.
+ * every other character must stay as they were, with three fixed exceptions
+ * (#3620). In a file at the top of docs/design/, a sibling Design Doc's bare
+ * name is a reference when it is a whole link target or a whole code span. The
+ * item label `関連 Design Doc` may become `関連 ADR` when no Design Doc
+ * reference is left on the line. A code span holding the Design Doc's
+ * reference may become a standalone `ADR-<n>` of the ADR with the same stem.
  */
 export function isLinkSwap(
   removed: string,
   added: string,
   deletedDesigns: readonly string[],
   newAdrs: readonly string[],
+  path?: string,
 ): boolean {
   const oldRef = referenceSource(deletedDesigns);
   const newRef = referenceSource(newAdrs);
   if (oldRef === null || newRef === null) return false;
+  const inDesignDir = path !== undefined && DESIGN_DOC.test(path);
   // A trailing period ends a sentence; it continues the name only when a name
   // character follows it.
   const bare = (ref: string) => new RegExp(`(?<![\\w./:-])${ref}(?![\\w-]|\\.[\\w-])`, "g");
   const target = (ref: string) => new RegExp(`^${ref}$`);
-  const mentions = (line: string, ref: string) =>
-    bare(ref).test(line) ||
-    [...line.matchAll(/\]\(([^)\s]+)\)/g)].some((m) => target(ref).test(m[1]));
-  if (!mentions(removed, oldRef) || !mentions(added, newRef)) return false;
+  // Each record a whole reference may name, with its stem.
+  const wholeRefs = [
+    ...deletedDesigns.map((p) => {
+      const sibling = `(?:\\./)?${escapeRe(p.split("/").at(-1) ?? p)}(?:#[\\w-]*)?`;
+      return {
+        re: target(referenceSource([p]) ?? ""),
+        siblingRe: inDesignDir ? target(sibling) : undefined,
+        stem: stemOf(p, false),
+        old: true,
+      };
+    }),
+    ...newAdrs.map((p) => ({
+      re: target(referenceSource([p]) ?? ""),
+      siblingRe: undefined,
+      stem: stemOf(p, true),
+      old: false,
+    })),
+  ];
+  // A sibling's bare name (D1) counts where the caller says it may: always as a
+  // link target, and as a code span only on a line of plain prose, since a
+  // link the link pattern misses (one with a title) would hide its text.
+  const wholeRef = (text: string, sibling: boolean) =>
+    wholeRefs.find((r) => r.re.test(text) || (sibling && r.siblingRe?.test(text) === true));
+  // Number to the stem of the new ADR a prose `ADR-<n>` may stand for:
+  // only an ADR whose stem a deleted Design Doc shares.
+  const designStems = new Set(deletedDesigns.map((p) => stemOf(p, false)));
+  const numbered = new Map<string, string>();
+  for (const p of newAdrs) {
+    const n = /^docs\/adr\/(\d+)-/.exec(p)?.[1];
+    if (n !== undefined && designStems.has(stemOf(p, true))) numbered.set(n, stemOf(p, true));
+  }
   const either = `(?:${oldRef}|${newRef})`;
   // A link's text may change only from one name of what it points at to another:
   // the file name or path (in backticks or not), or the ADR's number.
   const names = namesOf([...deletedDesigns, ...newAdrs]);
   const isName = (text: string) => isNameIn(names, text);
-  const normalize = (line: string) =>
-    line
-      .replace(/\[([^\]]*)\]\(([^)\s]+)\)/g, (link, text: string, t: string) =>
-        target(either).test(t)
-          ? `[${isName(text) ? "\u27E6name\u27E7" : text}](\u27E6ref\u27E7)`
-          : link,
-      )
-      .replace(bare(either), "\u27E6ref\u27E7");
-  return normalize(removed) === normalize(added);
+
+  const proseLines = !NOT_PROSE_LINE.test(removed) && !NOT_PROSE_LINE.test(added);
+
+  // The Design Doc's comparison: references become symbols and the rest of the
+  // line must stay as it was. Links first, so a code span in link text stays
+  // with the link rule; then whole-reference code spans, which keep their stem;
+  // then, on the added line only, a prose `ADR-<n>` of a same-stem ADR; then
+  // directory-bearing paths in what is left.
+  const normalize = (line: string, side: "removed" | "added") => {
+    const seen = { old: false, new: false };
+    const swapPaths = (text: string) => {
+      if (bare(oldRef).test(text)) seen.old = true;
+      if (bare(newRef).test(text)) seen.new = true;
+      return text.replace(bare(either), "⟦ref⟧");
+    };
+    const prose = side === "added" && proseLines;
+    let out = "";
+    for (const seg of segmentsOf(line)) {
+      if (seg.kind === "link") {
+        const ref = wholeRef(seg.target, true);
+        if (ref === undefined) {
+          out += `[${swapPaths(seg.body)}](${swapPaths(seg.target)})`;
+        } else {
+          seen[ref.old ? "old" : "new"] = true;
+          out += `[${isName(seg.body) ? "⟦name⟧" : swapPaths(seg.body)}](⟦ref⟧)`;
+        }
+      } else if (seg.kind === "code") {
+        const ref = wholeRef(seg.body, proseLines);
+        if (ref === undefined) {
+          out += `\`${swapPaths(seg.body)}\``;
+        } else {
+          seen[ref.old ? "old" : "new"] = true;
+          out += `\`${refToken(ref.stem)}\``;
+        }
+      } else {
+        const text = seg.body.replace(ADR_NUMBER, (m: string, n: string, offset: number) => {
+          const start = seg.start + offset;
+          const stem = numbered.get(n);
+          if (stem === undefined || side === "removed") return m;
+          if (!isNumberEdge(line, start, start + m.length)) return m;
+          // Off a prose line, an ADR-<n> already there still keeps the line out
+          // of Low, so it becomes a mark the removed line cannot match.
+          if (!prose) return "⟦not prose⟧";
+          seen.new = true;
+          return `\`${refToken(stem)}\``;
+        });
+        out += swapPaths(text);
+      }
+    }
+    return { text: out, seen };
+  };
+
+  // The item label pair, compared only when nothing else in the label moved and
+  // the added line no longer refers to any Design Doc.
+  const [r, a] = [ITEM_LABEL.exec(removed), ITEM_LABEL.exec(added)];
+  let [from, to] = [removed, added];
+  if (
+    r?.[3] === "関連 Design Doc" &&
+    a?.[3] === "関連 ADR" &&
+    r[2] === a[2] &&
+    r[4] === a[4] &&
+    !DESIGN_PATH.test(added) &&
+    !(inDesignDir && BARE_MD_NAME.test(added))
+  ) {
+    // Only the label word is replaced: the indent, bold marks and colon stay in
+    // both lines, so they must match, and the colon still precedes the value.
+    const word = (m: RegExpExecArray, line: string) =>
+      `${m[1]}${m[2] ?? ""}⟦label⟧${line.slice(m[0].length - (m[2] ?? "").length - m[4].length)}`;
+    from = word(r, removed);
+    to = word(a, added);
+  }
+  const before = normalize(from, "removed");
+  const after = normalize(to, "added");
+  return before.seen.old && after.seen.new && before.text === after.text;
 }
 
 /** The labels of an ADR line in a record: `- **設計 (ADR)**:`, `- **関連 ADR**:` and their spellings. */
@@ -827,7 +992,7 @@ function fileTier(
       h.removed.length > 0 &&
       h.removed.length === h.added.length &&
       h.removed.every((line, i) =>
-        isLinkSwap(line, h.added[i], promotion.deletedDesigns, promotion.newAdrs),
+        isLinkSwap(line, h.added[i], promotion.deletedDesigns, promotion.newAdrs, f.path),
       );
     if (
       f.status === "modified" &&
