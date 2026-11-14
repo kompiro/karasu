@@ -60,6 +60,6 @@ React 17 以降、ルートに委譲される `wheel` / `touchstart` / `touchmov
 
 - CI の `pnpm run lint`（`.github/workflows/ci.yml`）: oxlint の `react/forbid-dom-props` と
   `react/forbid-component-props` が `onWheel` / `onTouchStart` / `onTouchMove`（と capture 版）を拒むので、
-  React の synthetic な経路は書けない。項目 1 と 5 の印にはしない。ネイティブの登録が非 passive か
+  synthetic な経路は JSX の属性としては書けない（props の spread と `createElement` は lint を通る）。項目 1 と 5 の印にはしない。ネイティブの登録が非 passive か
   （`window` / `document` / `body` では既定が passive）と、ネイティブのハンドラが opt-out 属性を見るかは lint が見ないため
 - `packages/app/src/components/PreviewPane.test.tsx`（`wheel zoom (#1537)` describe ブロック）

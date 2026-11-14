@@ -67,11 +67,17 @@
           { "property": "createContextualFragment", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
           { "object": "document", "property": "write", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
           { "property": "srcdoc", "message": "Only AllLayersFrame.tsx sets srcDoc (TPL-2800)." },
-          { "object": "React", "property": "createElement", "message": "Write JSX: lint checks dangerouslySetInnerHTML, srcDoc and passive listeners on JSX only (TPL-1537, TPL-2789, TPL-2800)." }
+          { "property": "writeln", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
+          { "property": "contentDocument", "message": "Only AllLayersFrame.tsx fills an iframe (TPL-2800)." },
+          { "object": "React", "property": "createElement", "message": "Write JSX: lint checks srcDoc and the passive listeners as JSX attributes only (TPL-1537, TPL-2800)." }
         ],
         "no-restricted-imports": [
           "error",
           {
+            "paths": [
+              { "name": "react/jsx-runtime", "message": "Write JSX: lint checks dangerouslySetInnerHTML, srcDoc and the passive listeners as JSX attributes (TPL-1537, TPL-2789, TPL-2800)." },
+              { "name": "react/jsx-dev-runtime", "message": "Write JSX: lint checks dangerouslySetInnerHTML, srcDoc and the passive listeners as JSX attributes (TPL-1537, TPL-2789, TPL-2800)." }
+            ],
             "patterns": [
               {
                 "regex": "(^|/)InjectedHtml(\\.js)?$",
@@ -92,7 +98,15 @@
         "packages/app/src/components/OutlineView.tsx"
       ],
       "rules": {
-        "no-restricted-imports": "off"
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              { "name": "react/jsx-runtime", "message": "Write JSX: lint checks dangerouslySetInnerHTML, srcDoc and the passive listeners as JSX attributes (TPL-1537, TPL-2789, TPL-2800)." },
+              { "name": "react/jsx-dev-runtime", "message": "Write JSX: lint checks dangerouslySetInnerHTML, srcDoc and the passive listeners as JSX attributes (TPL-1537, TPL-2789, TPL-2800)." }
+            ]
+          }
+        ]
       }
     },
     {
