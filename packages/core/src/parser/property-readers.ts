@@ -1,5 +1,11 @@
 import { TokenType, type Token, type SourceRange, type SourceLocation } from "../types/tokens.js";
-import type { LinkEntry, NodeIdPath, HandlesTarget } from "../types/ast.js";
+import type {
+  DiagnosticCode,
+  DiagnosticParamsByCode,
+  LinkEntry,
+  NodeIdPath,
+  HandlesTarget,
+} from "../types/ast.js";
 import { isRecognizedResourceOperation } from "../spec/operations.js";
 import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
 import { opensEdgeOnLaterLine, readNodeIdPathTail, pathPastLeaf } from "./node-path.js";
@@ -25,20 +31,80 @@ export interface ParsedOperation {
   decorationLoc: SourceLocation | undefined;
 }
 
-export function parseDescriptionValue(ctx: ParseContext): string {
-  if (ctx.peek().type === TokenType.TripleQuote) {
-    return ctx.advance().value;
-  }
-  if (ctx.peek().type === TokenType.StringLiteral) {
-    return ctx.advance().value;
-  }
-  ctx.error("expected-string-after", { property: "description" });
+/**
+ * Read the value that `after` (a keyword, or an edge's arrow) requires, or
+ * return `undefined`, consuming nothing, when it is missing.
+ *
+ * A value is missing when the next token is none of `types`, and also when it
+ * is the source of an edge that starts on a later line (#3767). The lexer drops
+ * newlines, so a reader that took any token of the right type would read the
+ * next line's edge source as its value, and inside a node block the arrow left
+ * behind would quietly become an implicit-source edge. Every reader that
+ * requires a value stops on this one check, the same check the readers of
+ * optional trailing tokens use (ADR-3752).
+ */
+export function readValueAfter(
+  ctx: ParseContext,
+  after: Token,
+  ...types: TokenType[]
+): Token | undefined {
+  if (!types.includes(ctx.peek().type) || opensEdgeOnLaterLine(ctx, after)) return undefined;
+  return ctx.advance();
+}
+
+/**
+ * Report a missing value over the construct that asked for it: from `start`
+ * through the token read last (#3767). The range points where the value has to
+ * be written, whatever follows; `ctx.error` would point at the next token,
+ * which is the correctly written source of the next edge when the reader
+ * stopped there.
+ */
+export function reportMissingValue<K extends DiagnosticCode>(
+  ctx: ParseContext,
+  start: SourceLocation,
+  code: K,
+  params: DiagnosticParamsByCode[K],
+): void {
+  const last = ctx.previous();
+  rejectConstruct(ctx, ctx.range(start, last ? (last.end ?? last.loc) : undefined), code, params);
+}
+
+/**
+ * Read the string a property keyword requires (`label`, `role`, `slack`, …),
+ * the keyword having just been consumed. A missing string is reported on the
+ * keyword and yields `undefined`, so the property is left unset.
+ */
+export function readStringValue(
+  ctx: ParseContext,
+  keyword: Token,
+  property: DiagnosticParamsByCode["expected-string-after"]["property"],
+): string | undefined {
+  const value = readValueAfter(ctx, keyword, TokenType.StringLiteral);
+  if (!value) reportMissingValue(ctx, keyword.loc, "expected-string-after", { property });
+  return value?.value;
+}
+
+/** Read the value after `description`, which has just been consumed as `keyword`. */
+export function parseDescriptionValue(ctx: ParseContext, keyword: Token): string {
+  const value = readValueAfter(ctx, keyword, TokenType.TripleQuote, TokenType.StringLiteral);
+  if (value) return value.value;
+  reportMissingValue(ctx, keyword.loc, "expected-string-after", { property: "description" });
   return "";
 }
 
-export function parseLink(ctx: ParseContext): LinkEntry {
+/**
+ * Read a link after `link`, which has just been consumed as `keyword`. A link
+ * without a URL is reported on the keyword and yields `undefined`: the link is
+ * rejected whole rather than kept with a token it never read as its URL
+ * (#3767, TPL-3072).
+ */
+export function parseLink(ctx: ParseContext, keyword: Token): LinkEntry | undefined {
   const start = ctx.peek().loc;
-  const url = ctx.expect(TokenType.StringLiteral);
+  const url = readValueAfter(ctx, keyword, TokenType.StringLiteral);
+  if (!url) {
+    reportMissingValue(ctx, keyword.loc, "expected-string-after", { property: "link" });
+    return undefined;
+  }
   let label: string | undefined;
   let end = url.loc;
   // A quoted id that opens the next line's edge is not this link's label
@@ -267,13 +333,23 @@ export function parseHandlesList(ctx: ParseContext, keyword: Token): HandlesTarg
   return refs;
 }
 
-/** Accept either an identifier or a string literal as an id/reference token. */
-export function parseIdOrString(ctx: ParseContext, context: string): Token {
-  if (ctx.peek().type === TokenType.Identifier || ctx.peek().type === TokenType.StringLiteral) {
-    return ctx.advance();
-  }
-  ctx.error("expected-id-or-string", { context });
-  return ctx.peek();
+/**
+ * Read the id or quoted id the token read last requires (a declaration keyword,
+ * an edge's arrow), or `undefined` when it is missing. The missing id is
+ * reported from `start`, the beginning of the construct, through the token
+ * read last.
+ */
+export function parseIdOrString(
+  ctx: ParseContext,
+  context: string,
+  start: SourceLocation,
+): Token | undefined {
+  const after = ctx.previous();
+  const value = after
+    ? readValueAfter(ctx, after, TokenType.Identifier, TokenType.StringLiteral)
+    : undefined;
+  if (!value) reportMissingValue(ctx, start, "expected-id-or-string", { context });
+  return value;
 }
 
 /**

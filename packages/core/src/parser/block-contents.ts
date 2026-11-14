@@ -19,6 +19,7 @@ import {
   parseOperationsList,
   parseHandlesList,
   parseDeliversList,
+  readStringValue,
   readTableRef,
   rejectMisplacedProperty,
   type ParsedOperation,
@@ -88,26 +89,21 @@ export function parseBlockContentsWithProperties(
 
     // Property: label
     if (token.type === TokenType.Label) {
-      ctx.advance();
-      if (ctx.peek().type === TokenType.StringLiteral) {
-        properties.label = ctx.advance().value;
-      } else {
-        ctx.error("expected-string-after", { property: "label" });
-      }
+      const value = readStringValue(ctx, ctx.advance(), "label");
+      if (value !== undefined) properties.label = value;
       continue;
     }
 
     // Property: description
     if (token.type === TokenType.Description) {
-      ctx.advance();
-      properties.description = parseDescriptionValue(ctx);
+      properties.description = parseDescriptionValue(ctx, ctx.advance());
       continue;
     }
 
     // Property: link
     if (token.type === TokenType.Link) {
-      ctx.advance();
-      properties.links.push(parseLink(ctx));
+      const link = parseLink(ctx, ctx.advance());
+      if (link) properties.links.push(link);
       continue;
     }
 
@@ -125,12 +121,8 @@ export function parseBlockContentsWithProperties(
     // Property: role (user only)
     if (token.type === TokenType.Role) {
       if (kind === "user") {
-        ctx.advance();
-        if (ctx.peek().type === TokenType.StringLiteral) {
-          properties.role = ctx.advance().value;
-        } else {
-          ctx.error("expected-string-after", { property: "role" });
-        }
+        const value = readStringValue(ctx, ctx.advance(), "role");
+        if (value !== undefined) properties.role = value;
       } else {
         rejectMisplacedProperty(ctx, kind);
       }
@@ -218,13 +210,15 @@ export function parseBlockContentsWithProperties(
 
     // Implicit-source edge: -> or --> (source = parent node ID)
     if ((token.type === TokenType.Arrow || token.type === TokenType.DashedArrow) && parentId) {
-      edges.push(parseEdge(ctx, parentId));
+      const edge = parseEdge(ctx, parentId);
+      if (edge) edges.push(edge);
       continue;
     }
 
     // Check for edge: Identifier/StringLiteral -> or -->
     if (isEdgeStart(ctx, token)) {
       const edge = parseEdge(ctx);
+      if (!edge) continue;
       if (parentId && edge.from !== parentId) {
         ctx.pushDiagnostic({
           severity: "error",
@@ -369,17 +363,12 @@ function parseClientCapability(ctx: ParseContext): import("../types/ast.js").Cli
     while (ctx.peek().type !== TokenType.RightBrace && ctx.peek().type !== TokenType.EOF) {
       const inner = ctx.peek();
       if (inner.type === TokenType.Label) {
-        ctx.advance();
-        if (ctx.peek().type === TokenType.StringLiteral) {
-          label = ctx.advance().value;
-        } else {
-          ctx.error("expected-string-after", { property: "label" });
-        }
+        const value = readStringValue(ctx, ctx.advance(), "label");
+        if (value !== undefined) label = value;
         continue;
       }
       if (inner.type === TokenType.Description) {
-        ctx.advance();
-        description = parseDescriptionValue(ctx);
+        description = parseDescriptionValue(ctx, ctx.advance());
         continue;
       }
       if (rejectEdge(ctx, "capability")) continue;

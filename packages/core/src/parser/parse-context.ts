@@ -50,6 +50,9 @@ export interface ParseContext extends TokenCursor {
    * Parse an edge when the next token opens one, for a block that takes no
    * edges but must still read a misplaced one whole (#3499). The org parsers
    * reach `parseEdge` only through this, since edge-parser.ts imports them.
+   * Returns `undefined` when no edge starts here, and `{ edge: undefined }`
+   * when an edge was read whole but had no target, which `parseEdge` has
+   * already reported (#3767).
    */
-  tryParseEdge(): KrsEdge | undefined;
+  tryParseEdge(): { edge: KrsEdge | undefined } | undefined;
 }

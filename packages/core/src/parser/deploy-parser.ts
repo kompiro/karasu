@@ -7,7 +7,12 @@ import type {
 } from "../types/ast.js";
 import { DEPLOY_KEYWORDS } from "./parser-keywords.js";
 import { handleNestedLegend } from "./legend-parser.js";
-import { commaSeparatedValues, readReferencePathElement } from "./property-readers.js";
+import {
+  commaSeparatedValues,
+  readReferencePathElement,
+  readValueAfter,
+  reportMissingValue,
+} from "./property-readers.js";
 import { rejectEdge } from "./rejected-construct.js";
 import type { ParseContext } from "./parse-context.js";
 
@@ -35,11 +40,12 @@ export function parseDeployBlock(ctx: ParseContext): DeployBlock {
 
   while (ctx.peek().type !== TokenType.RightBrace && ctx.peek().type !== TokenType.EOF) {
     if (ctx.peek().value === "label") {
-      ctx.advance();
-      if (ctx.peek().type === TokenType.StringLiteral || ctx.peek().type === TokenType.Identifier) {
-        label = ctx.advance().value;
+      const keyword = ctx.advance();
+      const value = readValueAfter(ctx, keyword, TokenType.StringLiteral, TokenType.Identifier);
+      if (value) {
+        label = value.value;
       } else {
-        ctx.error("expected-property-value", { propName: "label" });
+        reportMissingValue(ctx, keyword.loc, "expected-property-value", { propName: "label" });
       }
     } else if (DEPLOY_KEYWORDS.has(ctx.peek().value)) {
       nodes.push(parseDeployNode(ctx));
@@ -78,25 +84,26 @@ function parseDeployNode(ctx: ParseContext): DeployNode {
 
   while (ctx.peek().type !== TokenType.RightBrace && ctx.peek().type !== TokenType.EOF) {
     if (ctx.peek().value === "label") {
-      ctx.advance();
-      if (ctx.peek().type === TokenType.StringLiteral || ctx.peek().type === TokenType.Identifier) {
-        label = ctx.advance().value;
+      const keyword = ctx.advance();
+      const value = readValueAfter(ctx, keyword, TokenType.StringLiteral, TokenType.Identifier);
+      if (value) {
+        label = value.value;
       } else {
-        ctx.error("expected-property-value", { propName: "label" });
+        reportMissingValue(ctx, keyword.loc, "expected-property-value", { propName: "label" });
       }
     } else if (DEPLOY_PROPERTY_KEYWORDS.has(ctx.peek().value)) {
       const propToken = ctx.advance();
       const propName = propToken.value as keyof DeployNodeProperties;
       if (propName === "realizes") {
         parseRealizesList(ctx, propToken, properties);
-      } else if (
-        // Value can be string literal or identifier
-        ctx.peek().type === TokenType.StringLiteral ||
-        ctx.peek().type === TokenType.Identifier
-      ) {
-        (properties as Record<string, string>)[propName] = ctx.advance().value;
       } else {
-        ctx.error("expected-property-value", { propName });
+        // Value can be string literal or identifier
+        const value = readValueAfter(ctx, propToken, TokenType.StringLiteral, TokenType.Identifier);
+        if (value) {
+          (properties as Record<string, string>)[propName] = value.value;
+        } else {
+          reportMissingValue(ctx, propToken.loc, "expected-property-value", { propName });
+        }
       }
     } else if (ctx.peek().type === TokenType.Legend) {
       handleNestedLegend(ctx, kind);

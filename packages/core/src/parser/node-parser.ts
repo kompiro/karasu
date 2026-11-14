@@ -12,7 +12,7 @@ import { isRecognizedResourceOperation, type CrudVerb } from "../spec/operations
 import type { ResourceOperation } from "../spec/operations.js";
 import { readNodeIdPathTail, pathPastLeaf } from "./node-path.js";
 import { parseTags, parseAnnotations } from "./annotation-parser.js";
-import type { ParsedOperation } from "./property-readers.js";
+import { readValueAfter, reportMissingValue, type ParsedOperation } from "./property-readers.js";
 import { parseBlockContentsWithProperties } from "./block-contents.js";
 import { parseInfraBlock } from "./infra-parser.js";
 import { parseAuthorIdSuffix } from "./edge-parser.js";
@@ -39,12 +39,13 @@ export function parseNodeDecl(ctx: ParseContext): KrsNode {
   // id: accept identifier (e.g. ECommerce) or string literal (e.g. "e-commerce")
   let id: string;
   let idToken: Token;
-  if (ctx.peek().type !== TokenType.Identifier && ctx.peek().type !== TokenType.StringLiteral) {
-    ctx.error("expected-node-id", { kind });
+  const read = readValueAfter(ctx, start, TokenType.Identifier, TokenType.StringLiteral);
+  if (!read) {
+    reportMissingValue(ctx, start.loc, "expected-node-id", { kind });
     id = "__missing_id";
     idToken = start; // fallback location
   } else {
-    idToken = ctx.advance();
+    idToken = read;
     id = idToken.value;
   }
 
@@ -196,12 +197,13 @@ function parseResourceDecl(ctx: ParseContext, start: Token): KrsNode {
   // id
   let id: string;
   let idToken: Token;
-  if (ctx.peek().type !== TokenType.Identifier && ctx.peek().type !== TokenType.StringLiteral) {
-    ctx.error("expected-node-id", { kind: "resource" });
+  const read = readValueAfter(ctx, start, TokenType.Identifier, TokenType.StringLiteral);
+  if (!read) {
+    reportMissingValue(ctx, start.loc, "expected-node-id", { kind: "resource" });
     id = "__missing_id";
     idToken = start;
   } else {
-    idToken = ctx.advance();
+    idToken = read;
     id = idToken.value;
   }
 

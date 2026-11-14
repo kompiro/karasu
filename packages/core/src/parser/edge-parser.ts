@@ -2,7 +2,13 @@ import { TokenType, type Token, type SourceLocation } from "../types/tokens.js";
 import type { KrsEdge, LinkEntry, NodeIdPath } from "../types/ast.js";
 import { opensEdgeOnLaterLine, readNodeIdPathTail } from "./node-path.js";
 import { parseTags } from "./annotation-parser.js";
-import { parseDescriptionValue, parseLink, parseIdOrString } from "./property-readers.js";
+import {
+  parseDescriptionValue,
+  parseLink,
+  parseIdOrString,
+  readValueAfter,
+  reportMissingValue,
+} from "./property-readers.js";
 import { parseFacetsList } from "./org-parser.js";
 import { rejectEdge } from "./rejected-construct.js";
 import type { ParseContext } from "./parse-context.js";
@@ -21,7 +27,11 @@ export function isEdgeStart(ctx: ParseContext, token: Token): boolean {
     (ctx.peekAt(1).type === TokenType.Arrow || ctx.peekAt(1).type === TokenType.DashedArrow)
   );
 }
-export function parseEdge(ctx: ParseContext, implicitFrom?: string): KrsEdge {
+/**
+ * Parse an edge, or return `undefined` when it has no target: the edge is then
+ * read whole, reported once, and kept out of the model (#3767).
+ */
+export function parseEdge(ctx: ParseContext, implicitFrom?: string): KrsEdge | undefined {
   let fromValue: string;
   let startLoc: SourceLocation;
   if (implicitFrom) {
@@ -34,7 +44,18 @@ export function parseEdge(ctx: ParseContext, implicitFrom?: string): KrsEdge {
     startLoc = fromToken.loc;
   }
   const arrowToken = ctx.advance(); // -> or -->
-  const toToken = parseIdOrString(ctx, "edge target");
+  const toToken = parseIdOrString(ctx, "edge target", startLoc);
+  if (!toToken) {
+    // No target (`->` before `}`, or before the source of the next line's
+    // edge): read the rest of the edge whole and drop it, so its property block
+    // does not fall through to the enclosing block, where its `label` would
+    // label the node and its `}` close it (#3767, TPL-3072). A positional label
+    // is not read: with no target, a string here is not one.
+    parseTags(ctx);
+    parseAuthorIdSuffix(ctx);
+    parseEdgeBlock(ctx, undefined);
+    return undefined;
+  }
 
   // Support qualified references at any depth: `Sys.Svc`, `Sys.Svc.Domain`, …
   // The two-segment cap lifted with slice E (#2577), together with the
@@ -133,29 +154,33 @@ function parseEdgeBlock(
     const token = ctx.peek();
 
     if (token.type === TokenType.Label) {
-      ctx.advance();
-      if (ctx.peek().type !== TokenType.StringLiteral) {
-        ctx.error("expected-string-after", { property: "label" });
+      const keyword = ctx.advance();
+      const valueToken = readValueAfter(ctx, keyword, TokenType.StringLiteral);
+      if (!valueToken) {
+        reportMissingValue(ctx, keyword.loc, "expected-string-after", { property: "label" });
         continue;
       }
-      const value = ctx.peek().value;
       if (positionalLabel !== undefined) {
-        ctx.error("duplicate-edge-label", { label: value });
+        ctx.pushDiagnostic({
+          severity: "error",
+          code: "duplicate-edge-label",
+          params: { label: valueToken.value },
+          loc: ctx.range(valueToken.loc),
+        });
+      } else {
+        label = valueToken.value;
       }
-      ctx.advance();
-      if (positionalLabel === undefined) label = value;
       continue;
     }
 
     if (token.type === TokenType.Description) {
-      ctx.advance();
-      description = parseDescriptionValue(ctx);
+      description = parseDescriptionValue(ctx, ctx.advance());
       continue;
     }
 
     if (token.type === TokenType.Link) {
-      ctx.advance();
-      (links ??= []).push(parseLink(ctx));
+      const link = parseLink(ctx, ctx.advance());
+      if (link) (links ??= []).push(link);
       continue;
     }
 
@@ -194,13 +219,18 @@ function parseEdgeBlock(
  * Optional `#<id>` author identifier for edges and resource rows. The lexer
  * already emits `#foo` as a single Identifier token, so we just check the
  * leading `#`. Returns the id without the leading `#`, or undefined if the
- * next token is something else.
+ * next token is something else. Like every optional trailing token, it is not
+ * taken from the source of an edge that starts on a later line (#3767,
+ * TPL-3752): `a -> b` / `#next -> c` would otherwise give `a -> b` the author id
+ * and leave `-> c` behind as an implicit-source edge.
  */
 export function parseAuthorIdSuffix(ctx: ParseContext): string | undefined {
   const next = ctx.peek();
   if (next.type !== TokenType.Identifier) return undefined;
   if (!next.value.startsWith("#")) return undefined;
   if (next.value.length === 1) return undefined;
+  const last = ctx.previous();
+  if (last && opensEdgeOnLaterLine(ctx, last)) return undefined;
   ctx.advance();
   return next.value.slice(1);
 }
