@@ -59,14 +59,18 @@ export function rejectProperty(
 /**
  * Reject an edge written in a block that takes no edges, after it was parsed
  * whole with its property block (#3499). Returns false when the next token
- * opens no edge, so the caller falls through to its own default branch.
+ * opens no edge, so the caller falls through to its own default branch. An
+ * edge with no target has been reported for that already, and is consumed
+ * without a second error (#3767).
  */
 export function rejectEdge(ctx: ParseContext, blockKind: string): boolean {
   const token = ctx.peek();
-  const edge = ctx.tryParseEdge();
-  if (!edge) return false;
-  const params = { blockKind, tokenType: String(token.type), value: token.value };
-  rejectConstruct(ctx, edge.loc, "unexpected-token-in-block", params);
+  const read = ctx.tryParseEdge();
+  if (!read) return false;
+  if (read.edge) {
+    const params = { blockKind, tokenType: String(token.type), value: token.value };
+    rejectConstruct(ctx, read.edge.loc, "unexpected-token-in-block", params);
+  }
   return true;
 }
 

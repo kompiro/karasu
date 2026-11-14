@@ -11,7 +11,14 @@ import type {
 import { rejectConstruct, rejectNode } from "./rejected-construct.js";
 import { handleNestedLegend } from "./legend-parser.js";
 import { parseTags, parseAnnotations } from "./annotation-parser.js";
-import { parseDescriptionValue, parseLink, rejectMisplacedProperty } from "./property-readers.js";
+import {
+  parseDescriptionValue,
+  parseLink,
+  readStringValue,
+  readValueAfter,
+  reportMissingValue,
+  rejectMisplacedProperty,
+} from "./property-readers.js";
 import { parseBoundaryBlock, parseFacetsList, rejectNestedFacetBlock } from "./org-parser.js";
 import { isEdgeStart, parseEdge } from "./edge-parser.js";
 import type { ParseContext } from "./parse-context.js";
@@ -34,12 +41,13 @@ export function parseInfraBlock(
 ): KrsNode {
   let id: string;
   let idToken: Token;
-  if (ctx.peek().type !== TokenType.Identifier && ctx.peek().type !== TokenType.StringLiteral) {
-    ctx.error("expected-node-id", { kind });
+  const read = readValueAfter(ctx, start, TokenType.Identifier, TokenType.StringLiteral);
+  if (!read) {
+    reportMissingValue(ctx, start.loc, "expected-node-id", { kind });
     id = "__missing_id";
     idToken = start;
   } else {
-    idToken = ctx.advance();
+    idToken = read;
     id = idToken.value;
   }
 
@@ -90,30 +98,26 @@ function parseInfraBlockContents(
     const token = ctx.peek();
 
     if (token.type === TokenType.Label) {
-      ctx.advance();
-      if (ctx.peek().type === TokenType.StringLiteral) {
-        properties.label = ctx.advance().value;
-      } else {
-        ctx.error("expected-string-after", { property: "label" });
-      }
+      const value = readStringValue(ctx, ctx.advance(), "label");
+      if (value !== undefined) properties.label = value;
       continue;
     }
 
     if (token.type === TokenType.Description) {
-      ctx.advance();
-      properties.description = parseDescriptionValue(ctx);
+      properties.description = parseDescriptionValue(ctx, ctx.advance());
       continue;
     }
 
     if (token.type === TokenType.Link) {
-      ctx.advance();
-      properties.links.push(parseLink(ctx));
+      const link = parseLink(ctx, ctx.advance());
+      if (link) properties.links.push(link);
       continue;
     }
 
     // Edge
     if (isEdgeStart(ctx, token)) {
-      edges.push(parseEdge(ctx));
+      const edge = parseEdge(ctx);
+      if (edge) edges.push(edge);
       continue;
     }
 
@@ -178,29 +182,25 @@ function parseLeafNodeContents(
     const token = ctx.peek();
 
     if (token.type === TokenType.Label) {
-      ctx.advance();
-      if (ctx.peek().type === TokenType.StringLiteral) {
-        properties.label = ctx.advance().value;
-      } else {
-        ctx.error("expected-string-after", { property: "label" });
-      }
+      const value = readStringValue(ctx, ctx.advance(), "label");
+      if (value !== undefined) properties.label = value;
       continue;
     }
 
     if (token.type === TokenType.Description) {
-      ctx.advance();
-      properties.description = parseDescriptionValue(ctx);
+      properties.description = parseDescriptionValue(ctx, ctx.advance());
       continue;
     }
 
     if (token.type === TokenType.Link) {
-      ctx.advance();
-      properties.links.push(parseLink(ctx));
+      const link = parseLink(ctx, ctx.advance());
+      if (link) properties.links.push(link);
       continue;
     }
 
     if (isEdgeStart(ctx, token)) {
-      edges.push(parseEdge(ctx));
+      const edge = parseEdge(ctx);
+      if (edge) edges.push(edge);
       continue;
     }
 
@@ -296,12 +296,13 @@ function parseInfraSubNode(ctx: ParseContext, kind: "table" | "queue-item" | "bu
 
   let id: string;
   let idToken: Token;
-  if (ctx.peek().type !== TokenType.Identifier && ctx.peek().type !== TokenType.StringLiteral) {
-    ctx.error("expected-node-id", { kind: start.value });
+  const read = readValueAfter(ctx, start, TokenType.Identifier, TokenType.StringLiteral);
+  if (!read) {
+    reportMissingValue(ctx, start.loc, "expected-node-id", { kind: start.value });
     id = "__missing_id";
     idToken = start;
   } else {
-    idToken = ctx.advance();
+    idToken = read;
     id = idToken.value;
   }
 

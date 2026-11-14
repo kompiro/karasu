@@ -1023,7 +1023,7 @@ export interface DiagnosticParamsByCode {
   "expected-brace-or-string": { got: string; value: string };
   "expected-identifier": { got: string; value: string };
   "expected-string-after": {
-    property: "label" | "role" | "description" | "slack" | "github";
+    property: "label" | "role" | "description" | "link" | "slack" | "github";
   };
   "property-not-for-node-kind": {
     property: "role" | "handles" | "delivers" | "operations";

@@ -9,7 +9,7 @@ import type {
   CommonProperties,
   NodeIdPath,
 } from "../types/ast.js";
-import { readNodeIdPathTail } from "./node-path.js";
+import { opensEdgeOnLaterLine, readNodeIdPathTail } from "./node-path.js";
 import { parseAnnotations } from "./annotation-parser.js";
 import { handleNestedLegend } from "./legend-parser.js";
 import { rejectConstruct, rejectEdge, rejectNode } from "./rejected-construct.js";
@@ -18,6 +18,9 @@ import {
   parseLink,
   parseIdOrString,
   commaSeparatedValues,
+  readStringValue,
+  readValueAfter,
+  reportMissingValue,
   rejectMisplacedProperty,
 } from "./property-readers.js";
 import type { ParseContext } from "./parse-context.js";
@@ -30,7 +33,7 @@ import type { ParseContext } from "./parse-context.js";
 
 export function parseOrganizationBlock(ctx: ParseContext): OrganizationBlock {
   const start = ctx.advance(); // organization
-  const idToken = parseIdOrString(ctx, "organization");
+  const idToken = parseIdOrString(ctx, "organization", start.loc);
   let label = parseRetiredPositionalLabel(ctx, "organization");
   ctx.expect(TokenType.LeftBrace);
 
@@ -40,18 +43,13 @@ export function parseOrganizationBlock(ctx: ParseContext): OrganizationBlock {
   while (ctx.peek().type !== TokenType.RightBrace && ctx.peek().type !== TokenType.EOF) {
     const token = ctx.peek();
     if (token.type === TokenType.Label) {
-      ctx.advance();
-      if (ctx.peek().type === TokenType.StringLiteral) {
-        label = ctx.advance().value;
-      } else {
-        ctx.error("expected-string-after", { property: "label" });
-      }
+      const value = readStringValue(ctx, ctx.advance(), "label");
+      if (value !== undefined) label = value;
     } else if (token.type === TokenType.Description) {
-      ctx.advance();
-      properties.description = parseDescriptionValue(ctx);
+      properties.description = parseDescriptionValue(ctx, ctx.advance());
     } else if (token.type === TokenType.Link) {
-      ctx.advance();
-      properties.links.push(parseLink(ctx));
+      const link = parseLink(ctx, ctx.advance());
+      if (link) properties.links.push(link);
     } else if (token.type === TokenType.Team) {
       teams.push(parseTeamBlock(ctx));
     } else if (token.type === TokenType.Legend) {
@@ -73,12 +71,22 @@ export function parseOrganizationBlock(ctx: ParseContext): OrganizationBlock {
   collectTeamIds(ctx, teams, seen);
 
   return {
-    id: idToken.value,
+    id: idToken?.value ?? "__missing_id",
     label,
     properties,
     teams,
     loc: ctx.range(start.loc, end.loc),
   };
+}
+
+/**
+ * True when the next token is the source of an edge on a later line than the
+ * token read last, so no optional token after a declaration's id may take it:
+ * with the id missing, the string there opens the next statement (#3767).
+ */
+function opensNextEdge(ctx: ParseContext): boolean {
+  const last = ctx.previous();
+  return last !== undefined && opensEdgeOnLaterLine(ctx, last);
 }
 
 /**
@@ -96,7 +104,7 @@ export function parseOrganizationBlock(ctx: ParseContext): OrganizationBlock {
  * the form once it errors.
  */
 function parseRetiredPositionalLabel(ctx: ParseContext, construct: string): string | undefined {
-  if (ctx.peek().type !== TokenType.StringLiteral) return undefined;
+  if (ctx.peek().type !== TokenType.StringLiteral || opensNextEdge(ctx)) return undefined;
   ctx.error("positional-label-removed", { construct });
   return ctx.advance().value;
 }
@@ -106,12 +114,12 @@ function parseRetiredPositionalLabel(ctx: ParseContext, construct: string): stri
 // shape of `owns` (parseTeamBlock). See ADR-1974.
 export function parseBoundaryBlock(ctx: ParseContext): BoundaryBlock {
   const start = ctx.advance(); // boundary
-  const idToken = parseIdOrString(ctx, "boundary");
+  const idToken = parseIdOrString(ctx, "boundary", start.loc);
   let label: string | undefined;
   // The positional label form is removed on boundary (ADR-19 / #2133;
   // experimental construct, so no deprecation window). Consume the stray
   // string so parsing resumes cleanly at `{`.
-  if (ctx.peek().type === TokenType.StringLiteral) {
+  if (ctx.peek().type === TokenType.StringLiteral && !opensNextEdge(ctx)) {
     ctx.error("positional-label-removed", { construct: "boundary" });
     ctx.advance();
   }
@@ -123,22 +131,18 @@ export function parseBoundaryBlock(ctx: ParseContext): BoundaryBlock {
   while (ctx.peek().type !== TokenType.RightBrace && ctx.peek().type !== TokenType.EOF) {
     const token = ctx.peek();
     if (token.type === TokenType.Label) {
-      ctx.advance();
-      if (ctx.peek().type === TokenType.StringLiteral) {
-        label = ctx.advance().value;
-      } else {
-        ctx.error("expected-string-after", { property: "label" });
-      }
+      const value = readStringValue(ctx, ctx.advance(), "label");
+      if (value !== undefined) label = value;
     } else if (token.type === TokenType.Description) {
-      ctx.advance();
-      properties.description = parseDescriptionValue(ctx);
+      properties.description = parseDescriptionValue(ctx, ctx.advance());
     } else if (token.type === TokenType.Link) {
-      ctx.advance();
-      properties.links.push(parseLink(ctx));
+      const link = parseLink(ctx, ctx.advance());
+      if (link) properties.links.push(link);
     } else if (token.type === TokenType.Contains) {
-      ctx.advance();
-      if (ctx.peek().type === TokenType.Identifier || ctx.peek().type === TokenType.StringLiteral) {
-        const tail = readNodeIdPathTail(ctx.advance(), ctx, {
+      const keyword = ctx.advance();
+      const first = readValueAfter(ctx, keyword, TokenType.Identifier, TokenType.StringLiteral);
+      if (first) {
+        const tail = readNodeIdPathTail(first, ctx, {
           acceptStringSegments: true,
         });
         if (tail.dangling) {
@@ -149,7 +153,7 @@ export function parseBoundaryBlock(ctx: ParseContext): BoundaryBlock {
           contains.push(tail.segments);
         }
       } else {
-        ctx.error("expected-id-after", { property: "contains" });
+        reportMissingValue(ctx, keyword.loc, "expected-id-after", { property: "contains" });
       }
     } else if (token.type === TokenType.Boundary) {
       // Read a nested boundary whole and report it once, so its `}` does not
@@ -178,7 +182,7 @@ export function parseBoundaryBlock(ctx: ParseContext): BoundaryBlock {
 
   return {
     kind: "boundary" as const,
-    id: idToken.value,
+    id: idToken?.value ?? "__missing_id",
     label,
     properties,
     contains,
@@ -195,12 +199,12 @@ export function parseBoundaryBlock(ctx: ParseContext): BoundaryBlock {
 // so there is no gradient from "declare a scope" to "declare a rule".
 export function parseFacetBlock(ctx: ParseContext): FacetBlock {
   const start = ctx.advance(); // facet
-  const idToken = parseIdOrString(ctx, "facet");
+  const idToken = parseIdOrString(ctx, "facet", start.loc);
   let label: string | undefined;
   // Positional label is not part of the grammar (ADR-19 / #2133). `facet` is
   // new, so there is nothing to deprecate — reject and consume, as `boundary`
   // does, so parsing resumes cleanly at `{`.
-  if (ctx.peek().type === TokenType.StringLiteral) {
+  if (ctx.peek().type === TokenType.StringLiteral && !opensNextEdge(ctx)) {
     ctx.error("positional-label-removed", { construct: "facet" });
     ctx.advance();
   }
@@ -211,18 +215,13 @@ export function parseFacetBlock(ctx: ParseContext): FacetBlock {
   while (ctx.peek().type !== TokenType.RightBrace && ctx.peek().type !== TokenType.EOF) {
     const token = ctx.peek();
     if (token.type === TokenType.Label) {
-      ctx.advance();
-      if (ctx.peek().type === TokenType.StringLiteral) {
-        label = ctx.advance().value;
-      } else {
-        ctx.error("expected-string-after", { property: "label" });
-      }
+      const value = readStringValue(ctx, ctx.advance(), "label");
+      if (value !== undefined) label = value;
     } else if (token.type === TokenType.Description) {
-      ctx.advance();
-      properties.description = parseDescriptionValue(ctx);
+      properties.description = parseDescriptionValue(ctx, ctx.advance());
     } else if (token.type === TokenType.Link) {
-      ctx.advance();
-      properties.links.push(parseLink(ctx));
+      const link = parseLink(ctx, ctx.advance());
+      if (link) properties.links.push(link);
     } else if (!rejectEdge(ctx, "facet")) {
       ctx.error("unexpected-token-in-block", {
         blockKind: "facet",
@@ -245,7 +244,7 @@ export function parseFacetBlock(ctx: ParseContext): FacetBlock {
 
   return {
     kind: "facet" as const,
-    id: idToken.value,
+    id: idToken?.value ?? "__missing_id",
     label,
     properties,
     loc: ctx.range(start.loc, end.loc),
@@ -302,7 +301,7 @@ export function rejectNestedFacetBlock(ctx: ParseContext, blockKind: string): vo
 
 function parseTeamBlock(ctx: ParseContext): TeamNode {
   const start = ctx.advance(); // team
-  const idToken = parseIdOrString(ctx, "team");
+  const idToken = parseIdOrString(ctx, "team", start.loc);
   let label = parseRetiredPositionalLabel(ctx, "team");
   const { names: annotations, params: annotationParams } = parseAnnotations(ctx);
   ctx.expect(TokenType.LeftBrace);
@@ -313,22 +312,18 @@ function parseTeamBlock(ctx: ParseContext): TeamNode {
   while (ctx.peek().type !== TokenType.RightBrace && ctx.peek().type !== TokenType.EOF) {
     const token = ctx.peek();
     if (token.type === TokenType.Label) {
-      ctx.advance();
-      if (ctx.peek().type === TokenType.StringLiteral) {
-        label = ctx.advance().value;
-      } else {
-        ctx.error("expected-string-after", { property: "label" });
-      }
+      const value = readStringValue(ctx, ctx.advance(), "label");
+      if (value !== undefined) label = value;
     } else if (token.type === TokenType.Description) {
-      ctx.advance();
-      properties.description = parseDescriptionValue(ctx);
+      properties.description = parseDescriptionValue(ctx, ctx.advance());
     } else if (token.type === TokenType.Link) {
-      ctx.advance();
-      properties.links.push(parseLink(ctx));
+      const link = parseLink(ctx, ctx.advance());
+      if (link) properties.links.push(link);
     } else if (token.type === TokenType.Owns) {
-      ctx.advance();
-      if (ctx.peek().type === TokenType.Identifier || ctx.peek().type === TokenType.StringLiteral) {
-        const tail = readNodeIdPathTail(ctx.advance(), ctx, {
+      const keyword = ctx.advance();
+      const first = readValueAfter(ctx, keyword, TokenType.Identifier, TokenType.StringLiteral);
+      if (first) {
+        const tail = readNodeIdPathTail(first, ctx, {
           acceptStringSegments: true,
         });
         if (tail.dangling) {
@@ -339,7 +334,7 @@ function parseTeamBlock(ctx: ParseContext): TeamNode {
           properties.owns.push(tail.segments);
         }
       } else {
-        ctx.error("expected-id-after", { property: "owns" });
+        reportMissingValue(ctx, keyword.loc, "expected-id-after", { property: "owns" });
       }
     } else if (token.type === TokenType.Member) {
       children.push(parseMemberBlock(ctx));
@@ -361,7 +356,7 @@ function parseTeamBlock(ctx: ParseContext): TeamNode {
 
   return {
     kind: "team" as const,
-    id: idToken.value,
+    id: idToken?.value ?? "__missing_id",
     label,
     annotations,
     ...(Object.keys(annotationParams).length > 0 ? { annotationParams } : {}),
@@ -373,7 +368,7 @@ function parseTeamBlock(ctx: ParseContext): TeamNode {
 
 function parseMemberBlock(ctx: ParseContext): MemberNode {
   const start = ctx.advance(); // member
-  const idToken = parseIdOrString(ctx, "member");
+  const idToken = parseIdOrString(ctx, "member", start.loc);
   let label = parseRetiredPositionalLabel(ctx, "member");
   ctx.expect(TokenType.LeftBrace);
 
@@ -382,32 +377,19 @@ function parseMemberBlock(ctx: ParseContext): MemberNode {
   while (ctx.peek().type !== TokenType.RightBrace && ctx.peek().type !== TokenType.EOF) {
     const token = ctx.peek();
     if (token.type === TokenType.Label) {
-      ctx.advance();
-      if (ctx.peek().type === TokenType.StringLiteral) {
-        label = ctx.advance().value;
-      } else {
-        ctx.error("expected-string-after", { property: "label" });
-      }
+      const value = readStringValue(ctx, ctx.advance(), "label");
+      if (value !== undefined) label = value;
     } else if (token.type === TokenType.Description) {
-      ctx.advance();
-      properties.description = parseDescriptionValue(ctx);
+      properties.description = parseDescriptionValue(ctx, ctx.advance());
     } else if (token.type === TokenType.Link) {
-      ctx.advance();
-      properties.links.push(parseLink(ctx));
+      const link = parseLink(ctx, ctx.advance());
+      if (link) properties.links.push(link);
     } else if (token.type === TokenType.Slack) {
-      ctx.advance();
-      if (ctx.peek().type === TokenType.StringLiteral) {
-        properties.slack = ctx.advance().value;
-      } else {
-        ctx.error("expected-string-after", { property: "slack" });
-      }
+      const value = readStringValue(ctx, ctx.advance(), "slack");
+      if (value !== undefined) properties.slack = value;
     } else if (token.type === TokenType.Github) {
-      ctx.advance();
-      if (ctx.peek().type === TokenType.StringLiteral) {
-        properties.github = ctx.advance().value;
-      } else {
-        ctx.error("expected-string-after", { property: "github" });
-      }
+      const value = readStringValue(ctx, ctx.advance(), "github");
+      if (value !== undefined) properties.github = value;
     } else if (token.type === TokenType.Legend) {
       handleNestedLegend(ctx, "member");
     } else if (!rejectEdge(ctx, "member")) {
@@ -424,7 +406,7 @@ function parseMemberBlock(ctx: ParseContext): MemberNode {
 
   return {
     kind: "member" as const,
-    id: idToken.value,
+    id: idToken?.value ?? "__missing_id",
     label,
     properties,
     children: [] as const,
