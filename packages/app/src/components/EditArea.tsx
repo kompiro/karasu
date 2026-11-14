@@ -1,5 +1,6 @@
 import { useCallback, useState, type MouseEvent } from "react";
 import { useCommand } from "../keyboard/use-command.js";
+import type { Chord } from "../keyboard/command-types.js";
 import { usePersistedPanelWidth } from "../hooks/usePersistedPanelWidth.js";
 
 import type { CSSProperties, ReactNode } from "react";
@@ -205,7 +206,7 @@ function SidebarViewCommand({
 }: {
   id: string;
   title: string;
-  keybinding: string;
+  keybinding: Chord;
   onShow: () => void;
 }) {
   useCommand({

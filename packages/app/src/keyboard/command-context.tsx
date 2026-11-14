@@ -17,6 +17,23 @@ interface CommandRegistry {
   getCommands: () => Command[];
 }
 
+/**
+ * The live command, other than `command` itself, that already holds
+ * `command`'s keybinding. Re-registering the same id is a replacement, not a
+ * collision.
+ */
+function findKeybindingHolder(
+  commands: ReadonlyMap<string, Command>,
+  command: Command,
+): Command | undefined {
+  const chord = command.keybinding;
+  if (chord === undefined) return undefined;
+  for (const other of commands.values()) {
+    if (other.id !== command.id && other.keybinding === chord) return other;
+  }
+  return undefined;
+}
+
 const CommandContext = createContext<CommandRegistry | null>(null);
 
 /** Internal — `useCommand` reads this directly so it can no-op without a provider. */
@@ -41,6 +58,17 @@ export function CommandProvider({ children }: { children: ReactNode }) {
   const commandsRef = useRef<Map<string, Command>>(new Map());
 
   const register = useCallback((command: Command) => {
+    const holder = findKeybindingHolder(commandsRef.current, command);
+    if (holder) {
+      // `resolveChord` returns the first match, so the later command would
+      // never fire (TPL-1419). Fail loudly where tests and `vite` dev run; a
+      // production build keeps the first-wins behaviour and only reports it,
+      // so a collision in a state no test reached does not blank the app.
+      const message = `Keybinding "${command.keybinding}" of command "${command.id}" is already held by "${holder.id}"`;
+      if (import.meta.env.DEV) throw new Error(message);
+      // eslint-disable-next-line no-console -- the only signal a production build gives
+      console.error(message);
+    }
     commandsRef.current.set(command.id, command);
     return () => {
       // Only delete if still the same entry — guards against a re-registered
