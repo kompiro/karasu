@@ -593,6 +593,12 @@ three colors from that row — the guard verifies the result
 > section and is kept rather than reshuffling established kind colors; new kinds
 > should not add another one.
 
+An infra leaf (`table`, `queue-item`, `bucket`) has no colors of its own: in
+each theme the builtin sheet gives it the colors of its store (`database`,
+`queue`, `storage`), and only the colors, so the leaf keeps its own shape. A
+user rule on the store does not reach the leaf; name both kinds to recolor them
+together (`database, table { background-color: …; }`).
+
 > Related TPLs: [TPL-2421](../test-perspectives/TPL-2421-kind-color-hue-table.md)
 > — adding a kind means adding a hue-table row and deriving fill / text from it,
 > with the contrast guard verifying the hex;

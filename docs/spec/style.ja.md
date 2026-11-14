@@ -561,6 +561,12 @@ canvas を基準に規則を書いているので、1 つの文で両テーマ�
 > もので、既存の kind 色を組み替えるより維持を選びました。新しい kind でこれ以上
 > 衝突を増やさないでください。
 
+infra のリーフ（`table` / `queue-item` / `bucket`）は自分の色を持ちません。
+ビルトインシートはテーマごとに、そのストア（`database` / `queue` / `storage`）の
+色だけをリーフにも当てるので、形はリーフのままです。ストアへのユーザールールは
+リーフには届きません。まとめて色を変えるときは両方の kind を書きます
+（`database, table { background-color: …; }`）。
+
 > Related TPLs: [TPL-2421](../test-perspectives/TPL-2421-kind-color-hue-table.md)
 > — kind の追加は色相表への行追加であり、fill / text はその行から導出する。hex は
 > コントラストガードが検証する。
