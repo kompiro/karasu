@@ -172,10 +172,15 @@ export const NEGATIVE_CACHE_CONTROL = "public, s-maxage=300, max-age=0, must-rev
  *
  * A 5xx is transient (a GitHub outage, an unexpected throw) and must not be
  * replayed, so it is `no-store`. Every other error is a deterministic answer to
- * the path — a pinned ref with no `.krs` (404), a model too large to link (413),
- * a malformed ref (400) — and is held by the shared edge cache as briefly as the
- * signpost page, so a crawler walking `/<owner>/<repo>@<ref>` paths cannot
- * amplify into repeated GitHub raw fetches (TPL-1961).
+ * the path and is held by the shared edge cache as long as the signpost page.
+ * For a pinned ref with no `.krs` (404) and a model too large to link (413) that
+ * is what keeps a crawler walking `/<owner>/<repo>@<ref>` paths from amplifying
+ * into repeated GitHub raw fetches (TPL-1961); a malformed ref (400) never
+ * reached GitHub and is cached only because it is as deterministic.
+ *
+ * Like the signpost, a negative for a branch is held longer (300 s) than a
+ * branch's redirect (60 s): a `.krs` committed just after a miss shows up within
+ * five minutes.
  */
 export function errorCacheControl(status: ResolveStatus): string {
   return status >= 500 ? "no-store" : NEGATIVE_CACHE_CONTROL;

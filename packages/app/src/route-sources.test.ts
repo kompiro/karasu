@@ -23,7 +23,10 @@ import { guardBarePath } from "./render/bare-route.js";
 const FUNCTIONS_DIR = fileURLToPath(new URL("../../../functions/", import.meta.url));
 const PUBLIC_DIR = fileURLToPath(new URL("../public/", import.meta.url));
 
-/** Vite's `build.assetsDir`. `vite.config.ts` leaves it at the default. */
+/**
+ * Vite's `build.assetsDir`. `vite.config.ts` leaves it at the default; this
+ * value is not read from the config, so changing `assetsDir` is not caught here.
+ */
 const VITE_ASSETS_DIR = "assets";
 
 /** Pages reads these from the output root as configuration; they are never served. */
@@ -45,7 +48,6 @@ function functionSegments(): string[] {
   return readdirSync(FUNCTIONS_DIR, { withFileTypes: true })
     .filter((entry) => !entry.name.startsWith("_") && !entry.name.startsWith("[["))
     .filter((entry) => entry.isDirectory() || /\.(ts|js)$/.test(entry.name))
-    .filter((entry) => entry.name !== "tsconfig.json")
     .map((entry) => entry.name.replace(/\.(ts|js)$/, ""));
 }
 

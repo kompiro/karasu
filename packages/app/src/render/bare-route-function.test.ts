@@ -105,11 +105,14 @@ let fetchFake: FetchFake;
 let fetched: number;
 let cached: Response[];
 let cacheReads: number;
+/** The zone cache's contents, keyed by request URL as the Cache API keys them. */
+let store: Map<string, Response>;
 
 beforeEach(() => {
   fetched = 0;
   cached = [];
   cacheReads = 0;
+  store = new Map();
   fetchFake = notFound;
   vi.stubGlobal("fetch", async (input: string | URL | Request) => {
     fetched++;
@@ -117,12 +120,13 @@ beforeEach(() => {
   });
   vi.stubGlobal("caches", {
     default: {
-      match: async () => {
+      match: async (request: Request) => {
         cacheReads++;
-        return undefined;
+        return store.get(request.url)?.clone();
       },
-      put: async (_request: Request, response: Response) => {
+      put: async (request: Request, response: Response) => {
         cached.push(response);
+        store.set(request.url, response);
       },
     },
   });
@@ -201,6 +205,18 @@ describe.each(STATUSES)("a path the resolver answers %i for", (status) => {
       expect(!scenario.deterministic && result.cached.length > 0).toBe(false);
       expect(scenario.deterministic || cacheControlOf(result.response) === "no-store").toBe(true);
     });
+
+    it("answers the same request again from the cache when the answer is deterministic", async () => {
+      // The put is half of it: the Function must also read the cache back, under
+      // the same key, before it asks GitHub again.
+      const first = await run(`${scenario.path}${ref}`);
+      const before = first.fetched;
+      const second = await run(`${scenario.path}${ref}`);
+      const refetched = second.fetched - before;
+      expect(scenario.deterministic && before > 0 && refetched > 0).toBe(false);
+      expect(!scenario.deterministic && refetched === 0).toBe(false);
+      expect(await summary(second.response)).toEqual(await summary(first.response));
+    });
   });
 });
 
@@ -239,8 +255,10 @@ describe("a reserved top-level segment", () => {
   }
 
   // Every segment the route table reserves, in every spelling: a new reserved
-  // segment joins automatically, and a Function that stops normalising before
-  // the guard turns red (TPL-1961).
+  // segment joins automatically (TPL-1961). An encoded segment carries `%`,
+  // which the owner charset already rejects, so these spellings are declined
+  // even unnormalised; "another spelling of a permalink" above is what catches a
+  // Function that stops decoding before the guard.
   describe.each([...RESERVED_TOP_SEGMENTS])("/%s", (segment) => {
     it.each(spellings(segment))("hands %s back without asking GitHub", async (pathname) => {
       fetchFake = async () => new Response(SMALL_KRS);
