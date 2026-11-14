@@ -1,5 +1,5 @@
 import { RESERVED_TOP_SEGMENTS } from "../routes.js";
-import { OWNER_RE, REPO_RE, type ResolveResult } from "./repo-permalink.js";
+import { OWNER_RE, REPO_RE, type ResolveStatus } from "./repo-permalink.js";
 
 /**
  * Route guard and response shaping for the bare `/<owner>/<repo>[/<path>][@<ref>]`
@@ -78,6 +78,29 @@ export function matchBarePermalink(decodedPathname: string): BarePermalinkMatch 
   return { owner, repo };
 }
 
+/** A request path the bare route will try to resolve: the decoded path and its repo. */
+interface BarePathGuardHit {
+  decoded: string;
+  match: BarePermalinkMatch;
+}
+
+/**
+ * The guard the catch-all applies to a raw `url.pathname`: decode it, then
+ * match it. `null` means "decline — hand the request back to the SPA".
+ *
+ * Decoding and matching are one function so the guard always sees the
+ * normalised path: `/%70rojects/x` and `/projects/x/` are declined exactly like
+ * `/projects/x` (TPL-1961). Case is deliberately not folded: Pages asset
+ * routing, `_routes.json` and the SPA's path routes are all case-sensitive, so
+ * `/PROJECTS/x` is not a path any of them owns.
+ */
+export function guardBarePath(pathname: string): BarePathGuardHit | null {
+  const decoded = decodePathname(pathname);
+  if (decoded === null) return null;
+  const match = matchBarePermalink(decoded);
+  return match === null ? null : { decoded, match };
+}
+
 /** Does the path pin a ref explicitly? Used as a signal of intent, not a requirement. */
 export function hasExplicitRef(decodedPathname: string): boolean {
   return decodedPathname.includes("@");
@@ -109,10 +132,10 @@ export function hasExplicitRef(decodedPathname: string): boolean {
  *    permalink, so they get the diagnosis rather than a page about how to make
  *    one — including for a 400, where the ref itself may be what is malformed.
  */
-type BareRouteOutcome = "redirect" | "signpost" | "passthrough" | "error";
+export type BareRouteOutcome = "redirect" | "signpost" | "passthrough" | "error";
 
 export function classifyResolveOutcome(
-  result: Pick<ResolveResult, "status">,
+  result: { status: ResolveStatus },
   explicitRef: boolean,
 ): BareRouteOutcome {
   if (result.status === 200) return "redirect";
@@ -135,6 +158,27 @@ export function redirectCacheControl(immutable: boolean | undefined): string {
   return immutable
     ? "public, max-age=31536000, immutable"
     : "public, s-maxage=60, max-age=0, must-revalidate";
+}
+
+/**
+ * `Cache-Control` for a deterministic negative (the signpost page, a
+ * deterministic error). Short: a repo without a `.krs` today may commit one
+ * tomorrow.
+ */
+export const NEGATIVE_CACHE_CONTROL = "public, s-maxage=300, max-age=0, must-revalidate";
+
+/**
+ * `Cache-Control` for an `error` outcome.
+ *
+ * A 5xx is transient (a GitHub outage, an unexpected throw) and must not be
+ * replayed, so it is `no-store`. Every other error is a deterministic answer to
+ * the path — a pinned ref with no `.krs` (404), a model too large to link (413),
+ * a malformed ref (400) — and is held by the shared edge cache as briefly as the
+ * signpost page, so a crawler walking `/<owner>/<repo>@<ref>` paths cannot
+ * amplify into repeated GitHub raw fetches (TPL-1961).
+ */
+export function errorCacheControl(status: ResolveStatus): string {
+  return status >= 500 ? "no-store" : NEGATIVE_CACHE_CONTROL;
 }
 
 /**

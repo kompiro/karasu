@@ -3,6 +3,8 @@ import {
   bareTargetForLegacyPrefix,
   classifyResolveOutcome,
   decodePathname,
+  errorCacheControl,
+  guardBarePath,
   hasExplicitRef,
   matchBarePermalink,
   redirectCacheControl,
@@ -83,6 +85,20 @@ describe("decodePathname", () => {
   });
 });
 
+describe("guardBarePath", () => {
+  it("matches the decoded path, so a %40 ref separator is seen", () => {
+    expect(guardBarePath("/kompiro/karasu%40abc123")).toEqual({
+      decoded: "/kompiro/karasu@abc123",
+      match: { owner: "kompiro", repo: "karasu" },
+    });
+  });
+
+  it("declines malformed encoding and reserved segments", () => {
+    expect(guardBarePath("/%ZZ/bad")).toBeNull();
+    expect(guardBarePath("/%70rojects/x")).toBeNull();
+  });
+});
+
 describe("classifyResolveOutcome", () => {
   it("redirects a resolved model", () => {
     expect(classifyResolveOutcome({ status: 200 }, false)).toBe("redirect");
@@ -101,14 +117,14 @@ describe("classifyResolveOutcome", () => {
     expect(classifyResolveOutcome({ status: 400 }, false)).toBe("passthrough");
   });
 
-  it.each([400, 404])("shows the error for %i when a ref WAS pinned", (status) => {
+  it.each([400, 404] as const)("shows the error for %i when a ref WAS pinned", (status) => {
     // An explicit @<ref> means the visitor meant a permalink; swallowing that
     // into a friendly page — or into the SPA — hides the diagnosis they need,
     // including when the ref itself is what is malformed.
     expect(classifyResolveOutcome({ status }, true)).toBe("error");
   });
 
-  it.each([500, 502])("never signposts a transient failure (%i)", (status) => {
+  it.each([500, 502] as const)("never signposts a transient failure (%i)", (status) => {
     // Rendering "no model here" during a GitHub outage would disguise an
     // outage as an absence, and a real permalink would look empty.
     expect(classifyResolveOutcome({ status }, false)).toBe("error");
@@ -126,6 +142,18 @@ describe("redirectCacheControl", () => {
     expect(value).toContain("s-maxage=60");
     expect(value).toContain("max-age=0");
     expect(value).not.toContain("immutable");
+  });
+});
+
+describe("errorCacheControl", () => {
+  it.each([500, 502] as const)("never caches a transient failure (%i)", (status) => {
+    expect(errorCacheControl(status)).toBe("no-store");
+  });
+
+  it.each([400, 404, 413] as const)("lets the edge hold a deterministic error (%i)", (status) => {
+    // A pinned ref with no `.krs` costs GitHub raw fetches; uncached, a crawler
+    // walking `/<owner>/<repo>@<ref>` paths amplifies them (TPL-1961).
+    expect(errorCacheControl(status)).toMatch(/^public, s-maxage=\d+/);
   });
 });
 
