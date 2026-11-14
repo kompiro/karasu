@@ -71,7 +71,7 @@ function checkAround(node: Node) {
   if (owner) checkOne(owner);
 }
 
-function process(records: MutationRecord[]) {
+function processRecords(records: MutationRecord[]) {
   for (const r of records) {
     if (r.type === "childList") {
       for (const n of r.addedNodes) if (n.nodeType === 1) checkSubtree(n as Element);
@@ -91,7 +91,7 @@ export function startA11ySweep(): void {
   checked.role = 0;
   checked["button-label"] = 0;
   observer?.disconnect();
-  observer = new MutationObserver(process);
+  observer = new MutationObserver(processRecords);
   observer.observe(document, {
     subtree: true,
     childList: true,
@@ -106,7 +106,7 @@ export function startA11ySweep(): void {
 /** Process pending records, stop watching, and return what was found. */
 export function stopA11ySweep(): A11yProblem[] {
   if (observer) {
-    process(observer.takeRecords());
+    processRecords(observer.takeRecords());
     observer.disconnect();
     observer = null;
   }
@@ -115,7 +115,7 @@ export function stopA11ySweep(): A11yProblem[] {
 
 /** Process pending records now (for the guard's own test). */
 export function flushA11ySweep(): { problems: A11yProblem[]; checked: typeof checked } {
-  if (observer) process(observer.takeRecords());
+  if (observer) processRecords(observer.takeRecords());
   return { problems: [...problems.values()], checked: { ...checked } };
 }
 

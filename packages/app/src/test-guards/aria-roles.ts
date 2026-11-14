@@ -8,7 +8,7 @@
 //   and list tags (`button` may be a `menuitem`, never a `listitem`).
 //
 // The tables are the spec, not a list of the app's components, so a new
-// component is checked as soon as a test renders it. `aria-roles-setup.ts`
+// component is checked as soon as a test renders it. `a11y-sweep-setup.ts`
 // runs the check on every DOM change of every app test.
 
 /** Roles that do not count as a parent or child: generic containers and presentational wrappers. */
@@ -185,7 +185,9 @@ export function roleProblems(el: Element): string[] {
   if (hiddenFromUser(el)) return [];
   const problems: string[] = [];
   const explicit = el.getAttribute("role")?.trim().split(/\s+/)[0];
-  const allowed = ALLOWED_ROLES[el.localName];
+  // An `<a>` without `href` is a generic element: ARIA in HTML allows any role on it.
+  const allowed =
+    el.localName === "a" && !el.hasAttribute("href") ? undefined : ALLOWED_ROLES[el.localName];
   if (explicit && allowed && explicit !== implicitRole(el) && !allowed.includes(explicit)) {
     problems.push(`role "${explicit}" is not allowed on <${el.localName}>`);
   }
