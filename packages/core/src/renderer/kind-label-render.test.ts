@@ -124,6 +124,14 @@ const UNLABELLED = MODEL.replace(/^\s*label "Lbl-[a-z-]+"\n/gm, "").replace(
 const idOf = (kind: Kind) => `K_${kind.replace(/-/g, "_")}`;
 const labelOf = (kind: Kind) => `Lbl-${kind}`;
 
+/**
+ * Whole-token matchers. `Lbl-queue` is a prefix of `Lbl-queue-item` and
+ * `K_queue` of `K_queue_item`, so a substring test would let one kind's text
+ * stand in for another's.
+ */
+const idPattern = (kind: Kind) => new RegExp(`(?<![\\w-])${idOf(kind)}(?![\\w-])`);
+const labelPattern = (kind: Kind) => new RegExp(`(?<![\\w-])${labelOf(kind)}(?![\\w-])`);
+
 /** The text content of every `<text>` element, tags stripped. */
 function canvasTexts(svg: string): string[] {
   return [...svg.matchAll(/<text\b[^>]*>([\s\S]*?)<\/text>/g)]
@@ -173,9 +181,10 @@ describe("every kind is drawn by its label on every surface (TPL-74)", () => {
 
   it.each(PROBES)("%s on %s (%s) shows the label, not the id", (kind, _name, mode, surface) => {
     const texts = renderSurface(MODEL, surface, mode);
-    const id = new RegExp(`\\b${idOf(kind)}\\b`);
+    const id = idPattern(kind);
+    const label = labelPattern(kind);
     expect(
-      texts.some((t) => t.includes(labelOf(kind))),
+      texts.some((t) => label.test(t)),
       `${labelOf(kind)} among ${JSON.stringify(texts)}`,
     ).toBe(true);
     expect(
@@ -186,7 +195,7 @@ describe("every kind is drawn by its label on every surface (TPL-74)", () => {
 
   it.each(PROBES)("%s on %s (%s) falls back to the id", (kind, _name, mode, surface) => {
     const texts = renderSurface(UNLABELLED, surface, mode);
-    const id = new RegExp(`\\b${idOf(kind)}\\b`);
+    const id = idPattern(kind);
     expect(
       texts.some((t) => id.test(t)),
       `${idOf(kind)} among ${JSON.stringify(texts)}`,

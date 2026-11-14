@@ -21,6 +21,10 @@
  *   renderer that looks a style up by a different id form than the resolver
  *   matched on fails.
  *
+ * The probe rules carry two endpoint predicates, so they outrank every tag
+ * rule; an example that colours one edge with a more specific rule of its own
+ * (`edge#<id>`) would win over the probe and has to be excused here by name.
+ *
  * A new example, view or derived edge list joins the day the corpus reaches it
  * (ADR-3038 D4), and the test checks that the corpus draws the dot-notation
  * form the item is about.
