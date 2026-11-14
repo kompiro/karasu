@@ -29,6 +29,8 @@ discovered_from:
   - root_cause_file: "packages/cli/src/render-endpoint.ts"
   - issue: "#3418"
   - root_cause_file: "packages/cli/src/serve.ts"
+  - issue: "#3773"
+  - root_cause_file: "packages/core/src/renderer/ogp-frame.ts:wrapSvgForOgpFrame"
 topic: cli
 scope:
   packages:
@@ -65,6 +67,7 @@ karasu の `karasu serve` のような HTTP API、VS Code 拡張の message hand
   - 自分自身への fetch（このマシンの public アドレスや hairpin NAT を経て、自分の API を読ませる。アドレスでは見分けられない経路があるので、外向きの request に印を付けて受け側で拒否する。#3426）
 - DNS rebinding（攻撃者のドメインをこのマシンに向け直すと、ブラウザから見て同一 origin になり CORS では止まらない。ブラウザが送る `Host` は攻撃者のドメインのままなので、`Host` を見て拒否する。`Host` は `req.headers.host` から読み、request target を base URL で解いた `url.hostname` は使わない。absolute-form や `//x/...` の target がそちらを決めてしまう。#3418）
 - 全インターフェースでの listen（host を渡さない `listen(port)` は LAN にも開く。ローカル専用の server は loopback を既定にする。#3418）
+- query の値を SVG / HTML の属性に文字列で埋める（`fill="${bg}"` に `"/><filter …` を渡すと、レンダラーの escape を通らない要素を足せる。色や数値のように形が決まる値は、厳密な書式の allowlist で受け、外れたら既定値に落とす。#3773）
 - prototype pollution / deserialization 攻撃（`JSON.parse` した object をそのまま deep-merge する等）
 
 これらは **「機能が壊れる」形では観測されない**。攻撃者が見つけるか、security review で見つけるしか発見経路がない。
@@ -103,4 +106,6 @@ karasu の `karasu serve` のような HTTP API、VS Code 拡張の message hand
 - `packages/app/src/utils/import-project-zip.test.ts`（zip-slip / 解凍爆弾・エントリ数キャップの negative test を含む — #1526 / #1527）
 - `packages/core/src/parser/parser.test.ts`（link URL scheme allowlist の negative test — #1525）
 - `packages/core/src/fs/path-utils.test.ts`（`isSafeRelativePath` の negative test：絶対パス・`..` セグメント・backslash 区切りを拒否し、セグメント名中の `..` は誤拒否しない）
+- `packages/core/src/renderer/ogp-frame.test.ts`（`parseOgpBackground` が hex 色以外を拒否し、hex 以外のすべての ASCII 文字を色の前後と途中で拒否する。`wrapSvgForOgpFrame` は拒否した背景を既定値に落とし、要素を足さない。この 1 か所だけを守るので、チェックリスト 4 の新しい箇所では赤くならない。ガードではなく関連テスト — #3773）
+- `packages/app/src/render/share-render.test.ts`（`/render?format=png` の `bg` に `"` や `<` を含む値を渡しても、SVG に要素が足されず、resvg にも渡らない — #3773）
 - `packages/cli/src/cli-arg-validation.test.ts`（CLI の入口で未知の `--format` / `--theme` / `--view` を exit 1 で拒否し、コマンド本体を呼ばない：拒否時に副作用を起こさないことの固定。AT-0057 §7）

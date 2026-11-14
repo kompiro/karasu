@@ -64,7 +64,11 @@ export { FACET_OVERLAY_COLORS } from "./renderer/facet-overlay.js";
 export { estimateTextWidth } from "./renderer/rendering-constants.js";
 // The fixed 1200×630 OGP frame. Two Workers rasterize it (the app's `/render`
 // and nest's `/g/<id>/og.png`, #2995), so the frame lives where both can reach it.
-export { wrapSvgForOgpFrame } from "./renderer/ogp-frame.js";
+export {
+  DEFAULT_OGP_BACKGROUND,
+  parseOgpBackground,
+  wrapSvgForOgpFrame,
+} from "./renderer/ogp-frame.js";
 export { tidyStyleSheet, type TidyOptions, type TidyResult } from "./style/tidy.js";
 export { serializeStyleSheet } from "./style/serialize.js";
 export { validateStyleValues } from "./style/value-validator.js";

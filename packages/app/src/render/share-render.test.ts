@@ -86,4 +86,38 @@ describe("sharePngSource", () => {
   it("passes an error through", () => {
     expect(sharePngSource(params({ s: "@@@not-valid@@@" })).status).toBe(400);
   });
+
+  // #3773: `bg` reaches the frame's SVG attribute and resvg, so only a hex
+  // colour is kept; anything else falls back to the default.
+  describe("bg", () => {
+    const CONTAIN = { fit: "contain", width: "1200", height: "630" };
+    const s = encodeShare({ krs: KRS });
+
+    it("keeps a hex colour for the frame fill and resvg", () => {
+      const source = sharePngSource(params({ s, ...CONTAIN, bg: "#112233" }));
+      expect(source).toMatchObject({ status: 200, background: "#112233" });
+      expect("svg" in source && source.svg).toContain(
+        '<rect width="1200" height="630" fill="#112233"/>',
+      );
+    });
+
+    it.each([
+      '"/><filter id="x"><feTurbulence baseFrequency="9"/></filter><rect fill="',
+      '#fff"/><g>',
+      "#fff<",
+      "white",
+      "url(#x)",
+    ])("ignores %j: no markup is added and resvg gets no background", (bg) => {
+      const framed = sharePngSource(params({ s, ...CONTAIN, bg }));
+      const plainFrame = sharePngSource(params({ s, ...CONTAIN }));
+      expect(framed).toEqual(plainFrame);
+      expect(framed).toMatchObject({ status: 200, background: undefined });
+      expect("svg" in framed && framed.svg).toContain(
+        '<rect width="1200" height="630" fill="#ffffff"/>',
+      );
+
+      const unframed = sharePngSource(params({ s, bg }));
+      expect(unframed).toMatchObject({ status: 200, background: undefined });
+    });
+  });
 });
