@@ -13,8 +13,8 @@ known_consumers:
   - routing-parity
 discovered_from:
   - issue: "#2823"
-  - root_cause_file: "packages/core/src/renderer/ghost-layout.ts"
-  - root_cause_file: "packages/core/src/renderer/edge-routing-channels.ts"
+  - root_cause_file: "packages/core/src/renderer/ghost-layout.ts:placeGhostRow"
+  - root_cause_file: "packages/core/src/renderer/edge-routing-channels.ts:routeOrthogonalEdges"
 related_to:
   - TPL-2593
   - TPL-2598
