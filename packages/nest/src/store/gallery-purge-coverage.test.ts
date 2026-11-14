@@ -29,7 +29,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { AccountStore } from "./accounts.js";
-import { GALLERY_KEY_SPACES, type GalleryKeySpace } from "./gallery-keys.js";
+import { GALLERY_KEY_SPACES, type GalleryKey, type GalleryKeySpace } from "./gallery-keys.js";
 import { GalleryStore } from "./gallery-store.js";
 import { SessionStore } from "./sessions.js";
 import { SubmissionStore } from "./submissions.js";
@@ -123,6 +123,86 @@ describe("account purge coverage", () => {
     const left = await remaining(kv);
     expect(left.length).toBe(SPACES.length);
     expect(left.every((key) => key.includes("420"))).toBe(true);
+  });
+});
+
+/**
+ * A KV whose listing lags its deletes: a deleted key keeps coming back from
+ * `list` for `lag` more calls, the way Cloudflare KV re-lists a key whose
+ * delete has not propagated yet. `Infinity` is a listing that never catches
+ * up, which is what a delete that did not stick looks like from the purge.
+ *
+ * Only the listing lags. `get` and the stored entries see the delete at once,
+ * so `keys()` is what is really left.
+ */
+class LaggingListKV extends MemoryKV {
+  private readonly ghosts = new Map<string, number>();
+  /** Every prefix `list` was asked for, so a test can tell who swept. */
+  readonly listed: string[] = [];
+
+  constructor(private readonly lag: number) {
+    super();
+  }
+
+  override async delete(key: string): Promise<void> {
+    if (this.keys().includes(key)) this.ghosts.set(key, this.lag);
+    await super.delete(key);
+  }
+
+  override async list(options?: { prefix?: string; cursor?: string; limit?: number }) {
+    const page = await super.list(options);
+    const prefix = options?.prefix ?? "";
+    this.listed.push(prefix);
+    const served: GalleryKey[] = [];
+    for (const [key, left] of this.ghosts) {
+      if (left <= 0 || !key.startsWith(prefix)) continue;
+      this.ghosts.set(key, left - 1);
+      served.push(key as GalleryKey);
+    }
+    const keys = [...page.keys, ...served.map((name) => ({ name }))].sort((a, b) =>
+      a.name < b.name ? -1 : 1,
+    );
+    return { ...page, keys };
+  }
+}
+
+describe("account purge under a listing that lags its deletes (TPL-2284)", () => {
+  it("counts each record once and leaves nothing when the listing catches up", async () => {
+    // A key re-listed before its delete propagates is the same record. Every
+    // space goes through the facade, so a new store that counts deletes
+    // rather than records reports more than it deleted here.
+    for (const space of SPACES) {
+      const kv = new LaggingListKV(2);
+      await SEEDERS[space](kv, ACCOUNT);
+      const counts = await new GalleryStore(kv).purgeAccount(ACCOUNT);
+      expect({ space, count: counts[space] }).toEqual({ space, count: 1 });
+      expect({ space, left: kv.keys() }).toEqual({ space, left: [] });
+    }
+  });
+
+  it("does not report success while the listing it swept still shows the account", async () => {
+    // A single call cannot know a listing is complete. A purge that found the
+    // account's keys by listing them, and then resolved while that listing
+    // still hands them back, tells someone their account is gone on the
+    // strength of one look; it has to fail so the purge is run again. A space
+    // whose purge never lists its prefix (the account record, deleted by
+    // exact key) is not asked this, and at least one space must list, or the
+    // case says nothing.
+    const swept: GalleryKeySpace[] = [];
+    for (const space of SPACES) {
+      const kv = new LaggingListKV(Infinity);
+      await SEEDERS[space](kv, ACCOUNT);
+      kv.listed.length = 0;
+      const outcome = await new GalleryStore(kv).purgeAccount(ACCOUNT).then(
+        () => "resolved",
+        () => "rejected",
+      );
+      const prefix = `${GALLERY_KEY_SPACES[space].prefix}/`;
+      if (!kv.listed.some((listed) => listed.startsWith(prefix))) continue;
+      swept.push(space);
+      expect({ space, outcome }).toEqual({ space, outcome: "rejected" });
+    }
+    expect(swept.length).toBeGreaterThan(0);
   });
 });
 

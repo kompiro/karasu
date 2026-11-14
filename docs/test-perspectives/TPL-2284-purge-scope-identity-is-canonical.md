@@ -47,7 +47,7 @@ prefix / 名前空間で一括削除する store を足す・変えるときに�
 - [ ] prefix に**セパレータを含めた**か。`4` が `42` を巻き込まないこと、`kara` が `karasu` を巻き込まないことを両方向で test したか
 - [ ] 識別子にセパレータ文字が入りうるなら**拒否**しているか（エスケープではなく拒否 — エスケープは往復の対称性を要求し、片側だけ直る事故を生む） [guard: `packages/nest/src/store/gallery-keys.test.ts`]
 - [ ] 削除が**何件消したかを返す**か。呼び出し側がログに残せないと、purge が走ったことすら後から言えない [guard: `packages/nest/src/store/gallery-purge-coverage.test.ts`]
-- [ ] 一覧が eventually consistent な store（Cloudflare KV・S3）では、purge を**冪等かつ再実行可能**として設計したか。1 回の呼び出しで完全性を主張していないか
+- [ ] 一覧が eventually consistent な store（Cloudflare KV・S3）では、purge を**冪等かつ再実行可能**として設計したか。1 回の呼び出しで完全性を主張していないか [guard: `packages/nest/src/store/gallery-purge-coverage.test.ts`]
 - [ ] 鍵の layout に**バージョン成分**があるか。layout を変えるとき、旧 layout を prefix で消せる [guard: `packages/nest/src/store/gallery-key-contract.test.ts`]
 
 ## 既知の対処パターン
@@ -75,8 +75,13 @@ prefix / 名前空間で一括削除する store を足す・変えるときに�
   自前で `{ put(key: string, …) }` と型を宣言したストアに binding を渡すと、メソッドの引数が双変に比較されるのでコンパイルが通る。
   その場合に鍵を拒むのはテスト用の `MemoryKV`（実行時）だけで、その経路をテストが通るときに限る
 - `packages/nest/src/store/gallery-purge-coverage.test.ts`: 「can run again on a purged account, and reports nothing the second time」。
-  全空間で 2 回目の purge が例外を出さず 0 を返すこと。eventually consistent な一覧の下で purge が完全性を主張しないことまでは
-  確かめていない（`AccountStore.purgeAccount` は削除後に読み直さない）ので、6 つ目の項目は印なし
+  全空間で 2 回目の purge が例外を出さず 0 を返すこと
+- `packages/nest/src/store/gallery-purge-coverage.test.ts`: `account purge under a listing that lags its deletes`。`SEEDERS` の
+  空間ごとに、削除した鍵を一覧が返し続ける KV（`LaggingListKV`）の上で `GalleryStore.purgeAccount` を通す。一覧が追いつくなら
+  各空間の件数がちょうど 1 で何も残らないこと（再出現した鍵を 2 回数えない）、一覧が追いつかないなら、自分の prefix を一覧した
+  空間の purge が成功を返さずに失敗すること（1 回見ただけで完全性を主張しない）。prefix を一覧しない空間（exact key で消す
+  account の記録）はこの問いの対象外で、一覧する空間が 1 つも無ければテスト自体が落ちる。新しい空間は `SEEDERS` の型で
+  ここに入る
 - `packages/nest/src/store/sweep.test.ts` — `purgeByPrefix`。削除件数を返すこと、eventually consistent な一覧で再出現した鍵を 1 回だけ数えること、
   削除が効かないときに成功を返さず prefix を名指して失敗すること
 
