@@ -1,4 +1,5 @@
-import type { KrsNode } from "../types/ast.js";
+import type { KrsEdge, KrsNode } from "../types/ast.js";
+import { edgeKey } from "../view/edge-key.js";
 import type { SourceRange } from "../types/tokens.js";
 
 /**
@@ -48,4 +49,66 @@ export function makeStubNode(opts: {
     loc: ZERO_LOC,
     properties: { links: [] },
   } as KrsNode;
+}
+
+/**
+ * Fold the diff states of the original edges that collapse onto one stub edge.
+ * A single distinct state carries through; a mix reports `changed`, an existing
+ * `DiffState` value (see `view-diff.ts`). Order-independent and deterministic.
+ */
+function foldEdgeDiffStates(states: readonly string[]): string {
+  const distinct = new Set(states);
+  return distinct.size === 1 ? [...distinct][0] : "changed";
+}
+
+/**
+ * Re-keys diff state onto the stub edges a collapse re-targets (#1886), for
+ * both collapse axes. Decoration keyed on the pre-collapse endpoints misses the
+ * stub id and renders undecorated (TPL-1886); the category axis did exactly
+ * that until it shared this with the group axis.
+ *
+ * `add` takes each re-targeted edge with its new endpoints; `folded` returns the
+ * fold per stub edge, keyed by `edgeKey` (the render lookup form), kind-less
+ * like `edge-layer.ts`, so a sync+async pair shares one slot and folds
+ * together. Only non-`unchanged` folds are kept, so an all-`unchanged` bundle
+ * stays undecorated like the edges it stands for. Without a diff map it
+ * records nothing.
+ */
+export function diffStateFolder(edgeDiffState: ReadonlyMap<string, string> | undefined): {
+  add: (edge: Pick<KrsEdge, "from" | "to">, from: string, to: string) => void;
+  folded: () => Map<string, string>;
+} {
+  const accum = new Map<string, string[]>();
+  return {
+    add: (edge, from, to) => {
+      if (!edgeDiffState) return;
+      const renderKey = edgeKey({ from, to });
+      const state = edgeDiffState.get(edgeKey(edge)) ?? "unchanged";
+      const bucket = accum.get(renderKey);
+      if (bucket) bucket.push(state);
+      else accum.set(renderKey, [state]);
+    },
+    folded: () => {
+      const out = new Map<string, string>();
+      for (const [renderKey, states] of accum) {
+        const folded = foldEdgeDiffStates(states);
+        if (folded !== "unchanged") out.set(renderKey, folded);
+      }
+      return out;
+    },
+  };
+}
+
+/**
+ * A diff map with the states a first collapse folded onto its stub edges laid
+ * over it, for a second collapse that re-targets those edges again. Returns the
+ * input when there is nothing to add, so a render outside compare mode keeps
+ * passing `undefined`.
+ */
+export function withFolded(
+  edgeDiffState: ReadonlyMap<string, string> | undefined,
+  folded: ReadonlyMap<string, string>,
+): ReadonlyMap<string, string> | undefined {
+  if (!edgeDiffState || folded.size === 0) return edgeDiffState;
+  return new Map([...edgeDiffState, ...folded]);
 }

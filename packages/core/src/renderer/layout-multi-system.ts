@@ -52,6 +52,7 @@ import {
 } from "./layout-measure.js";
 import { nodePathIdentityKey, nodePathRefId } from "../parser/node-path.js";
 import { edgeKey, edgeKindKey } from "../view/edge-key.js";
+import { withFolded } from "./collapse-stub.js";
 import {
   createCrossSystemRemap,
   layoutCrossSystemEdges,
@@ -156,12 +157,19 @@ export function layoutMultipleSystems(
     // two systems that each fold `infra` would otherwise both synthesize
     // `__collapsed_infra__` and overwrite one another in `allLayoutNodes`,
     // leaving one system's trunk pointing at a card that is never drawn.
+    // Compare mode: fold this frame's own states (#2756). The shared map has no
+    // system in its key, so an `Api -> Db` changed in one system would decide the
+    // stub edge of an identical, unchanged `Api -> Db` in another. The folds are
+    // keyed by stub ids scoped to this system, so they can share one map.
+    const frameEdgeDiffState = systemFrame?.edgeDiffState ?? edgeDiffState;
     const sysCollapsedCat = collapseCategories(
       systemNodes,
       systemRawEdges,
       collapsedCategories,
       sys.id,
+      frameEdgeDiffState,
     );
+    for (const [k, v] of sysCollapsedCat.foldedEdgeDiffState) foldedEdgeDiffState.set(k, v);
     const rawNodes = sysCollapsedCat.nodes;
     const sysEdges = sysCollapsedCat.edges;
 
@@ -218,7 +226,7 @@ export function layoutMultipleSystems(
         edges: sysEdges,
         groupIndex: systemGroupIndex,
         collapsedGroups,
-        edgeDiffState,
+        edgeDiffState: withFolded(frameEdgeDiffState, sysCollapsedCat.foldedEdgeDiffState),
         stubScope: sys.id,
         bandOrder: systemBandOrder,
         membership: systemMembership,

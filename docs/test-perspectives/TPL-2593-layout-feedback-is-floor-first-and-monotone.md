@@ -106,6 +106,13 @@ karasu のレイアウトは長らく**前向き一方向**だった。層を決
   同点時に小さい予算が残ること、帯に入る候補が無いときのフォールバック、0 × 0 の退化入力
 - `packages/core/src/renderer/layout.test.ts` — 縦長入力が帯に入ること、既に横長な入力の
   座標が下限固定時と完全一致すること（byte-stable）、2 回走らせて一致すること
+- `packages/core/src/renderer/aspect-search-corpus.test.ts`: 全 example の全ビューを全 Group-by モードで 2 回描き、
+  2 回目は順序を逆にし、時刻・`performance.now`・`Math.random`・viewport のグローバルを動かし、探索を広げる
+  primer を各 entry の前に描いて、SVG の一致を見る。`searchWidthBudget` を包み、試した全候補を探索後に置き直して
+  一致を見る。どちらの項目のガードでもない。1 項目めは隠れた入力（グローバル・前回結果）だけを覆い、viewport を
+  新しい引数として明示的に渡す変更は捕まえない。5 項目めは `searchWidthBudget` を通る試行だけを置き直すので、
+  それを使わない新しいフィードバックループや、`aspect-search.ts` の中から呼ぶ探索（モジュール内の束縛は
+  包めない）は置き直されない
 
 ## 派生元 spec
 

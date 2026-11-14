@@ -1,7 +1,6 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { displayGroupId, unionEdgeFacets } from "../types/ast.js";
-import { makeStubNode } from "./collapse-stub.js";
-import { edgeKey } from "../diff/view-diff.js";
+import { diffStateFolder, makeStubNode } from "./collapse-stub.js";
 
 /**
  * Per-group collapse for the system-view "Group by: team" mode (Issue #1858,
@@ -64,16 +63,6 @@ interface GroupCollapseResult {
    * undecorated, matching the pre-collapse render). Empty otherwise.
    */
   foldedEdgeDiffState: Map<string, string>;
-}
-
-/**
- * Fold the diff states of the original edges that collapse onto one stub edge.
- * A single distinct state carries through; a mix reports `changed` — an existing
- * `DiffState` value (see `view-diff.ts`). Order-independent and deterministic.
- */
-function foldEdgeDiffStates(states: readonly string[]): string {
-  const distinct = new Set(states);
-  return distinct.size === 1 ? [...distinct][0] : "changed";
 }
 
 /**
@@ -160,11 +149,9 @@ export function collapseGroups(
   };
   const outEdges: KrsEdge[] = [];
   const stubEdges = new Map<string, KrsEdge>();
-  // Accumulate the original diff states that fold onto each stub edge, keyed by
-  // `edgeKey`, the render lookup form (kind-less — the render diff lookup in
-  // `edge-layer.ts` and the `diffed.edges` key both drop `#kind`, so a
-  // sync+async stub-edge pair shares one slot and folds together). #1886.
-  const foldAccum = new Map<string, string[]>();
+  // The original diff states that fold onto each stub edge (#1886), re-keyed
+  // by the render lookup form (`diffStateFolder`, shared with the category axis).
+  const diffFold = diffStateFolder(edgeDiffState);
   for (const edge of edges) {
     const from = remap(edge.from);
     const to = remap(edge.to);
@@ -176,17 +163,10 @@ export function collapseGroups(
       continue;
     }
     if (from === to) continue; // both endpoints folded into the same stub
-    if (edgeDiffState) {
-      // Re-key this re-targeted edge's diff state onto the stub edge (decoration
-      // keyed on the pre-collapse endpoints would otherwise miss the stub id and
-      // render undecorated - TPL-1886). `unchanged` default so a collapse
-      // in non-diff mode (no diff map entries) contributes nothing.
-      const renderKey = edgeKey({ from, to });
-      const origState = edgeDiffState.get(edgeKey(edge)) ?? "unchanged";
-      const bucket = foldAccum.get(renderKey);
-      if (bucket) bucket.push(origState);
-      else foldAccum.set(renderKey, [origState]);
-    }
+    // Re-key this re-targeted edge's diff state onto the stub edge (decoration
+    // keyed on the pre-collapse endpoints would otherwise miss the stub id and
+    // render undecorated - TPL-1886).
+    diffFold.add(edge, from, to);
     const key = `${from} ${to} ${edge.kind}`;
     const foldedInto = stubEdges.get(key);
     if (foldedInto) {
@@ -211,13 +191,11 @@ export function collapseGroups(
     outEdges.push(stub);
   }
 
-  const foldedEdgeDiffState = new Map<string, string>();
-  for (const [renderKey, states] of foldAccum) {
-    const folded = foldEdgeDiffStates(states);
-    // Leave an all-`unchanged` fold undecorated (matches the pre-collapse edge,
-    // which carried no diff state); only surface real change on the stub edge.
-    if (folded !== "unchanged") foldedEdgeDiffState.set(renderKey, folded);
-  }
-
-  return { nodes: kept, edges: outEdges, stubGroup, remapEndpoint: remap, foldedEdgeDiffState };
+  return {
+    nodes: kept,
+    edges: outEdges,
+    stubGroup,
+    remapEndpoint: remap,
+    foldedEdgeDiffState: diffFold.folded(),
+  };
 }

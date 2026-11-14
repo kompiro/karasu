@@ -63,6 +63,8 @@ group-collapse（#1874）は逆に **id を意図的に書き換える**ケー�
 
 ## 関連テスト
 
+- `packages/core/src/renderer/collapse-corpus.test.ts`（全 example の全ビューを全 Group-by モードで、全グループ・全カテゴリを畳んで描き直す。ghost を含む全エッジの端点がカードかコンテナに解決し、片端が畳まれたエッジがそのメンバー自身の stub への辺として残る。4 項目めのガードではない: 片端が畳まれるエッジはコーパスに数百本あるが ghost のものは 0 本で、端点がメンバーの ghost / aux エッジを生む example が無い。`remapGhostEndpoint` を通らない新しい parallel リストを足しても、example がそのリストにメンバー端点を載せるまでは緑のままである）
+- `packages/core/src/renderer/layout.test.ts` › `layout > group-collapse ghost-edge re-anchoring (#1874)`（ghost エッジのリストに team メンバーの端点を移植した slice で、畳むと ghost コネクタが stub に再アンカーし親枠へフォールバックしないこと。既存の ghost リストの remap はこちらが守る。移植した 1 リストだけを見るので、新しいリストは覆わない）
 - `packages/core/src/renderer/deploy-layout.test.ts` › `layoutDeploy job band (#1738)`（帯配置・全ユニット一度・帯越しエッジ・退化ケース）
 - `packages/core/src/view/deploy-view-extract.test.ts` › `job band classification (#1738)`（job-only 判定の相補性）
 - `packages/core/src/renderer/deploy-renderer.test.ts` › `job band (#1738)`（帯ラッパー描画・非該当時の不在）

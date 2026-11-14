@@ -1,5 +1,5 @@
 import { INFRA_KIND_SET, unionEdgeFacets, type KrsNode, type KrsEdge } from "../types/ast.js";
-import { makeStubNode } from "./collapse-stub.js";
+import { diffStateFolder, makeStubNode } from "./collapse-stub.js";
 
 /**
  * Collapsible node categories on the system view (Issue #1821, design
@@ -79,6 +79,12 @@ interface CategoryCollapseResult {
    * Identity when nothing collapsed.
    */
   remapEndpoint: (id: string) => string;
+  /**
+   * Diff state re-keyed onto the re-targeted stub edges, the way
+   * `collapseGroups` returns it (#1886): keyed by `edgeKey`, non-`unchanged`
+   * folds only, empty unless a diff map is given and something collapses.
+   */
+  foldedEdgeDiffState: Map<string, string>;
 }
 
 /**
@@ -102,9 +108,16 @@ export function collapseCategories(
    * one colliding id (#2646). Omitted in the single-system view.
    */
   stubScope?: string,
+  /** Per-edge diff state keyed by `edgeKey` (compare mode), folded onto the stub edges. */
+  edgeDiffState?: ReadonlyMap<string, string>,
 ): CategoryCollapseResult {
   if (!collapsed || collapsed.size === 0) {
-    return { nodes: nodes as KrsNode[], edges: edges as KrsEdge[], remapEndpoint: (id) => id };
+    return {
+      nodes: nodes as KrsNode[],
+      edges: edges as KrsEdge[],
+      remapEndpoint: (id) => id,
+      foldedEdgeDiffState: new Map(),
+    };
   }
   const catOfId = new Map<string, CategoryId>();
   const kept: KrsNode[] = [];
@@ -129,6 +142,9 @@ export function collapseCategories(
   };
   const outEdges: KrsEdge[] = [];
   const stubEdges = new Map<string, KrsEdge>();
+  // Same re-keying as the group axis (#1886): a stub edge into `Infra (N)` keeps
+  // the diff state of the edges it stands for instead of drawing undecorated.
+  const diffFold = diffStateFolder(edgeDiffState);
   for (const edge of edges) {
     const from = remap(edge.from);
     const to = remap(edge.to);
@@ -139,6 +155,7 @@ export function collapseCategories(
       continue;
     }
     if (from === to) continue; // both endpoints folded into the same stub
+    diffFold.add(edge, from, to);
     const key = `${from} ${to} ${edge.kind}`;
     const foldedInto = stubEdges.get(key);
     if (foldedInto) {
@@ -164,5 +181,10 @@ export function collapseCategories(
     outEdges.push(stub);
   }
 
-  return { nodes: kept, edges: outEdges, remapEndpoint: remap };
+  return {
+    nodes: kept,
+    edges: outEdges,
+    remapEndpoint: remap,
+    foldedEdgeDiffState: diffFold.folded(),
+  };
 }
