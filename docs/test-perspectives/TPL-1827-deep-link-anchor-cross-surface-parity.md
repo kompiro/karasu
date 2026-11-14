@@ -54,11 +54,11 @@ identity キー）を各サーフェスが独立に組み立てると、一方�
 
 新しい deep-link / アンカー / fragment-addressing 機能を足すとき:
 
-- [ ] element アンカー文字列は `anchorId` / `sanitizeId`（`@karasu-tools/core`）を経由し、各 producer が `krs-<view>-<id>` を直書きしていない（単一階層の whole-view タブ `#krs-deploy` / `#krs-matrix` / `#krs-org-tree` は element アンカーではない documented 例外 — `docs/spec/permalink.md`）
-- [ ] identity キーは `id` であり `label` ではない（highlight / node / view すべて）
+- [ ] element アンカー文字列は `anchorId` / `sanitizeId`（`@karasu-tools/core`）を経由し、各 producer が `krs-<view>-<id>` を直書きしていない（単一階層の whole-view タブ `#krs-deploy` / `#krs-matrix` / `#krs-org-tree` は element アンカーではない documented 例外 — `docs/spec/permalink.md`） [guard: `packages/app/src/permalink-corpus.test.ts`]
+- [ ] identity キーは `id` であり `label` ではない（highlight / node / view すべて） [guard: `packages/app/src/permalink-corpus.test.ts`]
 - [ ] 静的 SVG（`drill-down-svg.ts`）と SPA（`buildHash`）が同一入力で同一アンカーを返す parity test がある
 - [ ] 外部 URL から来る target を validate し、未知 view / 解決不能 id は throw せず degrade する
-- [ ] 新しい `view`（`ActiveView` / `ShareTargetView`）を足したら両 producer・両パーサが網羅する（[TPL-1094](TPL-1094-enum-member-addition.md)）
+- [ ] 新しい `view`（`ActiveView` / `ShareTargetView`）を足したら両 producer・両パーサが網羅する（[TPL-1094](TPL-1094-enum-member-addition.md)） [guard: `packages/app/src/permalink-views.test.ts`]
 
 ## 既知の対処パターン
 
@@ -74,6 +74,9 @@ history hook をマウントさせ、既存のドリル / フォーカス解決�
 - `packages/core/src/renderer/drill-down-svg.test.ts` — 静的 SVG の `<g id>` が `anchorId` 文法に一致
 - `packages/app/src/utils/inline-share.test.ts` — `decodeShare` の `target` round-trip と不正 view の degrade
 - `packages/app/src/utils/deep-link-anchor.test.ts` — `resolveDeepLinkHash` が `?krs=` と `#s=` payload target のどちらからでも `#krs-…` を返す
+- `packages/app/src/permalink-corpus.test.ts` — 同梱の全 example と、`sanitizeId` が書き換える id・id と違うラベル・全アンカー view（system / deploy / org / entity）を持つ fixture を静的バンドルに描き、差分出力のバンドル（`bundleSingleLevelViews`）も同じ fixture で描く。出てきた `id="krs-…"` がすべてモデルが宣言する id（か `root`）の `anchorId(view, id)` で、`href="#krs-…"` がすべてそのどれかに着くこと（1 つ目の項目）。全要素のラベルを変えて描き直しても、アンカー・リンク・SPA が復元した highlight と drill を照合する属性（`HighlightAttribute` の全要素への `Record` と `data-node-path`）が変わらないこと（2 つ目の項目）。最後のテストが、corpus がこの形を含むことを確かめる。producer を直書きにして sanitize しない、カードのリンクをラベルで引く、の 2 つで赤くなるのを確かめた
+- `packages/app/src/permalink-views.test.ts` — `ActiveView` と `ShareTargetView` が同じ集合であることを型で検査する。両側の producer とパーサ（`buildHash` の switch、`PARSE_DISPATCHERS`、`SHARE_TARGET_VIEWS`、静的バンドルの `BUNDLE_VIEWS`）はそれぞれ自分の union について網羅的なので、どちらの union に view を足しても全 producer・全パーサが型検査で落ちる（5 つ目の項目）
+- 4 つ目の項目は印なし。外部入力の入口（`parseHash`・`decodeShare`・`resolveDeepLinkHash`・`parseRepoPermalink`）を列挙する閉じた集合がコードに無く、入口を足しても fuzz の対象に加わらない
 
 ## 派生元 spec
 
