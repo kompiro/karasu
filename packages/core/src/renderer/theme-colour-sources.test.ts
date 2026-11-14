@@ -172,8 +172,12 @@ function fallbackFrames(svg: string, theme: DiagramTheme): { group: boolean; gho
   const { textPrimary, mutedBorder } = resolvePalette(theme);
   const found = { group: false, ghost: false };
   for (const m of svg.matchAll(/<g data-container-id="[^"]*"[^>]*>/g)) {
-    const frame = svg.slice(m.index, groupEnd(svg, m.index));
-    if (!frame.includes(`fill="${textPrimary}"`) || !frame.includes(`stroke="${mutedBorder}"`)) {
+    // The frame's own outline and title: its first `<rect>` and `<text>`, read
+    // as tags so a descendant's paint cannot stand in for them.
+    const frame = svg.slice(m.index + m[0].length, groupEnd(svg, m.index));
+    const outline = /<rect\b[^>]*>/.exec(frame)?.[0] ?? "";
+    const title = /<text\b[^>]*>/.exec(frame)?.[0] ?? "";
+    if (!outline.includes(`stroke="${mutedBorder}"`) || !title.includes(`fill="${textPrimary}"`)) {
       continue;
     }
     if (m[0].includes('data-group="true"')) found.group = true;
