@@ -76,6 +76,10 @@ TPL-2542 の「区切りの後で次の行を消費しない」は、カンマ�
   削除済みの `team` プロパティの回復は判定を持たず、次の行の source を値として読んでいた（#3752 のレビュー）
 - 行を見ずに「矢印が続けば次の文」とすると、同じ行の書き損じ `a -> b "x" -> c` が error に
   ならず、`"x" -> c` という別の edge として黙って通る
+- edge の `#id` の reader が、次の行の `#next -> c` の `#next` を author id として読み、残った `-> c` が
+  暗黙の source の edge になる（#3767 の CodeRabbit のレビュー）
+- id の無い organization 系の宣言が `{` と本体を読みにいき、次の行の edge を本体に取り込む。node の block
+  の中の `boundary` では、本体の `}` が外の block を早く閉じる（#3767 の Design Doc との照合）
 - 必須の値の reader（`label`・`description`・`link` の URL・edge の target・子の宣言の id）が、
   値の欠けた位置で次の行の `"x y" -> b` の `"x y"` を値として読む。node の block の中では残った
   `-> b` が暗黙の source の edge になり、診断なしに違うモデルになる（#3767）
@@ -106,8 +110,9 @@ TPL-2542 の「区切りの後で次の行を消費しない」は、カンマ�
   「edge を読んだが target が無い」を伝える（#3767）
 - **共有のヘルパーで止める**: `node-path.ts` の `opensEdgeOnLaterLine(cursor, after)`。
   `readNodeIdPathTail`（末尾のドットの後の段）、`parseEdge`（positional label）、
-  `parseLink`（link の label）、`rejectMisplacedProperty` の `role`、削除済みの `team` プロパティの
-  回復（`block-contents.ts`）がこれを使う。行は token の終わり（lexer が付ける `end`）で比べる。`parseEdge` は `ctx.previous()` と比べる。
+  `parseLink`（link の label）、`parseAuthorIdSuffix`（edge の `#id`）、`rejectMisplacedProperty` の `role`、
+  削除済みの `team` プロパティの回復（`block-contents.ts`）、organization 系の宣言の positional label と、
+  id が無い宣言の本体（`org-parser.ts` の `opensNextEdge`）がこれを使う。行は token の終わり（lexer が付ける `end`）で比べる。`parseEdge` は `ctx.previous()` と比べる。
   末尾のドットのとき `toEnd` は読まずに残した次の行の token を指すため
 - **同じ順でも逆の順でも同じモデルになることを比べる**: 2 本の edge を入れ替えて書いた
   source が、同じ edge の集合になることを確かめると、片方の順だけで通るテストを避けられる
