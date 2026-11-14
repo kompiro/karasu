@@ -22,7 +22,11 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     exclude: ["**/node_modules/**", "**/.worktrees/**", "**/dist/**"],
-    setupFiles: ["src/test-setup.ts", "src/test-guards/listener-leak-setup.ts"],
+    setupFiles: [
+      "src/test-setup.ts",
+      "src/test-guards/listener-leak-setup.ts",
+      "src/test-guards/a11y-sweep-setup.ts",
+    ],
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts", "src/**/*.tsx"],

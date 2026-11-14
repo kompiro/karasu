@@ -47,6 +47,24 @@ function forget(target: Element, type: string, listener: unknown, capture: boole
   if (i >= 0) registrations.splice(i, 1);
 }
 
+function track(
+  target: Element,
+  type: string,
+  listener: EventListenerOrEventListenerObject,
+  options: boolean | AddEventListenerOptions | undefined,
+): void {
+  if (!target.isConnected || !isReactOwned(target)) return;
+  if (typeof options === "object" && options.once) return;
+  const capture = captureOf(options);
+  const same = (r: Registration) =>
+    r.target === target && r.type === type && r.listener === listener && r.capture === capture;
+  // The DOM ignores a duplicate registration; so do we.
+  if (registrations.some(same)) return;
+  registrations.push({ target, type, listener, capture });
+  const signal = typeof options === "object" ? options.signal : undefined;
+  signal?.addEventListener("abort", () => forget(target, type, listener, capture), { once: true });
+}
+
 /** Patch `EventTarget` once per test file. A no-op outside a DOM environment. */
 export function installListenerTracking(): void {
   if (installed || typeof EventTarget === "undefined" || typeof Element === "undefined") return;
@@ -62,24 +80,7 @@ export function installListenerTracking(): void {
     options?: boolean | AddEventListenerOptions,
   ) {
     add.call(this, type, listener, options);
-    if (!listener || !(this instanceof Element) || !this.isConnected) return;
-    if (!isReactOwned(this)) return;
-    if (typeof options === "object" && options.once) return;
-    const capture = captureOf(options);
-    if (
-      registrations.some(
-        (r) =>
-          r.target === this && r.type === type && r.listener === listener && r.capture === capture,
-      )
-    ) {
-      return; // the DOM ignores a duplicate registration; so do we
-    }
-    const target = this;
-    registrations.push({ target, type, listener, capture });
-    const signal = typeof options === "object" ? options.signal : undefined;
-    signal?.addEventListener("abort", () => forget(target, type, listener, capture), {
-      once: true,
-    });
+    if (listener && this instanceof Element) track(this, type, listener, options);
   };
 
   proto.removeEventListener = function (

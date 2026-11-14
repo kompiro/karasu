@@ -212,12 +212,11 @@ describe("useAppViews: both swap states render for every compare source (TPL-140
       });
       const unswapped = result.current.system.svg;
 
-      if (swapped) {
-        rerender({ swap: true });
-        await waitFor(() => expect(result.current.system.svg).not.toBe(unswapped), {
-          timeout: 3000,
-        });
-      }
+      // Swapped: wait for the inverted diff. Un-swapped: the same props again.
+      rerender({ swap: swapped });
+      await waitFor(() => expect(result.current.system.svg !== unswapped).toBe(swapped), {
+        timeout: 3000,
+      });
 
       for (const view of ACTIVE_VIEWS) {
         const { output, diagnostics } = VIEWS[view];
