@@ -71,7 +71,7 @@ container 系ブロックの再オープン / merge を実装 / 変更すると�
   organization の `label` で固定し、`system-property-conflict` が負けた側の宣言の位置（`loc.file`）を持つことを assert する
   （チェックリスト 1・2・5 項目目）。最短経路で数えること、同じ距離なら import の順で決まること、entry を入れ替えると
   採用値も入れ替わること（チェックリスト 4 項目目）、named import の取り込み元の中でだけ起きたマージが警告の `chosen` を決めないことも同じ block が見る。種類の一覧は
-  手で持つ表なので、このテスト単体はガードではない（下のテストがガード）
+  手で持つ表なので、このテスト単体はガードではない（3・5 項目目は下のテストがガードし、1・2・4 項目目は下に書いた理由で印なし）
 - `packages/core/src/fs/import-merge-tables.test.ts` — `every block kind reopened across files follows S3 / S4`：
   `system-property-conflict` の `blockKind` の union を鍵にした表 `REOPEN`（`satisfies Record<…>`）で、種類ごとに
   距離で値が決まること（両方の import 順）、警告が採用値・無視した値・負けた側の `loc.file` を持つこと、entry を
@@ -80,7 +80,7 @@ container 系ブロックの再オープン / merge を実装 / 変更すると�
   （`KrsFile` の全配列）を兄弟 2 ファイルの whole-file import で取り込み、「同じ id の block が 1 つにまとまる配列」を実測して、
   `REOPEN` と例外表 `MERGED_WITHOUT_S3`（S4.5 の infra。label は root-entry-wins で警告を出さない、TPL-1385）の和と
   一致することを assert して捕まえる。named import でだけ開き直す種類は、この実測に入らない。
-  チェックリスト 3・5 項目目（種類ごとの子の union と、`deploy` / `organization` への適用）はこのテストがガードする。
+  チェックリスト 3・5 項目目はこのテストがガードする。守るのは種類の側で、`deploy` / `organization` が S3 / S4 の種類から外れないことと、種類ごとの子の union（子は `SystemNode.children` / `DeployBlock.nodes` / `OrganizationBlock.teams` を読む。いまはどの block も子の配列を 1 つだけ持つ）である。プロパティの側は 1・2・4 項目目と同じ理由で守られない。
   1・2・4 項目目には印を付けない。値の規則を見るプロパティは `system-property-conflict` が名指せる `label` /
   `description` で、spec の S3 が同じ規則に入れるタグは reconcile されていない（#3809）。新しい本体プロパティも
   この診断の union に入らない限り表に加わらない

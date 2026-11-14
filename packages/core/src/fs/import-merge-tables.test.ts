@@ -25,6 +25,7 @@ import type { DiagnosticParamsByCode, KrsFile } from "../types/ast";
 // them to enumerate. What is closed is the set of `KrsFile` arrays.
 
 type ArrayKeys<T> = {
+  // An optional array counts too; the key check below then needs createEmptyKrsFile to set it.
   [K in keyof T]-?: NonNullable<T[K]> extends readonly unknown[] ? K : never;
 }[keyof T];
 type TopLevelKey = ArrayKeys<KrsFile>;
@@ -104,9 +105,9 @@ function errors(result: ResolvedProject): string[] {
 /**
  * The ways a file's content can reach the entry. `lib` is where the case's
  * source sits; `files` are the other files, with the entry at `index.krs`.
- * The named-import shapes put a second reach of `lib.krs` behind the first, so
- * the second is answered from the resolver's per-file cache and has to bring
- * the whole file (TPL-1383 items 2 and 3).
+ * The shapes that reach `lib.krs` twice answer the second reach from the
+ * resolver's per-file cache (`resolvedCache`), which exercises TPL-1383 items
+ * 2 and 3 for that cache.
  */
 const SHAPES: Record<string, { lib: string; files: Record<string, string> }> = {
   "whole-file import": {
@@ -151,10 +152,13 @@ const SHAPES: Record<string, { lib: string; files: Record<string, string> }> = {
  * Rows that fail on main, each with its Issue. A row listed here is asserted to
  * still fail, so the entry has to go when the fix lands.
  */
-const KNOWN_GAPS: Record<string, string> = {
+const KNOWN_GAPS: Record<string, { issue: string; actual: string[] }> = {
   // `resolveBareIdImport` pushes a named system without looking for the one
   // the whole-file import already added.
-  "whole-file, then named import of the same file / systems": "#3801",
+  "whole-file, then named import of the same file / systems": {
+    issue: "#3801",
+    actual: ["system#Anchor", "system#Anchor", "system#Shop"],
+  },
 };
 
 function dirOf(path: string): string {
@@ -227,9 +231,9 @@ describe("every top-level KrsFile array reaches the importer (TPL-1383, TPL-2169
 
   it.each(rows.filter((r) => KNOWN_GAPS[r.name]))(
     "$name still differs (known gap, remove from KNOWN_GAPS when fixed)",
-    async ({ shape, key, c }) => {
+    async ({ name, shape, key, c }) => {
       const { alone, merged } = await resolveShape(c, shape);
-      expect(identities(merged.krsFile, key)).not.toEqual(identities(alone.krsFile, key));
+      expect(identities(merged.krsFile, key)).toEqual(KNOWN_GAPS[name].actual);
     },
   );
 
