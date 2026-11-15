@@ -9,7 +9,7 @@ scope:
   packages: [core, app]
   concerns: [i18n]
 assumptions:
-  - "symbol: packages/core/src/builtins/default-style.ts :: AnnotationBadgeLabels"
+  - "symbol: packages/core/src/builtins/annotation-badge-rules.ts :: AnnotationBadgeLabels"
   - "symbol: packages/core/src/builtins/default-style.ts :: buildBuiltinStyleSource"
   - "grep: packages/core/src/builtins/default-style.ts :: __ANNOTATION_RULES__"
   - "file: packages/core/src/badge-labels-meta.test.ts"
