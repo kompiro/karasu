@@ -4,12 +4,18 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { useReducer, useState } from "react";
 import { appReducer, initialState, type AppAction, type AppState } from "../state/app-reducer.js";
 import type { parseHash } from "./history-hash.js";
+import type { FileSelectionStatus } from "./useFileSelection.js";
 import { useHistoryNavigation } from "./useHistoryNavigation.js";
 
 /**
- * Every field a deep link restores, through the cold-boot order that wipes it
- * (TPL-1842): mount with the hash → the hook restores → the seed's
- * `SELECT_FILE` resets the view (`VIEW_RESET`) → the model's index fills in.
+ * Every field a deep link restores, through Project mode's cold-boot order,
+ * which wipes it (TPL-1842): mount with the hash while the seed file is open →
+ * the hook restores and asks for the file the hash names → that file lands
+ * (`SELECT_FILE` → `VIEW_RESET`, #3598). The seed's index is compiled from the
+ * start, so only the hook's own waiting keeps the values from being applied
+ * before the reset. Memory and Serve mode's order, where the seed is the named
+ * file and the index fills in after it, is the #3284 test in
+ * `useHistoryNavigation.test.ts`.
  *
  * The table is a `Record` over the fields `parseHash` returns, so a new
  * restorable field does not compile until it has a row here, and the row then
@@ -25,10 +31,13 @@ interface Harness {
 }
 
 interface Row {
-  /** A hash that restores this field (the file it names is the one the seed opens). */
+  /** A hash that restores this field. It names a file the seed does not open. */
   hash: string;
-  /** The field is back in the state the hash names. */
-  restored: (h: Harness) => boolean;
+  /**
+   * Each part of the field the hash restores, true when it is back in the
+   * state. Checked one by one, so a re-apply of any part is seen.
+   */
+  restored: (h: Harness) => boolean[];
   /** The visitor's own navigation away from it. */
   leave: (
     h: Harness & {
@@ -39,25 +48,29 @@ interface Row {
   ) => void;
 }
 
-const FILE = "/index.krs";
+/** The file the project switch opened before the hook mounted. */
+const SEED_FILE = "/index.krs";
+/** The file the hash names, which the hook opens after the seed's (#3598). */
+const FILE = "/b.krs";
+const MODEL = "system S {\n  service A {}\n}\n";
 /** Far more than one boot and one navigation dispatch. */
 const MAX_DISPATCHES = 200;
-const FILE_QUERY = "?file=%2Findex.krs";
+const FILE_QUERY = "?file=%2Fb.krs";
 
 const ROWS: Record<keyof ParsedHash, Row> = {
   activeView: {
     hash: `#krs-deploy${FILE_QUERY}`,
-    restored: ({ state }) => state.activeView === "deploy",
+    restored: ({ state }) => [state.activeView === "deploy"],
     leave: ({ dispatch }) => dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" }),
   },
   nodeId: {
     hash: `#krs-system-A${FILE_QUERY}`,
-    restored: ({ state }) => state.viewPath.join("/") === "A",
+    restored: ({ state }) => [state.viewPath.join("/") === "A"],
     leave: ({ dispatch }) => dispatch({ type: "SET_VIEW_PATH", path: [] }),
   },
   highlightNodeId: {
     hash: `#krs-system-root:A${FILE_QUERY}`,
-    restored: ({ state }) => state.highlightedNodeId === "A",
+    restored: ({ state }) => [state.highlightedNodeId === "A"],
     leave: ({ dispatch }) =>
       dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null, highlightAttribute: "data-node-id" }),
   },
@@ -65,12 +78,15 @@ const ROWS: Record<keyof ParsedHash, Row> = {
   // reducer, so `VIEW_RESET` cannot wipe them; their rows hold that.
   isOrgTreeView: {
     hash: `#krs-org-tree${FILE_QUERY}`,
-    restored: ({ state, orgTree }) => state.activeView === "org" && orgTree,
-    leave: ({ setOrgTree }) => setOrgTree(false),
+    restored: ({ state, orgTree }) => [state.activeView === "org", orgTree],
+    leave: ({ setOrgTree, dispatch }) => {
+      setOrgTree(false);
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" });
+    },
   },
   isEntityView: {
     hash: `#krs-entity-A${FILE_QUERY}`,
-    restored: ({ state, entityView }) => state.viewPath.join("/") === "A" && entityView,
+    restored: ({ state, entityView }) => [state.viewPath.join("/") === "A", entityView],
     leave: ({ setEntityView, dispatch }) => {
       setEntityView(false);
       dispatch({ type: "SET_VIEW_PATH", path: [] });
@@ -78,9 +94,8 @@ const ROWS: Record<keyof ParsedHash, Row> = {
   },
   filePath: {
     hash: `#krs-system-root${FILE_QUERY}`,
-    restored: ({ state }) => state.currentFilePath === FILE,
-    leave: ({ dispatch }) =>
-      dispatch({ type: "SELECT_FILE", path: "/other.krs", content: "system S {}\n" }),
+    restored: ({ state }) => [state.currentFilePath === FILE],
+    leave: ({ dispatch }) => dispatch({ type: "SELECT_FILE", path: SEED_FILE, content: MODEL }),
   },
 };
 
@@ -90,10 +105,17 @@ const ROWS: Record<keyof ParsedHash, Row> = {
  * sub-mode flags as the component state the app hands it.
  */
 function boot() {
-  let generation = 0;
+  let generation = 1;
   let dispatches = 0;
+  /** Files the hook asked to open, read once the test lets them land. */
+  const requested: string[] = [];
   const hook = renderHook(() => {
-    const [state, rawDispatch] = useReducer(appReducer, initialState);
+    // The project switch opened the seed file before the hook mounted (#3598).
+    const [state, rawDispatch] = useReducer(appReducer, {
+      ...initialState,
+      currentFilePath: SEED_FILE,
+      fileContent: MODEL,
+    });
     // A restoration that is re-applied on every render dispatches forever; cap
     // it so that fails here instead of hanging the run.
     const dispatch = (action: AppAction) => {
@@ -102,10 +124,12 @@ function boot() {
     };
     const [orgTree, setOrgTree] = useState(false);
     const [entityView, setEntityView] = useState(false);
-    const nodePathIndex =
-      state.fileContent && generation > 0
-        ? new Map(Array.from({ length: generation }, (_, i) => [i === 0 ? "A" : `N${i}`, ["A"]]))
-        : new Map<string, string[]>();
+    // The seed file's index is already compiled at mount, so what holds the
+    // restoration back is the hook waiting for the named file, not an empty
+    // index (that order is the #3284 test).
+    const nodePathIndex = new Map(
+      Array.from({ length: generation }, (_, i) => [i === 0 ? "A" : `N${i}`, ["A"]]),
+    );
     useHistoryNavigation({
       activeView: state.activeView,
       viewPath: state.viewPath,
@@ -117,12 +141,22 @@ function boot() {
       isEntityView: entityView,
       setIsEntityView: setEntityView,
       highlightedNodeId: state.highlightedNodeId,
+      onFileChange: (path: string): Promise<FileSelectionStatus> => {
+        requested.push(path);
+        return Promise.resolve("opened");
+      },
     });
     return { state, dispatch, orgTree, entityView, setOrgTree, setEntityView };
   });
   return {
     ...hook,
-    /** The model's index fills in (again, with a new entry, on later calls). */
+    /** The files the hook asked for are read, each through `SELECT_FILE`. */
+    landRequestedFiles: () => {
+      for (const path of requested.splice(0)) {
+        hook.result.current.dispatch({ type: "SELECT_FILE", path, content: MODEL });
+      }
+    },
+    /** The model's index changes (gains an entry). */
     fillIndex: () => {
       generation++;
     },
@@ -143,17 +177,16 @@ describe.each(Object.keys(ROWS) as (keyof ParsedHash)[])(
       history.replaceState(null, "", "/");
     });
 
+    /**
+     * Project mode's cold boot: the switch has the seed file open when the
+     * hook mounts, the file the hash names lands after it (its `SELECT_FILE`
+     * resets the view).
+     */
     async function bootPastTheReset() {
       const h = boot();
       await act(async () => {
-        h.result.current.dispatch({
-          type: "SELECT_FILE",
-          path: FILE,
-          content: "system S {\n  service A {}\n}\n",
-        });
+        h.landRequestedFiles();
       });
-      // The seed reset has run with the index still empty; nothing is re-applied yet.
-      h.fillIndex();
       await act(async () => {
         h.rerender();
       });
@@ -162,20 +195,23 @@ describe.each(Object.keys(ROWS) as (keyof ParsedHash)[])(
 
     it("survives the seed's view reset", async () => {
       const h = await bootPastTheReset();
-      expect(row.restored(h.result.current)).toBe(true);
+      expect(row.restored(h.result.current).every(Boolean)).toBe(true);
     });
 
-    it("is re-applied once, not again when the index changes later", async () => {
+    it("is re-applied once, not again after the visitor leaves it", async () => {
       const h = await bootPastTheReset();
       await act(async () => {
         row.leave(h.result.current);
       });
-      expect(row.restored(h.result.current)).toBe(false);
+      expect(row.restored(h.result.current).some(Boolean)).toBe(false);
+      // Later renders, with the index changing and any file the hook asked
+      // for landing, re-apply nothing.
       h.fillIndex();
       await act(async () => {
+        h.landRequestedFiles();
         h.rerender();
       });
-      expect(row.restored(h.result.current)).toBe(false);
+      expect(row.restored(h.result.current).some(Boolean)).toBe(false);
     });
   },
 );
