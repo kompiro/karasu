@@ -14,21 +14,23 @@ import type { BrowserContext, Page } from "@playwright/test";
  * literal, an inline `zIndex`, a Tailwind class and a library's own default
  * alike. Because a magic number can coincide with a token's value (shadcn's
  * `z-50` equals `--z-handle`, and many libraries use `1000`), the value alone is
- * not enough: the element also needs a matching declaration, inline or in a
- * stylesheet rule that applies to it, whose text is `var(--z-<token>)` for a
- * token with that value. A library default that a token rule overrides passes;
- * one left in place does not. Radix copies a popper's z-index onto the inline
- * style of the wrapper it positions; a wrapper whose value is the one a token
- * gives its child passes too.
+ * not enough: the declaration that wins the cascade must read the token. The
+ * probe asks the cascade directly: it sets every token to a sentinel value on
+ * the element, and the element passes only when its computed z-index follows
+ * one of them. A library default that a token rule overrides passes; one left
+ * in place, or a literal that beats a token rule, does not. Radix copies a
+ * popper's z-index onto the inline style of the wrapper it positions
+ * (`[data-radix-popper-content-wrapper]`); that wrapper passes when a token
+ * gives its content the value.
  *
  * Monaco keeps its own stacking inside the editor (and in its context view);
  * those subtrees are skipped. SVG elements are skipped: the diagram does not
  * stack with z-index.
  *
  * Two ways in, one probe. `installZIndexProbe` adds an init script to a
- * context: a MutationObserver checks each element as it is added or its
- * `class` / `style` changes, so a menu a spec opens and closes again is still
- * seen. `scanZIndex` checks the whole document as it stands. `network.ts`
+ * context: a MutationObserver checks each element as it is added, and the
+ * subtree of an element whose `class` / `style` changes, so a menu a spec opens
+ * and closes again is still seen. `scanZIndex` checks the whole document as it stands. `network.ts`
  * installs the probe for every test and, after a passing test, fails it on
  * anything either found. `tests/z-index-scale.spec.ts` checks that the probe
  * sees each layer of the scale.
@@ -74,6 +76,9 @@ declare global {
 function probeScript(tokenNames: string[]): void {
   const LOCAL_LITERALS = new Set(["0", "1"]);
   const SKIP = ".monaco-editor, .context-view";
+  const RADIX_WRAPPER = "[data-radix-popper-content-wrapper]";
+  // Values no surface uses, one per token, set on an element while probing it.
+  const SENTINEL_BASE = 7_654_300;
 
   const tokenValues = (): Map<string, string> => {
     const rootStyle = getComputedStyle(document.documentElement);
@@ -85,54 +90,35 @@ function probeScript(tokenNames: string[]): void {
     return values;
   };
 
-  // Every style rule that declares z-index, flattened out of @media,
-  // @supports, @layer and @container blocks. Read again whenever the set of
-  // style sheets changes (dev mode injects them as modules load).
-  let cachedSheets: CSSStyleSheet[] = [];
-  let cachedRules: CSSStyleRule[] = [];
-  const zRules = (): CSSStyleRule[] => {
-    const sheets = Array.from(document.styleSheets);
-    if (sheets.length === cachedSheets.length && sheets.every((s, i) => s === cachedSheets[i])) {
-      return cachedRules;
+  /**
+   * The token whose `var()` the winning z-index declaration reads, if any.
+   * Asks the cascade itself: give every token a sentinel value on `el` and see
+   * whether the computed z-index follows one of them. A literal (inline or in
+   * a rule) that beats a `var()` rule keeps its own value, so it is not
+   * mistaken for the token. The `style` attribute is restored exactly.
+   */
+  const tokenOf = (el: Element, zIndex: string, values: Map<string, string>): string | null => {
+    if (!(el instanceof HTMLElement)) return null;
+    const saved = el.getAttribute("style");
+    // z-index is animatable: with a transition on the element (shadcn's dialog
+    // has one), the sentinel would be interpolated toward, not read back.
+    el.style.setProperty("transition", "none", "important");
+    const bySentinel = new Map<string, string>();
+    let i = 0;
+    for (const name of values.keys()) {
+      const sentinel = String(SENTINEL_BASE + i++);
+      el.style.setProperty(name, sentinel);
+      bySentinel.set(sentinel, name);
     }
-    const rules: CSSStyleRule[] = [];
-    const visit = (list: CSSRuleList) => {
-      for (const rule of Array.from(list)) {
-        if (rule instanceof CSSStyleRule) {
-          if (rule.style.getPropertyValue("z-index") !== "") rules.push(rule);
-        } else if (rule instanceof CSSMediaRule) {
-          if (matchMedia(rule.conditionText).matches) visit(rule.cssRules);
-        } else if ("cssRules" in rule) {
-          visit((rule as CSSGroupingRule).cssRules);
-        }
-      }
-    };
-    for (const sheet of sheets) {
-      try {
-        visit(sheet.cssRules);
-      } catch {
-        // A cross-origin sheet (the stubbed web fonts) has no readable rules.
-      }
-    }
-    cachedSheets = sheets;
-    cachedRules = rules;
-    return rules;
-  };
-
-  const declarations = (el: Element): string[] => {
-    const out: string[] = [];
-    const inline = (el as HTMLElement).style?.getPropertyValue("z-index");
-    if (inline) out.push(inline.trim());
-    for (const rule of zRules()) {
-      let matches = false;
-      try {
-        matches = el.matches(rule.selectorText);
-      } catch {
-        // A selector `matches` cannot take (a pseudo-element) never applies here.
-      }
-      if (matches) out.push(rule.style.getPropertyValue("z-index").trim());
-    }
-    return out;
+    const probed = getComputedStyle(el).zIndex;
+    // Put the tokens back while transitions are still off, so the return to
+    // the real value does not animate either, then restore the attribute.
+    for (const name of values.keys()) el.style.removeProperty(name);
+    void getComputedStyle(el).zIndex;
+    if (saved === null) el.removeAttribute("style");
+    else el.setAttribute("style", saved);
+    const name = bySentinel.get(probed);
+    return name !== undefined && values.get(name) === zIndex ? name : null;
   };
 
   const describe = (el: Element) => {
@@ -142,25 +128,17 @@ function probeScript(tokenNames: string[]): void {
 
   const skipped = (el: Element) => el instanceof SVGElement || el.closest(SKIP) !== null;
 
-  /** The token a matching `var()` declaration gives `el` its value from, if any. */
-  const tokenOf = (el: Element, zIndex: string, values: Map<string, string>): string | null => {
-    for (const declared of declarations(el)) {
-      const m = /^var\(\s*(--z-[\w-]+)\s*\)$/.exec(declared);
-      if (m && values.get(m[1]) === zIndex) return m[1];
-    }
-    return null;
-  };
-
   const inspect = (el: Element, values: Map<string, string>): ZIndexHit | null => {
     const zIndex = getComputedStyle(el).zIndex;
     if (zIndex === "auto") return null;
-    let token = tokenOf(el, zIndex, values);
-    if (token === null && !LOCAL_LITERALS.has(zIndex)) {
-      // Radix's popper wrapper carries its content's value inline.
-      for (const child of Array.from(el.children)) {
-        if (skipped(child) || getComputedStyle(child).zIndex !== zIndex) continue;
-        token = tokenOf(child, zIndex, values);
-        if (token !== null) break;
+    let token = LOCAL_LITERALS.has(zIndex) ? null : tokenOf(el, zIndex, values);
+    if (token === null && !LOCAL_LITERALS.has(zIndex) && el.matches(RADIX_WRAPPER)) {
+      // Radix positions a portalled popper in this wrapper and copies the
+      // content's computed z-index onto the wrapper's inline style. The
+      // wrapper is on the scale when a token gives its content that value.
+      const content = el.firstElementChild;
+      if (content && getComputedStyle(content).zIndex === zIndex) {
+        token = tokenOf(content, zIndex, values);
       }
     }
     const violation = token === null && !LOCAL_LITERALS.has(zIndex);
@@ -182,40 +160,63 @@ function probeScript(tokenNames: string[]): void {
   };
 
   const observed = new Map<string, ZIndexHit>();
-  const record = (elements: Iterable<Element>) => {
+  /**
+   * Check every element a batch of mutations may have moved onto or off the
+   * scale: added subtrees, and the whole subtree of an element whose `class`
+   * or `style` changed (a selector such as `.open .menu` reaches descendants).
+   */
+  const handle = (mutations: MutationRecord[]) => {
+    const touched = new Set<Element>();
+    for (const m of mutations) {
+      const roots = m.type === "attributes" ? [m.target] : Array.from(m.addedNodes);
+      for (const node of roots) {
+        if (node instanceof Element && node.isConnected) {
+          for (const el of elementsUnder(node)) touched.add(el);
+        }
+      }
+    }
+    if (touched.size === 0) return;
     const values = tokenValues();
-    for (const el of elements) {
-      if (!el.isConnected) continue;
+    for (const el of touched) {
       const hit = inspect(el, values);
       if (hit) observed.set(`${hit.element} ${hit.zIndex} ${hit.token}`, hit);
     }
   };
 
+  let observer: MutationObserver | null = null;
+  /**
+   * Handle what the app changed so far, then drop the records the probe's own
+   * `style` writes queued (nothing else runs while the probe does).
+   */
+  const flush = () => {
+    if (!observer) return;
+    handle(observer.takeRecords());
+    observer.takeRecords();
+  };
+
   window.__karasuZIndexProbe = {
     scan: () => {
+      flush();
       const values = tokenValues();
-      return elementsUnder(document.body).flatMap((el) => {
+      const hits = elementsUnder(document.body).flatMap((el) => {
         const hit = inspect(el, values);
         return hit ? [hit] : [];
       });
+      observer?.takeRecords();
+      return hits;
     },
-    observed: () => [...observed.values()],
+    observed: () => {
+      flush();
+      return [...observed.values()];
+    },
   };
 
   const start = () => {
-    new MutationObserver((mutations) => {
-      const touched = new Set<Element>();
-      for (const m of mutations) {
-        if (m.type === "attributes") {
-          if (m.target instanceof Element && !skipped(m.target)) touched.add(m.target);
-          continue;
-        }
-        for (const node of Array.from(m.addedNodes)) {
-          if (node instanceof Element) for (const el of elementsUnder(node)) touched.add(el);
-        }
-      }
-      record(touched);
-    }).observe(document.documentElement, {
+    observer = new MutationObserver((mutations) => {
+      handle(mutations);
+      observer?.takeRecords();
+    });
+    observer.observe(document.documentElement, {
       childList: true,
       subtree: true,
       attributes: true,

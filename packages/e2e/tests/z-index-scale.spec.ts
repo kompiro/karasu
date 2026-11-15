@@ -100,3 +100,69 @@ test.describe("z-index scale scan (TPL-1468)", () => {
     expect((await observedZIndex(page)).map((h) => h.token)).toContain("--z-dialog");
   });
 });
+
+/**
+ * The probe judges where the winning value comes from. These cases add their
+ * own elements to a booted app and close the page at the end, so the
+ * after-test check in `network.ts` (which skips closed pages) does not fail
+ * them for the violations they plant on purpose.
+ */
+test.describe("z-index probe on planted elements (TPL-1468)", () => {
+  const plant = (page: Page, css: string, html: string) =>
+    page.evaluate(
+      ([c, h]) => {
+        const style = document.createElement("style");
+        style.textContent = c;
+        document.head.append(style);
+        document.body.insertAdjacentHTML("beforeend", h);
+      },
+      [css, html] as const,
+    );
+  const verdicts = async (page: Page, prefix: string) =>
+    (await observedZIndex(page))
+      .filter((h) => h.element.startsWith(prefix))
+      .map(({ element, zIndex, token, violation }) => ({ element, zIndex, token, violation }));
+
+  test("passes a token rule, and fails a literal that beats one", async ({ page, opfs }) => {
+    await bootProjectApp(page, opfs, KRS);
+    await plant(
+      page,
+      ".zt-surface { position: absolute; z-index: var(--z-handle); }",
+      '<div class="zt-surface zt-ok"></div><div class="zt-surface zt-literal" style="z-index: 50"></div>',
+    );
+    expect(await verdicts(page, "div.zt-surface")).toEqual([
+      { element: "div.zt-surface.zt-ok", zIndex: "50", token: "--z-handle", violation: false },
+      { element: "div.zt-surface.zt-literal", zIndex: "50", token: null, violation: true },
+    ]);
+    await page.close();
+  });
+
+  test("does not lend a child's token to an ordinary parent", async ({ page, opfs }) => {
+    await bootProjectApp(page, opfs, KRS);
+    await plant(
+      page,
+      ".zt-child { position: absolute; z-index: var(--z-handle); }",
+      '<div class="zt-parent" style="position: absolute; z-index: 50"><div class="zt-child"></div></div>',
+    );
+    expect(await verdicts(page, "div.zt-parent")).toEqual([
+      { element: "div.zt-parent", zIndex: "50", token: null, violation: true },
+    ]);
+    await page.close();
+  });
+
+  test("checks descendants when an ancestor's class changes", async ({ page, opfs }) => {
+    await bootProjectApp(page, opfs, KRS);
+    await plant(
+      page,
+      ".zt-open .zt-menu { position: absolute; z-index: 999; }",
+      '<div class="zt-host"><div class="zt-menu"></div></div>',
+    );
+    await page.evaluate(() => document.querySelector(".zt-host")!.classList.add("zt-open"));
+    await page.evaluate(() => document.querySelector(".zt-host")!.classList.remove("zt-open"));
+    expect((await scanZIndex(page)).filter((h) => h.element === "div.zt-menu")).toEqual([]);
+    expect(await verdicts(page, "div.zt-menu")).toEqual([
+      { element: "div.zt-menu", zIndex: "999", token: null, violation: true },
+    ]);
+    await page.close();
+  });
+});

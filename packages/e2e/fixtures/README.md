@@ -20,17 +20,19 @@ It also installs the z-index probe from `z-index-scan.ts` for every test (below)
 ## `z-index-scan.ts` — every surface stays on the z-index scale
 
 An auto fixture in `network.ts` adds a probe to each page: a MutationObserver
-that checks every element as it is added or its `class` / `style` changes. After
-a passing test, the fixture fails it when any element on the page's current
-document (the probe starts again after a reload or navigation) showed a z-index other
-than `auto`, `0` or `1` that does not come from a `var(--z-*)` token in
-`packages/app/src/styles/tokens.css` (TPL-1468). It checks where the value comes
-from, not only the value, so a literal equal to a token's value or shadcn's
-default `z-50` also fails; a menu a spec opens and closes again is still seen.
-Monaco's own stacking and SVG are skipped. `tests/z-index-scale.spec.ts` opens a
-surface on every layer and checks the probe sees it. If a test fails here, give
-the surface a `--z-*` token (add one to the scale, with a comment, when no layer
-fits).
+that checks every element as it is added, and the subtree of any element whose
+`class` / `style` changes. After a passing test, the fixture fails it when any
+element on the page's current document (the probe starts again after a reload
+or navigation) showed a z-index other than `auto`, `0` or `1` that does not
+come from a `var(--z-*)` token in `packages/app/src/styles/tokens.css`
+(TPL-1468). It asks the cascade where the winning value comes from (it sets
+each token to a sentinel on the element and sees whether the z-index follows),
+so a literal equal to a token's value, a literal that beats a token rule, or
+shadcn's default `z-50` also fails, and a menu a spec opens and closes again is
+still seen. Monaco's own stacking and SVG are skipped.
+`tests/z-index-scale.spec.ts` opens a surface on every layer and checks the
+probe sees it. If a test fails here, give the surface a `--z-*` token (add one
+to the scale, with a comment, when no layer fits).
 
 ## `expect.ts` — the `expect` specs get
 
