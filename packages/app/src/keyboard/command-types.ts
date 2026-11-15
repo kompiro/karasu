@@ -47,7 +47,7 @@ type NamedKey =
  * chord with an upper-case key or a key the dispatcher never produces does not
  * type-check. Add a key here when a command needs it.
  */
-export type ChordKey = Letter | Digit | NamedKey;
+type ChordKey = Letter | Digit | NamedKey;
 
 /**
  * A key chord in the one order `eventToChord` produces: `mod`, `alt`, `shift`,
