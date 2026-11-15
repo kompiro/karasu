@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { format } from "./formatter.js";
+import {
+  HOSTILE_RESPELLINGS,
+  withHostileIds,
+  type HostileRespelling,
+} from "../testing/hostile-ids.js";
 import { Parser } from "../parser/parser.js";
 import { createEmptyKrsFile } from "../types/ast.js";
 import type { KrsFile } from "../types/ast.js";
@@ -105,6 +110,32 @@ describe("formatter top-level coverage", () => {
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
+});
+
+// TPL-2707: the same fixtures again, with every id they declare respelled so it
+// needs quotes (`withHostileIds`). The formatter has to quote an id wherever it
+// prints one; an emit path that prints an id bare without asking `quoteId`
+// writes a spelling the parser reads back differently. The table above makes a
+// new construct bring a fixture, so it joins this check too.
+describe("formatter top-level coverage with ids that need quotes", () => {
+  const respellings = Object.keys(HOSTILE_RESPELLINGS) as HostileRespelling[];
+  for (const [key, src] of Object.entries(FIXTURES)) {
+    it.each(respellings)(
+      `round-trips the ${key} fixture with every id respelled: %s`,
+      (respelling) => {
+        const hostile = withHostileIds(src, respelling);
+        expect(hostile).not.toBe(src);
+        const before = Parser.parse(hostile);
+        expect(before.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+
+        const formatted = format(hostile);
+        const after = Parser.parse(formatted);
+        expect(after.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+        expect(stripLocations(after.value)).toEqual(stripLocations(before.value));
+        expect(format(formatted)).toBe(formatted);
+      },
+    );
+  }
 });
 
 // Local copy of the location-stripping helper used by formatter.test.ts, kept
