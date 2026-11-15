@@ -40,7 +40,7 @@ client だけは icon mode と Outline が一致している。style resolver �
 
 ## 制約・前提
 
-- icon mode・shape mode・Outline が、同じノードに同じ variant を選ぶ（TPL-1415、TPL-1001）。
+- author のルールが shape を選んでいないノードでは、icon mode・shape mode・Outline が同じ variant を選ぶ（TPL-1415、TPL-1001）。author のルールが選んだノードでは描画は author の値になり、Outline は最初のタグのまま（ADR-1415）。これは variant タグが 1 つのノードと同じである。
 - author のルールは、組み込みのルールに対して今と同じ強さを保つ。単一の variant タグのノードで author が勝つ場面では、複数の variant タグのノードでも勝つ（#3776）。
 - variant の語彙は `ICON_RULES` の 1 か所から導く。shape mode の 4 行を別の表に写さない。
 - `iconNameForNode` の規則（最初のタグ）は ADR-1415 の決定で、変えない。
@@ -101,7 +101,7 @@ client だけは icon mode と Outline が一致している。style resolver �
 
 ## 現時点の方針
 
-**案3 を採用する** — 組み込みのルールだけを対象にすれば、author のルールとカスケードの規則に触れずに、3 つの表示面を最初のタグにそろえられる。値ではなく出どころで決めるので、#3776 も同じ変更で直る。
+**案3 を採用する** — 組み込みのルールだけを対象にすれば、author のルールとカスケードの規則に触れずに、author のルールが選んでいないノードで 3 つの表示面を最初のタグにそろえられる。値ではなく出どころで決めるので、#3776 も同じ変更で直る。
 
 ### 挙動の変化
 
@@ -123,7 +123,7 @@ client だけは icon mode と Outline が一致している。style resolver �
    - shape mode でも、variant の全組み合わせで「最初のタグの単一 variant と同じ shape になる」ことを確かめる。組み合わせは `ICON_RULES` から生成する。
    - author の id セレクタで variant を指定したノードで、全組み合わせについて author の値が勝つことを確かめる（#3776）。
    - 組み込みシートの variant ルールが、`VARIANT_ICONS_BY_KIND` の語彙の外のタグを使っていないことを確かめる（shape mode の 4 行と `ICON_RULES` の一致）。
-5. spec: `docs/spec/syntax.md` / `syntax.ja.md`（client の form-factor）と `docs/spec/tags-annotations.md` / `tags-annotations.ja.md`（resource の shape タグ）に、「variant タグを 2 つ以上書いたノードは、最初のタグで描く。shape mode・icon mode・Outline で同じ」を 1 文ずつ足す。
+5. spec: `docs/spec/syntax.md` / `syntax.ja.md`（client の form-factor）と `docs/spec/tags-annotations.md` / `tags-annotations.ja.md`（resource の shape タグ）に、「variant タグを 2 つ以上書いたノードの組み込みの見た目は、最初のタグで決まる。shape mode・icon mode・Outline で同じ。author のルールはこれに勝つ」を 1 文ずつ足す。
 6. TPL: #3776 は「カスケードの後で値を書き換える処理が、値の出どころを見ずに author の宣言を上書きする」型で、3-Yes ルールに当たるかを実装の PR で判断する。当たれば retrospective TPL を起こし、4 の author のテストをガードにする。
 7. changeset: `@karasu-tools/core` と `karasu` に patch。
 8. AT: 人間が確かめる項目は無い（描画の結果は 4 のテストで自動で確かめる）。
