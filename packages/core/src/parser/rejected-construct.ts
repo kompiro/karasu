@@ -2,6 +2,7 @@ import type { Token, SourceRange } from "../types/tokens.js";
 import type { Diagnostic, DiagnosticCode, DiagnosticParamsByCode, KrsNode } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
 import type { ParseContext } from "./parse-context.js";
+import type { ErrorDiagnosticCode } from "../types/diagnostic-severity.js";
 
 /**
  * Dropping the construct a parser error rejects (#3072).
@@ -16,7 +17,7 @@ import type { ParseContext } from "./parse-context.js";
  */
 
 /** Report `code` over a construct the caller has already consumed whole. */
-export function rejectConstruct<K extends DiagnosticCode>(
+export function rejectConstruct<K extends DiagnosticCode & ErrorDiagnosticCode>(
   ctx: ParseContext,
   loc: SourceRange,
   code: K,

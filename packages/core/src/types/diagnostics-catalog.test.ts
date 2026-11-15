@@ -3,6 +3,9 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DIAGNOSTIC_IDS, RETIRED_DIAGNOSTIC_IDS } from "./diagnostic-ids.js";
+import type { DiagnosticCode, DiagnosticSeverity } from "./ast.js";
+import { DIAGNOSTIC_SEVERITY } from "./diagnostic-severity.js";
+import { warningSeverity, type WarningKind } from "./warnings.js";
 
 // Guards docs/spec/diagnostics.md against drift from the emitted code surface
 // (TPL-1623). Every member of DiagnosticParamsByCode and WarningKind
@@ -100,6 +103,50 @@ describe("diagnostics catalog completeness (TPL-1623)", () => {
         ({ id, code }) => !new RegExp(`^\\|\\s*${id}\\s*\\|\\s*\`${code}\`\\s*\\|`, "m").test(text),
       ).map((r) => r.id);
       expect(missing).toEqual([]);
+    });
+  }
+});
+
+// TPL-2171: the register the spec promises for a code is the register the code
+// is emitted at. `Diagnostic` types its `severity` from DIAGNOSTIC_SEVERITY per
+// code, so tsc holds every emission site to the table; this compares the table
+// (and `warningSeverity()` for warning kinds) with the Severity column of both
+// catalogs. A code that is both a Diagnostic and a Warning (the style value
+// checks) lists the Diagnostic severity first and the Warning severity second,
+// or one severity when the two are the same.
+describe("diagnostics catalog severity (TPL-2171)", () => {
+  const codes = diagnosticCodes();
+  const kinds = new Set(warningKinds());
+  const severities: Record<string, string> = DIAGNOSTIC_SEVERITY;
+
+  // The type check names a missing code; `Diagnostic` fails at its own
+  // definition without saying which. An extra code is caught below.
+  const exhaustive: Record<DiagnosticCode, DiagnosticSeverity> = DIAGNOSTIC_SEVERITY;
+
+  it("has a severity for exactly the diagnostic codes", () => {
+    expect(Object.keys(exhaustive).sort()).toEqual([...codes].sort());
+  });
+
+  function expected(code: string): string[] {
+    const fromDiagnostic = code in severities ? [severities[code]] : [];
+    const fromWarning = kinds.has(code) ? [warningSeverity(code as WarningKind)] : [];
+    return [...new Set([...fromDiagnostic, ...fromWarning])];
+  }
+
+  for (const catalog of CATALOGS) {
+    it(`states each code's severity as emitted in ${catalog}`, () => {
+      const rows = [
+        ...read(catalog).matchAll(/^\|\s*`([a-z][a-z0-9-]+)`\s*\|\s*KRS[0-9]{3}\s*\|([^|]*)\|/gm),
+      ];
+      expect(rows.length).toBeGreaterThan(40);
+      const wrong = rows.flatMap(([, code, cell]) => {
+        const stated = [...cell.matchAll(/\b(error|warning|info)\b/g)].map((m) => m[1]);
+        const want = expected(code);
+        return stated.join("/") === want.join("/")
+          ? []
+          : [`${code}: catalog says ${stated.join("/")}, code emits ${want.join("/")}`];
+      });
+      expect(wrong).toEqual([]);
     });
   }
 });
