@@ -7,8 +7,10 @@ description: >
   the Summary and For Reviewers sections, point out what needs kompiro's decision,
   summarise the local review record, drive the PR's Cloudflare preview with Playwright
   for its acceptance items (screenshots, and video of the e2e specs the PR adds or
-  changes) into an Artifact report, give a merge opinion, and on kompiro's OK tick the
-  verified checklist items and squash-merge. Run it with a PR number. Trigger when the
+  changes) into an Artifact report, give a merge opinion in a summary file opened in an
+  editor tab beside the chat (or an Artifact page when no editor can open it), ask
+  kompiro every open question the PR leaves (For Reviewers and the like) before asking
+  about the merge, and on kompiro's OK tick the verified checklist items and squash-merge. Run it with a PR number. Trigger when the
   user says: "PR を検証して", "マージしていいか見て", "マージ前チェック", "PR #N を確認",
   "pr-verify", "verify PR", "is this PR ready to merge", or names a PR and asks whether
   to merge it, even without saying "verify".
@@ -27,16 +29,26 @@ kompiro がマージする前に PR を確かめ、判断材料を日本語で�
   貼れる英語の依頼文を渡した。手順 2 以降には進んでいない
 - **置き換え先を案内した:** 別の open PR がこの PR を置き換えていたので、直させずに置き換え先を伝えた
 - **判断を渡した:** 手順 2〜4 の日本語の要約、手順 5 の検証レポート（対象の PR のみ。Artifact の
-  リンク）、手順 6 のマージ意見を伝えた。kompiro が OK と言った場合に限り、確かめた
-  チェックリスト項目にチェックを入れ、squash でマージした
+  リンク）、手順 6 のマージ意見を 1 つの検証サマリにまとめ、チャットの横（エディタのタブ、開けなければ
+  ブラウザの Artifact）に開いた。未決事項はすべて kompiro に聞いて答えを PR に記録し、そのあとで
+  マージするかを聞いた。kompiro が OK と言った場合に限り、確かめたチェックリスト項目にチェックを入れ、
+  squash でマージした
+- **未決事項の答えで差し戻した:** kompiro の答えが PR の変更を求めたので、マージするかは聞かず、
+  実装セッションに貼れる英語の依頼文を渡した
 
 マージは kompiro がこのセッションで明示的に OK したときだけ行う。意見が「マージしてよい」でも、
-返事を待たずに `gh pr merge` を実行しない。
+返事を待たずに `gh pr merge` を実行しない。kompiro は未決事項が決まるまでマージしないので、
+**マージするかの質問は、未決事項がすべて答えられたあとにだけ出す。**
 
 ## 準備
 
 スクリプトはすべて `.claude/skills/pr-verify/scripts/` にあり、リポジトリの checkout（依存が
-入っているもの）から実行する。以下 `S=.claude/skills/pr-verify/scripts` とする。
+入っているもの）から実行する。以下 `S=.claude/skills/pr-verify/scripts`、
+`OUT=$PWD/reports/pr-verify/<pr>`（gitignore された置き場。`reports/README.md`）とする。
+
+手順 2〜5 で書く日本語の文章はチャットに流さず、手順 6 で検証サマリのファイルにまとめる。チャットには
+各手順の進み具合を 1 行ずつ書くだけにする。手順 1 で終わるとき（差し戻し・置き換え先の案内・
+クローズ済み）は、これまでどおりチャットに書く。
 
 kompiro への文章は日本語で書き、em dash（—）は使わない（読点・コロン・括弧で代える）。
 「人間のレビュー」ではなく「kompiro の判断」のように名前で書く。
@@ -101,8 +113,9 @@ kompiro は変更の中身を PR の diff で見るので、本文の言い換�
 
 - **判断が必要:** kompiro に決めてほしい問い（選択肢がある、「OK?」と聞いている、記録済みの決定を
   変える）。問い・選択肢・著者の推奨を短く書く。PR のコメントやスレッドで kompiro がすでに答えて
-  いれば（`gh pr view <pr> --json comments,reviews` で確認。`--comments` は `--json` と併用できない）
-  「回答済み: …」と書く
+  いれば（`gh pr view <pr> --json comments,reviews` で確認。`--comments` は `--json` と併用できない。
+  以前の `/pr-verify` が手順 6b で残した `Decisions by kompiro` のコメントも答えに数える）
+  「回答済み: …」と書く。回答済みでないものが手順 6b で聞く未決事項になる
 - **情報のみ:** 読んでおけばよい補足
 
 `None` / `N/A` なら「判断が必要な項目はありません」と書く。本文にこの節が無ければそう伝える。
@@ -165,7 +178,6 @@ PR のコード（lockfile の依存、`playwright.config.ts`、fixture）が手
 
 ```bash
 D=$($S/checkout.sh <pr>)          # .claude/worktrees/pr-verify/<pr>
-OUT=$PWD/reports/pr-verify/<pr>   # gitignore された置き場（reports/README.md）
 rm -rf "$OUT" && mkdir -p "$OUT/specs" "$OUT/shots"
 CFG=$PWD/$S/playwright.preview.config.mts
 ```
@@ -272,11 +284,64 @@ Design Doc と実装のずれをどう扱うか。無ければ「特にありま
 
 `risk: low` の PR は GitHub App（Low PR merger）が自動でマージするので、その旨を添える。
 
-draft の PR はマージできない（ready にすると CI と CodeRabbit が走るので、ready にするのは実装
-セッションの手順）。draft なら意見までを伝え、マージは ready にしてから `/pr-verify` をもう一度
-実行するよう添えて終わる。AskUserQuestion は出さない。
+### 6a. 検証サマリを開く
 
-draft でなければ、最後に AskUserQuestion でマージするかを聞く（選択肢: マージする / マージしない）。
+手順 1〜6 の結果を `$OUT/summary.md` に日本語の Markdown で書く（`mkdir -p "$OUT"` してから。前回の
+ファイルは上書きする）。kompiro が最初に読むものから並べる:
+
+1. 見出し: `PR #<pr> <タイトル>` と PR の URL、確かめた `headSha`
+2. マージ意見と根拠
+3. マージ前に決めてほしいこと（無ければ「特にありません」）
+4. 手順 1 の判定と `reasons`（`proceed` 以外のとき）
+5. 手順 2 の要約、手順 3 の For Reviewers、手順 4 の Local review の傾向
+6. 手順 5 の検証レポートのリンクと項目ごとの結果（行わなかったならその理由）
+
+エディタで Markdown のまま読むので、表は使わず見出しと箇条書きで書く。書いたら VS Code の CLI で
+チャットの横のタブに開く:
+
+```bash
+[ -n "${VSCODE_IPC_HOOK_CLI:-}" ] && command -v code >/dev/null && timeout 10 code -r "$OUT/summary.md"
+```
+
+終了コードが 0 でなければ（VS Code の外で動いている、CLI の接続が切れている など）、同じ内容を
+Artifact で公開してブラウザで開く。`artifact-design` スキルを読み込んでから 1 枚の HTML ページにし
+（1 行目に `<meta charset="utf-8">`）、手順 5 でレポートを公開していればそのページの冒頭に載せて
+同じ URL に公開し直す。無ければ新しいページとして公開する。公開したら Artifact の `open` で開く。
+
+チャットには、サマリをどこに開いたか（ファイルのパスか Artifact のリンク）と意見の 1 行だけを書く。
+AskUserQuestion のダイアログが出ているあいだはチャットの文章が見えないことがあるので、判断の材料は
+サマリの側に置く。
+
+### 6b. 未決事項を聞く
+
+未決事項は、6a の「マージ前に決めてほしいこと」のうち kompiro がまだ答えていないもの（手順 3 で
+「判断が必要」かつ「回答済み」でない For Reviewers の項目と、ほかの手順で見つかった判断）。1 つでも
+あれば、マージするかを聞く前に AskUserQuestion で聞く。draft の PR でも聞く（答えは実装セッションの
+材料になる）。
+
+- 1 つの未決事項を 1 つの質問にする。1 回の AskUserQuestion には 4 問までなので、多ければ続けて呼ぶ
+- 質問はダイアログだけを見て答えられるように書く: PR 番号、何についての問いか、PR が今どうして
+  いるか。選択肢は PR が挙げたものを使い、著者の推奨を先頭に置いて「（推奨）」を付ける。選択肢の
+  無い「OK?」型の問いは「PR のとおりでよい」/「変えてほしい」にする（中身は Other で書いてもらう）
+- 細部（コード片、比較）が要る問いは、サマリの該当箇所を見るよう質問文に書く
+
+答えを受け取ったら:
+
+1. サマリの「マージ前に決めてほしいこと」に答えを書き足す（6a で Artifact にしたなら公開し直す）
+2. PR に英語のコメントで答えを残す。1 行目を `Decisions by kompiro (via /pr-verify):` にし、問いごとに
+   問いの要点と答えを 1 行ずつ書く（`gh pr comment <pr> --body-file <ファイル>`）。次に `/pr-verify` を
+   実行したとき、手順 3 がこれを回答済みとして読む
+3. どれかの答えが PR の変更を求めていれば（PR がしていることと違う選択肢、「変えてほしい」）、
+   手順 1 の `fix` と同じ形で、実装セッションに貼れる英語の依頼文を渡して終わる。マージするかは聞かない
+
+### 6c. マージするかを聞く
+
+draft の PR はマージできない（ready にすると CI と CodeRabbit が走るので、ready にするのは実装
+セッションの手順）。draft なら、マージは ready にしてから `/pr-verify` をもう一度実行するよう添えて
+終わる。マージするかは聞かない。
+
+draft でなく、未決事項が残っていなければ、AskUserQuestion でマージするかを聞く（選択肢: マージする /
+マージしない）。質問文には PR 番号、意見の 1 行、サマリの場所を入れる。
 
 ### kompiro が OK したとき
 
@@ -300,7 +365,8 @@ draft でなければ、最後に AskUserQuestion でマージするかを聞く
 4. `gh pr merge <pr> --squash --match-head-commit <headSha>` でマージする（リポジトリは squash のみ
    許可、ブランチは自動削除される）。`--match-head-commit` は、確かめたあとに push があれば
    マージを拒否させるために付ける
-5. マージできたことを `gh pr view <pr> --json state,mergedAt` で確かめて伝える
+5. マージできたことを `gh pr view <pr> --json state,mergedAt` で確かめて伝える。6b で kompiro が
+   「一緒に close する」と答えた Issue があれば、ここで `gh issue close` する
 
 ### kompiro が NO と言ったとき
 
