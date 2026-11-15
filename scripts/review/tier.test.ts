@@ -357,7 +357,7 @@ describe("classifyChange", () => {
   it("keeps every module a Pages Function imports directly on the security boundary", () => {
     const sec = (path: string) =>
       classifyChange({ files: [modified(path)], author: "kompiro" }).securityReview;
-    // The classifier's globs are POSIX; `relative` uses `\\` on Windows.
+    // The classifier's globs are POSIX; `relative` uses a backslash on Windows.
     const repoPath = (path: string) => relative(REPO_ROOT, path).split(sep).join("/");
     // Packages a function may import by name. Any other bare specifier fails,
     // since its modules cannot be checked against the globs here.
