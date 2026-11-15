@@ -1,9 +1,9 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, resolve, sep } from "node:path";
+import { readFileSync } from "node:fs";
+import { relative, resolve, sep } from "node:path";
+import madge from "madge";
 import { describe, expect, it } from "vitest";
 import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
 import { type GitFacts, parseRecord } from "./local-review-record.ts";
-import { isTestFile } from "./test-changes.ts";
 import {
   ADR_GENERATED_GLOBS,
   adrEditIsRecordOnly,
@@ -353,66 +353,66 @@ describe("classifyChange", () => {
   // request to are a security boundary too (#3799). Derived from the import
   // graph, one level deep: a new function, or a function importing a module
   // off the boundary, fails here. What those modules import in turn is not
-  // walked (`bare-route.ts` reads the `routes.ts` constant table).
-  it("keeps every module a Pages Function imports directly on the security boundary", () => {
+  // checked (`bare-route.ts` reads the `routes.ts` constant table).
+  //
+  // The graph is madge's, parsed as `scripts/ci/raster-input.ts` parses the
+  // same files (static `import`, `export from`, `import()` and `require` with a
+  // literal specifier). It cannot see a specifier computed at run time.
+  it("keeps every module a Pages Function imports directly on the security boundary", async () => {
     const sec = (path: string) =>
       classifyChange({ files: [modified(path)], author: "kompiro" }).securityReview;
+    // Packages a function may import. Any other package, a workspace package
+    // included (it resolves outside the checked paths), fails until it is
+    // added here.
+    const PACKAGES = new Set(["@resvg/resvg-wasm"]);
+    const packageName = (path: string) => {
+      const parts = path.split("node_modules/").at(-1)?.split("/") ?? [];
+      return parts[0]?.startsWith("@") ? `${parts[0]}/${parts[1]}` : (parts[0] ?? "");
+    };
     // The classifier's globs are POSIX; `relative` uses a backslash on Windows.
-    const repoPath = (path: string) => relative(REPO_ROOT, path).split(sep).join("/");
-    // Packages a function may import by name. Any other bare specifier
-    // (including `node:` built-ins) fails until it is added here, since its
-    // modules cannot be checked against the globs.
-    const PACKAGES = new Set(["@resvg/resvg-wasm", "@resvg/resvg-wasm/index_bg.wasm"]);
-    // Pages builds routes from `.js` as well as `.ts`.
-    const SOURCE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
-    const sources = (dir: string): string[] =>
-      readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
-        const path = join(dir, e.name);
-        if (e.isDirectory()) return sources(path);
-        return SOURCE.test(e.name) && !/\.d\.[cm]?ts$/.test(e.name) && !isTestFile(repoPath(path))
-          ? [path]
-          : [];
-      });
-    const files = sources(join(REPO_ROOT, "functions"));
+    const repoPath = (path: string) =>
+      relative(REPO_ROOT, resolve(REPO_ROOT, path)).split(sep).join("/");
+
+    const graph = await madge(["functions"], {
+      baseDir: REPO_ROOT,
+      includeNpm: true,
+      fileExtensions: ["ts", "tsx", "mts", "cts", "js", "mjs", "cjs"],
+      excludeRegExp: [/\.test\.[cm]?[jt]sx?$/],
+      detectiveOptions: {
+        ts: { mixedImports: true },
+        tsx: { mixedImports: true },
+        es6: { mixedImports: true },
+      },
+    });
+    // A specifier madge could not resolve is dropped from the graph, so it is
+    // reported here instead (TPL-2804).
+    expect(graph.warnings().skipped).toEqual([]);
+
+    const functions = Object.entries(graph.obj()).filter(
+      ([file]) => repoPath(file).startsWith("functions/") && !/\.d\.[cm]?ts$/.test(file),
+    );
+    const off: string[] = [];
     const imported = new Set<string>();
-    const unknownPackages: string[] = [];
-    // `from "x"`, a side-effect `import "x"`, a dynamic `import("x")` and
-    // `require("x")`, not a method such as `Buffer.from("x")`. Comments and
-    // strings are read too, which can only fail the test, never pass it.
-    const SPECIFIER =
-      /(?<![.\w$])(?:from\s*|import\s*(?:\(\s*)?|require\s*\(\s*)["'`]([^"'`]+)["'`]/g;
-    // A dynamic import or require of anything but a string literal cannot be checked.
-    const COMPUTED_IMPORT = /(?<![.\w$])(?:import|require)\s*\(\s*(?!["'`])/;
-    const isFile = (path: string) => existsSync(path) && statSync(path).isFile();
-    for (const file of files) {
-      const text = readFileSync(file, "utf-8");
-      if (COMPUTED_IMPORT.test(text))
-        unknownPackages.push(`${repoPath(file)}: computed import or require`);
-      for (const [, spec] of text.matchAll(SPECIFIER)) {
-        if (!spec.startsWith(".")) {
-          if (!PACKAGES.has(spec)) unknownPackages.push(`${repoPath(file)}: ${spec}`);
+    for (const [file, deps] of functions) {
+      if (!sec(repoPath(file))) off.push(repoPath(file));
+      for (const dep of deps) {
+        if (dep.includes("node_modules/")) {
+          if (!PACKAGES.has(packageName(dep))) off.push(`${repoPath(file)}: ${dep}`);
           continue;
         }
-        const written = resolve(file, "..", spec);
-        // As the bundler resolves it: the file written, else its `.ts` source.
-        const target = [written, written.replace(/\.js$/, ".ts")].find(isFile);
-        // A specifier this cannot resolve to a file is reported, not skipped (TPL-2804).
-        expect(target, `${repoPath(file)} imports ${spec}`).toBeDefined();
-        if (target) imported.add(repoPath(target));
+        const path = repoPath(dep);
+        imported.add(path);
+        if (path.startsWith("../") || !sec(path)) off.push(`${repoPath(file)}: ${path}`);
       }
     }
-    expect(unknownPackages).toEqual([]);
-    // The scan saw the handlers it exists for.
+    // The graph held the handlers this exists for.
     expect([...imported]).toEqual(
       expect.arrayContaining([
         "packages/app/src/render/share-render.ts",
         "functions/_lib/share-raster.ts",
       ]),
     );
-    // The functions themselves match `functions/**`; the imports outside it are
-    // what this can catch.
-    const outside = [...files.map(repoPath), ...imported].filter((path) => !sec(path));
-    expect(outside).toEqual([]);
+    expect(off).toEqual([]);
   });
 
   describe("dangerous sinks (#3505)", () => {
