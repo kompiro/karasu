@@ -54,11 +54,11 @@ catch-all ルートを追加すると、「未知のパスがどこへ行くか�
 
 catch-all ルート、または「どのリクエストがアプリに届くか」を変える設定を追加・改修するとき:
 
-- [ ] 反転しない側（アプリ・静的アセット・兄弟ルート）が今日と同じ応答を返すことを、**経路を列挙した表**で確認したか（`/`・静的・兄弟 Function・既知の path ルート・未知の 1 セグメント・未知の複数セグメント）
+- [ ] 反転しない側（アプリ・静的アセット・兄弟ルート）が今日と同じ応答を返すことを、**経路を列挙した表**で確認したか（`/`・静的・兄弟 Function・既知の path ルート・未知の 1 セグメント・未知の複数セグメント） [guard: `packages/app/src/route-sources.test.ts`]
 - [ ] resolver に渡さない条件は、判別子（1）・安全側 fallthrough（2）・機械チェック付き予約リスト（3）・specificity ranking（4）のどれで実現しているか。どれでもないなら腐る前提で書き直す [judgment]
 - [ ] specificity ranking を採るなら、**メソッド違いでも catch-all に落ちない**ことを test で固定したか。`POST /webhooks/github` だけを登録した状態で `GET` すると 405 ではなく catch-all の 404 が返るのが典型的な取りこぼし
 - [ ] fallthrough を使うなら、差し戻す条件は **deterministic な negative に限定**されているか（upstream 5xx を差し戻して障害を隠していないか） [guard: `packages/app/src/render/bare-route-function.test.ts`]
-- [ ] 予約リストを使うなら、その出所はアプリ側のルート定義か。ルート定義だけを増やしたとき落ちるテストがあるか
+- [ ] 予約リストを使うなら、その出所はアプリ側のルート定義か。ルート定義だけを増やしたとき落ちるテストがあるか [guard: `packages/app/src/route-sources.test.ts`]
 - [ ] 上流に問い合わせてから差し戻す設計なら、その negative 結果をキャッシュしているか（未知パスへのクロールが上流への fetch に増幅しないか） [guard: `packages/app/src/render/bare-route-function.test.ts`]
 - [ ] guard を当てる文字列は正規化済みか（percent-decode・末尾スラッシュ・大文字小文字） [guard: `packages/app/src/render/bare-route-function.test.ts`]
 - [ ] catch-all の「辞退」経路（`context.next()` 相当）が、静的アセットと fallback の**両方**に戻ることを実測したか。ユニットテストでは検証できないので dev サーバか preview deployment で確認する
@@ -79,7 +79,7 @@ karasu での route 形の決定は [ADR-1828](../adr/1828-repo-backed-ref-pinne
 - `packages/app/src/render/bare-route.test.ts` — `matchBarePermalink` › `declines every reserved top-level segment`（予約リストの全セグメントと SPA の project route を catch-all が辞退する）、`decodePathname`（percent-decode 後に判定する）、`classifyResolveOutcome` › `never signposts a transient failure (%i)`（5xx を差し戻さない）
 - `packages/app/src/routes-config.test.ts` — `_routes.json` が SPA route と静的ディレクトリを除外し、除外がルート表の知っている path だけであること。`SPA project route` で SPA の URL と予約セグメントが同じ定数から作られていることを固定する
 - `packages/app/src/render/bare-route-function.test.ts` — catch-all の Function（`functions/[[path]].ts`）を Pages と同じ形で駆動する。resolver が返しうる status（`ResolveStatus` の閉じた union）ごとに場面を `Record` で持ち、新しい status は場面を足すまで型検査で落ちる。各場面を ref なし・ref ありで要求し、SPA に差し戻すか signpost にするのは同じ要求に同じ答えが返る negative だけ・上流に fetch した deterministic な答えはすべてキャッシュし 5xx はキャッシュしない・ref を固定した要求は差し戻さない、を確かめる（4・6 つ目の項目）。同じ要求をもう一度送ると、deterministic な答えはキャッシュから返り GitHub に問い合わせないことも確かめる（6 つ目の項目。書き込みだけでなく読み戻しも見る）。`%40` で区切った ref と percent-encode した repo 名は素の綴りと同じ答えになることを確かめ、Function が guard の前に decode しなくなると赤くなる（7 つ目の項目）。予約セグメントは `RESERVED_TOP_SEGMENTS` の全要素を percent-encode・末尾スラッシュ・`%2F` の綴りで送り、GitHub に問い合わせずに差し戻すことも確かめる（`%` は owner の文字種で弾かれるので、この綴りは decode が無くても辞退される。新しい予約セグメントが自動で加わる多重の防御）。大文字小文字は畳まない。Pages の静的配信・`_routes.json`・SPA の path ルートがどれも大文字小文字を区別するので、`/PROJECTS/x` はどれの経路でもない（`guardBarePath` の doc comment）
-- `packages/app/src/route-sources.test.ts` — ルート表を、ルートを定義している場所と突き合わせる。`functions/` の route module とディレクトリはすべて `FUNCTION_ROUTE_SEGMENTS` に、`public/` のディレクトリと Vite の `assets` はすべて `STATIC_ROUTE_SEGMENTS` と `_routes.json` の除外に、`public/` 直下のファイルはすべて `_routes.json` の除外に入っていること。Function か静的ディレクトリを足しただけで落ちる。ただし SPA の path ルート（`SPA_ROUTE_SEGMENTS`）は列挙できる定義が無く、`/projects/<id>` が定数から作られていることを `routes-config.test.ts` が固定するだけなので、新しい SPA ルートは捕まらない。このため 1・5 つ目の項目は印なし
+- `packages/app/src/route-sources.test.ts` — ルート表を、ルートを定義している場所と突き合わせる。`functions/` の route module とディレクトリはすべて `FUNCTION_ROUTE_SEGMENTS` に、`public/` のディレクトリと Vite の `assets` はすべて `STATIC_ROUTE_SEGMENTS` と `_routes.json` の除外に、`public/` 直下のファイルはすべて `_routes.json` の除外に入っていること。Function か静的ディレクトリを足しただけで落ちる。ただし SPA の path ルート（`SPA_ROUTE_SEGMENTS`）は列挙できる定義が無く、`/projects/<id>` が定数から作られていることを `routes-config.test.ts` が固定するだけなので、新しい SPA ルートは捕まらない。1・5 つ目の項目の印はこの範囲（新しい Function と `public/`・Vite の `assets` の新しいディレクトリ）に限られ、SPA の path ルートを足したときは表の確認を手で行う
 - `packages/nest/src/router.test.ts` — specificity ranking（`prefers the literal route even when it was registered last` / `ranks by capture count, not by segment count`）と、`does not let a capture answer for a path a literal route owns`（`POST /webhooks/github` だけを登録して `GET` すると catch-all ではなく 405）
 
 ## 派生元 spec
