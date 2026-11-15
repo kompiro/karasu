@@ -67,7 +67,7 @@ Verification Checklist に置くか、別の Issue に起こすかを分ける�
 | 確かめられる場所 | どこに書くか |
 | --- | --- |
 | その PR の preview、またはローカルの checkout | AT の手動項目。マージ前に PR の Manual Verification Checklist へ写してチェックする |
-| 本番にしか現れないもの（デプロイ設定、OAuth、カスタムドメインなど） | AT にも PR の checklist にも書かない。PR を作る前に別の Issue に起こし、PR 本文から番号を示す。元の Issue の `Closes #N` / `Refs #N` は変えない（ADR-3271、ADR-3818） |
+| 本番にしか現れないもの（デプロイ設定、OAuth、カスタムドメインなど） | AT にも PR の checklist にも書かない。PR を作る前に別の Issue に起こし、PR 本文から番号を示す。元の Issue への `Closes #N` / `Refs #N` は `docs/process.md`「Issue ステータスラベル」の注記どおりにし、この項目のために変えない（ADR-3271、ADR-3818） |
 
 **AT は手動項目の定義を持ち、チェックは PR で入れる。** AT の `- [ ]` は常に未チェックの
 まま置き、「この領域を変える PR が確かめる項目の一覧」として読む。チェック済みの状態は、

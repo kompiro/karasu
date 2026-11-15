@@ -127,9 +127,9 @@ ready → implementing → designing → designed → implementing → in-review
 ready → implementing → in-review → (close)
 ```
 
-> `Closes #N` は実装 PR。Issue 本文の Plan に段があれば実装の段を終える最後の PR（後工程は除く）。Design Doc と試験導入など途中の段は `Refs #N`。試験の前に Design Doc を置き、結果を足す（ADR-3818）。
+> `Closes #N` は実装 PR。Issue 本文の Plan に段があれば実装の段を終える最後の PR（後工程は除く）。Design Doc と試験導入など途中の段は `Refs #N`。試験の前に Design Doc を置き、結果をそこへ足す（ADR-3818）。
 >
-> マージ後にしか確かめられない項目（次のリリース、本番にしか現れない設定、`main` でのバックフィルなど）は、PR を作る前に別の Issue に起こし、PR 本文から番号を示す。元の Issue の `Closes #N` / `Refs #N` は変えない。ADR への昇格などこの文書が手順として持つ後工程は書かない（ADR-3271）。
+> マージ後にしか確かめられない項目（次のリリース、本番にしか現れない設定、`main` でのバックフィルなど）は、PR を作る前に別の Issue に起こし、PR 本文から番号を示す。元の Issue への紐付けは注記のまま。ADR への昇格などこの文書が手順として持つ後工程は書かない（ADR-3271）。
 
 ### PR ワークフロー
 
