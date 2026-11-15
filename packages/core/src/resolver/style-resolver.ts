@@ -13,7 +13,7 @@ import { edgeKey, edgeKindKey } from "../view/edge-key.js";
 import { hasShape } from "../shapes/shape-registry.js";
 // `hasShape` answers for the built-in icons only once they are registered (#2802).
 import "../shapes/builtin-icons.js";
-import { applyVariantFirstMatch } from "../builtins/icon-theme.js";
+import { withoutLosingBuiltinVariants } from "./variant-rules.js";
 import { NON_AUTHOR_SHEET_IDS } from "../builtins/non-author-sheets.js";
 import { flattenSheetsInCascadeOrder, mergeInCascadeOrder } from "../style/cascade.js";
 import type {
@@ -196,9 +196,6 @@ export function resolveStyles(
       }
       const merged = mergeMatchingProperties(resolvedNode, allRules);
       const hints = finalizeLayoutHints(merged);
-      // applyVariantFirstMatch mutates `merged` (shape-related only — does
-      // not touch `column`), so it must run after the layout-hint read.
-      applyVariantFirstMatch(resolvedNode, merged);
       const style = toResolvedNodeStyle(merged);
       const painted = paintedOf(merged);
       // Keyed by the node's own path; the simple-id entry is derived from these
@@ -354,7 +351,9 @@ function finalizeLayoutHints(merged: Record<string, string>): ResolvedLayoutHint
 // These functions only decide *which* rules match; the order they are merged
 // in is not theirs to redefine (Issue #1001, #2445).
 function mergeMatchingProperties(node: KrsNode, rules: StyleRule[]): Record<string, string> {
-  return mergeInCascadeOrder(rules.filter((rule) => nodeSelectorMatches(node, rule.selector)));
+  const matched = rules.filter((rule) => nodeSelectorMatches(node, rule.selector));
+  // Of a node's variant tags the first wins, not the builtin sheet's order (#3775).
+  return mergeInCascadeOrder(withoutLosingBuiltinVariants(node, matched));
 }
 
 function mergeMatchingPropertiesForDeploy(
