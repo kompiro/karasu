@@ -3,6 +3,7 @@ import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
 import { type GitFacts, parseRecord } from "./local-review-record.ts";
+import { isTestFile } from "./test-changes.ts";
 import {
   ADR_GENERATED_GLOBS,
   adrEditIsRecordOnly,
@@ -350,31 +351,43 @@ describe("classifyChange", () => {
 
   // Every Pages Function answers a public request, so the modules it hands that
   // request to are a security boundary too (#3799). Derived from the import
-  // graph: a new function, or an existing one importing a new module, fails
-  // here until the module is on the boundary.
-  it("keeps every module a Pages Function imports on the security boundary", () => {
+  // graph, one level deep: a new function, or a function importing a module
+  // off the boundary, fails here. What those modules import in turn is not
+  // walked (`bare-route.ts` reads the `routes.ts` constant table).
+  it("keeps every module a Pages Function imports directly on the security boundary", () => {
     const sec = (path: string) =>
       classifyChange({ files: [modified(path)], author: "kompiro" }).securityReview;
-    const functionsDir = join(REPO_ROOT, "functions");
+    // Packages a function may import by name. Any other bare specifier fails,
+    // since its modules cannot be checked against the globs here.
+    const PACKAGES = new Set(["@resvg/resvg-wasm", "@resvg/resvg-wasm/index_bg.wasm"]);
     const sources = (dir: string): string[] =>
-      readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
-        e.isDirectory()
-          ? sources(join(dir, e.name))
-          : /\.tsx?$/.test(e.name) && !e.name.endsWith(".d.ts")
-            ? [join(dir, e.name)]
-            : [],
-      );
-    const files = sources(functionsDir);
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+        const path = join(dir, e.name);
+        if (e.isDirectory()) return sources(path);
+        const repoPath = relative(REPO_ROOT, path);
+        return /\.tsx?$/.test(e.name) && !e.name.endsWith(".d.ts") && !isTestFile(repoPath)
+          ? [path]
+          : [];
+      });
+    const files = sources(join(REPO_ROOT, "functions"));
     const imported = new Set<string>();
+    const unknownPackages: string[] = [];
+    // `from "x"`, a side-effect `import "x"` and a dynamic `import("x")`.
+    const SPECIFIER = /(?:\bfrom|\bimport)\s*\(?\s*["']([^"']+)["']/g;
     for (const file of files) {
       const text = readFileSync(file, "utf-8");
-      for (const [, spec] of text.matchAll(/\bfrom\s+["'](\.{1,2}\/[^"']+)["']/g)) {
+      for (const [, spec] of text.matchAll(SPECIFIER)) {
+        if (!spec.startsWith(".")) {
+          if (!PACKAGES.has(spec)) unknownPackages.push(`${relative(REPO_ROOT, file)}: ${spec}`);
+          continue;
+        }
         const target = resolve(file, "..", spec).replace(/\.js$/, ".ts");
         // A specifier this cannot resolve is reported, not skipped (TPL-2804).
         expect(existsSync(target), `${relative(REPO_ROOT, file)} imports ${spec}`).toBe(true);
         imported.add(relative(REPO_ROOT, target));
       }
     }
+    expect(unknownPackages).toEqual([]);
     // The scan saw the handlers it exists for.
     expect([...imported]).toEqual(
       expect.arrayContaining([
@@ -382,6 +395,8 @@ describe("classifyChange", () => {
         "functions/_lib/share-raster.ts",
       ]),
     );
+    // The functions themselves match `functions/**`; the imports outside it are
+    // what this can catch.
     const outside = [...files.map((f) => relative(REPO_ROOT, f)), ...imported].filter(
       (path) => !sec(path),
     );
