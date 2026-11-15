@@ -109,6 +109,15 @@ const SECURITY_TIER_GLOBS: readonly string[] = [
   "packages/core/src/renderer/svg-builder.ts",
   // Decodes the payload of a shared URL.
   "packages/app/src/utils/inline-share.ts",
+  // The app's Cloudflare Pages Functions: each file answers a public request
+  // (`/render`, `/s`, `/r/*`, the catch-all) or hands its input to resvg (#3799).
+  "functions/**",
+  // What those functions delegate to: reading the query and path, the `/s`
+  // page, permalink resolution, the SVG `/render?format=png` rasterizes.
+  // `tier.test.ts` keeps every module a function imports on this list.
+  "packages/app/src/render/**",
+  // Writes the `/render` query's `bg` into the OGP frame's SVG (#3773).
+  "packages/core/src/renderer/ogp-frame.ts",
   // DOMPurify and `dangerouslySetInnerHTML`.
   "packages/app/src/components/{ChatPane,NodeDetailPanel,EdgeDetailPanel}.tsx",
 ];

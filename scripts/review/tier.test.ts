@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
 import { type GitFacts, parseRecord } from "./local-review-record.ts";
@@ -70,6 +70,16 @@ describe("pathTier", () => {
     ["packages/app/src/components/ChatPane.tsx", "high"],
     ["packages/app/src/components/NodeDetailPanel.tsx", "high"],
     ["packages/app/src/components/EdgeDetailPanel.tsx", "high"],
+    // The app's Pages Functions and what they delegate to (#3799).
+    ["functions/render.ts", "high"],
+    ["functions/s.ts", "high"],
+    ["functions/[[path]].ts", "high"],
+    ["functions/r/[[path]].ts", "high"],
+    ["functions/_lib/share-raster.ts", "high"],
+    ["packages/app/src/render/share-render.ts", "high"],
+    ["packages/app/src/render/share-page.ts", "high"],
+    ["packages/app/src/render/repo-permalink.ts", "high"],
+    ["packages/core/src/renderer/ogp-frame.ts", "high"],
     // Language behavior (#3505).
     ["packages/core/src/lexer/lexer.ts", "high"],
     ["packages/core/src/parser/parser.ts", "high"],
@@ -85,6 +95,8 @@ describe("pathTier", () => {
     ["packages/cli/src/serve.test.ts", "low"],
     ["packages/nest/src/worker.test.ts", "low"],
     ["packages/core/src/renderer/svg-builder.test.ts", "low"],
+    ["packages/app/src/render/share-render.test.ts", "low"],
+    ["packages/core/src/renderer/ogp-frame.test.ts", "low"],
     ["packages/lsp/src/diagnostics.test.ts", "low"],
     [".github/actions/purge-preview-deployments/action.yml", "high"],
     ["packages/cli/CHANGELOG.md", "high"],
@@ -328,9 +340,52 @@ describe("classifyChange", () => {
     expect(sec("packages/nest/src/a.ts")).toBe(true);
     expect(sec("packages/cli/src/render-fetch.ts")).toBe(true);
     expect(sec("packages/core/src/renderer/svg-builder.ts")).toBe(true);
+    expect(sec("functions/render.ts")).toBe(true);
+    expect(sec("packages/app/src/render/share-render.ts")).toBe(true);
+    expect(sec("packages/core/src/renderer/ogp-frame.ts")).toBe(true);
     expect(sec(".github/workflows/x.yml")).toBe(true);
     expect(sec("packages/core/a.ts")).toBe(false);
     expect(sec("packages/core/src/parser/parser.ts")).toBe(false);
+  });
+
+  // Every Pages Function answers a public request, so the modules it hands that
+  // request to are a security boundary too (#3799). Derived from the import
+  // graph: a new function, or an existing one importing a new module, fails
+  // here until the module is on the boundary.
+  it("keeps every module a Pages Function imports on the security boundary", () => {
+    const sec = (path: string) =>
+      classifyChange({ files: [modified(path)], author: "kompiro" }).securityReview;
+    const functionsDir = join(REPO_ROOT, "functions");
+    const sources = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+        e.isDirectory()
+          ? sources(join(dir, e.name))
+          : /\.tsx?$/.test(e.name) && !e.name.endsWith(".d.ts")
+            ? [join(dir, e.name)]
+            : [],
+      );
+    const files = sources(functionsDir);
+    const imported = new Set<string>();
+    for (const file of files) {
+      const text = readFileSync(file, "utf-8");
+      for (const [, spec] of text.matchAll(/\bfrom\s+["'](\.{1,2}\/[^"']+)["']/g)) {
+        const target = resolve(file, "..", spec).replace(/\.js$/, ".ts");
+        // A specifier this cannot resolve is reported, not skipped (TPL-2804).
+        expect(existsSync(target), `${relative(REPO_ROOT, file)} imports ${spec}`).toBe(true);
+        imported.add(relative(REPO_ROOT, target));
+      }
+    }
+    // The scan saw the handlers it exists for.
+    expect([...imported]).toEqual(
+      expect.arrayContaining([
+        "packages/app/src/render/share-render.ts",
+        "functions/_lib/share-raster.ts",
+      ]),
+    );
+    const outside = [...files.map((f) => relative(REPO_ROOT, f)), ...imported].filter(
+      (path) => !sec(path),
+    );
+    expect(outside).toEqual([]);
   });
 
   describe("dangerous sinks (#3505)", () => {
