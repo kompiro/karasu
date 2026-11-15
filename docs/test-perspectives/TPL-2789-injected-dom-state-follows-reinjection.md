@@ -35,6 +35,8 @@ scope:
 
 React 19 は props を参照で比較し、`dangerouslySetInnerHTML` のオブジェクトが前回と
 別物なら、中の文字列を比べずに `innerHTML` を代入し直す（React 18 は文字列を比べていた）。
+これは #2789 を直した時点の react-dom 19.2 の挙動で、19.3 は再び文字列を比べてから代入する。memo は
+どちらの版でも正しく動かすために残し、19.3 で memo を外すと落ちる回帰テストの形は [#3806](https://github.com/kompiro/karasu/issues/3806) で決める。
 JSX にインラインで `{{ __html: svg }}` と書くと、オブジェクトは毎レンダリング新しいので、
 **無関係な理由の再レンダリングでも部分木が作り直される**。一方、状態を当てる effect は
 依存（`[highlightedNodeId, svg]` など）が変わったときしか走らない。結果として
