@@ -100,6 +100,23 @@ describe("checkImports: what it must catch", () => {
     expect(check(source).problems).toEqual([problem]);
   });
 
+  // CodeRabbit CLI on 244bcded: `require` behind `?.`, a type assertion or `(0, …)`.
+  it.each([
+    ['const m = require?.("../other/x.js");'],
+    ['const m = (require as typeof require)("../other/x.js");'],
+    ['const m = require!("../other/x.js");'],
+    ['const m = (require satisfies NodeJS.Require)("../other/x.js");'],
+    ['const m = (0, require)("../other/x.js");'],
+  ])("fails on a wrapped require: %s", (source) => {
+    expect(check(source).problems).toEqual(["functions/f.ts:1: other/x.ts is off the boundary"]);
+  });
+
+  it("fails on a wrapped require with a computed specifier", () => {
+    expect(check("const m = require?.(name);").problems).toEqual([
+      "functions/f.ts:1: computed import specifier",
+    ]);
+  });
+
   it("fails on an allowed package's specifier that climbs out of it", () => {
     expect(check('import { x } from "@resvg/resvg-wasm/../../other/x.ts";').problems).toEqual([
       'functions/f.ts:1: "@resvg/resvg-wasm/../../other/x.ts" leaves the package',
@@ -154,6 +171,7 @@ describe("checkImports: what it must not fail on", () => {
     ['const b = Buffer.from("hello");'],
     ['const d = Array.from(["../other/x.js"]);'],
     ['const r = obj.require("../other/x.js");'],
+    ['const r = obj.require?.("../other/x.js");'],
   ])("reads no import from %s", (source) => {
     expect(check(source)).toEqual({ problems: [], imported: [] });
   });

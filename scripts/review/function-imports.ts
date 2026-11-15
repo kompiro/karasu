@@ -54,8 +54,9 @@ export function readImports(
       case "ImportExpression":
         add(node, node.source);
         break;
-      case "CallExpression": {
-        const callee = node.callee as Node;
+      case "CallExpression":
+      case "OptionalCallExpression": {
+        const callee = unwrap(node.callee as Node);
         const isImport = callee.type === "Import";
         const isRequire = callee.type === "Identifier" && callee.name === "require";
         if (isImport || isRequire) add(node, (node.arguments as Node[])[0]);
@@ -177,6 +178,22 @@ function resolveFile(path: string): string | null {
 // A Babel node, loosely typed: the walk only reads `type` and a few fields.
 // oxlint-disable-next-line typescript/no-explicit-any
 type Node = { type: string; loc?: { start: { line: number } } } & Record<string, any>;
+
+/** The expression under `x as T`, `x!`, `x satisfies T`, `<T>x` and `(0, x)`. */
+function unwrap(node: Node): Node {
+  switch (node.type) {
+    case "TSAsExpression":
+    case "TSNonNullExpression":
+    case "TSSatisfiesExpression":
+    case "TSTypeAssertion":
+    case "ParenthesizedExpression":
+      return unwrap(node.expression as Node);
+    case "SequenceExpression":
+      return unwrap((node.expressions as Node[]).at(-1) as Node);
+    default:
+      return node;
+  }
+}
 
 /** A plain string specifier, or null when it is computed. */
 function literal(node: Node | undefined): string | null {
