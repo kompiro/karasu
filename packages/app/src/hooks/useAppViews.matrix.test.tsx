@@ -5,14 +5,16 @@
 // Both tables below are typed as an exhaustive `Record` over a union
 // (`ActiveView`, `CompareSource["kind"]`), so adding a view or a compare-source
 // kind is a type error (`pnpm typecheck` covers test files) until it has a row.
-// That is what makes these tests guards for a new view or source and not only
-// for the ones that exist today:
+// That is what makes these tests cover a new view or source and not only the
+// ones that exist today:
 //
-// - TPL-1032 item 3: a view's recompile result is published unconditionally,
-//   including the error -> recovery step back to byte-identical content (the
-//   fingerprint dedup must not swallow it; #1540).
-// - TPL-1402 item 2: swapping the diff direction swaps only the input paths,
-//   never the FS that resolves both of them (#1402).
+// - TPL-1402 item 2 (guard): swapping the diff direction swaps only the input
+//   paths, never the FS that resolves both of them (#1402). The swap lives
+//   only in `useAppViews`.
+// - TPL-1032 item 3 (related test, not a guard): every `useAppViews` view
+//   publishes again after error -> recovery to byte-identical content (#1540).
+//   A derived view recompiled outside `useAppViews` (the entity view's
+//   `useViewSvg`) is not in the table, so the item stays unmarked.
 import { describe, it, expect, afterEach } from "vitest";
 import { renderHook, cleanup, waitFor, act } from "@testing-library/react";
 import { InMemoryFileSystemProvider, type Diagnostic } from "@karasu-tools/core";
@@ -49,6 +51,12 @@ const VIEWS: Record<ActiveView, ViewProjection> = {
     diagnostics: (v) => v.system.diagnostics,
   },
 };
+
+/**
+ * Each case chains several 3 s waits (debounce, compile, swap), more than
+ * vitest's 5 s default allows when the machine is slow.
+ */
+const TEST_TIMEOUT_MS = 15_000;
 
 const hasError = (ds: readonly Diagnostic[]) => ds.some((d) => d.severity === "error");
 
@@ -144,6 +152,7 @@ describe("useAppViews: every view republishes after an error (TPL-1032 item 3)",
       });
       expect(output(result.current)).toBe(validOutput);
     },
+    TEST_TIMEOUT_MS,
   );
 });
 
@@ -247,5 +256,6 @@ describe("useAppViews: both swap states render for every compare source (TPL-140
         );
       }
     },
+    TEST_TIMEOUT_MS,
   );
 });

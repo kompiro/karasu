@@ -51,7 +51,7 @@ scope:
 
 - [ ] 派生先の表示を駆動する **入力次元** がすべて列挙されているか（`nodeId` だけでなく `nodeMetadata` の中身、`compile result version`、`displayMode` など） [judgment]
 - [ ] memoization / `useMemo` / `useEffect` の依存配列がそれら全次元を含んでいるか（reference equality だけで済むか、deep な version key が要るか）
-- [ ] recompile 結果の **publish が無条件** か（debounce drop / 条件 skip / ref stale で落ちないか）。落ちうる経路にはログまたはテストを置く [guard: `packages/app/src/hooks/useAppViews.matrix.test.tsx`]
+- [ ] recompile 結果の **publish が無条件** か（debounce drop / 条件 skip / ref stale で落ちないか）。落ちうる経路にはログまたはテストを置く
 - [ ] **両方向**（追加された / 消えた / 変わった）の編集を 1 つの test で連続適用し、派生先がそのたびに正しく更新されることを assert しているか
 - [ ] 同じ source 状態を消費する複数の派生先（panel / 警告 / legend / matrix）の更新タイミングが揃っているか（片方だけ stale にならないか）
 
@@ -67,4 +67,5 @@ scope:
 - `packages/app/src/components/NodeDetailPanel.test.tsx`
 - `packages/app/src/components/WarningPanel.test.tsx`
 - `packages/app/src/hooks/useSystemView.test.tsx`
+- `packages/app/src/hooks/useAppViews.matrix.test.tsx` — `useAppViews` の全ビュー（`Record<ActiveView, …>` で型が網羅を強制する）で、valid → error → 同じ valid に戻したときに結果が publish し直されることを確かめる（チェックリスト項目 3）。項目 3 の印にはしない：`useAppViews` の外で派生 view を再計算する経路（AppShell の entity view が使う `useViewSvg` + `useDebouncedValue` など）はこの表に入らず、そうした経路を新しく足しても型が表への追加を強制しないため
 - `packages/app/src/hooks/useDebouncedCompile.test.tsx` — recompile 結果の publish 経路を固定する（チェックリスト項目 3）：入力が途中で変わった in-flight compile の古い結果は捨て（`drops a stale in-flight compile when inputs change mid-flight`、#1534）、error から同一内容へ復帰したときは fingerprint が同じでも publish し直す（`re-publishes after error→recovery even when the fingerprint is unchanged`、#1540）

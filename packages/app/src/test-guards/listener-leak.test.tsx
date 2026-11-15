@@ -8,7 +8,8 @@
 // elements, the last test would fail instead of the check going silent.
 import { describe, it, expect, afterEach } from "vitest";
 import { render, cleanup } from "@testing-library/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { leakedListeners, resetListenerTracking, trackedListenerCount } from "./listener-leak.js";
 import { PreviewPane } from "../components/PreviewPane.js";
 import { LocaleProvider } from "../i18n/index.js";
@@ -67,6 +68,28 @@ describe("listener-leak check (TPL-1537 item 2)", () => {
     unmount();
     expect(leakedListeners()).toEqual([{ type: "wheel", element: '<div class="box">' }]);
     resetListenerTracking();
+  });
+
+  it("ignores the listener React adds for an onScroll that appears after mount", () => {
+    const { rerender, unmount } = render(<div className="scroller" />);
+    rerender(<div className="scroller" onScroll={() => {}} />);
+    unmount();
+    expect(leakedListeners()).toEqual([]);
+  });
+
+  it("ignores the listeners React delegates to a portal container it rendered", () => {
+    function Host() {
+      const [target, setTarget] = useState<HTMLDivElement | null>(null);
+      return (
+        <div>
+          <div ref={setTarget} className="portal-target" />
+          {target && createPortal(<span>inside</span>, target)}
+        </div>
+      );
+    }
+    const { unmount } = render(<Host />);
+    unmount();
+    expect(leakedListeners()).toEqual([]);
   });
 
   it("ignores elements React did not create", () => {

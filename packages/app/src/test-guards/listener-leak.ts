@@ -58,7 +58,7 @@ function track(
   listener: EventListenerOrEventListenerObject,
   options: boolean | AddEventListenerOptions | undefined,
 ): void {
-  if (!target.isConnected || !isReactOwned(target)) return;
+  if (!target.isConnected || !isReactOwned(target) || isReactEventRoot(target)) return;
   if (typeof options === "object" && options.once) return;
   const signal = typeof options === "object" ? options.signal : undefined;
   // The DOM does not register a listener whose signal has already aborted.
@@ -113,13 +113,35 @@ export function resetListenerTracking(): void {
 /** Listeners whose element has left the document while they stayed attached. */
 export function leakedListeners(): LeakedListener[] {
   return registrations
-    .filter((r) => !r.target.isConnected)
+    .filter((r) => !r.target.isConnected && !addedByReact(r))
     .map((r) => ({ type: r.type, element: describe(r.target) }));
 }
 
 /** How many listeners are tracked right now (for the guard's own test). */
 export function trackedListenerCount(): number {
   return registrations.length;
+}
+
+/**
+ * A portal or root container: React marks it `_reactListening<random>` and then
+ * delegates every event type to it, never removing those listeners.
+ */
+function isReactEventRoot(el: Element): boolean {
+  return Object.keys(el).some((k) => k.startsWith("_reactListening"));
+}
+
+/**
+ * A listener React itself attached to a rendered element for an event it does
+ * not delegate (`onScroll`, media events, …). React records it in the element's
+ * `__reactEvents$<random>` set as `<type>__bubble` / `<type>__capture` right
+ * after adding it, so this is read when reporting, not when tracking.
+ */
+function addedByReact(r: Registration): boolean {
+  const key = Object.keys(r.target).find((k) => k.startsWith("__reactEvents$"));
+  if (!key) return false;
+  const set = (r.target as unknown as Record<string, unknown>)[key];
+  if (!(set instanceof Set)) return false;
+  return set.has(`${r.type}__${r.capture ? "capture" : "bubble"}`);
 }
 
 /** React stores the fiber on each element it creates under `__reactFiber$<random>`. */

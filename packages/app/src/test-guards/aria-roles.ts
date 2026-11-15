@@ -7,6 +7,12 @@
 // - ALLOWED_ROLES: the explicit roles ARIA in HTML allows on the interactive
 //   and list tags (`button` may be a `menuitem`, never a `listitem`).
 //
+// Native elements count by their implicit role (ARIA in HTML): lists, table
+// parts, buttons, links, nav, inputs by type, select, textarea, img, headings
+// and hr. So a `menu` owning a native checkbox or a `tablist` owning an `<h3>`
+// is reported. Native `<option>` / `<optgroup>` belong to their `<select>` and
+// are left out, as are tags whose implicit role no container rule names.
+//
 // The tables are the spec, not a list of the app's components, so a new
 // component is checked as soon as a test renders it. `a11y-sweep-setup.ts`
 // runs the check on every DOM change of every app test.
@@ -73,14 +79,18 @@ const ALLOWED_ROLES: Readonly<Record<string, readonly string[]>> = {
   button: [
     "checkbox",
     "combobox",
+    "gridcell",
     "link",
     "menuitem",
     "menuitemcheckbox",
     "menuitemradio",
     "option",
     "radio",
+    "separator",
+    "slider",
     "switch",
     "tab",
+    "treeitem",
   ],
   a: [
     "button",
@@ -143,7 +153,61 @@ function implicitRole(el: Element): string | null {
       return inPresentationalTable(el) ? null : "columnheader";
     case "nav":
       return "navigation";
+    case "input":
+      return inputRole(el);
+    case "select":
+      return el.hasAttribute("multiple") || Number(el.getAttribute("size") ?? "0") > 1
+        ? "listbox"
+        : "combobox";
+    case "textarea":
+      return "textbox";
+    case "img":
+      return el.getAttribute("alt") === "" ? "presentation" : "img";
+    case "h1":
+    case "h2":
+    case "h3":
+    case "h4":
+    case "h5":
+    case "h6":
+      return "heading";
+    case "hr":
+      return "separator";
+    // A native <option> / <optgroup> belongs to its <select>; it is not
+    // checked against the ARIA listbox rules.
     default:
+      return null;
+  }
+}
+
+/** ARIA in HTML's implicit role of an `<input>`, by its type. */
+function inputRole(el: Element): string | null {
+  const type = (el.getAttribute("type") ?? "text").toLowerCase();
+  const withList = el.hasAttribute("list");
+  switch (type) {
+    case "hidden":
+      return null;
+    case "checkbox":
+      return "checkbox";
+    case "radio":
+      return "radio";
+    case "range":
+      return "slider";
+    case "number":
+      return "spinbutton";
+    case "button":
+    case "submit":
+    case "reset":
+    case "image":
+      return "button";
+    case "search":
+      return withList ? "combobox" : "searchbox";
+    case "text":
+    case "email":
+    case "tel":
+    case "url":
+      return withList ? "combobox" : "textbox";
+    default:
+      // date, color, file, password, …: no ARIA role a container could own.
       return null;
   }
 }

@@ -129,6 +129,49 @@ function PaletteCommand() {
   return null;
 }
 
+describe("a11y sweep: native elements and allowed roles", () => {
+  it("accepts a button as a treeitem", () => {
+    expect(
+      problemsOf(
+        <div role="tree">
+          <button role="treeitem">Node</button>
+        </div>,
+      ),
+    ).toEqual([]);
+  });
+
+  it("reports a menu owning a native checkbox", () => {
+    expect(
+      problemsOf(
+        <div role="menu">
+          <input type="checkbox" aria-label="Wrap" />
+        </div>,
+      ),
+    ).toContain('role: role "menu" may not own role "checkbox"');
+  });
+
+  it("reports a tablist owning a heading", () => {
+    expect(
+      problemsOf(
+        <div role="tablist">
+          <h3>Views</h3>
+          <button role="tab">System</button>
+        </div>,
+      ),
+    ).toContain('role: role "tablist" may not own role "heading"');
+  });
+
+  it("leaves a native select and its options alone", () => {
+    expect(
+      problemsOf(
+        <select aria-label="Theme">
+          <option>Dark</option>
+        </select>,
+      ),
+    ).toEqual([]);
+  });
+});
+
 describe("a11y sweep: timing and inheritance", () => {
   it("checks a button rendered and unmounted in one synchronous run", () => {
     const { unmount } = render(<button aria-label="Close">×</button>);
@@ -196,6 +239,17 @@ describe("a11y sweep: the corpus has the shapes it checks", () => {
     expect(checked.role).toBeGreaterThan(0);
     expect(checked["button-label"]).toBeGreaterThan(0);
     expect(problems).toEqual([]);
+    expect(checked["button-label"]).toBeGreaterThan(0);
+
+    // And the sweep reports that real option once it leaves its listbox.
+    const option = document.querySelector('[role="listbox"] [role="option"]')!;
+    const dialog = document.querySelector('[role="dialog"]')!;
+    dialog.appendChild(option);
+    const after = flushA11ySweep().problems.map((p) => p.message);
+    // Unmount first: removal checks the subtree again.
+    cleanup();
+    clearA11yProblems();
+    expect(after).toContain('role "option" needs a parent of group / listbox, found dialog');
   });
 });
 
@@ -211,7 +265,12 @@ describe("button-label exemptions", () => {
         !/\.test\.tsx?$/.test(name) &&
         !path.includes("test-guards")
       ) {
-        sources.push(readFileSync(path, "utf8"));
+        // Code only: a class named in a comment does not keep an exemption alive.
+        sources.push(
+          readFileSync(path, "utf8")
+            .replace(/\/\*[\s\S]*?\*\//g, "")
+            .replace(/^\s*\/\/.*$/gm, ""),
+        );
       }
     }
   };
@@ -221,12 +280,16 @@ describe("button-label exemptions", () => {
     "$selector still names something the app renders",
     ({ selector, reason }) => {
       expect(reason.length).toBeGreaterThan(20);
+      // The class part must still be written somewhere in the code. An
+      // attribute part such as `[aria-haspopup="menu"]` is set by a library
+      // (Radix), so it is not looked up in our source.
       const classes = [...selector.matchAll(/\.([\w-]+)/g)].map((m) => m[1]!);
       expect(classes.length).toBeGreaterThan(0);
       for (const cls of classes) {
+        const written = new RegExp(`["'\\s:]${cls}["'\\s]`);
         expect(
-          sources.some((src) => src.includes(cls)),
-          `${cls} is not in app or core source`,
+          sources.some((src) => written.test(src)),
+          `${cls} is not in app or core code`,
         ).toBe(true);
       }
     },
