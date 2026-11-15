@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-11-14
 - **関連 Issue**: [#3767](https://github.com/kompiro/karasu/issues/3767)（#3752 の修正のレビューで発見）
+- **設計 (ADR)**: [ADR-3767](../adr/3767-required-value-stops-at-next-edge.md)
 - **Related TPLs**: [TPL-3752](../test-perspectives/TPL-3752-optional-trailing-token-stops-at-next-statement.md), [TPL-3072](../test-perspectives/TPL-3072-parser-error-drops-exactly-the-rejected-construct.md)
 - **対象ファイル**: `packages/core/src/parser/property-readers.ts`, `packages/core/src/parser/edge-parser.ts`, `packages/core/src/parser/block-contents.ts`, `packages/core/src/parser/node-parser.ts`, `packages/core/src/parser/infra-parser.ts`, `packages/core/src/parser/org-parser.ts`, `packages/core/src/parser/deploy-parser.ts`, `packages/core/src/parser/rejected-construct.ts`
 
