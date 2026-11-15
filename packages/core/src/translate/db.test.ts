@@ -13,8 +13,8 @@ const ctx: TranslatorContext = {
 // `table` mapping, never columns, types or keys. Every translate call in this
 // file goes through `entityShapeChecked`, which parses the output and checks
 // every entity it finds, so a new test case joins the check without asking.
-// The last test in the file makes sure the cases did emit entities, so the
-// check cannot pass by never seeing one.
+// The last test in the file makes sure the check does see entities, so it
+// cannot pass by never meeting one.
 let entitiesChecked = 0;
 
 /**
@@ -816,9 +816,16 @@ DROP TABLE ORDERS;
   });
 });
 
-// Runs after every case above (vitest runs a file's tests in order).
+// The check above passes trivially if it never meets an entity. Translate a
+// schema that must produce entities through it here, so this holds even when
+// the test runs alone (`-t`), and the checker is shown to see them.
 describe("entity shape check (TPL-1882)", () => {
-  it("saw entities in the output of the cases above", () => {
-    expect(entitiesChecked).toBeGreaterThan(0);
+  it("checks the entities of an aggregate translation", async () => {
+    const before = entitiesChecked;
+    await entityShapeChecked(new DbTranslator()).translate(
+      "CREATE TABLE a (id INT PRIMARY KEY);\nCREATE TABLE b (id INT PRIMARY KEY, a_id INT REFERENCES a(id));",
+      { ...ctx, database: "D" },
+    );
+    expect(entitiesChecked - before).toBe(2);
   });
 });

@@ -78,7 +78,7 @@ label / description** のみである。**属性（カラム・型・インデ�
 - `packages/core/src/parser/parser.test.ts` › `entity declarations (#1870)` — 属性なしの entity がパースされること、`table <Infra>.<sub>` が `tableRef` に入ること、entity 内の論理ノード子が拒否されること
 - `packages/core/src/builtins/reference-parser-sync.test.ts` › `REFERENCE_DATA.nodeKinds ↔ parser` — `entity` を含む各 kind について、Reference が載せる property とパーサが受理する property が双方向に一致する（属性的 property を黙って受理し始めると落ちる）
 - `packages/core/src/parser/physical-ref-validation.test.ts` — entity の `table` 物理対応が infra サブリソースへの参照として解決されること（未宣言の block / leaf は `unresolved-table-ref`、`table` なしの entity は沈黙）
-- `packages/core/src/translate/db.test.ts` › `entity scaffold (aggregate granularity)` — `translate --from db` の entity 出力が名前・`table` 物理対応・関連 edge の形で出ることを固定する。同ファイルの translate 呼び出しはすべて `entityShapeChecked` を通り、出力を parse して全 entity が名前・関連・`table` 物理対応以外を持たないことを確かめる（新しいケースも自動で加わり、entity を 1 つも見なければファイル最後のテストが落とす。entity の行に `table` と関連 edge 以外の行（コメントを含む）があっても落とす）
+- `packages/core/src/translate/db.test.ts` › `entity scaffold (aggregate granularity)` — `translate --from db` の entity 出力が名前・`table` 物理対応・関連 edge の形で出ることを固定する。同ファイルの translate 呼び出しはすべて `entityShapeChecked` を通り、出力を parse して全 entity が名前・関連・`table` 物理対応以外を持たないことを確かめる（新しいケースも自動で加わり、entity を生む schema を通したときに検査が entity を見ていることも確かめる。entity の行に `table` と関連 edge 以外の行（コメントを含む）があっても落とす）
 
 ## 派生元 spec
 
