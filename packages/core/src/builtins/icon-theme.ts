@@ -215,7 +215,7 @@ export function iconNameForNode(kind: string, tags: readonly string[]): string |
  * name a losing tag before the cascade merges (`withoutLosingBuiltinVariants`
  * in `resolver/variant-rules.ts`), so icon mode, shape mode and
  * {@link iconNameForNode} (the Outline) pick the same variant for
- * `resource [table, api]`. Without it the cascade picks the variant declared
+ * `resource [table, api]` unless an author rule restyles it. Without it the cascade picks the variant declared
  * last in the builtin sheet, whatever the tag order (#3775). Author rules are
  * not dropped, so an author's own declaration still wins over the builtin
  * choice the way it does on a single-variant node (#3776).

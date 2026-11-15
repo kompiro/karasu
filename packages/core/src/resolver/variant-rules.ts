@@ -16,7 +16,13 @@ import { NON_AUTHOR_SHEET_IDS } from "../builtins/non-author-sheets.js";
  * Only builtin rules are dropped. An author rule keeps its place in the
  * cascade, so an author's `#Orders { shape: url("api"); }` or
  * `resource[api] { … }` beats the builtin choice exactly as it beats a builtin
- * rule on a single-variant node (#3776).
+ * rule on a single-variant node (#3776). Two author rules on different variant
+ * tags of one node therefore resolve by the ordinary cascade (declaration
+ * order at equal specificity), not by the node's tag order.
+ *
+ * The whole rule is dropped, not only its `shape`. Every shipped rule that
+ * names a variant tag sets nothing else, which `icon-theme.test.ts` checks, so
+ * a shipped rule that would lose another property here fails there first.
  */
 export function withoutLosingBuiltinVariants(
   node: { kind: string; tags: readonly string[] },

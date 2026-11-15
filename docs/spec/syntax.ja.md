@@ -95,7 +95,7 @@ karasu は**論理構造**と**物理構造**を明確に分離して表現す�
 | `[embed]` | サードパーティの Web コンテンツに埋め込む widget / SDK（Stripe Checkout、Intercom 等） |
 <!-- /gen:reference:client-form-factor-tags -->
 
-推奨: 1 つの client につき form-factor タグは最大 1 つに留める。複数タグは **1 つの** 角括弧にカンマ区切りで書く（`[mobile, desktop]`）。角括弧を繰り返す書き方（`[mobile] [desktop]`）は parse error になる。組み合わせ自体はパースされるが、アーキテクチャ上の追加意味は持たない。 複数の form-factor タグを持つ client は最初に書いたタグで描かれ、Icon Mode と Outline で同じになる。author のルールはこれに勝つ。
+推奨: 1 つの client につき form-factor タグは最大 1 つに留める。複数タグは **1 つの** 角括弧にカンマ区切りで書く（`[mobile, desktop]`）。角括弧を繰り返す書き方（`[mobile] [desktop]`）は parse error になる。組み合わせ自体はパースされるが、アーキテクチャ上の追加意味は持たない。複数の form-factor タグを持つ client は最初に書いたタグで描かれ、Icon Mode と Outline で同じになる。自分のスタイルシートのルールはこの影響を受けず、ふつうのカスケードで決まる。
 
 `client` は **プロジェクト自身が配布するソフトウェア** に限定される。サードパーティのブラウザ・IDE・AI エージェントがシステムを利用する場合は `user`（通常は `[human]` / `[ai]`）でモデル化し、`client` にはしない。
 

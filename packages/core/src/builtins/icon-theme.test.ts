@@ -196,6 +196,30 @@ describe("a multi-variant node is drawn by its first variant tag", () => {
     );
   });
 
+  // Author rules on a variant tag are not dropped: they win over the builtin
+  // first-tag choice as on a single-variant node, by the ordinary cascade.
+  it.each(multi)("an author's rule on a losing variant tag wins on %s %j", (kind, tags) => {
+    const loser = tags.find((t) => t !== tags[0])!;
+    const author = StyleParser.parse(`${kind}[${loser}] { shape: box; }`).value;
+    expect(shapeOf(kind, tags, [getBuiltinStyleSheet(), author])).toBe("box");
+  });
+
+  // The resolver drops a whole shipped rule that names a losing variant tag.
+  // That is only safe while such a rule sets nothing but `shape`; a rule that
+  // also set a badge or a colour would lose it on a multi-variant node.
+  it.each([
+    ["dark builtin", getBuiltinStyleSheet("dark")],
+    ["light builtin", getBuiltinStyleSheet("light")],
+    ["icon theme", getIconThemeStyleSheet()],
+  ] as const)("every %s rule naming a variant tag sets only shape", (_name, sheet) => {
+    const extra = sheet.rules
+      .filter((r) =>
+        r.selector.tags.some((t) => ICON_OF.has(ruleKey(r.selector.nodeType ?? "", t))),
+      )
+      .flatMap((r) => Object.keys(r.properties).filter((p) => p !== "shape"));
+    expect(extra).toEqual([]);
+  });
+
   // The resolver tells variant rules apart by the tags in `VARIANT_TAGS`. A
   // shipped rule that styles a variant kind by a tag outside that set would not
   // be dropped when it loses, and the cascade order would decide again.

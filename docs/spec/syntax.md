@@ -96,7 +96,7 @@ Tags are tool-owned from `.krs language v2.0`: a tag outside the builtin table p
 | `[embed]` | Widget / SDK embedded into third-party web content (Stripe Checkout, Intercom, etc.) |
 <!-- /gen:reference:client-form-factor-tags -->
 
-Recommended: pick at most one form-factor tag per client. Multiple tags go in **one** bracket group, comma-separated (`[mobile, desktop]`); repeating the group (`[mobile] [desktop]`) is a parse error. Combining unrelated form factors is parseable but conveys no additional architectural meaning. A client carrying several form-factor tags is drawn by the first one written, the same in Icon Mode and the Outline; an author rule still wins over it.
+Recommended: pick at most one form-factor tag per client. Multiple tags go in **one** bracket group, comma-separated (`[mobile, desktop]`); repeating the group (`[mobile] [desktop]`) is a parse error. Combining unrelated form factors is parseable but conveys no additional architectural meaning. A client carrying several form-factor tags is drawn by the first one written, the same in Icon Mode and the Outline. Rules in your own stylesheet are not affected and resolve by the usual cascade.
 
 `client` is reserved for software the project itself ships. Third-party browsers / IDEs / AI agents that consume the system are modeled as `user` (typically `[human]` or `[ai]`), not `client`.
 
