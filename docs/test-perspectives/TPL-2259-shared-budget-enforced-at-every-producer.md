@@ -62,7 +62,7 @@ scope:
 
 ## 既知の対処パターン
 
-- **判定の共有**: `packages/app/src/utils/inline-share.ts` の `fitsUnfurlPayload(encoded)`。`MAX_UNFURL_PAYLOAD` は引き続き export されるが（メッセージに上限値を出すため）、比較は 1 か所にしかない。
+- **判定の共有**: `packages/app/src/utils/inline-share.ts` の `fitsUnfurlPayload(encoded)`。上限の定数 `MAX_UNFURL_PAYLOAD` は export せず、拒否の文面に上限値を出すときは `describeUnfurlOverflow(encodedLength)` を使う。比較は 1 か所にしかない。
 - **生成点の allowlist ドリフトガード**: `packages/app/src/utils/unfurl-budget.test.ts`。`packages/app/src` と `functions/` を走査して `/s?s=` を組み立てているファイルを列挙し、レビュー済みの一覧（producer / reflector の別と、それぞれがなぜ安全かの根拠つき）と一致しなければ落ちる。コメントは除去してから照合する（prose 中の言及を declaration と数えない — TPL-2185）。
 - **上限が振る舞いを決める境界のテスト**: 閾値を決め打ちせず、生成点が受理と拒否を切り替える点を二分探索し、その切り替えが上限そのものに一致することを検査する（`repo-permalink.test.ts` › `accepts right up to the cap and refuses one node past it`）。「早めに拒否している」バグも検出できる。
 
@@ -71,4 +71,4 @@ scope:
 - `packages/app/src/utils/unfurl-budget.test.ts` — `/s?s=` 生成点の allowlist ドリフトガード
 - `packages/app/src/utils/inline-share.test.ts` › `fitsUnfurlPayload` — 判定の境界
 - `packages/app/src/render/repo-permalink.test.ts` › `resolveRepoPermalink — unfurl payload cap` — resolver が上限で拒否し、原因を名指しすること
-- `packages/app/src/utils/unfurl-budget.test.ts` › `exports no number` — `/s?s=` の予算を持つ `inline-share.ts` が数値を 1 つも export しないこと。上限は `fitsUnfurlPayload` と、拒否の文面に上限を入れる `describeUnfurlOverflow` だけから使え、モジュールの外で上限と比べる式は書けない。守るのはこの予算だけで、別の予算を足したときはその予算のモジュールに同じ検査を置く
+- `packages/app/src/utils/unfurl-budget.test.ts` › `exports no number` — `/s?s=` の予算を持つ `inline-share.ts` が数値を 1 つも export しないこと。定数を export し直すと、名前を問わず落ちる。捕まえるのは数値の export だけで、`{ max: 8000 }` のような包んだ export、別モジュールへの定数の移動、生成点が `8000` を直書きする比較は捕まえない（直書きの比較は生成点の allowlist のレビューで見る）。守るのはこの予算だけで、別の予算を足したときはその予算のモジュールに同じ検査を置く

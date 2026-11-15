@@ -172,7 +172,7 @@ const SHARE_PAGE_PATH = "/s";
  * - `fragmentUrl`: the private `#s=` link — never sent to the server, but no
  *   OGP preview (crawlers can't see the fragment).
  * - `unfurlUrl`: the server-visible `/s?s=` link that unfurls with the diagram
- *   (OGP), or `null` when the encoded payload exceeds {@link MAX_UNFURL_PAYLOAD}
+ *   (OGP), or `null` when the encoded payload fails {@link fitsUnfurlPayload}
  *   — oversized projects fall back to the fragment-only link.
  *
  * Encodes once and reuses the result for both URLs.

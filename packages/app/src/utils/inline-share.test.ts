@@ -11,18 +11,11 @@ import {
 } from "./inline-share.js";
 import { HOSTED_APP_ORIGIN } from "./hosted-app.js";
 
-/** The longest payload `fitsUnfurlPayload` accepts, found from the predicate itself. */
-function unfurlCap(): number {
-  let fits = 0;
-  let overflows = 1 << 20;
-  while (overflows - fits > 1) {
-    const mid = Math.floor((fits + overflows) / 2);
-    if (fitsUnfurlPayload("x".repeat(mid))) fits = mid;
-    else overflows = mid;
-  }
-  return fits;
-}
-const MAX_UNFURL_PAYLOAD = unfurlCap();
+/**
+ * The unfurl budget (ADR-1783). `inline-share.ts` does not export it (TPL-2259),
+ * so the tests name the documented value and check the predicate against it.
+ */
+const MAX_UNFURL_PAYLOAD = 8000;
 
 const SAMPLE = `system Shop {
   service Api { label "API" }
@@ -200,11 +193,9 @@ describe("fitsUnfurlPayload", () => {
   // The shared gate every producer of a server-visible `s=` URL must use
   // (TPL-2259). Exporting only the constant let `resolveRepoPermalink` drift
   // from `buildShareUrls` — Issue #2259.
-  it("accepts up to 8000 characters and refuses one past it", () => {
-    // The limit is not exported (TPL-2259), so the boundary is read off the
-    // predicate: ~8000 leaves headroom under Cloudflare's ~16KB URL cap
-    // (ADR-1783).
-    expect(MAX_UNFURL_PAYLOAD).toBe(8000);
+  it("accepts exactly the cap and refuses one character past it", () => {
+    expect(fitsUnfurlPayload("x".repeat(MAX_UNFURL_PAYLOAD))).toBe(true);
+    expect(fitsUnfurlPayload("x".repeat(MAX_UNFURL_PAYLOAD + 1))).toBe(false);
     expect(fitsUnfurlPayload("")).toBe(true);
   });
 });
