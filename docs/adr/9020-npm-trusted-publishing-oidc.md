@@ -15,7 +15,6 @@ scope:
     - security
 assumptions:
   - "file: .github/workflows/release.yml"
-  - "grep: package.json :: \"release\": \"pnpm build && changeset publish\""
 ---
 
 # ADR-9020: npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する

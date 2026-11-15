@@ -7,6 +7,7 @@ import type {
   KrsNode,
 } from "../types/ast.js";
 import type { TokenCursor } from "./kebab-name.js";
+import type { ErrorDiagnosticCode } from "../types/diagnostic-severity.js";
 
 /**
  * The parser's primitives, handed to the parsing functions that live outside
@@ -24,7 +25,10 @@ export interface ParseContext extends TokenCursor {
   /** Consume the next token when it is of `type`. */
   match(type: TokenType): boolean;
   /** Report an error anchored at the next token. */
-  error<K extends DiagnosticCode>(code: K, params: DiagnosticParamsByCode[K]): void;
+  error<K extends DiagnosticCode & ErrorDiagnosticCode>(
+    code: K,
+    params: DiagnosticParamsByCode[K],
+  ): void;
   /** Build a source range stamped with the file path; see `Parser.range`. */
   range(start: Token["loc"], end?: Token["loc"]): SourceRange;
   /**
