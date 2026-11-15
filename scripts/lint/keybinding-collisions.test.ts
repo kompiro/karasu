@@ -20,8 +20,9 @@ const REPO_ROOT = resolve(import.meta.dirname, "../..");
 
 /**
  * Chords that two commands may share because the commands are never mounted
- * at the same time (`CommandProvider.register` still refuses them if they
- * are). Each entry names the commands and why they are exclusive. Empty today.
+ * at the same time. If they ever are, `CommandProvider.register` throws in
+ * vitest and `vite` dev, while a production build only logs it and keeps the
+ * first. Each entry names the commands and why they are exclusive. Empty today.
  */
 const SHARED_CHORDS: ReadonlyMap<string, string> = new Map();
 
