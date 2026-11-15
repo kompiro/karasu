@@ -1,5 +1,5 @@
 ---
-"@karasu-tools/core": patch
+"@karasu-tools/core": minor
 "karasu": patch
 "karasu-skills": patch
 ---
