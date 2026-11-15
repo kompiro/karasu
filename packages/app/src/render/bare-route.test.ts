@@ -7,6 +7,7 @@ import {
   guardBarePath,
   hasExplicitRef,
   matchBarePermalink,
+  NEGATIVE_CACHE_CONTROL,
   redirectCacheControl,
 } from "./bare-route.js";
 import { FUNCTION_ROUTE_SEGMENTS, SPA_ROUTE_SEGMENTS, STATIC_ROUTE_SEGMENTS } from "../routes.js";
@@ -153,7 +154,8 @@ describe("errorCacheControl", () => {
   it.each([400, 404, 413] as const)("lets the edge hold a deterministic error (%i)", (status) => {
     // A pinned ref with no `.krs` costs GitHub raw fetches; uncached, a crawler
     // walking `/<owner>/<repo>@<ref>` paths amplifies them (TPL-1961).
-    expect(errorCacheControl(status)).toMatch(/^public, s-maxage=\d+/);
+    expect(errorCacheControl(status)).toBe(NEGATIVE_CACHE_CONTROL);
+    expect(NEGATIVE_CACHE_CONTROL).toMatch(/^public, s-maxage=\d+/);
   });
 });
 
