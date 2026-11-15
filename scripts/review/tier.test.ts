@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
 import { type GitFacts, parseRecord } from "./local-review-record.ts";
@@ -357,6 +357,8 @@ describe("classifyChange", () => {
   it("keeps every module a Pages Function imports directly on the security boundary", () => {
     const sec = (path: string) =>
       classifyChange({ files: [modified(path)], author: "kompiro" }).securityReview;
+    // The classifier's globs are POSIX; `relative` uses `\\` on Windows.
+    const repoPath = (path: string) => relative(REPO_ROOT, path).split(sep).join("/");
     // Packages a function may import by name. Any other bare specifier fails,
     // since its modules cannot be checked against the globs here.
     const PACKAGES = new Set(["@resvg/resvg-wasm", "@resvg/resvg-wasm/index_bg.wasm"]);
@@ -364,8 +366,7 @@ describe("classifyChange", () => {
       readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
         const path = join(dir, e.name);
         if (e.isDirectory()) return sources(path);
-        const repoPath = relative(REPO_ROOT, path);
-        return /\.tsx?$/.test(e.name) && !e.name.endsWith(".d.ts") && !isTestFile(repoPath)
+        return /\.tsx?$/.test(e.name) && !e.name.endsWith(".d.ts") && !isTestFile(repoPath(path))
           ? [path]
           : [];
       });
@@ -378,13 +379,13 @@ describe("classifyChange", () => {
       const text = readFileSync(file, "utf-8");
       for (const [, spec] of text.matchAll(SPECIFIER)) {
         if (!spec.startsWith(".")) {
-          if (!PACKAGES.has(spec)) unknownPackages.push(`${relative(REPO_ROOT, file)}: ${spec}`);
+          if (!PACKAGES.has(spec)) unknownPackages.push(`${repoPath(file)}: ${spec}`);
           continue;
         }
         const target = resolve(file, "..", spec).replace(/\.js$/, ".ts");
         // A specifier this cannot resolve is reported, not skipped (TPL-2804).
-        expect(existsSync(target), `${relative(REPO_ROOT, file)} imports ${spec}`).toBe(true);
-        imported.add(relative(REPO_ROOT, target));
+        expect(existsSync(target), `${repoPath(file)} imports ${spec}`).toBe(true);
+        imported.add(repoPath(target));
       }
     }
     expect(unknownPackages).toEqual([]);
@@ -397,9 +398,7 @@ describe("classifyChange", () => {
     );
     // The functions themselves match `functions/**`; the imports outside it are
     // what this can catch.
-    const outside = [...files.map((f) => relative(REPO_ROOT, f)), ...imported].filter(
-      (path) => !sec(path),
-    );
+    const outside = [...files.map(repoPath), ...imported].filter((path) => !sec(path));
     expect(outside).toEqual([]);
   });
 
