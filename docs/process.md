@@ -127,7 +127,7 @@ ready → implementing → designing → designed → implementing → in-review
 ready → implementing → in-review → (close)
 ```
 
-> Issue を閉じるのは Plan の最後の段を終える PR の `Closes #N` だけ。Design Doc の PR と途中の段（試験導入など）の PR は `Refs #N`。試験導入より前に Design Doc を置く（ADR-3818）。
+> Issue 本文の Plan に段があれば `Closes #N` は実装の最後の段だけ（後工程は除く）。Design Doc と途中の段（試験導入など）は `Refs #N`。試験導入の前に Design Doc を置き、結果も足す（ADR-3818）。
 >
 > マージ後にしか確かめられない項目（次のリリース、本番にしか現れない設定、`main` でのバックフィルなど）は、PR を作る前に別の Issue に起こし、PR 本文から番号を示す。元の Issue は `Closes #N` のまま PR と一緒に閉じる。ADR への昇格などこの文書が手順として持つ後工程は書かない（ADR-3271）。
 
