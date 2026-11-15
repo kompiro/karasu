@@ -500,7 +500,6 @@ const MEASURED_TEXT = new Set([
   "badge-preview-text",
 ]);
 
-
 const STYLES_DIR = `${import.meta.dirname}/`;
 
 /** The component stylesheets: the same scope `styles-no-raw-color.test.ts` walks. */
