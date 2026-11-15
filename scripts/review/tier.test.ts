@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 import madge from "madge";
 import { describe, expect, it } from "vitest";
@@ -375,40 +375,66 @@ describe("classifyChange", () => {
     const repoPath = (path: string) =>
       relative(REPO_ROOT, resolve(REPO_ROOT, path)).split(sep).join("/");
 
-    const graph = await madge(["functions"], {
+    const functionsDir = resolve(REPO_ROOT, "functions");
+    // madge has no parser for `.mts` / `.cts` and would list such a file with
+    // no imports, so one under `functions/` fails here until it can be read.
+    const unreadable = readdirSync(functionsDir, { recursive: true, encoding: "utf-8" })
+      .filter((name) => /\.[cm]ts$/.test(name) && !/\.d\.[cm]ts$/.test(name))
+      .map((name) => `functions/${name.split(sep).join("/")}`);
+    expect(unreadable).toEqual([]);
+
+    const graph = await madge([functionsDir], {
       baseDir: REPO_ROOT,
       includeNpm: true,
       // No `excludeRegExp` for test files: it would also drop a function's
       // import of one. Test files are left out below, as sources only.
-      fileExtensions: ["ts", "tsx", "mts", "cts", "js", "mjs", "cjs"],
+      fileExtensions: ["ts", "tsx", "js", "mjs", "cjs"],
       detectiveOptions: {
         ts: { mixedImports: true },
         tsx: { mixedImports: true },
         es6: { mixedImports: true },
       },
     });
-    // A specifier madge could not resolve is dropped from the graph, so it is
-    // reported here instead (TPL-2804).
-    expect(graph.warnings().skipped).toEqual([]);
 
-    const functions = Object.entries(graph.obj()).filter(
-      ([file]) =>
-        repoPath(file).startsWith("functions/") &&
-        !/\.d\.[cm]?ts$/.test(file) &&
-        !isTestFile(repoPath(file)),
-    );
+    const functions = Object.entries(graph.obj())
+      .filter(
+        ([file]) =>
+          repoPath(file).startsWith("functions/") &&
+          !/\.d\.[cm]?ts$/.test(file) &&
+          !isTestFile(repoPath(file)),
+      )
+      .map(([file, deps]) => ({
+        file: repoPath(file),
+        deps,
+        text: readFileSync(resolve(REPO_ROOT, file), "utf-8"),
+      }));
+    // madge walks past the functions, so only a specifier one of them writes
+    // counts: madge drops an unresolved one from the graph, so it is reported
+    // here instead (TPL-2804).
+    const unresolved = graph
+      .warnings()
+      .skipped.filter((spec) =>
+        functions.some(({ text }) => ['"', "'", "`"].some((q) => text.includes(`${q}${spec}${q}`))),
+      );
+    expect(unresolved).toEqual([]);
+    // A file madge could not parse comes back with no imports.
+    const unparsed = functions
+      .filter(({ deps, text }) => deps.length === 0 && /\b(?:import|require)\b/.test(text))
+      .map(({ file }) => file);
+    expect(unparsed).toEqual([]);
+
     const off: string[] = [];
     const imported = new Set<string>();
-    for (const [file, deps] of functions) {
-      if (!sec(repoPath(file))) off.push(repoPath(file));
+    for (const { file, deps } of functions) {
+      if (!sec(file)) off.push(file);
       for (const dep of deps) {
         if (dep.includes("node_modules/")) {
-          if (!PACKAGES.has(packageName(dep))) off.push(`${repoPath(file)}: ${dep}`);
+          if (!PACKAGES.has(packageName(dep))) off.push(`${file}: ${dep}`);
           continue;
         }
         const path = repoPath(dep);
         imported.add(path);
-        if (path.startsWith("../") || !sec(path)) off.push(`${repoPath(file)}: ${path}`);
+        if (path.startsWith("../") || !sec(path)) off.push(`${file}: ${path}`);
       }
     }
     // The graph held the handlers this exists for.
