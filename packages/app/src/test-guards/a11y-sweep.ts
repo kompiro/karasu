@@ -102,9 +102,12 @@ let removalHooked = false;
 /**
  * Records are delivered on a microtask, so a test that renders and unmounts in
  * one synchronous run would remove an element before its record is checked.
- * Every removal path React and tests use first checks the subtree it removes.
- * Only that subtree: it is committed UI, while other pending records may be
- * part of a commit still in progress.
+ * Every removal path React and tests use (`removeChild`, `remove`,
+ * `replaceChildren`) first checks the subtree it removes. Only that subtree:
+ * it is committed UI, while other pending records may be part of a commit
+ * still in progress. Markup replaced by assigning new markup to a parent is
+ * not hooked, so a re-injected diagram's old nodes are checked only if a
+ * microtask ran while they were shown.
  */
 function hookRemovals() {
   if (removalHooked) return;
@@ -126,20 +129,6 @@ function hookRemovals() {
     for (const child of this.children) checkBeforeRemoval(child);
     replaceChildren.apply(this, nodes);
   };
-  for (const prop of ["innerHTML", "textContent"] as const) {
-    const owner = prop === "innerHTML" ? elProto : nodeProto;
-    const desc = Object.getOwnPropertyDescriptor(owner, prop);
-    if (!desc?.set) continue;
-    const set = desc.set;
-    Object.defineProperty(owner, prop, {
-      ...desc,
-      set(this: Node, value: string) {
-        if (this.nodeType === 1)
-          for (const child of (this as Element).children) checkBeforeRemoval(child);
-        set.call(this, value);
-      },
-    });
-  }
 }
 
 /** Start watching `document` (a no-op outside a DOM environment). */
