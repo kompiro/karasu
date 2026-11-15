@@ -27,6 +27,7 @@ import { parseInfraBlock } from "./infra-parser.js";
 import { isEdgeStart, parseEdge } from "./edge-parser.js";
 import { finalizeFile } from "./finalize-file.js";
 import type { ParseContext } from "./parse-context.js";
+import type { ErrorDiagnosticCode } from "../types/diagnostic-severity.js";
 
 export class Parser {
   private tokens: Token[];
@@ -130,7 +131,10 @@ export class Parser {
     return false;
   }
 
-  private error<K extends DiagnosticCode>(code: K, params: DiagnosticParamsByCode[K]): void {
+  private error<K extends DiagnosticCode & ErrorDiagnosticCode>(
+    code: K,
+    params: DiagnosticParamsByCode[K],
+  ): void {
     this.diagnostics.push({
       severity: "error",
       code,
