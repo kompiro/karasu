@@ -142,10 +142,13 @@ PR に残す。答えとして読むのは、作者が kompiro の login（`gh a
 触れるので）。
 
 答えの行に `[change]` の印があるものは、PR の変更を求めた答えなので「変更を確かめる項目」にする。
-コメントの `head=` から今の HEAD までの差分（`gh api repos/{owner}/{repo}/compare/<head=>...<headSha>`。
-force-push で古い head が読めなければ `gh pr diff <pr>` 全体）に、求めた変更が入っているかを確かめる。
-入っていれば「変更済み」として回答済みに数え、サマリにどのコミットで入ったかを書く。入っていなければ
-未対応として手順 6 で扱う（6b を参照）
+コメントの `head=` から今の HEAD までの差分（`gh api repos/{owner}/{repo}/compare/<head=>...<headSha>`）に、
+求めた変更が入っているかを確かめる。入っていれば「変更済み」として回答済みに数え、サマリにどのコミットで
+入ったかを書く。入っていなければ未対応として手順 6 で扱う（6b を参照）。
+
+force-push などで compare が読めなければ、どの答えも（`[change]` を含む）差分で確かめたことにしない。
+`gh pr diff` は base との差分なので、base に戻した箇所が見えず、確かめる根拠にならない。前の答えを添えて
+手順 6b で聞き直す。
 ## 手順 4: Local review の傾向
 
 本文の `<!-- local-review:v1 base=… head=… -->` から `<!-- /local-review -->` までの表を読み、
@@ -399,9 +402,10 @@ draft の PR はマージできない（ready にすると CI と CodeRabbit が
 セッションの手順）。draft なら（`risk: low` も含む）、マージは ready にしてから `/pr-verify` を
 もう一度実行するよう添えて終わる。マージするかは聞かない。
 
-draft でない `risk: low` の PR は Low PR merger がマージするので、マージするかは聞かない。手順 5 で
-確認できた項目があれば「kompiro が OK したとき」の 1〜3 で（1 で `headSha` が変わっていないことを
-確かめてから）チェックを入れ、checks が通れば Low PR merger がマージすると伝えて終わる。
+draft でない `risk: low` の PR は Low PR merger がマージするので、マージするかは聞かない。
+PR 本文のチェックリストにはチェックを入れない（Low PR merger がどの HEAD をマージするかはこの skill の
+あとで決まるので、確かめた HEAD と結び付けられない）。手順 5 で確認できた項目は、確かめた `headSha` と
+一緒にサマリに書いたままにし、checks が通れば Low PR merger がマージすると伝えて終わる。
 「一緒に close する」と答えた Issue があれば、マージのあとに `/pr-verify` をもう一度実行すると手順 1 の
 `closed` で close されることも伝える。
 
