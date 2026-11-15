@@ -215,9 +215,11 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin kind colors (%s them
 
   it("finds the kind rules that paint a card", () => {
     // 7 logical (user / service / client / domain / usecase / entity / resource)
-    // + team + member + 3 infra (database / queue / storage) + 9 deploy = 21.
+    // + team + member + 3 infra (database / queue / storage) + 3 infra leaves
+    // (table / queue-item / bucket, which share their store's rule since #3777)
+    // + 9 deploy = 24.
     // Exact so a kind dropping out of one theme cannot silently shrink coverage.
-    expect(kindRules.length).toBe(21);
+    expect(kindRules.length).toBe(24);
   });
 
   it.each(kindRules.map((r) => [r.selector.nodeType!, r] as const))(
