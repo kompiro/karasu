@@ -80,7 +80,6 @@ describe("pathTier", () => {
     ["packages/core/src/annotations/index.ts", "high"],
     ["packages/core/src/language-version.ts", "high"],
     ["packages/core/src/builtins/default-style.ts", "high"],
-    ["packages/core/src/builtins/annotation-badge-rules.ts", "high"],
     ["packages/lsp/src/diagnostics.ts", "high"],
     // A test file stays out of both: adding a test must not make a PR High.
     ["packages/cli/src/serve.test.ts", "low"],
