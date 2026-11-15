@@ -7,8 +7,8 @@ topic: build
 authors: [kompiro]
 refines: [ADR-3271]
 assumptions:
-  - "grep: docs/process.md :: Issue 本文の Plan に段があれば `Closes #N` は実装の最後の段だけ"
-  - "grep: docs/process.md :: 試験導入の前に Design Doc を置き、結果も足す"
+  - "grep: docs/process.md :: Issue 本文の Plan に段があれば実装の段を終える最後の PR"
+  - "grep: docs/process.md :: 試験の前に Design Doc を置き、結果を足す"
 ---
 
 # ADR-3818: 試験導入の PR は Issue を閉じず、Design Doc は試験より前に置く
