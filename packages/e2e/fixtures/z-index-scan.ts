@@ -198,6 +198,8 @@ function probeScript(tokenNames: string[]): void {
   window.__karasuZIndexProbe = {
     scan: () => {
       flush();
+      // A document with no <body> yet (a blank page between navigations).
+      if (!document.body) return [];
       const values = tokenValues();
       const hits = elementsUnder(document.body).flatMap((el) => {
         const hit = inspect(el, values);
