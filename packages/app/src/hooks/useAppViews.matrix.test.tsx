@@ -42,7 +42,10 @@ const VIEWS: Record<ActiveView, ViewProjection> = {
   deploy: { output: (v) => v.deploy.svg, diagnostics: (v) => v.deploy.diagnostics },
   org: { output: (v) => v.org.svg, diagnostics: (v) => v.org.diagnostics },
   matrix: {
-    output: (v) => v.system.resolvedSystems.map((s) => s.id).join(","),
+    output: (v) =>
+      v.system.resolvedSystems
+        .map((s) => `${s.id}:${s.children.map((c) => c.id).join("+")}`)
+        .join(","),
     diagnostics: (v) => v.system.diagnostics,
   },
 };
@@ -54,10 +57,12 @@ const ENTRY = `${PROJECT_ROOT}/index.krs`;
 const COMPARE_FILE = `${PROJECT_ROOT}/compare.krs`;
 
 // One source every view can draw: a system, a deploy block realizing it, and
-// an organization owning it.
-const sourceWith = (extraService: string) => `system Shop {
+// an organization owning it. The before side adds a service to every one of
+// them, so each view's diff differs by direction and a test can wait for each
+// view to publish its swapped result.
+const sourceWith = (extra: { service: string; container: string; owns: string }) => `system Shop {
   service Billing { label "Billing" }
-  ${extraService}
+  ${extra.service}
 }
 
 deploy Prod {
@@ -66,14 +71,20 @@ deploy Prod {
     runtime "Docker"
     realizes Billing
   }
+  ${extra.container}
 }
 
 organization Org {
-  team "payments" { label "Payments" owns Billing }
+  team "payments" { label "Payments" owns Billing${extra.owns} }
 }`;
 
-const AFTER_SOURCE = sourceWith("");
-const BEFORE_SOURCE = sourceWith('service Search { label "Search" }');
+const AFTER_SOURCE = sourceWith({ service: "", container: "", owns: "" });
+const BEFORE_SOURCE = sourceWith({
+  service: 'service Search { label "Search" }',
+  container:
+    'oci search {\n    label "SearchContainer"\n    runtime "Docker"\n    realizes Search\n  }',
+  owns: " owns Search",
+});
 const INVALID_SOURCE = "!!! invalid krs !!!";
 
 function baseArgs(fs: InMemoryFileSystemProvider) {
@@ -210,17 +221,27 @@ describe("useAppViews: both swap states render for every compare source (TPL-140
       await waitFor(() => expect(result.current.system.nodeDiff?.size ?? 0).toBeGreaterThan(0), {
         timeout: 3000,
       });
-      const unswapped = result.current.system.svg;
+      for (const view of ACTIVE_VIEWS) {
+        await waitFor(() => expect(VIEWS[view].output(result.current)).toBeTruthy(), {
+          timeout: 3000,
+        });
+      }
+      const unswapped = Object.fromEntries(
+        ACTIVE_VIEWS.map((view) => [view, VIEWS[view].output(result.current)]),
+      ) as Record<ActiveView, string>;
 
-      // Swapped: wait for the inverted diff. Un-swapped: the same props again.
+      // Swapped: wait until every view has published its inverted result (the
+      // fixture makes each view differ by direction). Un-swapped: same props.
       rerender({ swap: swapped });
-      await waitFor(() => expect(result.current.system.svg !== unswapped).toBe(swapped), {
-        timeout: 3000,
-      });
+      for (const view of ACTIVE_VIEWS) {
+        await waitFor(
+          () => expect(VIEWS[view].output(result.current) !== unswapped[view]).toBe(swapped),
+          { timeout: 3000 },
+        );
+      }
 
       for (const view of ACTIVE_VIEWS) {
-        const { output, diagnostics } = VIEWS[view];
-        await waitFor(() => expect(output(result.current)).toBeTruthy(), { timeout: 3000 });
+        const { diagnostics } = VIEWS[view];
         expect(hasError(diagnostics(result.current)), `${view} has an error diagnostic`).toBe(
           false,
         );

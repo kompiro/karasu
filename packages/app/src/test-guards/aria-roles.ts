@@ -32,11 +32,16 @@ const REQUIRED_CONTEXT: Readonly<Record<string, readonly string[]>> = {
   treeitem: ["group", "tree"],
 };
 
-/** ARIA 1.2 "Required Owned Elements": the roles a container may own (plus separators where allowed). */
+/**
+ * The roles each container may own: ARIA 1.2 "Required Owned Elements" plus
+ * `caption` and `separator` where the spec allows them. Used as the allowed
+ * set (as axe-core's aria-required-children does), not as a presence check:
+ * an empty list stays legal, so a loading state needs no exception.
+ */
 const REQUIRED_OWNED: Readonly<Record<string, readonly string[]>> = {
   directory: ["listitem"],
   feed: ["article"],
-  grid: ["row", "rowgroup"],
+  grid: ["caption", "row", "rowgroup"],
   list: ["listitem"],
   listbox: ["group", "option"],
   menu: ["group", "menuitem", "menuitemcheckbox", "menuitemradio", "separator"],
@@ -46,7 +51,7 @@ const REQUIRED_OWNED: Readonly<Record<string, readonly string[]>> = {
   table: ["caption", "row", "rowgroup"],
   tablist: ["tab"],
   tree: ["group", "treeitem"],
-  treegrid: ["row", "rowgroup"],
+  treegrid: ["caption", "row", "rowgroup"],
 };
 
 const LIST_ROLES = [
@@ -114,10 +119,12 @@ function implicitRole(el: Element): string | null {
     case "ol":
     case "menu":
       return "list";
-    case "li":
-      return el.parentElement && ["ul", "ol", "menu"].includes(el.parentElement.localName)
-        ? "listitem"
-        : null;
+    case "li": {
+      const list = el.parentElement;
+      if (!list || !["ul", "ol", "menu"].includes(list.localName)) return null;
+      // A presentational list makes its items presentational too (ARIA 1.2).
+      return isPresentational(list) ? null : "listitem";
+    }
     case "button":
       return "button";
     case "a":
@@ -127,18 +134,29 @@ function implicitRole(el: Element): string | null {
     case "thead":
     case "tbody":
     case "tfoot":
-      return "rowgroup";
+      return inPresentationalTable(el) ? null : "rowgroup";
     case "tr":
-      return "row";
+      return inPresentationalTable(el) ? null : "row";
     case "td":
-      return "cell";
+      return inPresentationalTable(el) ? null : "cell";
     case "th":
-      return "columnheader";
+      return inPresentationalTable(el) ? null : "columnheader";
     case "nav":
       return "navigation";
     default:
       return null;
   }
+}
+
+function isPresentational(el: Element): boolean {
+  const role = el.getAttribute("role")?.trim().split(/\s+/)[0];
+  return role === "none" || role === "presentation";
+}
+
+/** Table parts inherit presentation from a presentational `<table>` (ARIA 1.2). */
+function inPresentationalTable(el: Element): boolean {
+  const table = el.closest("table");
+  return table !== null && isPresentational(table);
 }
 
 function roleOf(el: Element): string | null {

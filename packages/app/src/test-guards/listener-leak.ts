@@ -39,6 +39,11 @@ function captureOf(options: boolean | AddEventListenerOptions | undefined): bool
   return typeof options === "boolean" ? options : Boolean(options?.capture);
 }
 
+function forgetRegistration(reg: Registration): void {
+  const i = registrations.indexOf(reg);
+  if (i >= 0) registrations.splice(i, 1);
+}
+
 function forget(target: Element, type: string, listener: unknown, capture: boolean): void {
   const i = registrations.findIndex(
     (r) =>
@@ -55,14 +60,20 @@ function track(
 ): void {
   if (!target.isConnected || !isReactOwned(target)) return;
   if (typeof options === "object" && options.once) return;
+  const signal = typeof options === "object" ? options.signal : undefined;
+  // The DOM does not register a listener whose signal has already aborted.
+  if (signal?.aborted) return;
   const capture = captureOf(options);
   const same = (r: Registration) =>
     r.target === target && r.type === type && r.listener === listener && r.capture === capture;
   // The DOM ignores a duplicate registration; so do we.
   if (registrations.some(same)) return;
-  registrations.push({ target, type, listener, capture });
-  const signal = typeof options === "object" ? options.signal : undefined;
-  signal?.addEventListener("abort", () => forget(target, type, listener, capture), { once: true });
+  const reg: Registration = { target, type, listener, capture };
+  registrations.push(reg);
+  // Bound to this registration: a later re-registration of the same listener
+  // (removed and added again with another signal) is not dropped when this
+  // signal aborts.
+  signal?.addEventListener("abort", () => forgetRegistration(reg), { once: true });
 }
 
 /** Patch `EventTarget` once per test file. A no-op outside a DOM environment. */

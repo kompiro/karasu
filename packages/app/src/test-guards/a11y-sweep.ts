@@ -77,16 +77,75 @@ function processRecords(records: MutationRecord[]) {
       for (const n of r.addedNodes) if (n.nodeType === 1) checkSubtree(n as Element);
       checkAround(r.target);
     } else if (r.type === "attributes") {
+      // The change can affect the element's own subtree and the button or
+      // container around it (hiding a button's only label, for one).
       if (r.target.nodeType === 1) checkSubtree(r.target as Element);
+      checkAround(r.target);
     } else {
       checkAround(r.target);
     }
   }
 }
 
+/** Check what is pending (for the guard's own test and the end of a test). */
+function flushPending() {
+  if (observer) processRecords(observer.takeRecords());
+}
+
+/** Check a subtree that is about to leave the document, while its ancestors are still there. */
+function checkBeforeRemoval(node: Node) {
+  if (observer && node.nodeType === 1) checkSubtree(node as Element);
+}
+
+let removalHooked = false;
+
+/**
+ * Records are delivered on a microtask, so a test that renders and unmounts in
+ * one synchronous run would remove an element before its record is checked.
+ * Every removal path React and tests use first checks the subtree it removes.
+ * Only that subtree: it is committed UI, while other pending records may be
+ * part of a commit still in progress.
+ */
+function hookRemovals() {
+  if (removalHooked) return;
+  removalHooked = true;
+  const nodeProto = Node.prototype;
+  const removeChild = nodeProto.removeChild;
+  nodeProto.removeChild = function <T extends Node>(this: Node, child: T): T {
+    checkBeforeRemoval(child);
+    return removeChild.call(this, child) as T;
+  };
+  const elProto = Element.prototype;
+  const remove = elProto.remove;
+  elProto.remove = function (this: Element) {
+    checkBeforeRemoval(this);
+    remove.call(this);
+  };
+  const replaceChildren = elProto.replaceChildren;
+  elProto.replaceChildren = function (this: Element, ...nodes: (Node | string)[]) {
+    for (const child of this.children) checkBeforeRemoval(child);
+    replaceChildren.apply(this, nodes);
+  };
+  for (const prop of ["innerHTML", "textContent"] as const) {
+    const owner = prop === "innerHTML" ? elProto : nodeProto;
+    const desc = Object.getOwnPropertyDescriptor(owner, prop);
+    if (!desc?.set) continue;
+    const set = desc.set;
+    Object.defineProperty(owner, prop, {
+      ...desc,
+      set(this: Node, value: string) {
+        if (this.nodeType === 1)
+          for (const child of (this as Element).children) checkBeforeRemoval(child);
+        set.call(this, value);
+      },
+    });
+  }
+}
+
 /** Start watching `document` (a no-op outside a DOM environment). */
 export function startA11ySweep(): void {
   if (typeof MutationObserver === "undefined" || typeof document === "undefined") return;
+  hookRemovals();
   problems.clear();
   checked.role = 0;
   checked["button-label"] = 0;
@@ -97,7 +156,9 @@ export function startA11ySweep(): void {
     childList: true,
     characterData: true,
     attributes: true,
-    attributeFilter: ["role", "aria-hidden", "hidden", "href"],
+    // Every attribute the checks read: `class` feeds `sr-only` and the
+    // exemption selectors, `aria-haspopup` the split-caret exemption.
+    attributeFilter: ["role", "aria-hidden", "hidden", "href", "class", "aria-haspopup"],
   });
   // What is already in the document when the test starts.
   if (document.body) checkSubtree(document.body);
@@ -115,7 +176,7 @@ export function stopA11ySweep(): A11yProblem[] {
 
 /** Process pending records now (for the guard's own test). */
 export function flushA11ySweep(): { problems: A11yProblem[]; checked: typeof checked } {
-  if (observer) processRecords(observer.takeRecords());
+  flushPending();
   return { problems: [...problems.values()], checked: { ...checked } };
 }
 

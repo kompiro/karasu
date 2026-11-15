@@ -15,10 +15,12 @@ import { CommandPalette } from "../components/CommandPalette.js";
 
 afterEach(cleanup);
 
-/** Render, collect what the sweep found, and clear it so the global afterEach passes. */
+/** Render, collect what the sweep found, unmount, and clear it so the global afterEach passes. */
 function problemsOf(ui: React.ReactElement) {
   render(ui);
   const { problems } = flushA11ySweep();
+  // Unmount first: removal checks the subtree again.
+  cleanup();
   clearA11yProblems();
   return problems.map((p) => `${p.rule}: ${p.message}`);
 }
@@ -115,6 +117,8 @@ describe("a11y sweep: button labels (TPL-1399 item 3)", () => {
     const { rerender } = render(<button>Close</button>);
     rerender(<button>×</button>);
     const { problems } = flushA11ySweep();
+    // Unmount first: removal checks the subtree again.
+    cleanup();
     clearA11yProblems();
     expect(problems.map((p) => p.rule)).toEqual(["button-label"]);
   });
@@ -124,6 +128,55 @@ function PaletteCommand() {
   useCommand({ id: "view.toggleSidebar", title: "Toggle Sidebar", run: () => {} });
   return null;
 }
+
+describe("a11y sweep: timing and inheritance", () => {
+  it("checks a button rendered and unmounted in one synchronous run", () => {
+    const { unmount } = render(<button aria-label="Close">×</button>);
+    unmount();
+    const { problems } = flushA11ySweep();
+    // Unmount first: removal checks the subtree again.
+    cleanup();
+    clearA11yProblems();
+    expect(problems.map((p) => p.rule)).toEqual(["button-label"]);
+  });
+
+  it("rechecks a button when its only label is hidden", () => {
+    const { container } = render(
+      <button>
+        <span>Save</span>
+      </button>,
+    );
+    container.querySelector("span")!.setAttribute("hidden", "");
+    const { problems } = flushA11ySweep();
+    // Unmount first: removal checks the subtree again.
+    cleanup();
+    clearA11yProblems();
+    expect(problems.map((p) => p.rule)).toEqual(["button-label"]);
+  });
+
+  it("treats items of a presentational list as presentational", () => {
+    expect(
+      problemsOf(
+        <ul role="none">
+          <li>Item</li>
+        </ul>,
+      ),
+    ).toEqual([]);
+  });
+
+  it("allows a caption in a grid", () => {
+    expect(
+      problemsOf(
+        <div role="grid">
+          <div role="caption">Grid</div>
+          <div role="row">
+            <div role="gridcell">a</div>
+          </div>
+        </div>,
+      ),
+    ).toEqual([]);
+  });
+});
 
 describe("a11y sweep: the corpus has the shapes it checks", () => {
   // The sweep is a guard only because app tests render roled children that

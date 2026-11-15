@@ -44,6 +44,31 @@ describe("listener-leak check (TPL-1537 item 2)", () => {
     expect(leakedListeners()).toEqual([]);
   });
 
+  it("does not track a listener whose signal has already aborted", () => {
+    const { container } = render(<div className="box" />);
+    const controller = new AbortController();
+    controller.abort();
+    container.querySelector(".box")!.addEventListener("wheel", () => {}, {
+      signal: controller.signal,
+    });
+    expect(trackedListenerCount()).toBe(0);
+  });
+
+  it("drops only the registration whose signal aborts", () => {
+    const { container, unmount } = render(<div className="box" />);
+    const box = container.querySelector(".box")!;
+    const onWheel = () => {};
+    const first = new AbortController();
+    box.addEventListener("wheel", onWheel, { signal: first.signal });
+    box.removeEventListener("wheel", onWheel);
+    box.addEventListener("wheel", onWheel, { signal: new AbortController().signal });
+    first.abort();
+    expect(trackedListenerCount()).toBe(1);
+    unmount();
+    expect(leakedListeners()).toEqual([{ type: "wheel", element: '<div class="box">' }]);
+    resetListenerTracking();
+  });
+
   it("ignores elements React did not create", () => {
     const el = document.createElement("button");
     document.body.appendChild(el);
