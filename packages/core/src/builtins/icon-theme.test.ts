@@ -9,6 +9,8 @@ import {
 import { getBuiltinStyleSheet } from "./default-style.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import type { KrsNode } from "../types/ast.js";
+import type { StyleSheet } from "../types/style.js";
+import { StyleParser } from "../parser/style-parser.js";
 
 /** Scopes whose rules `iconNameForNode` resolves (the rest return `undefined`). */
 const SYSTEM_VIEW_SCOPES = new Set(["logical", "infra", "resource-variant", "client-variant"]);
@@ -98,7 +100,7 @@ describe("iconNameForNode (parity with ICON_RULES)", () => {
   });
 
   it("uses first-match-wins on tag order for a multi-subtype client", () => {
-    // Matches applyVariantFirstMatch in resolver/style-resolver.ts.
+    // The style resolver draws the same variant (losingVariantTags).
     expect(iconNameForNode("client", ["web", "mobile"])).toBe("client-web");
     expect(iconNameForNode("client", ["mobile", "web"])).toBe("client-mobile");
   });
@@ -121,23 +123,26 @@ describe("iconNameForNode (parity with ICON_RULES)", () => {
 });
 
 /**
- * The renderer resolves a node's icon through the CSS cascade (plus the
- * variant first-match post-step in `resolver/style-resolver.ts`, which covers
- * every kind in `VARIANT_ICONS_BY_KIND`); every other surface
- * calls {@link iconNameForNode}. Both have to pick the same icon when a node
+ * The renderer resolves a node's look through the CSS cascade, from which the
+ * style resolver drops the builtin and icon-theme rules that name one of the
+ * node's losing variant tags (`losingVariantTags`, #3775); every other surface
+ * calls {@link iconNameForNode}. Both have to pick the same variant when a node
  * carries several variant tags, which is where their resolution orders can part
- * (TPL-1415 item 6). Each variant tag alone, every ordered pair of a kind's
- * variant tags, and each kind's variants in full in both orders are generated
- * from ICON_RULES, so a new
- * variant or a new kind with variants is compared without a new case here.
+ * (TPL-1415 item 6), and shape mode has to pick it too. Each variant tag alone,
+ * every ordered pair of a kind's variant tags, a pair with its first tag
+ * repeated, and each kind's variants in full in both orders are generated from
+ * ICON_RULES, so a new variant or a new kind with variants is compared without
+ * a new case here.
  */
-describe("iconNameForNode agrees with the cascade on multi-variant nodes", () => {
+describe("a multi-variant node is drawn by its first variant tag", () => {
   // Every tagged rule on a kind `iconNameForNode` draws, whatever its scope, so a
   // variant added under a new scope is compared too.
   const VARIANT_TAGS = new Map<string, string[]>();
+  const ICON_OF = new Map<string, string>();
   for (const r of ICON_RULES) {
     if (!r.tag || iconNameForNode(r.kind, []) === undefined) continue;
     VARIANT_TAGS.set(r.kind, [...(VARIANT_TAGS.get(r.kind) ?? []), r.tag]);
+    ICON_OF.set(ruleKey(r.kind, r.tag), r.icon);
   }
 
   const single: [string, string[]][] = [];
@@ -145,22 +150,14 @@ describe("iconNameForNode agrees with the cascade on multi-variant nodes", () =>
   for (const [kind, tags] of VARIANT_TAGS) {
     for (const a of tags) single.push([kind, [a]]);
     for (const a of tags) for (const b of tags) if (a !== b) multi.push([kind, [a, b]]);
+    multi.push([kind, [tags[0], tags[1], tags[0]]]);
     multi.push([kind, tags], [kind, [...tags].reverse()]);
   }
 
-  /**
-   * Kinds whose multi-variant nodes the renderer still resolves by cascade
-   * order (last-declared variant) while `iconNameForNode` takes the first tag.
-   * A known gap, not an agreement: shape mode resolves the same node by cascade
-   * order too, and making only icon mode follow the tags would split the two
-   * modes (see `FIRST_MATCH_VARIANT_KINDS` in the resolver). Each entry is
-   * checked to still disagree, so closing the gap fails until it is removed.
-   */
-  const CASCADE_ORDER_KINDS: Record<string, string> = {
-    resource: "shape mode's keyword variants would disagree with a first-tag icon",
-  };
+  const SHAPE_MODE = [getBuiltinStyleSheet()];
+  const ICON_MODE = [getBuiltinStyleSheet(), getIconThemeStyleSheet()];
 
-  function iconShapeOf(kind: string, tags: string[]) {
+  function shapeOf(kind: string, tags: string[], sheets: StyleSheet[]) {
     const node = {
       id: "N",
       kind,
@@ -171,27 +168,45 @@ describe("iconNameForNode agrees with the cascade on multi-variant nodes", () =>
       children: [],
       properties: { links: [] },
     } as unknown as KrsNode;
-    const styles = resolveStyles([node], [getBuiltinStyleSheet(), getIconThemeStyleSheet()]);
-    return styles.nodes.get("N")?.shape;
+    return resolveStyles([node], sheets).nodes.get("N")?.shape;
   }
 
   it("has a kind with variants to compare", () => {
     expect(VARIANT_TAGS.size).toBeGreaterThan(0);
   });
 
-  it.each([...single, ...multi.filter(([kind]) => !(kind in CASCADE_ORDER_KINDS))])(
-    "%s %j",
-    (kind, tags) => {
-      expect(iconShapeOf(kind, tags)).toEqual({ url: iconNameForNode(kind, tags) });
+  it.each([...single, ...multi])("icon mode agrees with iconNameForNode on %s %j", (kind, tags) => {
+    expect(shapeOf(kind, tags, ICON_MODE)).toEqual({ url: iconNameForNode(kind, tags) });
+  });
+
+  it.each(multi)("shape mode draws %s %j as its first variant alone", (kind, tags) => {
+    expect(shapeOf(kind, tags, SHAPE_MODE)).toEqual(shapeOf(kind, [tags[0]], SHAPE_MODE));
+  });
+
+  // #3776: the builtin choice of the first variant must not override an author
+  // who names another variant's icon. Author sheets sit between the builtin
+  // sheet and the icon theme, as `withDisplayModeSheet` lays them out.
+  it.each(multi)("an author's id rule naming a losing variant wins on %s %j", (kind, tags) => {
+    const loser = tags.find((t) => t !== tags[0])!;
+    const icon = ICON_OF.get(ruleKey(kind, loser));
+    const author = StyleParser.parse(`#N { shape: url("${icon}"); }`).value;
+    expect(shapeOf(kind, tags, [getBuiltinStyleSheet(), author])).toEqual({ url: icon });
+    expect(shapeOf(kind, tags, [getBuiltinStyleSheet(), author, getIconThemeStyleSheet()])).toEqual(
+      { url: icon },
+    );
+  });
+
+  // The resolver tells variant rules apart by the tags in `VARIANT_TAGS`. A
+  // shipped rule that styles a variant kind by a tag outside that set would not
+  // be dropped when it loses, and the cascade order would decide again.
+  it.each(["dark", "light"] as const)(
+    "the %s builtin sheet styles a variant kind's shape only by its variant tags",
+    (theme) => {
+      const stray = getBuiltinStyleSheet(theme)
+        .rules.filter((r) => VARIANT_TAGS.has(r.selector.nodeType ?? "") && r.properties["shape"])
+        .flatMap((r) => r.selector.tags.map((t) => ruleKey(r.selector.nodeType!, t)))
+        .filter((key) => !ICON_OF.has(key));
+      expect(stray).toEqual([]);
     },
   );
-
-  it.each(Object.keys(CASCADE_ORDER_KINDS))("%s still needs its exemption", (kind) => {
-    const disagreeing = multi.filter(
-      ([k, tags]) =>
-        k === kind &&
-        JSON.stringify(iconShapeOf(k, tags)) !== JSON.stringify({ url: iconNameForNode(k, tags) }),
-    );
-    expect(disagreeing, `${kind} agrees now; drop it from CASCADE_ORDER_KINDS`).not.toEqual([]);
-  });
 });

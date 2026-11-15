@@ -64,7 +64,7 @@ export const ICON_RULES: readonly IconRule[] = [
   { kind: "resource", tag: "queue", icon: "queue-card", scope: "resource-variant" },
   { kind: "resource", tag: "api", icon: "api", scope: "resource-variant" },
   { kind: "resource", tag: "storage", icon: "cloud-card", scope: "resource-variant" },
-  // Client subtype variants — order defines CLIENT_SUBTYPE_TAGS / first-match-wins.
+  // Client subtype variants — order defines CLIENT_SUBTYPE_TAGS (a node's own `tags` order picks its variant).
   { kind: "client", tag: "mobile", icon: "client-mobile", scope: "client-variant" },
   { kind: "client", tag: "web", icon: "client-web", scope: "client-variant" },
   { kind: "client", tag: "desktop", icon: "client-desktop", scope: "client-variant" },
@@ -95,8 +95,8 @@ function selectorFor(rule: IconRule): string {
 /**
  * Recognised `client` form-factor subtype tags, derived from the
  * `client-variant` entries of {@link ICON_RULES} in declaration order. Public
- * API; the resolver's first-match-wins for multi-tag nodes reads
- * {@link VARIANT_ICONS_BY_KIND} instead.
+ * API; which variant a multi-tag node shows reads {@link VARIANT_ICONS_BY_KIND}
+ * instead ({@link losingVariantTags}).
  */
 export const CLIENT_SUBTYPE_TAGS: readonly string[] = ICON_RULES.filter(
   (r) => r.scope === "client-variant",
@@ -141,8 +141,9 @@ function buildIconThemeStyleSource(): string {
  * When active, all node types render as SVG icon cards (160x100 / 160x56)
  * instead of geometric shapes.
  *
- * Injected by the app layer when displayMode === "icon".
- * Applied before user stylesheets so users can still override individual entries.
+ * Laid over the model's sheets when displayMode === "icon"
+ * (`withDisplayModeSheet`), after the author sheets, so it wins every tie of
+ * specificity; an author rule of higher specificity (an id selector) still wins.
  *
  * Generated from {@link ICON_RULES} — do not hand-edit; edit the array instead.
  */
@@ -161,12 +162,11 @@ const BASE_KIND_ICON = new Map<string, string>(
  * variants (`resource`, `client`), derived from {@link ICON_RULES}.
  *
  * Both readers of a multi-variant node go through this one table:
- * {@link iconNameForNode} here, first-match-wins on the node's `tags` order, and
- * {@link applyVariantFirstMatch}, which rewrites the
- * cascade's pick (the variant declared last in the sheet) to the same first
- * match for `client`. Two orders show one node with two icons, the renderer's
- * and the Outline's (TPL-1415); a multi-variant `resource` still does, until
- * its shape-mode rules follow the tag order too.
+ * {@link iconNameForNode} here, first match on the node's `tags` order, and
+ * {@link losingVariantTags}, which tells the style resolver which builtin
+ * variant rules to drop so the cascade lands on that same first match. Two
+ * orders would show one node with two icons, the renderer's and the Outline's
+ * (TPL-1415).
  */
 const VARIANT_ICONS_BY_KIND: ReadonlyMap<string, ReadonlyMap<string, string>> = (() => {
   const byKind = new Map<string, Map<string, string>>();
@@ -187,10 +187,9 @@ const VARIANT_ICONS_BY_KIND: ReadonlyMap<string, ReadonlyMap<string, string>> = 
  *
  * Tag-driven variants take precedence over the base kind: a `client` or
  * `resource` with a recognised variant tag → the variant icon, using
- * first-match-wins on `tags` order. The renderer agrees for `client`
- * ({@link applyVariantFirstMatch}); for a `resource`
- * with several variant tags it still draws the last-declared variant (see
- * {@link VARIANT_ICONS_BY_KIND}).
+ * the first variant tag in `tags` order. The renderer draws the same variant in
+ * icon and shape mode ({@link losingVariantTags}) unless an author rule chose
+ * another shape for the node.
  *
  * Returns `undefined` for kinds with no Icon Mode pictogram (`system`,
  * deploy / org kinds, infra item kinds) — see {@link IconScope}.
