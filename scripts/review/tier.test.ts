@@ -4,6 +4,7 @@ import madge from "madge";
 import { describe, expect, it } from "vitest";
 import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
 import { type GitFacts, parseRecord } from "./local-review-record.ts";
+import { isTestFile } from "./test-changes.ts";
 import {
   ADR_GENERATED_GLOBS,
   adrEditIsRecordOnly,
@@ -357,7 +358,8 @@ describe("classifyChange", () => {
   //
   // The graph is madge's, parsed as `scripts/ci/raster-input.ts` parses the
   // same files (static `import`, `export from`, `import()` and `require` with a
-  // literal specifier). It cannot see a specifier computed at run time.
+  // literal specifier). It cannot see a specifier computed at run time, nor a
+  // Node built-in, which is not a repo file the classifier could tier.
   it("keeps every module a Pages Function imports directly on the security boundary", async () => {
     const sec = (path: string) =>
       classifyChange({ files: [modified(path)], author: "kompiro" }).securityReview;
@@ -376,8 +378,9 @@ describe("classifyChange", () => {
     const graph = await madge(["functions"], {
       baseDir: REPO_ROOT,
       includeNpm: true,
+      // No `excludeRegExp` for test files: it would also drop a function's
+      // import of one. Test files are left out below, as sources only.
       fileExtensions: ["ts", "tsx", "mts", "cts", "js", "mjs", "cjs"],
-      excludeRegExp: [/\.test\.[cm]?[jt]sx?$/],
       detectiveOptions: {
         ts: { mixedImports: true },
         tsx: { mixedImports: true },
@@ -389,7 +392,10 @@ describe("classifyChange", () => {
     expect(graph.warnings().skipped).toEqual([]);
 
     const functions = Object.entries(graph.obj()).filter(
-      ([file]) => repoPath(file).startsWith("functions/") && !/\.d\.[cm]?ts$/.test(file),
+      ([file]) =>
+        repoPath(file).startsWith("functions/") &&
+        !/\.d\.[cm]?ts$/.test(file) &&
+        !isTestFile(repoPath(file)),
     );
     const off: string[] = [];
     const imported = new Set<string>();
