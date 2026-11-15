@@ -1,5 +1,6 @@
+// @vitest-environment jsdom
 import { readdirSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import {
   compositeOver,
   contrastRatio,
@@ -7,8 +8,6 @@ import {
   WCAG_AA_LARGE_TEXT,
   WCAG_AA_NORMAL_TEXT,
 } from "@karasu-tools/core";
-// @ts-expect-error -- jsdom ships no type declarations and @types/jsdom is not a dependency; the one constructor used is typed below.
-import { JSDOM as UntypedJSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -33,7 +32,7 @@ import { describe, expect, it } from "vitest";
  * so the app chrome and the diagram cannot disagree about what passes.
  */
 
-const THEMES_CSS = fileURLToPath(new URL("themes.css", import.meta.url));
+const THEMES_CSS = resolve(import.meta.dirname, "themes.css");
 
 /**
  * Opaque surfaces text is painted on. Translucent chrome is not here — it is
@@ -51,9 +50,8 @@ const NON_SURFACE_BG = ["bg-selected"];
 /**
  * Tokens whose role is text. `--accent` / `--accent-hover` / `--feather` /
  * `--success` are absent by role, not by exemption: they paint fills, borders
- * and glows, which answer to the 3:1 non-text minimum. After #2193 the only
- * `color:` use left on `--accent` is `.toolbar-btn--apply-patch`, on an opaque
- * `--bg-raised` (5.17:1 light / 5.17:1 dark).
+ * and glows, which answer to the 3:1 non-text minimum. No component CSS uses
+ * `--accent` as `color:`; the check below fails if one starts to.
  */
 const TEXT_TOKENS = [
   "text-primary",
@@ -177,9 +175,6 @@ const TINTED_PAIRS: { fg: string; tint: string; over: string[]; under?: string[]
 const PANEL_TEXT_PAIRS: { fg: string; over: string[] }[] = [
   { fg: "diff-color-added", over: ["bg-raised"] },
   { fg: "diff-color-removed", over: ["bg-raised"] },
-  // `.toolbar-btn--apply-patch` in the chat patch proposal's action row, which
-  // is `--bg-raised` (see the note on `TEXT_TOKENS`).
-  { fg: "accent", over: ["bg-raised"] },
 ];
 
 /**
@@ -505,9 +500,8 @@ const MEASURED_TEXT = new Set([
   "badge-preview-text",
 ]);
 
-const JSDOM = UntypedJSDOM as new (html: string) => { window: { document: Document } };
 
-const STYLES_DIR = fileURLToPath(new URL(".", import.meta.url));
+const STYLES_DIR = `${import.meta.dirname}/`;
 
 /** The component stylesheets: the same scope `styles-no-raw-color.test.ts` walks. */
 function componentStylesheets(): string[] {
@@ -531,7 +525,6 @@ interface Declaration {
  * multi-line values are seen the way a browser sees them.
  */
 function declarations(files: string[]): Declaration[] {
-  const { document } = new JSDOM("<!doctype html><html><head></head></html>").window;
   const out: Declaration[] = [];
   for (const file of files) {
     const style = document.createElement("style");

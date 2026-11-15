@@ -22,8 +22,9 @@
  *   matched on fails.
  *
  * The probe rules carry two endpoint predicates, so they outrank every tag
- * rule; an example that colours one edge with a more specific rule of its own
- * (`edge#<id>`) would win over the probe and has to be excused here by name.
+ * rule. An example that colours one edge with a more specific rule of its own
+ * (`edge#<id>`) would win over the probe; none does today, and the first one
+ * will need an exception here.
  *
  * A new example, view or derived edge list joins the day the corpus reaches it
  * (ADR-3038 D4), and the test checks that the corpus draws the dot-notation
@@ -93,7 +94,11 @@ function authorSpellings(file: KrsFile): Set<string> {
 
 const pairKey = (from: string, to: string) => JSON.stringify([from, to]);
 
-/** A distinct colour per pair index, so a rule for one pair cannot pass for another. */
+/**
+ * A distinct colour per pair index, so a rule for one pair cannot pass for
+ * another. The colours repeat after about 2,000 pairs and could in principle
+ * equal an example's own stroke; examples are far below either today.
+ */
 const colorOf = (i: number) => `#${(0x100000 + i * 7919).toString(16).slice(-6).toUpperCase()}`;
 
 let corpus: ExampleEntry[];

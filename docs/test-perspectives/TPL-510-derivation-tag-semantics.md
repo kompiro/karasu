@@ -49,7 +49,7 @@ karasu には、ある粒度（domain edge）を別の粒度（service edge）�
 
 派生・集約 / 折り畳み表示を実装するとき、以下を確認する:
 
-- [ ] 派生元が持っていた semantic 属性（`kind` / `tags` / annotation / ノード種別など）のうち、派生後の見た目に影響すべきものが列挙されているか [guard: `packages/core/src/view/derivation-contracts.test.ts`]
+- [ ] 派生元が持っていた semantic 属性（`kind` / `tags` / annotation / ノード種別など）のうち、派生後の見た目に影響すべきものが列挙されているか
 - [ ] 集約・グルーピングのキーが、保持したい semantic 区別を **含んで** いるか（含まないと別物が同一グループに潰れる）
 - [ ] 派生時に自動付与するタグ（`[implicit]` など）が、派生元の semantic タグ（`[async]` / `[sync]` など）と **共存** できるスタイル設計になっているか（一方が他方を黙って打ち消さないか）
 - [ ] 派生前 / 派生後の両方で「区別したい入力ペア」を fixture に含めた回帰テストがあるか（例: sync と async が同 service ペア間に同時に存在する `.krs`）
@@ -65,4 +65,5 @@ karasu には、ある粒度（domain edge）を別の粒度（service edge）�
 - `packages/core/src/view/view-extract.test.ts` を含む view-extract 関連の test
 - `packages/core/src/resolver/style-resolver.test.ts`
 - `packages/core/src/view/derivation-contracts.test.ts` — `meta: every derivation path preserves and transforms documented attributes (TPL-510)`：派生関数ごとに保持する属性（`preserves`、例: implicit edge の `kind`）と付与する属性（`transforms`、例: `[implicit]`）を表で宣言し、派生後の観測値と突き合わせる meta-test（チェックリスト項目 1）。`meta: every exported function of the derivation modules is classified (TPL-510)` が `view/` 配下の全モジュールと `resolver/inherited-annotations.ts` の export された関数を列挙し、行の主語（`name` の `:` より前）か、理由付きの `NOT_A_DERIVATION` のどちらかに載っていない関数があると落ちる。新しい派生関数は表に載るまで通らない。行が正しい属性を挙げているかはレビューが見る
+  関数を列挙する走査は `view/` の直下と `resolver/inherited-annotations.ts` の export だけで、折り畳み表示の派生（`renderer/group-collapse.ts` / `category-collapse.ts`）と、`view-extract.ts` の中の export されない helper は見ない。そのため項目には印を付けていない。
 - `packages/core/src/renderer/drill-down-svg.test.ts` — `store-scoped ER projection on the database drill-down page (#2721)`：投影関係に付く `[projected]` タグは色だけを担い、sync の関係は実線、async の関係は破線のまま残ることを固定する（自動付与タグと sync/async 区別の共存）

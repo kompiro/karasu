@@ -306,14 +306,6 @@
   border-top: 1px solid var(--border-faint);
 }
 
-.toolbar-btn--apply-patch {
-  color: var(--accent);
-}
-
-.toolbar-btn--reject-patch {
-  color: var(--text-muted);
-}
-
 /* ApiKeySetup */
 
 .api-key-setup {

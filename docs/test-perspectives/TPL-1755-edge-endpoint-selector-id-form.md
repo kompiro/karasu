@@ -59,7 +59,7 @@ silent な取りこぼしになる。これは TPL-1666（ノード style/metada
       読めるか（`edge#<from>-><to>` の base id と同じ字句規則に揃っているか）
 - [ ] 比較対象が、ビューが実際に格納している端点 id 形（合成エッジは dot-notation、
       通常は bare）と一致するか。片方の形しか比較していないなら silent な
-      取りこぼしになる [guard: `packages/core/src/resolver/edge-endpoint-selector-corpus.test.ts`]
+      取りこぼしになる
 - [ ] マッチ無しで `?? default` に落ちたケースが「意図した既定」か「id 形不一致の
       取りこぼし」かを区別できるテストがあるか（合成エッジ・dot-notation 端点を
       明示的に含むケースを置く）
@@ -86,7 +86,7 @@ silent な取りこぼしになる。これは TPL-1666（ノード style/metada
   ノードのパスの dot 結合の末尾）であること、(2) 描かれた組ごとに `edge[from=<from>][to=<to>]`
   の規則を足すと、そのエッジがその色で描かれることを確かめる。corpus が dot-notation の端点を
   描いていることもテスト自身が確かめる。端点述語以外の端点比較（highlight・ghost 合成・
-  anchored-edges の約 17 箇所）は範囲の外。
+  anchored-edges の約 17 箇所）は範囲の外。端点の綴りの検査はノードのパスのどの末尾も受け入れるので、普通のエッジが `S.A` を持ち始めても通る。そのため項目には印を付けていない（ADR-3038 が記録したとおり、この TPL の項目は読みが割れる）。
 
 ## 派生元 spec
 

@@ -76,8 +76,8 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
 
 `themes.css` の色トークンを追加・変更するとき:
 
-- [ ] そのトークンは `color:` として使われるか（= 文字か、それとも fill / border か）
-      を grep で確認したか。文字なら 4.5:1、非文字なら 3:1（WCAG 1.4.11） [guard: `packages/app/src/styles/theme-contrast.test.ts`]
+- [ ] そのトークンが `color:` として使われるなら、文字として 4.5:1 で測っているか [guard: `packages/app/src/styles/theme-contrast.test.ts`]
+- [ ] `color:` に使わない（fill / border の）トークンなら、非文字として 3:1（WCAG 1.4.11）で測っているか
 - [ ] **両方のテーマセット**で、載りうる全 `--bg-*` に対して 4.5:1 以上か
       （`theme-contrast.test.ts` が自動判定。新トークンは `TEXT_TOKENS` /
       `SURFACES` に追加する。追加も除外もしなければ drift ガードが落ちるので、
@@ -131,7 +131,7 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
   届くトークン（`var()` の fallback と、コンポーネント CSS が自前で定義する中間の
   カスタムプロパティを辿った先。テーマも定義する名前は、コンポーネントが上書きしていても
   それ自体を届いたトークンに数える）がすべて、上の表のどれかで文字として測られていることを
-  確かめる。TSX のインラインスタイルと Tailwind のクラスはこの範囲の外。
+  確かめる。TSX のインラインスタイルと Tailwind のクラスはこの範囲の外。表のトークンは表の背景で測るので、新しい `color:` がその背景以外の面に載ったときは捕まえない。非文字の 3:1 の側は見ない。
 - `packages/app/src/styles/styles-no-raw-color.test.ts`。`%23` 形式の
   encode 済み hex も検出対象（#2193 で追加）。
 - `packages/e2e/tests/at-1470-app-theme.spec.ts`。実ブラウザで light / dark

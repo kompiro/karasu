@@ -70,7 +70,8 @@ kind 語彙が色として空洞化していた。deploy 側では `war` の茶�
 
 `default-style.ts` の kind ルールを追加・変更するとき:
 
-- [ ] `docs/spec/style.md` / `style.ja.md` の色相表に、その kind の行があるか [guard: `packages/core/src/builtins/deploy-kind-hue-table.test.ts`]
+- [ ] deploy kind なら、`docs/spec/style.md` / `style.ja.md` の色相表（Rule 2）に、その kind の行があるか [guard: `packages/core/src/builtins/deploy-kind-hue-table.test.ts`]
+- [ ] 論理 kind なら、`docs/spec/style.md` / `style.ja.md` の色相表（Rule 1）に、その kind の行があるか
 - [ ] 3 色をその色相から導いたか（accent = 彩度そのまま / fill = 明度の両端のうち
       **canvas に近い側** / text = その反対端）。地だけ別系統の色になっていないか。
       「低明度が fill」と絶対値で覚えると light テーマで反転して破綻する
