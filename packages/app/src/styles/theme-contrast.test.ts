@@ -500,11 +500,11 @@ const MEASURED_TEXT = new Set([
   "badge-preview-text",
 ]);
 
-const STYLES_DIR = `${import.meta.dirname}/`;
+const STYLES_DIR = import.meta.dirname;
 
 /** The component stylesheets: the same scope `styles-no-raw-color.test.ts` walks. */
 function componentStylesheets(): string[] {
-  const components = readdirSync(`${STYLES_DIR}components`)
+  const components = readdirSync(resolve(STYLES_DIR, "components"))
     .filter((entry) => entry.endsWith(".css"))
     .sort()
     .map((entry) => `components/${entry}`);
@@ -527,7 +527,7 @@ function declarations(files: string[]): Declaration[] {
   const out: Declaration[] = [];
   for (const file of files) {
     const style = document.createElement("style");
-    style.textContent = readFileSync(`${STYLES_DIR}${file}`, "utf8");
+    style.textContent = readFileSync(resolve(STYLES_DIR, file), "utf8");
     document.head.appendChild(style);
     const walk = (rules: CSSRuleList): void => {
       for (const rule of Array.from(rules)) {
