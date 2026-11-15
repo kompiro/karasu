@@ -29,7 +29,7 @@ import type { BrowserContext, Page } from "@playwright/test";
  *
  * Two ways in, one probe. `installZIndexProbe` adds an init script to a
  * context: a MutationObserver checks each element as it is added, and the
- * subtree of an element whose `class` / `style` changes, so a menu a spec opens
+ * subtree of an element whose attributes change, so a menu a spec opens
  * and closes again is still seen. `scanZIndex` checks the whole document as it stands. `network.ts`
  * installs the probe for every test and, after a passing test, fails it on
  * anything either found. `tests/z-index-scale.spec.ts` checks that the probe
@@ -162,8 +162,9 @@ function probeScript(tokenNames: string[]): void {
   const observed = new Map<string, ZIndexHit>();
   /**
    * Check every element a batch of mutations may have moved onto or off the
-   * scale: added subtrees, and the whole subtree of an element whose `class`
-   * or `style` changed (a selector such as `.open .menu` reaches descendants).
+   * scale: added subtrees, and the whole subtree of an element whose attributes
+   * changed (a selector such as `.open .menu` or `[data-state=open] .menu`
+   * reaches descendants).
    */
   const handle = (mutations: MutationRecord[]) => {
     const touched = new Set<Element>();
@@ -219,8 +220,9 @@ function probeScript(tokenNames: string[]): void {
     observer.observe(document.documentElement, {
       childList: true,
       subtree: true,
+      // Every attribute, not only class and style: a surface can stay mounted
+      // and take its z-index from `[data-state=open]`, `[open]` or `[hidden]`.
       attributes: true,
-      attributeFilter: ["class", "style"],
     });
   };
   if (document.documentElement) start();
@@ -260,8 +262,13 @@ export async function assertZIndexScaleOnPages(pages: readonly Page[]): Promise<
     let hits: ZIndexHit[];
     try {
       hits = [...(await observedZIndex(page)), ...(await scanZIndex(page))];
-    } catch {
-      continue;
+    } catch (error) {
+      // The page closed or navigated while being read; anything else is a
+      // bug in the probe and must not pass silently.
+      if (page.isClosed() || /closed|context was destroyed|navigat/i.test(String(error))) {
+        continue;
+      }
+      throw error;
     }
     for (const v of formatViolations(hits)) violations.add(`${page.url()}: ${v}`);
   }

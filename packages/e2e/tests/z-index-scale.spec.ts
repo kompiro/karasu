@@ -165,4 +165,23 @@ test.describe("z-index probe on planted elements (TPL-1468)", () => {
     ]);
     await page.close();
   });
+
+  test("checks a surface that opens through a data attribute alone", async ({ page, opfs }) => {
+    await bootProjectApp(page, opfs, KRS);
+    await plant(
+      page,
+      '.zt-pop[data-state="open"] { position: absolute; z-index: 999; }',
+      '<div class="zt-pop" data-state="closed"></div>',
+    );
+    await page.evaluate(() =>
+      document.querySelector(".zt-pop")!.setAttribute("data-state", "open"),
+    );
+    await page.evaluate(() =>
+      document.querySelector(".zt-pop")!.setAttribute("data-state", "closed"),
+    );
+    expect(await verdicts(page, "div.zt-pop")).toEqual([
+      { element: "div.zt-pop", zIndex: "999", token: null, violation: true },
+    ]);
+    await page.close();
+  });
 });
