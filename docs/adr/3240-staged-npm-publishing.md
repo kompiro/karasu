@@ -15,7 +15,7 @@ related_to:
   - ADR-2397
   - ADR-3271
 scope:
-  packages: [cli, core]
+  packages: [cli, core, skills]
   concerns: [ci, deployment, security]
 assumptions:
   - "file: scripts/release/stage.mts"
@@ -57,7 +57,7 @@ assumptions:
 
 npm は 2026-05 に staged publishing を GA にした。`npm stage publish` で出した版は stage のキューに入り、メンテナが 2FA 付きで承認するまでインストールできない。Trusted Publisher は stage 専用に絞れる。2026-10-15 のトレイン（#3238）では `karasu-skills` の接続の既定の「stage のみ許可」に当たり、トレインを出すために「Allow `npm publish`」を有効にしたので、3 パッケージ（`karasu`、`@karasu-tools/core`、`karasu-skills`）とも直接 publish できる状態に戻っていた。
 
-stage 専用にするだけでは足りない点が 2 つあった。乗っ取られた run が正規の run より先に偽の tarball を stage すれば、人が承認するのはその tarball になる。また stage のキューは版のメタデータ（manifest）を見せないので、tarball は本物のままメタデータだけを偽った版は、承認前に tarball を比べても見つからない。当初の設計（#3547）は後者を承認の直後の確認で受けていたが、#3705 のセキュリティレビューで、それでは公開を止められないと分かり、案 7E（#3763）を足した。
+stage 専用にするだけでは足りない点が 2 つあった。乗っ取られた run が正規の run より先に偽の tarball を stage すれば、人が承認するのはその tarball になる。また stage のキューは版のメタデータ（manifest）を見せないので、tarball は本物のままメタデータだけを偽った版は、承認前に tarball を比べても見つからない。当初の設計（#3547）は後者を扱っておらず、#3705 のセキュリティレビューで見つかった。#3705 は承認の直後のメタデータの確認で受けたが、それでは公開を止められないので、案 7E（#3763）を足した。
 
 ## 決定
 
@@ -79,17 +79,17 @@ npm の 3 パッケージを `npm stage publish` で stage し、kompiro が 2FA
 
 ### 承認（論点 3・7C）
 
-- `pnpm release:approve`（`scripts/release/approve.mts`）を正の手順にする。リリースコミットを一時的な worktree でビルドし、`changeset pack` の計画の順で、stage された各 tarball を `npm stage download` で取り出して手元の pack とファイルの中身で比べる。tag が計画と違えば落とす。3 パッケージの stage のキューにある計画外の項目は表示して reject を勧める。
+- `pnpm release:approve`（`scripts/release/approve.mts`）を正の手順にする。リリースコミットを一時的な worktree でビルドし、`changeset pack` の計画の順で、stage された各 tarball を `npm stage download` で取り出して手元の pack とファイルの中身で比べる。tag は、`stage` ジョブと同じ規則（`tagFor`）でリリースコミットから決まる tag と違えば落とす（changesets の計画の tag とは pre モードで食い違うため）。3 パッケージの stage のキューにある計画外の項目は表示して reject を勧める。
 - 承認はグループごとで、承認したら版が npm に載るのを待ち、インストールに効くメタデータを手元の pack の `package.json` と比べる。次のグループがあれば `release.yml` の run を再実行して次の stage を待つ。最後に `release-confirm.yml` を起動する。`--dry-run` は承認せずに照合だけ行う。
 - 依存元（`karasu`）は依存先（`karasu-skills`）が npm に載るまで stage されないので、npmjs.com の画面で承認しても順序は崩れない（TPL-3240）。画面での承認は禁止しない（kompiro の判断、2026-11-02 と 2026-11-07）。画面で承認するときは先に `--dry-run` で照合する。
-- `dist/app/THIRD_PARTY_NOTICES.md` はビルドした環境のプラットフォームのパッケージを列挙するので、両方の見出しがプラットフォームのパッケージを名指し、本文が同じときだけ違いを許す（CI は x64、手元は arm64）。
+- `dist/app/THIRD_PARTY_NOTICES.md` はビルドした環境のプラットフォームのパッケージを列挙する（CI は x64、手元は arm64）。照合は節を除かず、節の数が同じで、同じ位置の節の本文が同じであることを求め、見出しの違いだけを、両方の見出しがプラットフォームのパッケージを名指すときに許す。
 
 ### 記録と Issue のクローズ（論点 2・4・7D）
 
 - タグと Release は、承認のあとに新しい workflow `release-confirm.yml` が作る。`pnpm release:approve` が起動し、画面での承認のために毎日 1 回の `schedule` でも走る。どのジョブも `id-token` を持たない。
-- `verify`（読み取りだけ、資格情報を残さない）は、npm に載っていてタグがまだ無い版のすべてを、別のディレクトリでビルドしたリリースコミットの pack と照合する。承認の経路を問わない。計画外の版（タグのある最新の版より後に公開された、リリースコミットの版でない版）と、完全一致の依存先が npm に無い版も報告する。
-- `record`（`contents: write`、依存を入れない）は、照合を通った版にタグを打ち、`release-YYYY-MM-DD` の Release を作る。
-- トレインの Issue は、リリースコミットで版を上げた npm パッケージのタグがすべてリリースコミットを指し、`vscode` ジョブが成功したときに閉じる。`release.yml` の `close-train` は承認待ちを失敗にせず、案内をコメントして終わる。
+- `verify`（読み取りだけ、資格情報を残さない）は、リリースコミットで版を上げた npm パッケージのうち、npm に載っていてタグがまだ無い版を、別のディレクトリでビルドしたリリースコミットの pack と照合する。承認の経路を問わない。ファイルの中身に加えて、インストールに効くメタデータ（依存、`bin`、`scripts`、`os` / `cpu` など）もレジストリから取って pack の `package.json` と比べる（7E の前提が崩れたときに気づくため）。計画外の版（タグのある最新の版より後に公開された、リリースコミットの版でない版。取り下げた版と deprecate した版は除く）も報告する。
+- `record`（`contents: write`、依存を入れない）は、照合を通った版にタグを打ち、`release-YYYY-MM-DD` の Release を作る。完全一致の依存先が npm に無い版（順序の違反）も検出する。
+- トレインの Issue は、リリースコミットで版を上げた npm パッケージのタグがすべてリリースコミットを指し、`vscode` ジョブが成功したときに `record` が閉じる。照合に落ちた版、計画外の版、順序の違反があるとき、または `verify` が報告を書く前に落ちたときは閉じない。`release.yml` の `close-train` は承認待ちを失敗にせず、案内をコメントして終わる。npm の版を上げなかったトレインは、いままでどおり `close-train` が VS Code の結果だけで閉じる。
 - VS Code 拡張は npm の承認を待たない（論点 5）。
 
 ### 切り替え（論点 6）
@@ -101,10 +101,12 @@ npm の 3 パッケージを `npm stage publish` で stage し、kompiro が 2FA
 
 ### Design Doc から変えたこと
 
-実装の PR（#3765）で Design Doc とずれた点が 2 つある。kompiro がどちらも実装のままにすると決めた（#3765 のコメント）。
+実装の PR（#3765）で Design Doc とずれた点のうち、1 と 2 は PR で kompiro に確かめ、どちらも実装のままにすると決まった（#3765 のコメント）。3 と 4 は、実装のレビューで照合を直したもので、PR の差分としてマージされた（PR で個別には確かめていない）。
 
 1. **`stage` ジョブは tarball を、上限付きの厳格な読み取りに加えて npm が同梱する node-tar でも読み、両方が同じファイルを見たときだけ `package.json` を使う。** Design Doc は「展開後の大きさに上限を付けて読む」とだけ書き、Node の組み込みと tar のヘッダーの読み取りで `package/package.json` を取り出す形を想定していた。npm は stage するとき tarball を node-tar（pacote）で展開してメタデータを作るので、2 つの読み手で読み方が変わる tarball（同じ名前のエントリの重複、pax ヘッダーの細工）を作られると、照合は正しい `package.json` を見て通り、npm は別の `package.json` で stage しうる。照合に使う読み手を npm と揃えるために足した。node-tar はリポジトリの依存ではなく、runner の npm のインストールから読み込む。直後の `npm stage publish` が同じ node-tar で同じ tarball を展開するので、新しく信用する対象は増えない。`verify` と `pnpm release:approve` も同じ 2 つの読み手で読む。
 2. **公開後の照合に一部の版が落ちても、同じリリースで照合を通った版にはタグを打ち、Release を作る（あれば更新する）。** Design Doc は論点 2 で「照合に通らなかった版には、タグも Release も作らない」（版ごと）と書き、論点 4「公開後の照合に落ちたとき」で「タグも Release も作らないので、Issue は開いたままで次のトレインも出ない」（run 全体）と書いていて、パッケージが複数あるときに食い違っていた。実装は版ごとの読み方に揃えた。落ちた版にはタグを打たず Issue にコメントし、run は失敗し、トレインの Issue は開いたままで次のトレインは出ない。通った版はすでに npm にあり照合も済んでいるので、タグを打たないとビルド元のコミットを後から追えなくなる。`docs/release.md` は、落ちたときにどの版にタグがあるかと Release の中身を確かめてから次の手を決める、と書いている。
+3. **notices の節は除かずに比べ、プラットフォームのパッケージを名指す見出しの違いだけを許す。** Design Doc（案 7C）は「`os` / `cpu` を宣言するパッケージの節を両方から除いて比べる」と書いていた。除く形では、片方にだけあるプラットフォームの節や、その本文の違いが照合をすり抜けるので、狭めた。
+4. **`pnpm release:approve` が照合する tag は、changesets の計画の tag ではなく、`stage` ジョブと同じ規則（`tagFor`）で決まる tag にした。** Design Doc（論点 3）は「tag が計画と違えば照合に落とす」と書いていた。`stage` ジョブは tag を計画から取らずに決め直すので（案 7E）、pre モードで両者が食い違うと、正しく stage された版が照合に落ちる。
 
 ### 受け入れた限界
 
