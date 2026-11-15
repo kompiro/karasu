@@ -11,6 +11,7 @@ import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
 import { opensEdgeOnLaterLine, readNodeIdPathTail, pathPastLeaf } from "./node-path.js";
 import type { ParseContext } from "./parse-context.js";
 import { rejectConstruct, rejectProperty } from "./rejected-construct.js";
+import type { ErrorDiagnosticCode } from "../types/diagnostic-severity.js";
 
 // The readers for the values properties take, shared by every block parser:
 // descriptions, links, ids, and the comma-separated lists behind `handles`,
@@ -59,7 +60,7 @@ export function readValueAfter(
  * which is the correctly written source of the next edge when the reader
  * stopped there.
  */
-export function reportMissingValue<K extends DiagnosticCode>(
+export function reportMissingValue<K extends DiagnosticCode & ErrorDiagnosticCode>(
   ctx: ParseContext,
   start: SourceLocation,
   code: K,

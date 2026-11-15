@@ -272,7 +272,7 @@ The grammar of operation / CRUD decoration on resources.
 | Code                         | ID     | Severity | Fires when                                                               |
 | ---------------------------- | ------ | -------- | ------------------------------------------------------------------------ |
 | `invalid-crud-decoration`    | KRS054 | error    | A CRUD decoration uses an unrecognised verb / letter.                    |
-| `empty-crud-decoration`      | KRS055 | warning  | A `verb:` decoration has an empty right-hand side.                       |
+| `empty-crud-decoration`      | KRS055 | error    | A `verb:` decoration has an empty right-hand side.                       |
 | `unknown-resource-operation` | KRS056 | warning  | A resource operation verb is not one of create / read / update / delete. |
 
 ### Assignment & cohesion
