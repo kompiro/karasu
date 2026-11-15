@@ -4,6 +4,8 @@ import {
   type DiagramType,
   type DiagramTheme,
   type DisplayMode,
+  DEFAULT_OGP_BACKGROUND,
+  parseOgpBackground,
   wrapSvgForOgpFrame,
 } from "@karasu-tools/core";
 import { decodeShare } from "../utils/inline-share.js";
@@ -129,9 +131,10 @@ const positiveCapped = (raw: string | null): number | undefined => {
  * not one the test picked.
  *
  * Query params as {@link renderSharePayload}, plus `width` / `height` (capped
- * at 4096), `bg`, and `fit=contain` (with width and height: letterbox the
- * whole diagram into a fixed frame, for OGP cards that would otherwise crop a
- * width-fit portrait diagram to its top band).
+ * at 4096), `bg` (a hex colour: `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`;
+ * anything else is ignored, #3773), and `fit=contain` (with width and height:
+ * letterbox the whole diagram into a fixed frame, for OGP cards that would
+ * otherwise crop a width-fit portrait diagram to its top band).
  */
 export function sharePngSource(params: URLSearchParams): SharePngSource {
   // The default (no `view`) SVG is the bundled all-views diagram, whose CSS
@@ -146,9 +149,15 @@ export function sharePngSource(params: URLSearchParams): SharePngSource {
 
   const width = positiveCapped(own.get("width"));
   const height = positiveCapped(own.get("height"));
-  const background = own.get("bg") ?? undefined;
+  // Validated before it reaches the frame's SVG attribute or resvg (#3773).
+  const background = parseOgpBackground(own.get("bg"));
   if (own.get("fit") === "contain" && width && height) {
-    const svg = wrapSvgForOgpFrame(result.body, width, height, background ?? "#ffffff");
+    const svg = wrapSvgForOgpFrame(
+      result.body,
+      width,
+      height,
+      background ?? DEFAULT_OGP_BACKGROUND,
+    );
     return {
       status: 200,
       svg: svg as SharePngSvg,
