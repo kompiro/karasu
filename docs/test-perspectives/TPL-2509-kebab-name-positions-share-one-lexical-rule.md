@@ -68,8 +68,9 @@ kebab-case 名は `<word> - <word>` のトークン列として parser に届く
 - parser test: 対象ポジションに `my-team-internal-tag` 形の名前を与え、
   **1 つの名前**として AST に載ることを assert する。keyword 断片
   （`legacy-system`）も 1 ケース含める。
-- resolver test: `.krs` の kebab-case タグに `.krs.style` の同綴り
-  セレクタが適用されることを assert する
+- resolver test: `.krs` の kebab-case の名前と `.krs.style` の同綴りの
+  セレクタが、selector が名前で選ぶすべての位置で同じ名前になることを assert する
+  （`.krs language v2.0` では builtin でないタグへの規則は何も塗らないので、適用ではなく名前で比べる。#2677）
   （`packages/core/src/resolver/warnings.test.ts` の #2509 ブロック参照）。 [guard: `packages/core/src/parser/kebab-selector-parity.test.ts`]
 
 ## 関連テスト
@@ -79,7 +80,7 @@ kebab-case 名は `<word> - <word>` のトークン列として parser に届く
   （`legacy-system` / `audit-table`）も縫合されること、capability も共有ヘルパーを通ること
 - `packages/core/src/resolver/warnings.test.ts` — `hyphenated tag names warn once with the full name (#2509)`。警告が author の書いた
   名前で 1 件だけ出ること、`.krs.style` の同綴りセレクタがその tag に適用されること（TPL-1415）
-- `packages/core/src/parser/kebab-selector-parity.test.ts` — `StyleSelector` のフィールドをキーにした表（新しいフィールドは行が無いと型検査で落ちる）で、名前を持つ各位置に kebab-case の綴りを書き、`.krs` 側の名前と `.krs.style` の selector の名前が一致することを確かめる。edge id は `.krs` に kebab の書き方が無いので、`.krs` が拒否し続けることを確かめる
+- `packages/core/src/parser/kebab-selector-parity.test.ts` — `StyleSelector` のフィールドをキーにした表（新しいフィールドは行が無いと型検査で落ちる）で、名前を持つ各位置に kebab-case の綴りを書き、`.krs` 側の名前と `.krs.style` の selector の名前が一致することを確かめる。数字で始まる名前（`3d-secure`）も含める。edge id は `.krs` に kebab の書き方が無く、annotation は数字で始まる名前を拒むので、その組み合わせは `.krs` が名前を記録しないことを確かめる（受け付け始めたら一致の検査に加えることになる）
 
 ## 派生元 spec
 

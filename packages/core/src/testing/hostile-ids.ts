@@ -40,6 +40,9 @@ export function withHostileIds(source: string, respelling: HostileRespelling): s
   const ids: string[] = [];
   collectIds(Parser.parse(source).value, ids);
   const respelled = new Map(ids.map((id, i) => [id, HOSTILE_RESPELLINGS[respelling](id, i)]));
+  // Every bare token spelling an id is rewritten, so a fixture must not reuse
+  // an id's spelling as a vocabulary word (`[web]` beside a node `web`). That
+  // would only turn the check red, never hide a bare id.
   const tokens = new Lexer(source).tokenize();
   let out = source;
   for (const token of [...tokens].reverse()) {

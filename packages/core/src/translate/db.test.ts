@@ -19,12 +19,11 @@ let entitiesChecked = 0;
 
 /**
  * Keys an entity node may carry when `translate --from db` writes it: its name
- * (`id`, `label`), relations (`edges`), physical mapping (`tableRef`) and the
+ * (`id`), relations (`edges`), physical mapping (`tableRef`) and the
  * fields every node has. A column list has to land somewhere outside this set.
  */
 const ENTITY_KEYS = new Set([
   "id",
-  "label",
   "kind",
   "tags",
   "annotations",
@@ -91,6 +90,25 @@ function entityAttributeProblems(out: string): string[] {
     node.children.forEach(visit);
   };
   parsed.value.domains.forEach(visit);
+  return [...problems, ...entityLineProblems(out)];
+}
+
+/**
+ * The parser drops comments, so a column list written as comments inside an
+ * entity block would pass the AST check. Read the text too: inside
+ * `entity X { … }` only the `table` mapping and relation lines may appear.
+ */
+function entityLineProblems(out: string): string[] {
+  const problems: string[] = [];
+  let entity: string | undefined;
+  for (const line of out.split("\n")) {
+    const opened = /^\s*entity (\S+) \{$/.exec(line);
+    if (opened) entity = opened[1];
+    else if (entity !== undefined && /^\s*\}$/.test(line)) entity = undefined;
+    else if (entity !== undefined && !/^\s*(table \S+|\S+ -> \S+( \[inferred\])?)$/.test(line)) {
+      problems.push(`entity ${entity} has the line ${JSON.stringify(line)}`);
+    }
+  }
   return problems;
 }
 
