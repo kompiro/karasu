@@ -7,8 +7,11 @@ description: >
   the Summary and For Reviewers sections, point out what needs kompiro's decision,
   summarise the local review record, drive the PR's Cloudflare preview with Playwright
   for its acceptance items (screenshots, and video of the e2e specs the PR adds or
-  changes) into an Artifact report, give a merge opinion, and on kompiro's OK tick the
-  verified checklist items and squash-merge. Run it with a PR number. Trigger when the
+  changes) into an Artifact report, give a merge opinion in a summary file opened in an
+  editor tab beside the chat (or an Artifact page when no editor can open it), ask
+  kompiro every open question the PR leaves (For Reviewers and the like) before asking
+  about the merge, and on kompiro's OK tick the verified checklist items and
+  squash-merge. Run it with a PR number. Trigger when the
   user says: "PR を検証して", "マージしていいか見て", "マージ前チェック", "PR #N を確認",
   "pr-verify", "verify PR", "is this PR ready to merge", or names a PR and asks whether
   to merge it, even without saying "verify".
@@ -21,22 +24,34 @@ kompiro がマージする前に PR を確かめ、判断材料を日本語で�
 
 ## 到達状態
 
-終わったとき、次のどちらかが成り立っている。
+終わったとき、次のどれかが成り立っている。
 
 - **差し戻した:** 手順 1 で直すべき点が見つかり、kompiro に日本語で理由を伝え、実装セッションに
   貼れる英語の依頼文を渡した。手順 2 以降には進んでいない
 - **置き換え先を案内した:** 別の open PR がこの PR を置き換えていたので、直させずに置き換え先を伝えた
 - **判断を渡した:** 手順 2〜4 の日本語の要約、手順 5 の検証レポート（対象の PR のみ。Artifact の
-  リンク）、手順 6 のマージ意見を伝えた。kompiro が OK と言った場合に限り、確かめた
-  チェックリスト項目にチェックを入れ、squash でマージした
+  リンク）、手順 6 のマージ意見を 1 つの検証サマリにまとめ、チャットの横（エディタのタブ、開けなければ
+  ブラウザの Artifact）に開いた。未決事項はすべて kompiro に聞いて答えを PR に記録した。draft でも
+  `risk: low` でもない PR ではそのあとでマージするかを聞き（`risk: low` は Low PR merger に任せる）、
+  kompiro が OK と言った場合に限り、確かめたチェックリスト項目にチェックを入れ、squash でマージした
+- **未決事項の答えで差し戻した:** kompiro の答えが PR の変更を求めたので、マージするかは聞かず、
+  実装セッションに貼れる英語の依頼文を渡した
+- **未決事項を残して止めた:** kompiro が答えなかった（ダイアログを閉じた、「後で決める」、
+  「preview の再デプロイを待つ」）問いがあるので、マージするかは聞かず、決まったら `/pr-verify` をもう一度実行するよう伝えた
 
 マージは kompiro がこのセッションで明示的に OK したときだけ行う。意見が「マージしてよい」でも、
-返事を待たずに `gh pr merge` を実行しない。
+返事を待たずに `gh pr merge` を実行しない。kompiro は未決事項が決まるまでマージしないので、
+**マージするかの質問は、未決事項がすべて答えられたあとにだけ出す。**
 
 ## 準備
 
 スクリプトはすべて `.claude/skills/pr-verify/scripts/` にあり、リポジトリの checkout（依存が
-入っているもの）から実行する。以下 `S=.claude/skills/pr-verify/scripts` とする。
+入っているもの）から実行する。以下 `S=.claude/skills/pr-verify/scripts`、
+`OUT=$PWD/reports/pr-verify/<pr>`（gitignore された置き場。`reports/README.md`）とする。
+
+手順 2〜5 で書く日本語の文章はチャットに流さず、手順 6 で検証サマリのファイルにまとめる。チャットには
+各手順の進み具合を 1 行ずつ書くだけにする。手順 1 で終わるとき（差し戻し・置き換え先の案内・
+クローズ済み）は、これまでどおりチャットに書く。
 
 kompiro への文章は日本語で書き、em dash（—）は使わない（読点・コロン・括弧で代える）。
 「人間のレビュー」ではなく「kompiro の判断」のように名前で書く。
@@ -49,7 +64,10 @@ $S/gate.sh <pr>
 
 1 行の JSON が出る。`verdict` で分ける。
 
-- **`closed`**: PR はすでにマージ済みかクローズ済み。そう伝えて終わる
+- **`closed`**: PR はすでにマージ済みかクローズ済み。そう伝えて終わる。マージ済み（`gh pr view <pr>
+  --json state` が `MERGED`）で、PR の `Decisions by kompiro` のコメント（手順 3 の読み方で読む）に
+  「一緒に close する」と答えた Issue があれば、終わる前に `gh issue close` する（Low PR merger が
+  マージした PR など）。close するのは PR の本文が参照している Issue に限る
 - **`superseded`**: 別の open PR（`supersededBy`）の本文が、この PR を置き換えると書いている。この PR を
   直させても無駄になるので、実装セッションへの依頼文は出さない。置き換え先の PR の本文から、この PR を
   いつ閉じる段取りか（例: 置き換え先のマージ後）を読んで伝え、置き換え先を `/pr-verify` するよう勧めて
@@ -101,12 +119,40 @@ kompiro は変更の中身を PR の diff で見るので、本文の言い換�
 
 - **判断が必要:** kompiro に決めてほしい問い（選択肢がある、「OK?」と聞いている、記録済みの決定を
   変える）。問い・選択肢・著者の推奨を短く書く。PR のコメントやスレッドで kompiro がすでに答えて
-  いれば（`gh pr view <pr> --json comments,reviews` で確認。`--comments` は `--json` と併用できない）
-  「回答済み: …」と書く
+  いれば（`gh pr view <pr> --json comments,reviews` で確認。`--comments` は `--json` と併用できない。
+  以前の `/pr-verify` が手順 6b で残した `Decisions by kompiro` のコメントも答えに数える）
+  「回答済み: …」と書く。回答済みでないものが手順 6b で聞く未決事項になる
 - **情報のみ:** 読んでおけばよい補足
 
 `None` / `N/A` なら「判断が必要な項目はありません」と書く。本文にこの節が無ければそう伝える。
 
+### `Decisions by kompiro` のコメントの読み方
+
+手順 6b は kompiro の答えを、1 行目が `Decisions by kompiro (via /pr-verify) head=<sha>:` のコメントで
+PR に残す。答えとして読むのは、作者が kompiro の login（`gh api user --jq .login`）のコメントだけにする
+（fork の PR では誰でも同じ文面を書ける）。同じ問いに複数の答えがあれば、いちばん新しいコメントの
+ものを使う。For Reviewers 以外の問い（Issue の close、却下した指摘など）の答えも持つので、手順 6 で
+「マージ前に決めてほしいこと」を集めるときも、答えがある問いは聞き直さない。
+
+ただし答えは、そのコメントの `head=` の PR について出たものである。`head=` が今の HEAD と違えば、
+その間の差分（下の compare）が問いの対象（選んだ選択肢を実装している箇所、確かめないまま進めた手動項目の
+機能、却下した指摘の箇所など）に触れているかを見る。触れていれば答えを使わず、前の答えを添えて手順 6b で
+聞き直す（後のコミットが別の選択肢に変えた、確かめる対象が変わった、など）。触れていなければ回答済みに
+数える。`[change]` の答えはこの規則によらず、次の段落で確かめる（求めた変更が入れば差分は必ず対象に
+触れるので）。
+
+答えの行に `[change]` の印があるものは、PR の変更を求めた答えなので「変更を確かめる項目」にする。
+コメントの `head=` から今の HEAD までの差分（`gh api repos/{owner}/{repo}/compare/<head=>...<headSha>`）に、
+求めた変更が入っているかを確かめる。入っていれば「変更済み」として回答済みに数え、サマリにどのコミットで
+入ったかを書く。入っていなければ未対応として手順 6 で扱う（6b を参照）。
+
+compare が読めないとき、または読めても `status` が `ahead` / `identical` でないとき（force-push で
+`head=` が今の HEAD の祖先でない、置き換え先の PR に写したコメント、など。三点の compare は merge base
+からの差分なので、`head=` にあって後で消えたものが見えない）、`files` が 300 件に達しているとき（API が
+変更ファイルの一覧を 300 件で切るので、問いの対象のファイルが漏れうる）は、どの答えも（`[change]` を含む）差分で
+確かめたことにしない。
+`gh pr diff` は base との差分なので、base に戻した箇所が見えず、確かめる根拠にならない。前の答えを添えて
+手順 6b で聞き直す。
 ## 手順 4: Local review の傾向
 
 本文の `<!-- local-review:v1 base=… head=… -->` から `<!-- /local-review -->` までの表を読み、
@@ -165,7 +211,7 @@ PR のコード（lockfile の依存、`playwright.config.ts`、fixture）が手
 
 ```bash
 D=$($S/checkout.sh <pr>)          # .claude/worktrees/pr-verify/<pr>
-OUT=$PWD/reports/pr-verify/<pr>   # gitignore された置き場（reports/README.md）
+OUT=$PWD/reports/pr-verify/<pr>   # 準備で決めた置き場。Bash の呼び出しをまたいで変数は残らない
 rm -rf "$OUT" && mkdir -p "$OUT/specs" "$OUT/shots"
 CFG=$PWD/$S/playwright.preview.config.mts
 ```
@@ -256,10 +302,11 @@ Artifact を書く前に `artifact-design` スキルを読み込む。レポー�
 ## 手順 6: マージしてよいかの意見
 
 `wait` だった場合や手順に時間がかかった場合は、先に `$S/gate.sh <pr>` を実行し直す。`fix` に
-変わっていれば手順 1 の差し戻しに切り替える。`wait` のままなら、その理由を意見の根拠に入れる。
-`headSha` が手順 1 と違えば、確かめたあとにコミットが足されたので、そのことを伝えて新しい HEAD で
-やり直すかを kompiro に聞く。やり直すなら手順 1 から始め、`headSha` を控え直す（以下の「手順 1 で
-控えた `headSha`」は控え直したものを指す）。
+変わっていれば手順 1 の差し戻しに、`closed` / `superseded` なら手順 1 のその判定の扱いに切り替える。
+`wait` のままなら、その理由を意見の根拠に入れる。
+`headSha` が手順 1 と違えば、確かめたあとにコミットが足されたので、チャットにそう 1 行書いて
+手順 1 からやり直し、`headSha` を控え直す（以下の「手順 1 で控えた `headSha`」は控え直したものを
+指す）。古い HEAD のまま先へ進んでも、OK のあとの手順 1 でマージを断ることになるので聞かない。
 
 意見は **マージしてよい / 条件付き（kompiro の判断待ちの項目がある）/ マージしないほうがよい** の
 どれかを最初に書き、根拠を 3〜5 点で添える。根拠には手順 1〜5 のうち判断に効いたもの（判断が必要な
@@ -267,40 +314,143 @@ For Reviewers の項目、却下・先送りした指摘、レビュー後の未
 残った手動項目、draft のまま、など）を挙げる。kompiro の判断が必要な項目は、意見とは別に
 「マージ前に決めてほしいこと」として並べる。For Reviewers に書かれたものだけでなく、ほかの手順で
 見つかった判断も集める。たとえば、却下・先送りした指摘をそのまま受け入れてよいか、この PR のマージで
-役目を終える Issue（本文やルールから参照が消える、チェックリストが埋まっている など）を一緒に close するか、
-Design Doc と実装のずれをどう扱うか。無ければ「特にありません」と書く。
+役目を終える Issue（チェックリストが埋まっている など。PR の本文が参照している Issue に限る）を一緒に
+close するか、Design Doc と実装のずれをどう扱うか、PR 本文の `## Manual Verification Checklist` の
+未チェック項目のうち手順 5 で確認できなかったもの（手順 5 を行わなかった PR ではすべて。
+`matchesHead: false` の preview でしか確かめていない項目を含む）を確かめないまま進めてよいか、
+手順 5 で「期待と違う」だった項目を直させるか、手順 1 の `otherUnresolvedThreads`
+と `coderabbitUnmarkedBodyFindings`。無ければ「特にありません」と書く。本文が参照していないが
+役目を終えたように見える Issue（本文やルールから参照が消えた など）は、この skill では close しないので、
+問いにせずサマリに「手で close を検討」として書く。
 
-`risk: low` の PR は GitHub App（Low PR merger）が自動でマージするので、その旨を添える。
+`risk: low` の PR は GitHub App（Low PR merger）が、draft でなく checks が通っていれば 10 分以内に自動で
+マージする。この skill はそれを止めないので、未決事項がある Low の PR では「答える前にマージされることが
+ある」と意見に添える。
+
+### 6a. 検証サマリを開く
+
+`mkdir -p "$OUT"` をしてから、手順 1〜6 の結果を `$OUT/summary.md` に日本語の Markdown で書く
+（前回のファイルは上書きする。手順 5 を行わなかった PR では `$OUT` がまだ無い）。kompiro が最初に読むものから並べる:
+
+1. 見出し: `PR #<pr> <タイトル>` と PR の URL、確かめた `headSha`
+2. マージ意見と根拠
+3. マージ前に決めてほしいこと（無ければ「特にありません」）
+4. 手順 1 の判定と `reasons`（`proceed` 以外のとき）
+5. 手順 2 の要約、手順 3 の For Reviewers、手順 4 の Local review の傾向
+6. 手順 5 の検証レポートのリンクと項目ごとの結果（行わなかったならその理由）
+
+エディタで Markdown のまま読むので、表は使わず見出しと箇条書きで書く。書いたら VS Code の CLI で
+チャットの横のタブに開く:
+
+```bash
+OUT=$PWD/reports/pr-verify/<pr>
+mkdir -p "$OUT" && test -s "$OUT/summary.md" &&
+  [ -n "${VSCODE_IPC_HOOK_CLI:-}" ] && command -v code >/dev/null && timeout 10 code -r "$OUT/summary.md"
+```
+
+終了コードが 0 でなければ（VS Code の外で動いている、CLI の接続が切れている など）、同じ内容を
+Artifact で公開してブラウザで開く。`artifact-design` スキルを読み込んでから 1 枚の HTML ページにし
+（1 行目に `<meta charset="utf-8">`）、手順 5 でレポートを公開していればそのページの冒頭に載せて
+同じ URL に公開し直す。無ければ新しいページとして公開する。公開したら Artifact の `open` で開く。
+
+チャットには、サマリをどこに開いたか（ファイルのパスか Artifact のリンク）と意見の 1 行だけを書く。
+AskUserQuestion のダイアログが出ているあいだはチャットの文章が見えないことがあるので、判断の材料は
+サマリの側に置く。
+
+### 6b. 未決事項を聞く
+
+先に、手順 3 で「変更を確かめる項目」が未対応だったもの（求めた変更が差分に入っていない）を、
+下の未決事項と同じやり方で聞く。選択肢は「変更を待つ」（変更）/「変更を取り下げる」（継続）。
+実装セッションが変更をできないと返した場合などに、kompiro が答えを変えられるようにするため。
+取り下げた答えは下の 1 で新しいコメントに残すので、次の実行では新しいほうが使われる。
+
+未決事項は、6a の「マージ前に決めてほしいこと」のうち kompiro がまだ答えていないもの（手順 3 で
+「判断が必要」かつ「回答済み」でない For Reviewers の項目と、ほかの手順で見つかった判断）。1 つでも
+あれば、マージするかを聞く前に AskUserQuestion で聞く。draft の PR でも聞く（答えは実装セッションの
+材料になる）。
+
+- 1 つの未決事項を 1 つの質問にする。1 回の AskUserQuestion には 4 問までなので、多ければ続けて呼ぶ
+- 質問はダイアログだけを見て答えられるように書く: PR 番号、何についての問いか、PR が今どうして
+  いるか。細部（コード片、比較）が要る問いは、サマリの該当箇所を見るよう質問文に書く
+- 選択肢ごとに、PR をそのまま進めるもの（**継続**）、PR の変更を求めるもの（**変更**）、今は決めない
+  もの（**保留**）のどれかを自分で控えておく。For Reviewers の問いは PR が挙げた選択肢を使い、PR が
+  実装しているものが継続、ほかは変更。著者の推奨を先頭に置いて「（推奨）」を付ける。選択肢の無い
+  「OK?」型は「PR のとおりでよい」（継続）/「変えてほしい」（変更。中身は Other で書いてもらう）
+- ほかの手順で見つかった問いの例: 却下・先送りした指摘は「受け入れる」（継続）/「直してほしい」（変更）、
+  未解決のスレッドは「対応不要で進める」（継続）/「直してほしい」（変更）、確かめられなかった手動項目は
+  「確かめないまま進める」（継続）/「preview の再デプロイを待つ」（保留）、「期待と違う」だった項目は
+「直してほしい」（変更）/「このまま進める」（継続）、Issue の close は
+  「一緒に close する」/「残す」（どちらも継続。マージのあとに使う）
+- ダイアログを閉じた、Other で継続とも変更とも読めない答え（「後で決める」など）も保留にする
+
+答えを受け取ったら、まず `$S/gate.sh <pr>` を実行し直し、答え（保留を除く）を PR に残してから
+判定で分ける。答えを残すのは、PR がマージされていても、HEAD が変わっていても同じ:
+
+1. 答えた問いを PR に英語のコメントで残す。1 行目を `Decisions by kompiro (via /pr-verify) head=<手順 1 で控えた headSha>:`
+   にし、問いごとに問いの要点と答えを 1 行ずつ、変更を選んだ行には末尾に `[change]` を付けて書く
+   （`gh pr comment <pr> --body-file <ファイル>`）。保留の問いは書かない（次の実行でまた聞く）
+2. サマリの「マージ前に決めてほしいこと」に答えを書き足す（6a で Artifact にしたなら公開し直す）
+3. gate の判定で分ける。`closed` なら手順 1 の `closed` と同じ扱いにする。マージ済みで変更が選ばれて
+   いれば、マージ後の追いかけの PR を頼む英語の依頼文も渡す。`fix` は手順 1 の `fix` の扱いにし、
+   依頼文には gate の `reasons` に加えて、kompiro が選んだ変更も入れる。`superseded` は手順 1 の扱いに
+   し、1 のコメントを置き換え先の PR にも同じ文面で残す（置き換え先の `/pr-verify` が読めるように）。`headSha` の変化は手順 6 の冒頭と同じ扱い（答えは 1 で残したので、やり直しでは手順 3 の読み方で読む。新しいコミットが問いの対象に触れていなければ聞き直さず、触れていれば聞き直す）
+4. それ以外では、次のうち最初に当てはまるもので終わり方を決める
+   - 変更が 1 つでも選ばれた（「変更を待つ」を含む）: サマリの意見を「マージしないほうがよい」に
+     書き換え（Artifact なら公開し直す）、手順 1 の `fix` と同じ形で、実装セッションに貼れる英語の
+     依頼文を渡して終わる。マージするかは聞かない。直したら `/pr-verify` をもう一度実行するよう添える
+     （手順 3 が変更を確かめる）
+   - 保留が残った: サマリに未決として残し、決まったら `/pr-verify` をもう一度実行するよう伝えて終わる
+   - すべて継続: 6c へ進む
+
+### 6c. マージするかを聞く
 
 draft の PR はマージできない（ready にすると CI と CodeRabbit が走るので、ready にするのは実装
-セッションの手順）。draft なら意見までを伝え、マージは ready にしてから `/pr-verify` をもう一度
-実行するよう添えて終わる。AskUserQuestion は出さない。
+セッションの手順）。draft なら（`risk: low` も含む）、マージは ready にしてから `/pr-verify` を
+もう一度実行するよう添えて終わる。マージするかは聞かない。
 
-draft でなければ、最後に AskUserQuestion でマージするかを聞く（選択肢: マージする / マージしない）。
+draft でない `risk: low` の PR は Low PR merger がマージするので、マージするかは聞かない。
+PR 本文のチェックリストにはチェックを入れない（Low PR merger がどの HEAD をマージするかはこの skill の
+あとで決まるので、確かめた HEAD と結び付けられない）。手順 5 で確認できた項目は、確かめた `headSha` と
+一緒にサマリに書いたままにし、checks が通れば Low PR merger がマージすると伝えて終わる。
+「一緒に close する」と答えた Issue があれば、マージのあとに `/pr-verify` をもう一度実行すると手順 1 の
+`closed` で close されることも伝える。
+
+それ以外なら AskUserQuestion でマージするかを聞く（選択肢: マージする / マージしない）。質問文には
+PR 番号、意見の 1 行、サマリの場所を入れる。
 
 ### kompiro が OK したとき
 
 1. `$S/gate.sh <pr>` を実行し直す。`proceed` で、`headSha` が手順 1 で控えたものと同じなら次へ進む。
    それ以外ではマージしない。`closed` ならすでにマージかクローズされている（Low PR merger が
-   マージした、など）のでそう伝えて終わる。`superseded` なら置き換え先を伝えて終わる。`fix` なら
+   マージした、など）ので、手順 1 の `closed` と同じ扱いにして終わる。`superseded` なら置き換え先を伝えて終わる。`fix` なら
    差し戻しに切り替える。`wait` なら理由を伝えて、待ってから実行し直すか kompiro に聞く。
    `headSha` が変わっていれば、確かめていないコミットが入っているのでそう伝えて終わる
 2. 手順 5 で **確認できた** 項目だけ、PR 本文の `## Manual Verification Checklist` の対応する
-   `- [ ]` を `- [x]` にする。本文を `gh pr view <pr> --json body --jq .body > $OUT/body.md` で
-   取り出し、その行だけを変えて `gh pr edit <pr> --body-file $OUT/body.md` で戻す。ほかの行は
-   変えない。確認できなかった項目が残るなら、マージ前に kompiro にそのまま進めてよいか確かめる
-   （手順 5 を行わなかった PR はこの手順を飛ばす）。preview が `matchesHead: false` だったときは、
-   確かめたのは HEAD より古いデプロイなのでチェックを入れず、「<preview の sha> で確認」と kompiro に
-   伝えてそのまま進めてよいか確かめる
+   `- [ ]` を `- [x]` にする。本文を `gh pr view <pr> --json body --jq .body > $OUT/body.orig.md` で
+   取り出して `$OUT/body.md` に写し、その行だけを変えて `gh pr edit <pr> --body-file $OUT/body.md` で戻す。ほかの行は
+   変えない（手順 5 を行わなかった PR はこの手順を飛ばす）。preview が `matchesHead: false` だった
+   ときは、確かめたのは HEAD より古いデプロイなのでチェックを入れない。確かめられなかった項目と
+   古い preview で確かめた項目は、6b で kompiro が「確かめないまま進める」と答えているので、ここでは
+   聞き直さない
 3. 本文を変えたら Review tier が本文を検査し直す。編集の直後は前の結果が残って見えるので、
    `gh pr checks <pr> --json name,bucket,startedAt` で Review tier の `startedAt` が編集より後に
    なったのを確かめてから `$S/gate.sh <pr>` をもう一度実行し、`proceed` になるまで待つ（`wait` の
    あいだは少し置いて実行し直す。ほかの判定なら 1 と同じ扱い）。本文を変えていなければ 1 の結果の
-   ままでよい
+   ままでよい。このときの `headSha` が控えたものと違えば、入れたチェックは古い HEAD を確かめた結果
+   なので、チェックを取り消して（下の「チェックの取り消し」）そう伝えて終わる。`fix` など
+   `proceed` 以外で終わるときも、2 でチェックを入れていれば取り消してから終わる
 4. `gh pr merge <pr> --squash --match-head-commit <headSha>` でマージする（リポジトリは squash のみ
    許可、ブランチは自動削除される）。`--match-head-commit` は、確かめたあとに push があれば
-   マージを拒否させるために付ける
-5. マージできたことを `gh pr view <pr> --json state,mergedAt` で確かめて伝える
+   マージを拒否させるために付ける。拒否されたら、2 でチェックを入れていれば取り消してから、そう伝えて
+   終わる
+5. マージできたことを `gh pr view <pr> --json state,mergedAt` で確かめて伝える。kompiro が
+   「一緒に close する」と答えた Issue（この実行の 6b か、以前の `Decisions by kompiro` のコメント）が
+   あれば、ここで `gh issue close` する（PR の本文が参照している Issue に限る）
+
+**チェックの取り消し:** 2 で入れたチェックを残したまま終わらない。`gh pr edit <pr> --body-file
+$OUT/body.orig.md` で編集前の本文に戻す。編集のあとに本文が別の理由で変わっていれば（今の本文と
+`$OUT/body.md` が違う）、戻さずに今の本文の、2 で変えた行だけを `- [ ]` に戻す。取り消したことを
+kompiro に伝える。
 
 ### kompiro が NO と言ったとき
 
