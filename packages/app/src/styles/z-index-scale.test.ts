@@ -26,10 +26,16 @@ function zTokens(css: string): ZToken[] {
     const m = /^\s*(--z-[\w-]+)\s*:\s*([^;]+);(.*)$/.exec(line);
     if (!m) return;
     const trailing = m[3].trim().startsWith("/*");
-    // A comment on the line above counts only when that line is not itself a
-    // declaration: the trailing comment of the token above annotates that one.
-    const above = (lines[i - 1] ?? "").trim();
-    const previous = above.endsWith("*/") && !/^--[\w-]+\s*:/.test(above);
+    // A comment above counts only when it is a comment of its own: the
+    // trailing comment of the token above (one line or several) annotates
+    // that token. Walk up to the line that opens the comment and require it
+    // to start with `/*`.
+    let previous = false;
+    if ((lines[i - 1] ?? "").trim().endsWith("*/")) {
+      let open = i - 1;
+      while (open > 0 && !lines[open].includes("/*")) open -= 1;
+      previous = lines[open].trim().startsWith("/*");
+    }
     tokens.push({ name: m[1], value: Number(m[2].trim()), commented: trailing || previous });
   });
   return tokens;
@@ -65,6 +71,9 @@ describe("z-index scale in tokens.css (TPL-1468)", () => {
           "  --z-c: 3;",
           "  --z-d: 4; /* d */",
           "  --z-e: 5;",
+          "  --z-f: 6; /* f, with a comment",
+          "              that runs on */",
+          "  --z-g: 7;",
           "  --radius: 4px; /* not a z token */",
         ].join("\n"),
       ),
@@ -74,6 +83,8 @@ describe("z-index scale in tokens.css (TPL-1468)", () => {
       { name: "--z-c", value: 3, commented: false },
       { name: "--z-d", value: 4, commented: true },
       { name: "--z-e", value: 5, commented: false },
+      { name: "--z-f", value: 6, commented: true },
+      { name: "--z-g", value: 7, commented: false },
     ]);
   });
 });

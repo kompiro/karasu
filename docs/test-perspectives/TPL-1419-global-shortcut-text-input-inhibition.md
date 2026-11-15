@@ -113,7 +113,8 @@ karasu のキーボードショートカット基盤（`packages/app/src/keyboar
   共有するときは、理由付きで `SHARED_CHORDS` に載せる
 - `packages/app/src/keyboard/command-context.test.tsx` — `CommandRegistry.register
   keybinding collisions`：生きているコマンドと同じ chord を別の id で登録すると、
-  dev とテストでは throw する（本番ビルドは先勝ちのまま `console.error` で報告する）
+  vitest と `vite` dev では throw する（本番ビルドは先勝ちのまま `console.error` で報告するので、
+  本番ビルドで走る CI の E2E では落ちない）
 - `packages/app/src/keyboard/command-types.ts` — `Command.keybinding` は `Chord` 型
   （`mod` / `alt` / `shift` の順の template literal と、閉じたキーの union）なので、
   修飾子の順が違う chord や大文字のキーは型検査で落ちる

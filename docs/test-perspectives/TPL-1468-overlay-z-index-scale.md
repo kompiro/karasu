@@ -61,7 +61,7 @@ overlay や portal を持つ UI surface（modal dialog・slide-in panel・contex
   その要素に当たる宣言（inline か、当たっている stylesheet の rule）が `var(--z-<token>)` で、
   そのトークンの値と一致するときだけ通す。値だけでは見ないので、トークンと同じ値のマジックナンバー
   （`z-index: 1000`）や shadcn 既定の `z-50`（`--z-handle` と同じ 50）も落ちる。Monaco の内部と
-  SVG は対象外。E2E が開かない状態の surface は見えない
+  SVG は対象外。E2E が開かない状態の surface と、reload や遷移の前の document で開いた surface は見えない
 - `packages/e2e/tests/z-index-scale.spec.ts` — `tokens.css` の `--z-*` トークンごとに、その層の
   surface（ハンドル・ノード詳細パネル・focus canvas・ファイルツリーのコンテキストメニュー・
   コマンドパレット・ドロップダウン・tooltip）を開き、probe がそのトークン由来の要素を見たことを

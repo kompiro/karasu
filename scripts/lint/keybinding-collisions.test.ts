@@ -6,9 +6,10 @@ import { type AppCommand, collectCommands } from "./e2e-command-coverage.ts";
 // No two app commands share a keybinding (TPL-1419). The command registry
 // resolves a chord to the first live command that holds it, so a second
 // command bound to the same chord would never fire, and nothing in the UI
-// shows it. `CommandProvider.register` refuses such a pair while both are
-// mounted, but only in a state some test reaches; this check reads every
-// `useCommand` registration in the source, mounted or not.
+// shows it. `CommandProvider.register` throws on such a pair while both are
+// mounted, but only in vitest and `vite` dev (a production build, which the
+// CI E2E suite runs, only logs it), and only when a test mounts both; this
+// check reads every `useCommand` registration in the source, mounted or not.
 //
 // `collectCommands` is the same reader `lint:e2e-command-coverage` uses. It
 // resolves a literal, a same-file const and a component prop, and throws on
@@ -38,6 +39,16 @@ function collisions(commands: readonly AppCommand[]): Map<string, string[]> {
   );
 }
 
+/** The collisions that `shared` does not list. */
+function unexpectedCollisions(
+  commands: readonly AppCommand[],
+  shared: ReadonlyMap<string, string>,
+): Map<string, string[]> {
+  const found = collisions(commands);
+  for (const chord of shared.keys()) found.delete(chord);
+  return found;
+}
+
 describe("app keybindings (TPL-1419)", () => {
   const commands = collectCommands(REPO_ROOT);
 
@@ -53,9 +64,7 @@ describe("app keybindings (TPL-1419)", () => {
   });
 
   it("binds each chord to one command", () => {
-    const shared = collisions(commands);
-    for (const chord of SHARED_CHORDS.keys()) shared.delete(chord);
-    expect(Object.fromEntries(shared)).toEqual({});
+    expect(Object.fromEntries(unexpectedCollisions(commands, SHARED_CHORDS))).toEqual({});
   });
 
   it("keeps every SHARED_CHORDS entry shared and justified", () => {
@@ -77,5 +86,17 @@ describe("app keybindings (TPL-1419)", () => {
         { id: "e", file: "E.tsx" },
       ]),
     ).toEqual(new Map([["mod+b", ["a", "b"]]]));
+  });
+
+  it("lets a listed shared chord through and still reports the others", () => {
+    const synthetic: AppCommand[] = [
+      { id: "a", keybinding: "mod+b", file: "A.tsx" },
+      { id: "b", keybinding: "mod+b", file: "B.tsx" },
+      { id: "c", keybinding: "mod+c", file: "C.tsx" },
+      { id: "d", keybinding: "mod+c", file: "D.tsx" },
+    ];
+    expect(
+      unexpectedCollisions(synthetic, new Map([["mod+b", "a and b are never mounted together"]])),
+    ).toEqual(new Map([["mod+c", ["c", "d"]]]));
   });
 });

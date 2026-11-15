@@ -247,8 +247,10 @@ export function formatViolations(hits: readonly ZIndexHit[]): string[] {
 }
 
 /**
- * Fail when any page the test leaves open shows, or showed while the test ran,
- * a z-index off the scale. A page that closed or navigated mid-read is skipped.
+ * Fail when any page the test leaves open shows, or showed on its current
+ * document, a z-index off the scale. The probe starts again with each document,
+ * so a surface shown before a reload or a navigation is not checked. A page
+ * that closed or navigated mid-read is skipped.
  */
 export async function assertZIndexScaleOnPages(pages: readonly Page[]): Promise<void> {
   const violations = new Set<string>();

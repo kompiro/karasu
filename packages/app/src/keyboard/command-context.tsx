@@ -61,9 +61,11 @@ export function CommandProvider({ children }: { children: ReactNode }) {
     const holder = findKeybindingHolder(commandsRef.current, command);
     if (holder) {
       // `resolveChord` returns the first match, so the later command would
-      // never fire (TPL-1419). Fail loudly where tests and `vite` dev run; a
-      // production build keeps the first-wins behaviour and only reports it,
-      // so a collision in a state no test reached does not blank the app.
+      // never fire (TPL-1419). Fail loudly in vitest and under `vite` dev; a
+      // production build (which the CI E2E suite also runs) keeps the
+      // first-wins behaviour and only reports it, so a collision in a state no
+      // unit test reached does not blank the app. The source-wide check is
+      // scripts/lint/keybinding-collisions.test.ts.
       const message = `Keybinding "${command.keybinding}" of command "${command.id}" is already held by "${holder.id}"`;
       if (import.meta.env.DEV) throw new Error(message);
       // eslint-disable-next-line no-console -- the only signal a production build gives
