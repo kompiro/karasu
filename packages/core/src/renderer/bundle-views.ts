@@ -4,8 +4,10 @@ import type { ShareTargetView } from "../share/synthesize.js";
  * Every view a deep permalink can name (`ShareTargetView`, the app's
  * `ActiveView`) with its tab label in the static all-views bundle, or `null`
  * for a view the bundle does not draw. A `Record` over the union, so a new view
- * does not compile until the static side decides (TPL-1827,
- * docs/spec/permalink.md).
+ * does not compile until the static side decides whether it draws the view
+ * (TPL-1827, docs/spec/permalink.md). Drawing it takes more than a label: the
+ * pane CSS, `bundleSingleLevelViews`' panes and the level collection in
+ * `buildAllViewsSvg` still name each drawn view by hand.
  *
  * The matrix is app-only: it has no static level and no tab, so a
  * `#krs-matrix` fragment opens the bundle at its default view.

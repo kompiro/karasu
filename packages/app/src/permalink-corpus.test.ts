@@ -45,7 +45,11 @@ const HIGHLIGHT_ATTRIBUTES = {
   "data-realized-node-id": true,
 } satisfies Record<HighlightAttribute, true>;
 
-/** The attribute a drilled card carries for the SPA's drill (TPL-3113). */
+/**
+ * Every attribute the SPA restores a deep link against: the highlight
+ * attributes above, and the path a drilled card carries for the drill
+ * (`data-node-path`, TPL-3113).
+ */
 const IDENTITY_ATTRIBUTES = [...Object.keys(HIGHLIGHT_ATTRIBUTES), "data-node-path"];
 
 /**
@@ -83,7 +87,8 @@ deploy Prod {
 interface Drawn {
   name: string;
   krsFile: KrsFile;
-  ids: Set<string>;
+  /** The ids each anchor view may address, per `docs/spec/permalink.md`. */
+  ids: Record<(typeof ANCHOR_VIEWS)[number], Set<string>>;
   svg: string;
   /** Draw a (relabelled) copy of the model the same way. */
   redraw: (krsFile: KrsFile) => string;
@@ -104,16 +109,36 @@ function bundle(krsFile: KrsFile, entry?: ExampleEntry): string {
 }
 
 /**
- * The diff output's bundle (#650): one pre-rendered level per view, the other
- * producer of whole-view anchors.
+ * The diff output's bundle (#650), the other producer of whole-view anchors. It
+ * wraps one pre-rendered level per view, which carries no anchor of its own (as
+ * the per-view diff SVGs `compile-diff.ts` hands it do not), so every anchor
+ * and tab link in the result is the bundle's.
  */
-function diffBundle(krsFile: KrsFile): string {
-  const level = bundle(krsFile);
+function diffBundle(): string {
+  const level =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" width="10" height="10"><rect width="10" height="10"/></svg>';
   return bundleSingleLevelViews({ system: level, deploy: level, org: level }) ?? "";
 }
 
+/**
+ * The ids each view may address. An org anchor names a team (or the root), a
+ * deploy anchor only its single root level, and a system or entity anchor a
+ * logical node, so an anchor in the wrong view's grammar goes red too.
+ */
+function idsPerView(krsFile: KrsFile): Drawn["ids"] {
+  const { organizations, deploys, ...logical } = krsFile;
+  void deploys;
+  const system = declaredIds(logical);
+  return {
+    system,
+    entity: system,
+    org: declaredIds(organizations),
+    deploy: new Set<string>(),
+  };
+}
+
 function draw(name: string, krsFile: KrsFile, redraw: (k: KrsFile) => string): Drawn {
-  return { name, krsFile, ids: declaredIds(krsFile), svg: redraw(krsFile), redraw };
+  return { name, krsFile, ids: idsPerView(krsFile), svg: redraw(krsFile), redraw };
 }
 
 /** Every `id` string the model declares, at any depth. */
@@ -159,14 +184,14 @@ beforeAll(async () => {
   }
   const fixture = Parser.parse(FIXTURE).value;
   drawn.push(draw("fixture", fixture, (k) => bundle(k)));
-  drawn.push(draw("fixture (diff bundle)", fixture, diffBundle));
+  drawn.push(draw("fixture (diff bundle)", fixture, () => diffBundle()));
 }, 120_000);
 
 describe("every static bundle", () => {
   it("emits only anchors in the anchorId grammar, for a declared id", () => {
     const strays = drawn.flatMap(({ name, ids, svg }) => {
       const allowed = new Set(
-        ANCHOR_VIEWS.flatMap((view) => [...ids, "root"].map((id) => anchorId(view, id))),
+        ANCHOR_VIEWS.flatMap((view) => [...ids[view], "root"].map((id) => anchorId(view, id))),
       );
       return anchorsOf(svg)
         .filter((anchor) => !allowed.has(anchor))
@@ -216,20 +241,24 @@ describe("the corpus", () => {
     for (const view of ANCHOR_VIEWS) {
       expect(anchors.some((a) => a.startsWith(`krs-${view}-`))).toBe(true);
     }
-    // A drilled level for an id sanitizeId rewrites, and one for an id whose
-    // label differs from it.
-    const sanitized = drawn.some(({ ids, svg }) =>
-      [...ids].some(
-        (id) => sanitizeId(id) !== id && anchorsOf(svg).includes(anchorId("system", id)),
-      ),
-    );
-    expect(sanitized).toBe(true);
+    // A level for an id sanitizeId rewrites, in each drilled view that has one.
+    for (const view of ["system", "entity"] as const) {
+      const sanitized = drawn.some(({ ids, svg }) =>
+        [...ids[view]].some(
+          (id) => sanitizeId(id) !== id && anchorsOf(svg).includes(anchorId(view, id)),
+        ),
+      );
+      expect(sanitized).toBe(true);
+    }
     // Every identity attribute is drawn, and relabelling changes what is drawn,
     // so the invariance above is measured on labels that are on the canvas.
     for (const attribute of IDENTITY_ATTRIBUTES) {
       expect(drawn.some(({ svg }) => attributeValues(svg, attribute).length > 0)).toBe(true);
     }
     const fixture = drawn.find((d) => d.name === "fixture")!;
+    const relabelled = structuredClone(fixture.krsFile);
+    relabel(relabelled);
     expect(fixture.svg).toContain("Order Service");
+    expect(fixture.redraw(relabelled)).toContain("Relabelled Order Service x");
   });
 });
