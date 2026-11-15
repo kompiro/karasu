@@ -24,11 +24,14 @@ export function readImports(
   fileName: string,
   text: string,
 ): { imports: ImportSite[] } | { error: string } {
-  const plugins: ParserPlugin[] = /\.[cm]?tsx?$/.test(fileName)
-    ? fileName.endsWith("x")
-      ? ["typescript", "jsx"]
-      : ["typescript"]
-    : ["jsx"];
+  // What esbuild also builds: decorators, `accessor` fields, `assert` on an import.
+  const plugins: ParserPlugin[] = [
+    "decorators",
+    "decoratorAutoAccessors",
+    "deprecatedImportAssert",
+  ];
+  if (/\.[cm]?tsx?$/.test(fileName)) plugins.push("typescript");
+  if (!/\.[cm]?ts$/.test(fileName)) plugins.push("jsx");
   let program: unknown;
   try {
     program = parse(text, { sourceType: "module", plugins }).program;
@@ -113,7 +116,12 @@ export function checkImports(options: {
           problems.push(`${at}: Node built-in "${name}" is not allowed`);
       } else if (!/^[./]/.test(specifier)) {
         const name = packageName(specifier);
-        if (!policy.packages.has(name)) problems.push(`${at}: package "${name}" is not allowed`);
+        if (!policy.packages.has(name)) {
+          problems.push(`${at}: package "${name}" is not allowed`);
+        } else if (specifier.split("/").some((part) => part === "." || part === "..")) {
+          // `pkg/../../x` can load a repo file when the package has no `exports`.
+          problems.push(`${at}: "${specifier}" leaves the package`);
+        }
       } else {
         const target = resolveFile(resolve(root, dirname(file), specifier));
         if (target === null) {
@@ -137,11 +145,13 @@ const packageName = (specifier: string) => {
   return parts[0].startsWith("@") ? `${parts[0]}/${parts[1]}` : parts[0];
 };
 
-const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
-// A written `.js` names the `.ts` it is compiled from, as the bundler reads it.
+// esbuild's default `resolveExtensions`, in its order: wrangler bundles the
+// functions with it, so an extensionless specifier loads the file it picks.
+const SOURCE_EXTENSIONS = [".tsx", ".ts", ".jsx", ".js", ".css", ".json"];
+// A written `.js` names the `.ts` it is compiled from, as esbuild reads it.
 const COMPILED_FROM: Record<string, string[]> = {
   ".js": [".ts", ".tsx"],
-  ".jsx": [".tsx"],
+  ".jsx": [".ts", ".tsx"],
   ".mjs": [".mts"],
   ".cjs": [".cts"],
 };

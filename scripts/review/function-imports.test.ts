@@ -12,6 +12,10 @@ for (const file of [
   "lib/c.ts",
   "lib/dir/index.ts",
   "lib/plain.js",
+  "lib/j.ts",
+  "lib/data.json",
+  "lib/z.ts",
+  "lib/z.tsx",
   "lib/a.test.ts",
   "other/x.ts",
 ]) {
@@ -96,6 +100,12 @@ describe("checkImports: what it must catch", () => {
     expect(check(source).problems).toEqual([problem]);
   });
 
+  it("fails on an allowed package's specifier that climbs out of it", () => {
+    expect(check('import { x } from "@resvg/resvg-wasm/../../other/x.ts";').problems).toEqual([
+      'functions/f.ts:1: "@resvg/resvg-wasm/../../other/x.ts" leaves the package',
+    ]);
+  });
+
   it("fails on a function off the boundary", () => {
     expect(check("export const x = 1;", "other/f.ts").problems).toEqual([
       "other/f.ts: off the boundary",
@@ -126,6 +136,10 @@ describe("checkImports: what it must not fail on", () => {
     ['import { x } from "../lib/c.ts";', "lib/c.ts"],
     ['import { x } from "../lib/dir";', "lib/dir/index.ts"],
     ['import { x } from "../lib/dir/";', "lib/dir/index.ts"],
+    ['import { x } from "../lib/j.jsx";', "lib/j.ts"],
+    ['import data from "../lib/data";', "lib/data.json"],
+    // esbuild tries `.tsx` before `.ts`: the guard checks the file it bundles.
+    ['import { x } from "../lib/z";', "lib/z.tsx"],
     ['import { x } from "../lib/plain.js";', "lib/plain.js"],
   ])("resolves %s", (source, target) => {
     expect(check(source)).toEqual({ problems: [], imported: [target] });
@@ -174,6 +188,16 @@ describe("checkImports: what it must not fail on", () => {
     const source =
       'import { Resvg } from "@resvg/resvg-wasm";\nimport wasm from "@resvg/resvg-wasm/index_bg.wasm";\n';
     expect(check(source)).toEqual({ problems: [], imported: [] });
+  });
+
+  it.each([
+    ["@dec class A {}"],
+    ["class A { @dec m() {} }"],
+    ["class A { accessor x = 1; }"],
+    ['import data from "../lib/data.json" assert { type: "json" };'],
+    ['import data from "../lib/data.json" with { type: "json" };'],
+  ])("parses what esbuild builds: %s", (source) => {
+    expect(check(source).problems).toEqual([]);
   });
 
   it("reads JSX in a .tsx function", () => {
