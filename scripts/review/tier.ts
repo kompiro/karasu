@@ -123,6 +123,8 @@ const LANGUAGE_TIER_GLOBS: readonly string[] = [
   "packages/core/src/{lexer,parser,resolver,spec,style,formatter,annotations}/**",
   "packages/core/src/language-version.ts",
   "packages/core/src/builtins/default-style.ts",
+  // Builds the annotation rules of the builtin sheet (moved out of default-style.ts, #3814).
+  "packages/core/src/builtins/annotation-badge-rules.ts",
   // Turns diagnostics into what the editor shows; nothing compares its output.
   "packages/lsp/src/diagnostics*",
 ];
