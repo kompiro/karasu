@@ -151,7 +151,7 @@ round-trip テストは、コメントがどこに出ても、あるいは消え
 - [ ] 新しい top-level 構文 / AST プロパティを足したとき、変換層に配線し忘れると **テストか typecheck が落ちる**か [guard: `packages/core/src/formatter/formatter-top-level-coverage.test.ts`, `packages/core/src/formatter/formatter-property-coverage.test.ts`]
 - [ ] その網羅性ガード自体が**空振りしていない**ことを負のテストで確認したか（わざと構文を 1 つ落として落ちるか / 型にダミーキーを足して `tsc` が落ちるか） [judgment]
 - [ ] ID だけでなく **値**（label / description / URL / title 等）も escape して出力しているか。生のテンプレート補間 `` `x "${value}"` `` が残っていないか（#2087） [guard: `packages/core/src/formatter/quote-string.test.ts`]
-- [ ] escape する文字集合が **lexer がデコードする集合と一致**しているか。lexer が解釈しない `\<char>` を出力していないか（多すぎる escape も値を壊す）
+- [ ] escape する文字集合が **lexer がデコードする集合と一致**しているか。lexer が解釈しない `\<char>` を出力していないか（多すぎる escape も値を壊す）。「どの emitter も `quoteString` / `quotedIdLiteral` を通す」側は 1 つ上の項目の構造ガードに任せる。そのガードは `formatter.ts` だけを走査する [guard: `packages/core/src/formatter/escape-alphabet.test.ts`]
 - [ ] 外部入力を取り込む経路（`translate --from ...`）について、自由テキストを含む hostile input で出力が parse できるか（#2087 は OpenAPI `summary` で顕在化）
 - [ ] 複数の表現形式を持つプロパティで、**その形式では表現できない値**（`"""` を含む description 等）に fallback 経路があり、テストされているか
 
@@ -178,7 +178,7 @@ round-trip テストは、コメントがどこに出ても、あるいは消え
 - `packages/core/src/formatter/quote-id.test.ts`
 - `packages/core/src/formatter/quote-string.test.ts`（値のエスケープ規則 + 生補間の構造ガード）
 - `packages/core/src/formatter/escape-round-trip.test.ts`（各構文の hostile value round-trip）
-- `packages/core/src/formatter/escape-alphabet.test.ts`（すべての UTF-16 code unit を単独とバックスラッシュの前後で `quoteString` / `quotedIdLiteral` に通して lexer で読み戻す。lexer が文字を変えてデコードする escape の集合と、emitter が書く escape の集合を両方実測して一致を確かめる。今ある 2 つの escape 関数だけを見るので、自前で escape を書く新しい emitter は捕まえない。そのため「escape する文字集合」の項目は印なしにしている）
+- `packages/core/src/formatter/escape-alphabet.test.ts`（すべての UTF-16 code unit を単独とバックスラッシュの前後で `quoteString` / `quotedIdLiteral` に通して lexer で読み戻す。lexer が文字を変えてデコードする escape の集合と、emitter が書く escape の集合を両方実測して一致を確かめる。今ある 2 つの escape 関数だけを見るので、自前で escape を書く新しい emitter は捕まえない。「escape する文字集合」の項目の印は、emitter がこの 2 関数を通すことを「値も escape しているか」の項目の構造ガード（`quote-string.test.ts` の生補間 0 件の検査）に任せている。その検査が読むのは `formatter.ts` だけなので、translate など formatter の外で自前の escape を書く emitter はどちらのガードにもかからない。#3813 で kompiro が印を付ける判断をした）
 - `packages/core/src/formatter/annotation-params-round-trip.test.ts`（アノテーションのパラメータ。パラメータキー集合と emit 経路集合の二重の網羅性ガード）
 - `packages/core/src/translate/escape-hostile-input.test.ts`（translate の外部入力 round-trip）
 - `packages/cli/src/fmt.test.ts`（`--write` がファイルを破壊しないこと）
