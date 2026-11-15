@@ -42,7 +42,7 @@ assumptions:
 
 client だけは icon mode と Outline が一致していた。style resolver がカスケードの後に `applyVariantFirstMatch` を走らせ、解決した `shape` が variant のアイコンなら、最初のタグのアイコンに書き換えていたからである。この段階を resource に広げると、shape mode が後に書いた variant のまま残り、icon mode と shape mode が食い違う。
 
-この後段の書き換えは #3776 も生んでいた。書き換えの条件は「解決した値が variant のアイコンの URL かどうか」で、値がどのルールから来たかを見ない。author が `#App { shape: url("client-desktop"); }`（詳細度 101）で `client App [mobile, desktop]` に desktop のアイコンを指定すると、カスケードは author の値を選ぶが、後段がそれを mobile に書き戻していた。
+この後段の書き換えは #3776 も生んでいた。書き換えの条件は「解決した値が variant のアイコンの URL かどうか」で、値がどのルールから来たかを見ない。author が `#App { shape: url("client-desktop"); }`（詳細度 100）で `client App [mobile, desktop]` に desktop のアイコンを指定すると、カスケードは author の値を選ぶが、後段がそれを mobile に書き戻していた。
 
 ## 決定
 
@@ -56,9 +56,11 @@ client だけは icon mode と Outline が一致していた。style resolver �
 
 Design Doc は spec に「author のルールはこれに勝つ」と書くとしていたが、実装ではこれより狭く正確な書き方にした（#3816 の For Reviewers 1 で kompiro が了承）。author のルールは外さないので、タグが 1 つのノードと同じふつうのカスケードで決まる。そのため「勝つ」のは詳細度で決まる場合に限られる。
 
-- shape mode: 詳細度が組み込みの `resource[table]`（11）以上の author のルール（`#Orders` や `resource[api]`）は組み込みの選択に勝つ。`resource { … }`（1）や `[api]`（10）は負ける
+- shape mode（resource）: 詳細度が組み込みの `resource[table]`（11）以上の author のルール（`#Orders` や `resource[api]`）は組み込みの選択に勝つ。`resource { … }`（1）や `[api]`（10）は負ける。client は組み込みシートに variant の shape のルールを持たないので、この閾値は resource だけに当てはまる
 - ノードの別々のタグに書いた author のルール同士（`resource[table]` と `resource[api]`）は宣言の順で決まる。タグの順ではない
 - Icon Mode: 同点なら icon theme が勝つ（icon theme は author のシートの後に積む。#279）。別のアイコンを選べるのは詳細度が 11 より高いルール（id のルールや、注釈を加えたルール）だけである
+
+author のルールが variant を選んだノード（下の表の `#App` の行）では、描画は author の値になり、Outline は最初のタグのままである（ADR-1415）。これは variant タグが 1 つのノードと同じで、受け入れた食い違いである。
 
 `docs/spec/syntax.md` / `syntax.ja.md`（client の form-factor）と `docs/spec/tags-annotations.md` / `tags-annotations.ja.md`（resource の shape タグ）がこの規則を書いている。
 
@@ -82,9 +84,9 @@ Design Doc は spec に「author のルールはこれに勝つ」と書くと�
 ## 影響
 
 - variant タグを 2 つ以上書いた resource の描画が、後に書いた組み込みルールの variant から最初のタグの variant に変わる。`examples/` と docs の `.krs` には該当が無く、examples の描画は変わらない
-- `icon-theme.test.ts` の `CASCADE_ORDER_KINDS`（resource の例外）を消した。テストは `ICON_RULES` から組み合わせ（各 variant 単独、順序付きの全ペア、勝者を繰り返したペア、全 variant の両方の順）を生成し、Icon Mode と `iconNameForNode` の一致、shape mode が最初の variant 単独と同じ形になること、author の id のルールが両モードで勝つこと（#3776）、author のタグのルールの扱い、karasu 自身のシートの variant ルールが `shape` だけを設定することを確かめる
+- `icon-theme.test.ts` の `CASCADE_ORDER_KINDS`（resource の例外）を消した。テストは `ICON_RULES` から組み合わせ（各 variant 単独、順序付きの全ペア、勝者を繰り返したペア、全 variant の両方の順）を生成し、Icon Mode と `iconNameForNode` の一致、shape mode が最初の variant 単独と同じ形になること、author の id のルールが両モードで勝つこと（#3776）、author のタグのルールの扱い、karasu 自身のシートの variant ルールが `shape` だけを設定すること、組み込みシート（dark と light）が variant の kind の shape を variant タグだけで決めていることを確かめる
 - フィルタはルール全体を外すので、karasu 自身のシートに variant タグを名指して `shape` 以外の性質も設定するルール、または variant タグと別のタグを組み合わせたルール（例 `resource[api][external]`）を足すと、それも外れる。テストがそうしたルールの追加を落とすので、足すときは「負けた variant のルール」として外れるのが意図どおりかをそこで決める
-- TPL-1415 のチェックリスト項目 6 を、後段ではなくこのフィルタの説明に改めた。#3776 の根本原因（宣言したシートではなく解決した値で決める）は TPL-2269 がすでに扱う型なので新しい TPL は起こさず、TPL-2269 の `discovered_from` に #3776 と author の id のルールのテストを足した
+- TPL-1415 のチェックリスト項目 6 を、後段ではなくこのフィルタの説明に改めた。#3776 の根本原因（宣言したシートではなく解決した値で決める）は TPL-2269 がすでに扱う型なので新しい TPL は起こさず、TPL-2269 の `discovered_from` に #3776（`root_cause_file` は `icon-theme.ts`）を足し、関連テストに author の id のルールのテストを、本文に既知のパターンの注記を足した
 - changeset は `@karasu-tools/core` と `karasu` に加え `karasu-skills` も patch にした。`packages/skills/` 配下の spec の同梱コピーが変わったためである（Design Doc は前の 2 つだけを挙げていた）
 
 ## 却下した案
