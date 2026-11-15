@@ -175,12 +175,14 @@ export const NEGATIVE_CACHE_CONTROL = "public, s-maxage=300, max-age=0, must-rev
  * the path and is held by the shared edge cache as long as the signpost page.
  * For a pinned ref with no `.krs` (404) and a model too large to link (413) that
  * is what keeps a crawler walking `/<owner>/<repo>@<ref>` paths from amplifying
- * into repeated GitHub raw fetches (TPL-1961); a malformed ref (400) never
- * reached GitHub and is cached only because it is as deterministic.
+ * into repeated GitHub raw fetches (TPL-1961); a 400 (a path that never
+ * parsed as a permalink, or a malformed ref) never reached GitHub and is
+ * cached only because it is as deterministic.
  *
  * Like the signpost, a negative for a branch is held longer (300 s) than a
- * branch's redirect (60 s): a `.krs` committed just after a miss shows up within
- * five minutes.
+ * branch's redirect (60 s): the edge keeps answering a miss for up to five
+ * minutes after a `.krs` is committed (longer if GitHub raw still caches its
+ * own 404).
  */
 export function errorCacheControl(status: ResolveStatus): string {
   return status >= 500 ? "no-store" : NEGATIVE_CACHE_CONTROL;
