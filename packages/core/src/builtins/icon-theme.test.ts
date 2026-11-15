@@ -200,8 +200,16 @@ describe("a multi-variant node is drawn by its first variant tag", () => {
   // first-tag choice as on a single-variant node, by the ordinary cascade.
   it.each(multi)("an author's rule on a losing variant tag wins on %s %j", (kind, tags) => {
     const loser = tags.find((t) => t !== tags[0])!;
-    const author = StyleParser.parse(`${kind}[${loser}] { shape: box; }`).value;
-    expect(shapeOf(kind, tags, [getBuiltinStyleSheet(), author])).toBe("box");
+    const author = StyleParser.parse(`${kind}[${loser}] { shape: user; }`).value;
+    // Without the author rule the node is not drawn as `user`, so passing here
+    // means the author rule reached the node rather than a builtin coincidence.
+    expect(shapeOf(kind, tags, SHAPE_MODE)).not.toBe("user");
+    expect(shapeOf(kind, tags, [getBuiltinStyleSheet(), author])).toBe("user");
+    // In Icon Mode the icon theme sits after the author sheets and wins the
+    // tie, as on a single-tag node (#279): the first tag's icon stays.
+    expect(shapeOf(kind, tags, [getBuiltinStyleSheet(), author, getIconThemeStyleSheet()])).toEqual(
+      { url: iconNameForNode(kind, tags) },
+    );
   });
 
   // The resolver drops a whole shipped rule that names a losing variant tag.
@@ -213,8 +221,14 @@ describe("a multi-variant node is drawn by its first variant tag", () => {
     ["icon theme", getIconThemeStyleSheet()],
   ] as const)("every %s rule naming a variant tag sets only shape", (_name, sheet) => {
     const extra = sheet.rules
+      // A rule without a kind (`[table] { … }`) also matches a variant kind's
+      // node and is dropped whole, so it counts against any kind's variants.
       .filter((r) =>
-        r.selector.tags.some((t) => ICON_OF.has(ruleKey(r.selector.nodeType ?? "", t))),
+        r.selector.tags.some((t) =>
+          r.selector.nodeType
+            ? ICON_OF.has(ruleKey(r.selector.nodeType, t))
+            : [...VARIANT_TAGS.values()].some((variants) => variants.includes(t)),
+        ),
       )
       .flatMap((r) => Object.keys(r.properties).filter((p) => p !== "shape"));
     expect(extra).toEqual([]);
