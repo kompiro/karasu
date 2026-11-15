@@ -119,8 +119,8 @@ describe("diagnostics catalog severity (TPL-2171)", () => {
   const kinds = new Set(warningKinds());
   const severities: Record<string, string> = DIAGNOSTIC_SEVERITY;
 
-  // The type check names a missing code directly (an extra one is caught by the assertion below); `Diagnostic`
-  // itself would fail further away, at whatever reads its severity.
+  // The type check names a missing code; `Diagnostic` fails at its own
+  // definition without saying which. An extra code is caught below.
   const exhaustive: Record<DiagnosticCode, DiagnosticSeverity> = DIAGNOSTIC_SEVERITY;
 
   it("has a severity for exactly the diagnostic codes", () => {
