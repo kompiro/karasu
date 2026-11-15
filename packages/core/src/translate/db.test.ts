@@ -104,6 +104,7 @@ function entityLineProblems(out: string): string[] {
   for (const line of out.split("\n")) {
     const opened = /^\s*entity (\S+) \{$/.exec(line);
     if (opened) entity = opened[1];
+    else if (/^\s*entity\b/.test(line)) problems.push(`entity opener ${JSON.stringify(line)}`);
     else if (entity !== undefined && /^\s*\}$/.test(line)) entity = undefined;
     else if (entity !== undefined && !/^\s*(table \S+|\S+ -> \S+( \[inferred\])?)$/.test(line)) {
       problems.push(`entity ${entity} has the line ${JSON.stringify(line)}`);

@@ -47,6 +47,8 @@ interface Unwritable {
   reason: string;
   names: readonly string[];
   attempts: (name: string) => readonly string[];
+  /** A name every attempt records, so a refusal cannot pass because the attempt reads nothing. */
+  control: string;
 }
 
 const id = quoteId;
@@ -68,7 +70,11 @@ const POSITIONS = {
       reason:
         "the annotation reader refuses a name that starts with a digit (`@2026`); where a name may start is each call site's decision (kebab-name.ts, #2707)",
       names: DIGIT_LED,
-      attempts: (n) => [`system S {\n  service A @${n} {}\n}\n`],
+      attempts: (n) => [
+        `system S {\n  service A @${n} {}\n}\n`,
+        `system S {\n  service A @${JSON.stringify(n)} {}\n}\n`,
+      ],
+      control: "deprecated",
     },
   },
   facets: {
@@ -93,6 +99,7 @@ const POSITIONS = {
         `system S {\n  service A {}\n  service B {}\n  A -> B "calls" #${n}\n}\n`,
         `system S {\n  service A {}\n  service B {}\n  A -> B "calls" #${JSON.stringify(n)}\n}\n`,
       ],
+      control: "calls1",
     },
   },
   boundaryId: {
@@ -130,8 +137,19 @@ const cases = positions.flatMap((position) => {
 const refusals = positions.flatMap((position) =>
   "unwritable" in position
     ? position.unwritable.names.flatMap((name) =>
-        position.unwritable.attempts(name).map((source) => ({ position, name, source })),
+        position.unwritable
+          .attempts(name)
+          .map((source) => ({ position, name, source, reason: position.unwritable.reason })),
       )
+    : [],
+);
+
+const controls = positions.flatMap((position) =>
+  "unwritable" in position
+    ? position.unwritable
+        .attempts(position.unwritable.control)
+        .slice(0, 1)
+        .map((source) => ({ position, name: position.unwritable.control, source }))
     : [],
 );
 
@@ -146,7 +164,21 @@ describe("a .krs name and a .krs.style selector with the same spelling are one n
     expect(asList(position.read(parsed.value))).toEqual([name]);
   });
 
-  it.each(refusals)("$position.field: .krs records no $name", ({ position, name, source }) => {
-    expect(asList(position.read(Parser.parse(source).value))).not.toContain(name);
-  });
+  it.each(refusals)(
+    "$position.field: .krs refuses $name ($reason)",
+    ({ position, name, source }) => {
+      const parsed = Parser.parse(source);
+      expect(asList(position.read(parsed.value))).not.toContain(name);
+      expect(parsed.diagnostics.some((d) => d.severity === "error")).toBe(true);
+    },
+  );
+
+  it.each(controls)(
+    "$position.field: the refusal's .krs reads $name",
+    ({ position, name, source }) => {
+      const parsed = Parser.parse(source);
+      expect(parsed.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+      expect(asList(position.read(parsed.value))).toEqual([name]);
+    },
+  );
 });

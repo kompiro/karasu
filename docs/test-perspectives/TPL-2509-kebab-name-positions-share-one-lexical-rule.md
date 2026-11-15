@@ -68,10 +68,10 @@ kebab-case 名は `<word> - <word>` のトークン列として parser に届く
 - parser test: 対象ポジションに `my-team-internal-tag` 形の名前を与え、
   **1 つの名前**として AST に載ることを assert する。keyword 断片
   （`legacy-system`）も 1 ケース含める。
-- resolver test: `.krs` の kebab-case の名前と `.krs.style` の同綴りの
+- parser / style-parser test: `.krs` の kebab-case の名前と `.krs.style` の同綴りの
   セレクタが、selector が名前で選ぶすべての位置で同じ名前になることを assert する
-  （`.krs language v2.0` では builtin でないタグへの規則は何も塗らないので、適用ではなく名前で比べる。#2677）
-  （`packages/core/src/resolver/warnings.test.ts` の #2509 ブロック参照）。 [guard: `packages/core/src/parser/kebab-selector-parity.test.ts`]
+  （`.krs language v2.0` では builtin でないタグへの規則は何も塗らないので、適用ではなく名前で比べる。#2677。
+  `packages/core/src/parser/kebab-selector-parity.test.ts`）。 [guard: `packages/core/src/parser/kebab-selector-parity.test.ts`]
 
 ## 関連テスト
 
