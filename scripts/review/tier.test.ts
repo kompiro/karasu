@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
@@ -359,33 +359,43 @@ describe("classifyChange", () => {
       classifyChange({ files: [modified(path)], author: "kompiro" }).securityReview;
     // The classifier's globs are POSIX; `relative` uses a backslash on Windows.
     const repoPath = (path: string) => relative(REPO_ROOT, path).split(sep).join("/");
-    // Packages a function may import by name. Any other bare specifier fails,
-    // since its modules cannot be checked against the globs here.
+    // Packages a function may import by name. Any other bare specifier
+    // (including `node:` built-ins) fails until it is added here, since its
+    // modules cannot be checked against the globs.
     const PACKAGES = new Set(["@resvg/resvg-wasm", "@resvg/resvg-wasm/index_bg.wasm"]);
+    // Pages builds routes from `.js` as well as `.ts`.
+    const SOURCE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
     const sources = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
         const path = join(dir, e.name);
         if (e.isDirectory()) return sources(path);
-        return /\.tsx?$/.test(e.name) && !e.name.endsWith(".d.ts") && !isTestFile(repoPath(path))
+        return SOURCE.test(e.name) && !/\.d\.[cm]?ts$/.test(e.name) && !isTestFile(repoPath(path))
           ? [path]
           : [];
       });
     const files = sources(join(REPO_ROOT, "functions"));
     const imported = new Set<string>();
     const unknownPackages: string[] = [];
-    // `from "x"`, a side-effect `import "x"` and a dynamic `import("x")`.
-    const SPECIFIER = /(?:\bfrom|\bimport)\s*\(?\s*["']([^"']+)["']/g;
+    // `from "x"`, a side-effect `import "x"` and a dynamic `import("x")`, not
+    // a method such as `Buffer.from("x")`. Comments and strings are read too,
+    // which can only fail the test, never pass it.
+    const SPECIFIER = /(?<![.\w$])(?:from\s*|import\s*(?:\(\s*)?)["'`]([^"'`]+)["'`]/g;
+    // A dynamic import of anything but a string literal cannot be checked.
+    const COMPUTED_IMPORT = /(?<![.\w$])import\s*\(\s*(?!["'`])/;
+    const isFile = (path: string) => existsSync(path) && statSync(path).isFile();
     for (const file of files) {
       const text = readFileSync(file, "utf-8");
+      if (COMPUTED_IMPORT.test(text)) unknownPackages.push(`${repoPath(file)}: import(<computed>)`);
       for (const [, spec] of text.matchAll(SPECIFIER)) {
         if (!spec.startsWith(".")) {
           if (!PACKAGES.has(spec)) unknownPackages.push(`${repoPath(file)}: ${spec}`);
           continue;
         }
-        const target = resolve(file, "..", spec).replace(/\.js$/, ".ts");
-        // A specifier this cannot resolve is reported, not skipped (TPL-2804).
-        expect(existsSync(target), `${repoPath(file)} imports ${spec}`).toBe(true);
-        imported.add(repoPath(target));
+        const written = resolve(file, "..", spec);
+        const target = [written.replace(/\.js$/, ".ts"), written].find(isFile);
+        // A specifier this cannot resolve to a file is reported, not skipped (TPL-2804).
+        expect(target, `${repoPath(file)} imports ${spec}`).toBeDefined();
+        if (target) imported.add(repoPath(target));
       }
     }
     expect(unknownPackages).toEqual([]);
