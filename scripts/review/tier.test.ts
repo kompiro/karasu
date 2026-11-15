@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { relative, resolve, sep } from "node:path";
-import madge from "madge";
+import { resolve, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
+import { checkImports } from "./function-imports.ts";
 import { type GitFacts, parseRecord } from "./local-review-record.ts";
 import { isTestFile } from "./test-changes.ts";
 import {
@@ -356,95 +356,43 @@ describe("classifyChange", () => {
   // off the boundary, fails here. What those modules import in turn is not
   // checked (`bare-route.ts` reads the `routes.ts` constant table).
   //
-  // The graph is madge's, parsed as `scripts/ci/raster-input.ts` parses the
-  // same files (static `import`, `export from`, `import()` and `require` with a
-  // literal specifier). It cannot see a specifier computed at run time, nor a
-  // Node built-in, which is not a repo file the classifier could tier.
-  it("keeps every module a Pages Function imports directly on the security boundary", async () => {
+  // Each function is read from its syntax tree (`function-imports.ts`), so a
+  // specifier computed at run time and a Node built-in are seen, and fail
+  // unless allowed below.
+  it("keeps every module a Pages Function imports directly on the security boundary", () => {
     const sec = (path: string) =>
       classifyChange({ files: [modified(path)], author: "kompiro" }).securityReview;
-    // Packages a function may import. Any other package, a workspace package
-    // included (it resolves outside the checked paths), fails until it is
-    // added here.
-    const PACKAGES = new Set(["@resvg/resvg-wasm"]);
-    const packageName = (path: string) => {
-      const parts = path.split("node_modules/").at(-1)?.split("/") ?? [];
-      return parts[0]?.startsWith("@") ? `${parts[0]}/${parts[1]}` : (parts[0] ?? "");
-    };
-    // The classifier's globs are POSIX; `relative` uses a backslash on Windows.
-    const repoPath = (path: string) =>
-      relative(REPO_ROOT, resolve(REPO_ROOT, path)).split(sep).join("/");
-
-    const functionsDir = resolve(REPO_ROOT, "functions");
-    // madge has no parser for `.mts` / `.cts` and would list such a file with
-    // no imports, so one under `functions/` fails here until it can be read.
-    const unreadable = readdirSync(functionsDir, { recursive: true, encoding: "utf-8" })
-      .filter((name) => /\.[cm]ts$/.test(name) && !/\.d\.[cm]ts$/.test(name))
-      .map((name) => `functions/${name.split(sep).join("/")}`);
-    expect(unreadable).toEqual([]);
-
-    const graph = await madge([functionsDir], {
-      baseDir: REPO_ROOT,
-      includeNpm: true,
-      // No `excludeRegExp` for test files: it would also drop a function's
-      // import of one. Test files are left out below, as sources only.
-      fileExtensions: ["ts", "tsx", "js", "mjs", "cjs"],
-      detectiveOptions: {
-        ts: { mixedImports: true },
-        tsx: { mixedImports: true },
-        es6: { mixedImports: true },
-      },
-    });
-
-    const functions = Object.entries(graph.obj())
+    const files = readdirSync(resolve(REPO_ROOT, "functions"), {
+      recursive: true,
+      encoding: "utf-8",
+    })
+      .map((name) => `functions/${name.split(sep).join("/")}`)
       .filter(
-        ([file]) =>
-          repoPath(file).startsWith("functions/") &&
-          !/\.d\.[cm]?ts$/.test(file) &&
-          !isTestFile(repoPath(file)),
-      )
-      .map(([file, deps]) => ({
-        file: repoPath(file),
-        deps,
-        text: readFileSync(resolve(REPO_ROOT, file), "utf-8"),
-      }));
-    // madge walks past the functions, so only a specifier one of them writes
-    // counts: madge drops an unresolved one from the graph, so it is reported
-    // here instead (TPL-2804).
-    const unresolved = graph
-      .warnings()
-      .skipped.filter((spec) =>
-        functions.some(({ text }) => ['"', "'", "`"].some((q) => text.includes(`${q}${spec}${q}`))),
+        (path) => /\.[cm]?[jt]sx?$/.test(path) && !/\.d\.[cm]?ts$/.test(path) && !isTestFile(path),
       );
-    expect(unresolved).toEqual([]);
-    // A file madge could not parse comes back with no imports.
-    const unparsed = functions
-      .filter(({ deps, text }) => deps.length === 0 && /\b(?:import|require)\b/.test(text))
-      .map(({ file }) => file);
-    expect(unparsed).toEqual([]);
 
-    const off: string[] = [];
-    const imported = new Set<string>();
-    for (const { file, deps } of functions) {
-      if (!sec(file)) off.push(file);
-      for (const dep of deps) {
-        if (dep.includes("node_modules/")) {
-          if (!PACKAGES.has(packageName(dep))) off.push(`${file}: ${dep}`);
-          continue;
-        }
-        const path = repoPath(dep);
-        imported.add(path);
-        if (path.startsWith("../") || !sec(path)) off.push(`${file}: ${path}`);
-      }
-    }
+    const { problems, imported } = checkImports({
+      root: REPO_ROOT,
+      files,
+      read: (path) => readFileSync(resolve(REPO_ROOT, path), "utf-8"),
+      policy: {
+        // Any other package, a workspace package included (its modules are
+        // not checked here), fails until it is added.
+        packages: new Set(["@resvg/resvg-wasm"]),
+        // Pages runs the functions without `nodejs_compat` (wrangler.toml), so
+        // no built-in is allowed; enabling one means listing it here.
+        builtins: new Set(),
+      },
+      onBoundary: sec,
+    });
     // The graph held the handlers this exists for.
-    expect([...imported]).toEqual(
+    expect(imported).toEqual(
       expect.arrayContaining([
         "packages/app/src/render/share-render.ts",
         "functions/_lib/share-raster.ts",
       ]),
     );
-    expect(off).toEqual([]);
+    expect(problems).toEqual([]);
   });
 
   describe("dangerous sinks (#3505)", () => {
