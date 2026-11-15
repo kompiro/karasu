@@ -129,7 +129,8 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
   `styles-no-raw-color.test.ts` と同じ範囲（`base.css` / `layout.css` /
   `components/*.css`）の全宣言を CSS パーサー（jsdom の CSSOM）で読み、`color:` が
   届くトークン（`var()` の fallback と、コンポーネント CSS が自前で定義する中間の
-  カスタムプロパティを辿った先）がすべて、上の表のどれかで文字として測られていることを
+  カスタムプロパティを辿った先。テーマも定義する名前は、コンポーネントが上書きしていても
+  それ自体を届いたトークンに数える）がすべて、上の表のどれかで文字として測られていることを
   確かめる。TSX のインラインスタイルと Tailwind のクラスはこの範囲の外。
 - `packages/app/src/styles/styles-no-raw-color.test.ts`。`%23` 形式の
   encode 済み hex も検出対象（#2193 で追加）。

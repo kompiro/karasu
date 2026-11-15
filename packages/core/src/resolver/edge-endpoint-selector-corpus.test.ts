@@ -133,7 +133,8 @@ describe("edge[from=][to=] matches every drawn edge by the ids the view stores (
       const misses: string[] = [];
       for (const entry of corpus) {
         const pairs = new Map<string, string>();
-        for (const e of drawnEdges(renderEveryView(entry, mode))) {
+        const baseline = drawnEdges(renderEveryView(entry, mode));
+        for (const e of baseline) {
           const key = pairKey(e.from, e.to);
           if (!pairs.has(key)) pairs.set(key, colorOf(pairs.size));
         }
@@ -150,7 +151,14 @@ describe("edge[from=][to=] matches every drawn edge by the ids the view stores (
           ...entry,
           styleSheets: [...entry.styleSheets, probe.value],
         };
-        for (const e of drawnEdges(renderEveryView(styled, mode))) {
+        const restyled = drawnEdges(renderEveryView(styled, mode));
+        // The probe sheet must only recolour: the same edges, parallel ones
+        // included, are drawn, so no edge escapes the colour check below.
+        const multiset = (edges: DrawnEdge[]) => edges.map((e) => pairKey(e.from, e.to)).sort();
+        expect(multiset(restyled), `${entry.name} draws the same edges`).toEqual(
+          multiset(baseline),
+        );
+        for (const e of restyled) {
           const want = pairs.get(pairKey(e.from, e.to));
           if (e.stroke?.toUpperCase() !== want) {
             misses.push(

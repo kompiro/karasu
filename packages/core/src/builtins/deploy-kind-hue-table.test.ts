@@ -30,7 +30,7 @@ function hueTableKinds(file: string, heading: string, hueHeader: string): string
     const [, kindCell, hueCell] = lines[i].split("|").map((c) => c.trim());
     const kind = /^`([^`]+)`$/.exec(kindCell)?.[1];
     expect(kind, `${file} row "${lines[i]}" names a kind in backticks`).toBeDefined();
-    expect(hueCell, `${file} row for ${kind} names a hue`).not.toBe("");
+    expect(hueCell ?? "", `${file} row for ${kind} names a hue`).not.toBe("");
     kinds.push(kind!);
   }
   return kinds;

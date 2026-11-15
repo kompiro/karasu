@@ -668,11 +668,15 @@ const SCANNED_MODULES = [
 
 describe("meta: every exported function of the derivation modules is classified (TPL-510)", () => {
   const exported = new Map<string, string>();
+  const duplicates: string[] = [];
   beforeAll(async () => {
     for (const path of SCANNED_MODULES) {
       const mod = (await import(path)) as Record<string, unknown>;
       for (const [name, value] of Object.entries(mod)) {
-        if (typeof value === "function") exported.set(name, path);
+        if (typeof value !== "function") continue;
+        const first = exported.get(name);
+        if (first !== undefined) duplicates.push(`${name}: ${first} and ${path}`);
+        else exported.set(name, path);
       }
     }
   });
@@ -687,6 +691,12 @@ describe("meta: every exported function of the derivation modules is classified 
       "buildInheritedAnnotations",
     ];
     expect(expected.filter((name) => !exported.has(name))).toEqual([]);
+  });
+
+  it("no two scanned modules export a function under the same name", () => {
+    // Rows and exemptions name a function by its export name alone, so a second
+    // module exporting the same name would ride on the first one's entry.
+    expect(duplicates).toEqual([]);
   });
 
   it("every exported function is the subject of a row or named as not a derivation", () => {

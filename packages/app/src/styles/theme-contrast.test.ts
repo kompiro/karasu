@@ -564,13 +564,16 @@ function declarations(files: string[]): Declaration[] {
  * The theme tokens a value reaches: each `var(--x)` (fallbacks included),
  * followed through any custom property the component CSS defines itself, so
  * `--row-ink: var(--accent); color: var(--row-ink)` resolves to `accent`.
+ * Local definitions are merged across selectors, so a name the theme also
+ * defines stays a reached token of its own: a component override in one rule
+ * cannot vouch for the theme value another rule reads.
  */
 function tokensReached(value: string, local: Map<string, string[]>, seen = new Set<string>()) {
   const out: string[] = [];
   for (const [, name] of value.matchAll(/var\(\s*--([\w-]+)/g)) {
     const intermediates = local.get(name);
-    if (intermediates === undefined) out.push(name);
-    else if (!seen.has(name)) {
+    if (intermediates === undefined || sets.dark.has(name)) out.push(name);
+    if (intermediates !== undefined && !seen.has(name)) {
       seen.add(name);
       for (const v of intermediates) out.push(...tokensReached(v, local, seen));
     }
