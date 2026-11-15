@@ -376,23 +376,26 @@ describe("classifyChange", () => {
     const files = sources(join(REPO_ROOT, "functions"));
     const imported = new Set<string>();
     const unknownPackages: string[] = [];
-    // `from "x"`, a side-effect `import "x"` and a dynamic `import("x")`, not
-    // a method such as `Buffer.from("x")`. Comments and strings are read too,
-    // which can only fail the test, never pass it.
-    const SPECIFIER = /(?<![.\w$])(?:from\s*|import\s*(?:\(\s*)?)["'`]([^"'`]+)["'`]/g;
-    // A dynamic import of anything but a string literal cannot be checked.
-    const COMPUTED_IMPORT = /(?<![.\w$])import\s*\(\s*(?!["'`])/;
+    // `from "x"`, a side-effect `import "x"`, a dynamic `import("x")` and
+    // `require("x")`, not a method such as `Buffer.from("x")`. Comments and
+    // strings are read too, which can only fail the test, never pass it.
+    const SPECIFIER =
+      /(?<![.\w$])(?:from\s*|import\s*(?:\(\s*)?|require\s*\(\s*)["'`]([^"'`]+)["'`]/g;
+    // A dynamic import or require of anything but a string literal cannot be checked.
+    const COMPUTED_IMPORT = /(?<![.\w$])(?:import|require)\s*\(\s*(?!["'`])/;
     const isFile = (path: string) => existsSync(path) && statSync(path).isFile();
     for (const file of files) {
       const text = readFileSync(file, "utf-8");
-      if (COMPUTED_IMPORT.test(text)) unknownPackages.push(`${repoPath(file)}: import(<computed>)`);
+      if (COMPUTED_IMPORT.test(text))
+        unknownPackages.push(`${repoPath(file)}: computed import or require`);
       for (const [, spec] of text.matchAll(SPECIFIER)) {
         if (!spec.startsWith(".")) {
           if (!PACKAGES.has(spec)) unknownPackages.push(`${repoPath(file)}: ${spec}`);
           continue;
         }
         const written = resolve(file, "..", spec);
-        const target = [written.replace(/\.js$/, ".ts"), written].find(isFile);
+        // As the bundler resolves it: the file written, else its `.ts` source.
+        const target = [written, written.replace(/\.js$/, ".ts")].find(isFile);
         // A specifier this cannot resolve to a file is reported, not skipped (TPL-2804).
         expect(target, `${repoPath(file)} imports ${spec}`).toBeDefined();
         if (target) imported.add(repoPath(target));
