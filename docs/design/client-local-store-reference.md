@@ -248,6 +248,7 @@ resource <storageKind> [<Id>] "<name>"
 
 - 参照された client の storage は今日すでに column になっている。`CrudMatrixColumn` に `clientId` と `storageKind` を足す（`infraKind` は undefined のまま）。column の key は `<ClientId>.<Id>` で、infra の leaf と同じ形である。infra と id が重なる client の storage は §2 で index に入らないので、key はぶつからない。
 - id を持つ client の storage は、参照されていなくても column にする（参照されていない infra の leaf と同じ扱い）。id の無い storage は column にしない。
+- column の identity は key の文字列 `<ClientId>.<Id>` で、同じ key の storage が 2 つあっても column は 1 つにする（matrix は今日も column を文字列の key で持ち、参照の cell も参照の文字列で引く）。同じ client の中の重複は、§2 で解決先にならない 2 つ目以降を column の宣言元に数えない（`client-resource-duplicate-id` で示す）。同じ id の client ノードが別々に同じ id の storage を持つ場合は、§2 で参照が解決しない（`resource-target-ambiguous`）が、その参照の cell は今日どおりその key の column に入る。`clientId` / `storageKind` は宣言が 1 つに決まるときだけ埋め、決まらなければ空にする。
 - `infraFilter` は infra の種類で絞る機能のままにし、指定したときに client の storage の column が落ちる今日の挙動を変えない。CLI の `--infra` も変えない。client の storage で絞る option は、要望が出たら別に足す。
 - `extractCrudMatrix` は今日 `systems` だけを受け取るので、トップレベルの client の storage が届かない。model 全体（または §2 の index）を受け取るように signature を変え、CLI の `matrix` / `render` の呼び出しも直す。
 
