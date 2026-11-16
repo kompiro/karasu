@@ -1045,7 +1045,7 @@ const ESCAPED_BRACKET = "\u0001";
  * destination or a bare URL (GFM), whitespace, `<` and an unbalanced `)` end it,
  * and a quote does not (`[x](https://kompiro.github.io'@evil.com)` opens
  * evil.com). Inside a quoted HTML attribute, the quote and whitespace end it, and
- * `)` does not. After `<`, `>` and whitespace end it.
+ * `)` does not. After `<` and in an unquoted attribute, `>` and whitespace end it.
  */
 function urlEnd(text: string, opener: string): number {
   const quote = opener === '"' || opener === "'" ? opener : null;
@@ -1055,7 +1055,8 @@ function urlEnd(text: string, opener: string): number {
     if (/\s/.test(c)) return i;
     if (quote !== null) {
       if (c === quote) return i;
-    } else if (opener === "<") {
+    } else if (opener === "<" || opener === "=") {
+      // After `<`, and in an unquoted HTML attribute (`href=https://...>`).
       if (c === ">") return i;
     } else if (c === "<") {
       return i;
