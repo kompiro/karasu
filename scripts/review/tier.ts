@@ -1030,20 +1030,48 @@ function decodeReferences(text: string): string {
  * GitHub opens evil.com (#3786).
  */
 const markdownEscapes = (text: string): string =>
-  text.replace(/\\([!-/:-@[-`{-~])/g, "$1").replaceAll("\\", "%5c");
-
-/** Where a word ends: what may follow an authority directly (D6). */
-const WORD_END = /[\s)\]>"'`]/;
+  text
+    .replace(/\\([()<>])/g, ESCAPED_BRACKET)
+    .replace(/\\([!-/:-@[-`{-~])/g, "$1")
+    .replaceAll("\\", "%5c");
 /**
- * Punctuation that may follow an authority (D6) when only punctuation follows it
- * up to the end of the word (`**https://karasu.kompiro.dev**`). Followed by more,
- * it is part of the host: `karasu.kompiro.dev_.evil.com` is a name under `evil.com`.
+ * What an escaped `(`, `)`, `<` or `>` reads as: a character that ends no URL, so
+ * `[x](https://kompiro.github.io\)@evil.com)` keeps going to `evil.com`.
  */
-const TRAILING_AFTER_HOST = /^[*_~,;!:][*_~,;!:.]*$/;
-/** Where a path ends (D6). */
-const PATH_END = /[\s)>"'`]/;
-/** Trailing punctuation an autolink leaves out (GFM). */
-const TRAILING_PUNCTUATION = /[.,:;!?*_~]+$/;
+const ESCAPED_BRACKET = "\u0001";
+
+/**
+ * Where a URL ends depends on what opened it (#3786). Inside a Markdown link
+ * destination or a bare URL (GFM), whitespace, `<` and an unbalanced `)` end it,
+ * and a quote does not (`[x](https://kompiro.github.io'@evil.com)` opens
+ * evil.com). Inside a quoted HTML attribute, the quote and whitespace end it, and
+ * `)` does not. After `<`, `>` and whitespace end it.
+ */
+function urlEnd(text: string, opener: string): number {
+  const quote = opener === '"' || opener === "'" ? opener : null;
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (/\s/.test(c)) return i;
+    if (quote !== null) {
+      if (c === quote) return i;
+    } else if (opener === "<") {
+      if (c === ">") return i;
+    } else if (c === "<") {
+      return i;
+    } else if (c === "(") {
+      depth++;
+    } else if (c === ")") {
+      if (depth === 0) return i;
+      depth--;
+    }
+  }
+  return text.length;
+}
+/** What may trail a host when nothing follows it in the URL (`**`, `.`, `),`). */
+const TRAILING_AFTER_HOST = /^[.,:;!?*_~'"\])>]+$/;
+/** Trailing punctuation an autolink leaves out (GFM), and a closing quote or bracket. */
+const TRAILING_PUNCTUATION = /[.,:;!?*_~'"\])>]+$/;
 /** A commit SHA as a path segment, alone or before a suffix (`.patch`, `~1`, `^`). */
 const SHA_SEGMENT = /^[0-9a-f]{7,}(?:[.~^]|$)/;
 /** The only fragment the app hosts take: an element anchor, which carries no content (#3786). */
@@ -1060,7 +1088,7 @@ const isReservedHost = (host: string): boolean =>
 
 /**
  * D6: whether `host` with `rest` (what follows the authority: path, query and
- * fragment, already cut at {@link PATH_END}) is one of karasu's domains.
+ * fragment, up to where {@link urlEnd} ends the URL) is one of karasu's domains.
  */
 function isKarasuDomain(host: string, rest: string): boolean {
   const q = rest.search(/[?#]/);
@@ -1103,24 +1131,27 @@ function isKarasuDomain(host: string, rest: string): boolean {
 
 /**
  * The key an outside URL is counted under, or null when it is one of karasu's
- * domains. `text` starts right after `//` (or at `www.`, which has no `//`).
+ * domains. `text` starts right after `//` (or at `www.`, which has no `//`), and
+ * `opener` is the character before the URL, which decides where it ends.
  */
-function outsideAuthority(text: string): string | null {
-  const authority = /^[a-z0-9.-]*(?::[0-9]+)?/.exec(text)?.[0] ?? "";
-  const next = text.slice(authority.length);
-  const wordEnd = next.search(WORD_END);
-  const word = wordEnd === -1 ? next : next.slice(0, wordEnd);
-  // `@` (userinfo), `%`, a non-ASCII letter, punctuation inside the host, or anything else.
-  if (word !== "" && !/^[/?#]/.test(word) && !TRAILING_AFTER_HOST.test(word)) {
-    return `//${authority}${word.slice(0, 40)}`;
+function outsideAuthority(text: string, opener: string): string | null {
+  const url = text.slice(0, urlEnd(text, opener));
+  const authority = /^[a-z0-9.-]*(?::[0-9]+)?/.exec(url)?.[0] ?? "";
+  const next = url.slice(authority.length);
+  const hostEnd = next.search(/[/?#]/);
+  const tail = hostEnd === -1 ? next : next.slice(0, hostEnd);
+  // Anything inside the authority but the host: userinfo (`@`), an escape, a
+  // non-ASCII letter, a name under another domain (`_.evil.com`).
+  if (tail !== "" && !(hostEnd === -1 && TRAILING_AFTER_HOST.test(tail))) {
+    return `//${authority}${tail.slice(0, 40)}`;
   }
   const host = authority.replace(/:[0-9]+$/, "").replace(/\.$/, "");
   if (host === "") return `//${authority}`;
-  const end = next.search(PATH_END);
-  const raw = /^[/?#]/.test(next) ? (end === -1 ? next : next.slice(0, end)) : "";
-  const key = `//${host}${raw}`;
-  if (raw.includes("..") || raw.includes("%") || raw.includes("//")) return key;
-  return isKarasuDomain(host, raw.replace(TRAILING_PUNCTUATION, "")) ? null : key;
+  // The same target with or without the punctuation an autolink leaves out.
+  const path = next.replace(TRAILING_PUNCTUATION, "");
+  const key = `//${host}${path}`;
+  if (next.includes("..") || next.includes("%") || next.includes("//")) return key;
+  return isKarasuDomain(host, path) ? null : key;
 }
 
 /**
@@ -1154,7 +1185,7 @@ const HOST_START = /^(?:[a-z0-9_%@\u0080-\uffff-]|\[[0-9a-f:.]*\])/;
  * `//[theme//]`), a glob's star and `//{port//}` do not.
  */
 const NAMES_A_HOST =
-  /^[^\s/?#)\]>"'`<]*?(?:[@%]|[^.\u3002\uff0e\uff61][.\u3002\uff0e\uff61][^.\u3002\uff0e\uff61\s/?#)\]>"'`<])/;
+  /^[^\s/?#<]*?(?:[@%]|[^.\u3002\uff0e\uff61][.\u3002\uff0e\uff61][^.\u3002\uff0e\uff61\s/?#<])/;
 /** What splits words for the relative-path rule (D4). */
 const WORD_SPLIT = /[\s()<>"'`[\]]+/;
 
@@ -1170,18 +1201,20 @@ function collectLinks(text: string, dir: string): string[] {
       keys.push(`${m[0]}${rest.slice(0, 40).split(/\s/, 1)[0]}`);
       continue;
     }
-    const key = outsideAuthority(rest.slice(2));
+    const key = outsideAuthority(rest.slice(2), text[m.index - 1] ?? "");
     if (key !== null) keys.push(key);
   }
   for (const m of text.matchAll(OTHER_SCHEMES)) keys.push(m[0]);
   for (const m of text.matchAll(HOST_SLASH)) {
+    // The `//` of `http://` and `https://` is read with the scheme, which knows what opened the URL.
+    if (/https?:\/$/.test(text.slice(Math.max(0, m.index - 7), m.index))) continue;
     const after = text.slice(m.index + 1);
     if (!HOST_START.test(after) && !NAMES_A_HOST.test(after)) continue;
-    const key = outsideAuthority(after);
+    const key = outsideAuthority(after, text[m.index - 2] ?? "");
     if (key !== null) keys.push(key);
   }
   for (const m of text.matchAll(/(?<![a-z0-9./-])www\./g)) {
-    const key = outsideAuthority(text.slice(m.index));
+    const key = outsideAuthority(text.slice(m.index), text[m.index - 1] ?? "");
     if (key !== null) keys.push(key);
   }
   for (const m of text.matchAll(EMAIL)) keys.push(`mailto:${m[0]}`);

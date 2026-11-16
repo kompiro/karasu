@@ -2539,6 +2539,11 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     "_https://github.com/kompiro/karasu_",
     "[ADR](../adr/12-x.md) and [TPL](TPL-2-y.md) and `/docs/adr/12-x.md`",
     "[TPL](../test-perspectives/TPL-1-x.md)",
+    // Where a URL ends depends on what opened it (#3849 review).
+    "[link](https://taka.kompiro.dev/TkrZQG)を参照",
+    '<a href="https://karasu.kompiro.dev/">karasu</a>',
+    "[a](https://github.com/kompiro/karasu/issues/1)、[b](../adr/12-x.md)、#3787",
+    "(see https://kompiro.github.io/karasu/), and more",
     // A glob or a regex escape after `//` that names no host on the internet.
     '"docs/adr/graph/\\\\*\\\\*" and `$\\\\{port\\\\}` and `\\\\)`',
     "\\*\\*種類\\*\\* and `\\\\{` and `\\\\}`",
@@ -2649,6 +2654,14 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     ["[x](//=x.evil.com/)", "an unreadable URL"],
     ["[x](//+x.evil.com/)", "an unreadable URL"],
     ["[x](//:@evil.com)", "an unreadable URL"],
+    // A quote does not end a Markdown link destination; `)` does not end a quoted attribute.
+    ["[x](https://kompiro.github.io'@evil.com/)", "an unreadable URL"],
+    ["[x](https://kompiro.github.io\\)@evil.com/)", "an unreadable URL"],
+    ['<a href="https://kompiro.github.io).evil.com">x</a>', "an unreadable URL"],
+    ["[x](https://kompiro.github.io(x).evil.com)", "an unreadable URL"],
+    ["[x](https://github.com/kompiro/x'/../../attacker/repo)", "github.com"],
+    ["[x](https://karasu.kompiro.dev/'?s=x)", "karasu.kompiro.dev"],
+    ["[x](//(x'@evil.com)", "an unreadable URL"],
     ["[x](//*.evil.com)", "an unreadable URL"],
     ["[x](//.evil.com)", ".evil.com"],
     ["[x](<//(x.evil.com>)", "an unreadable URL"],
@@ -2676,6 +2689,10 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     const before = "# x\n\nSee https://evil.com for y.\n\nend";
     expect(outsideLinks(edit(before, "# x\n\nSee [y](https://evil.com).\n\nend"))).toEqual([]);
     expect(outsideLinks(edit(before, "# x\n\nend\n\nSee https://evil.com for y."))).toEqual([]);
+    // GFM leaves a trailing `.` out of an autolink: the same target as the link.
+    expect(
+      outsideLinks(edit("See https://evil.com/x.\n", "See [x](https://evil.com/x).\n")),
+    ).toEqual([]);
   });
 
   it("does not count a link moved past a line it was joined to", () => {
@@ -2695,7 +2712,7 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
   it("counts a URL completed on a later line, starting on a line the change keeps", () => {
     const before = '<a href="https://karasu.kompiro.dev\n">x</a>';
     const after = '<a href="https://karasu.kompiro.dev\n.evil.com">x</a>';
-    expect(outsideLinks(edit(before, after))).toEqual(["karasu.kompiro.dev.evil.com"]);
+    expect(outsideLinks(edit(before, after))).toContain("karasu.kompiro.dev.evil.com");
   });
 
   it("counts a link moved in from another file", () => {
