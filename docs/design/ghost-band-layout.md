@@ -63,7 +63,7 @@ ghost が 20 件を超えるビューでは、ghost の接続線の 70〜98% が
 - メリット: ドメインの境界が図に出る（ghost の目的、concepts の「Ghost」節）。Dify `IdentityAccess` の 101 枚は 18 ドメインのもので、決定 2 の規則で分けるとすべて上の帯に入り、16 枠と単独のカード 2 枚（ghost が 1 件だけのドメイン）になる。図はドメイン単位で読める。#3804 の集約の単位にもなる。ghost system の枠（ADR-328）と同じ見た目の語彙を使える。
 - デメリット: 枠の分だけ面積が増える。枠の中の並べ方を決める必要がある。
 
-ADR-460 は案 A（ghost domain を所属 service の枠で包む）を却下している。理由は 2 つで、「ドメインが 1 つだけなのに service の枠が出る過剰なラッピング」と「左右に置くと ghost system と衝突する」だった。後者は帯が上下にあるので当たらない。前者は件数が 1 件の枠にだけ当たるので、**ghost が 1 件だけの外部ドメイン（ghost domain なら外部 service）は枠を作らず、今と同じ subLabel 付きのカードとして帯に並べる**。枠は 2 件以上のときだけ作る。ghost が 1 件ずつ散らばったビューは今と同じ見た目のまま、予算で折り返すだけになる。
+ADR-460 は案 A（ghost domain を所属 service の枠で包む）を却下している。理由は 2 つで、「ドメインが 1 つだけなのに service の枠が出る過剰なラッピング」と「左右に置くと ghost system と衝突する」だった。後者は帯が上下にあるので当たらない。前者は件数が 1 件の枠にだけ当たるので、**「外部ドメイン（ghost domain なら外部 service）× 帯の側」の組で ghost が 1 件だけのものは枠を作らず、今と同じ subLabel 付きのカードとして帯に並べる**。枠は 2 件以上のときだけ作る。ghost が 1 件ずつ散らばったビューは今と同じ見た目のまま、予算で折り返すだけになる。
 
 #### 案 P3: ghost を焦点の配置に混ぜる
 
@@ -85,7 +85,7 @@ ADR-460 / ADR-1911 のまま、すべての ghost を焦点の枠の下に置く
 
 他ドメインから自ドメインを参照する ghost（incoming）は焦点の枠の上に、自ドメインが参照する ghost（outgoing）は下に置く。エンティティの関連は「参照する側 → 参照される側」の向きで、焦点の中の層配置も参照する側を上に置く（`assignLayers` は入る辺の無いノードを最上段に置く）。片方向の関連だけを持つ ghost の線は、上から下へ流れる。
 
-- 自ドメインと両方向の関連を持つ ghost は、関連（`ghostEntityEdges`）の本数の多い向きで置く（incoming が多ければ上、outgoing が多いか同数なら下。同数のときは ADR-460 の既定の側）。その ghost の少ない向きの関連の線だけは流れに逆らい、下から上へ向かう（下の帯から焦点へ、または焦点から上の帯へ）。同じ相手との相互の関連（ADR-3027 で 1 本に描く対）は同数なので下に置き、1 本の線になる。Dify では `IdentityAccess` に 2 件（どちらも上）、`AppManagement` に 1 件（同数で下）、`Workflow` に 4 件（上 1・下 3）ある。この規則は kompiro が PR #3842 で選んだ（常に下に置く案に代えて）。
+- 自ドメインと両方向の関連を持つ ghost は、関連（`ghostEntityEdges`）の本数の多い向きで置く（incoming が多ければ上、outgoing が多いか同数なら下。同数のときは ADR-460 の既定の側）。その ghost の少ない向き（同数なら incoming）の関連の線だけは流れに逆らい、下から上へ向かう（下の帯から焦点へ、または焦点から上の帯へ）。同じ相手との相互の関連の対は両向きに 1 本ずつ数えるので、置く側はほかの関連で決まる（対だけなら同数で下）。対を 1 本の線にまとめる ADR-3027 は ghost の線を対象外にしているので、スライス A では対は重なった 2 本の直線のまま残り、スライス B で `mutual-pair.ts` に通すと 1 本になる。Dify では `IdentityAccess` に 2 件（どちらも上）、`AppManagement` に 1 件（同数で下）、`Workflow` に 4 件（上 1・下 3）ある。この規則は kompiro が PR #3842 で選んだ（常に下に置く案に代えて）。
 - 外部ドメインが上下の両方に ghost を持つと、そのドメインの枠は上下に 1 つずつできる。
 
 ### 配線
@@ -120,7 +120,7 @@ ADR-460 / ADR-1911 のまま、すべての ghost を焦点の枠の下に置く
    - **障害物としての帯の枠**: 帯の枠は `runRoutingChain` の `opts` の新しい必須の項目（例: `bandFrames: Rect[]`）で渡す。`groupFrames` には入れない（`groupFrames` は gutter・lane・trunk の判断にも使われるので、帯の枠が group として数えられてしまう）。必須にするので、ほかの呼び出し元（複数 system の root、deploy ビュー）も空の配列を明示する（TPL-219）。端点を中に持たない線は帯の枠を横切らない（group 枠と同じ、端点ごとの免除）。
    - **焦点の枠のタイトル**: 上の帯から入る線は、焦点の枠のタイトル帯を縦に通るが、タイトルの文字の箱（ラベルの幅 × `CONTAINER_LABEL_HEIGHT`）は横切らない。柵はこの箱との交差で測る。
 
-ADR に昇格するときは、ADR-460 と ADR-1911 の「下に 1 行で置く」部分を本 ADR で置き換える（`refines`）。ADR-460 が却下した案 A（ghost domain を service の枠で包む）を 2 件以上の場合に限って採ることも、却下理由のどちらが当たらなくなったかと一緒に ADR に書く。
+ADR に昇格するときは、ADR-460 と ADR-1911 の「下に 1 行で置く」部分を本 ADR で置き換える（`refines`）。ADR-460 が却下した案 A（ghost domain を service の枠で包む）を 2 件以上の場合に限って採ることも、却下理由のどちらが当たらなくなったかと一緒に ADR に書く。スライス B で帯の線を相互の対の統合（ADR-3027 決定 1 は ghost の線を除いている）に通すことも、同じ ADR で ADR-3027 を `refines` する。
 
 ### スライス
 
@@ -135,14 +135,14 @@ sub-issue と親 Issue の `## Slice status` 表は、本 Design Doc のマー�
 
 **スライス A**
 
-1. `ghost-layout.ts`: `placeGhostRow` を、帯を作る関数に置き換える。入力は `{ node, key, groupLabel, side, partnerIds }` の列、幅予算、焦点の枠。出力は ghost の LayoutNode、帯の枠（`ContainerRect`、`ghost: true`）、帯が予算で切られたかどうか。
+1. `ghost-layout.ts`: `placeGhostRow` を、帯を作る関数に置き換える。入力は `{ node, key, groupLabel, side, partnerIds }` の列、幅予算、焦点の枠。出力は ghost の LayoutNode、帯の枠（`ContainerRect`、`ghostBand: true`）、帯が予算で切られたかどうか。
 2. `view-slice.ts` / `entity-relations.ts`: 帯の側を決めるために、ghost ごとに incoming / outgoing の関連の本数を数えられるようにする（`ghostEntityEdges` の向きから layout 側で数えられるなら slice は変えない）。ghost domain も同じ。
 3. `layout.ts`: `layoutInner` から帯に幅予算を渡し、`widthBound` を `placed.widthBound || band.widthBound` にする。上の帯を置いたら、外側の枠が上にも広がるようにする（今は下と右だけ広げる）。
 4. 柵（TPL-2598、修正前のツリーで落ちることを確かめてから固定する）:
-   - 合成フィクスチャ: 自ドメイン 4〜6 エンティティ、外部ドメイン 8 つ以上、ghost 40 件以上、上下の両方に ghost があるモデル。エンティティビューの canvas が縦横比の範囲に入ること。
+   - 合成フィクスチャ: 自ドメイン 4〜6 エンティティ、外部ドメイン 8 つ以上、ghost 40 件以上、上下の両方に ghost があり、両方向の関連を持つ ghost（incoming が多い・outgoing が多い・同数）を含むモデル。エンティティビューの canvas が縦横比の範囲に入ること。
    - 同じ形の service ビューのフィクスチャ（service をまたぐ domain エッジを多数）で、ghost domain も同じく範囲に入ること。
    - 帯の枠がほかの枠・カードと重ならないこと。枠の順が相手の x の順と一致すること。
-   - ghost が 1 件だけの外部ドメインは枠を作らず、subLabel 付きのカードになること。同じドメインが上下に枠を持つとき、2 つの枠の `id` が異なること。
+   - 「外部ドメイン × 帯の側」の組で ghost が 1 件だけのものは枠を作らず、subLabel 付きのカードになること（上下に 1 件ずつのドメインは、カード 2 枚になる）。同じドメインが上下に枠を持つとき、2 つの枠の `id` が異なること。
    - 両方向の関連を持つ ghost が、incoming が多ければ上の帯に、outgoing が多ければ下の帯に、同数なら下の帯に置かれること（フィクスチャは 3 つの場合をそれぞれ 1 件以上含む）。
    - ghost を持たないビューの SVG が変わらないこと（既存の snapshot と routing-parity の corpus）。
 5. 実測: 3 モデルの範囲外のビュー数（main では 51 件）と、Dify `IdentityAccess` / `AppManagement` の canvas の before / after を PR に書く。目標は範囲外 0 件で、残ったものは理由を書く。
@@ -170,7 +170,7 @@ sub-issue と親 Issue の `## Slice status` 表は、本 Design Doc のマー�
   - 両方向の関連を持つ ghost は、関連の本数の多い向きの帯にある（同数なら下）
   - fit した図が画面の形に収まり、ghost の線がカードを横切らない（スライス B）
 - spec（スライス A）: 次の 3 か所を書き換える。`syntax.md` を変えるので `pnpm run lint:skill-reference-bundle-sync --write` も実行する。
-  - `docs/spec/syntax.md` の entity view の段落（「sub-labelled with its owning domain」）: 外部ドメインの枠に入ること、1 件だけなら subLabel のまま、参照の向きで上下に分かれること（両方向なら本数の多い向き、同数なら下）。
+  - `docs/spec/syntax.md` の entity view の段落（「sub-labelled with its owning domain」）: 外部ドメインの枠に入ること、1 件だけなら subLabel のまま、参照の向きで上下に分かれること（両方向なら関連の本数の多い向き、同数なら下）。
   - `docs/spec/permalink.md` の `<view>` の項（同じ文言）: 同じ内容に揃える。
   - `docs/spec/permalink.ja.md` の `<view>` の項: 「他ドメイン先の ghost は後続で入る」は ADR-1911 の時点ですでに古いので、英語版と同じ内容に書き換える。
   - `docs/spec/syntax.ja.md` には subLabel の記述が無いので変えない。
