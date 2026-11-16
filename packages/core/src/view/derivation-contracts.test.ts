@@ -628,9 +628,10 @@ const NOT_A_DERIVATION: Record<string, string> = {
     "synthesizes ghost edges: re-endpoints `system.edges` and deriveInfraEdges' output onto " +
     "deploy containers, keeps `label` and `kind`, drops tags and annotations, and dedupes by " +
     "`from`/`to` alone, so a sync and an async edge between the same containers collapse into " +
-    "whichever came first. Not a row because the deploy view draws no attribute a row could " +
-    "protect: layoutDeploy hands the renderer only `from`, `to` and `label`, so every ghost " +
-    "edge is drawn in one style and the kept `kind` reaches no style rule. Once the deploy " +
+    "whichever came first. Not a row because neither distinction TPL-510 guards (`kind`, tags) " +
+    "reaches the deploy view: layoutDeploy hands the renderer only `from`, `to` and `label` " +
+    "(`label` passes through as authored), so every ghost edge is drawn in one style and the " +
+    "kept `kind` reaches no style rule. Once the deploy " +
     "view styles ghost edges by `kind` or tags, this needs a row and a dedupe key with `kind`",
   // derived-edges.ts
   buildDomainServiceMap: "an index from domain to owning service",
