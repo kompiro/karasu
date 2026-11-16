@@ -8,8 +8,10 @@ name: Release — Prepare
 # `chore/release-YYYY-MM-DD` branch and opens a tracking Issue (label
 # `release`) with the link that opens the release PR. Review the versions +
 # CHANGELOG in that PR and squash-merge it: the merge touches
-# packages/**/CHANGELOG.md and triggers Release (release.yml), which publishes
-# npm and the VS Code extension, records the Release and closes the Issue.
+# packages/**/CHANGELOG.md and triggers Release (release.yml), which stages
+# the npm versions and publishes the VS Code extension. Once the staged
+# versions are approved, release-confirm.yml records the Release and closes
+# the Issue (#3240).
 #
 # We push a branch rather than open the PR because GitHub Actions PR creation
 # is disabled (Issue #1370); the Issue carries the "Compare & pull request"

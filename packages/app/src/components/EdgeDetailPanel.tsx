@@ -4,6 +4,7 @@ import DOMPurify from "dompurify";
 import { isSafeLinkUrl } from "@karasu-tools/core";
 import type { DomainEdgeDetail } from "@karasu-tools/core";
 import { useTranslation } from "../i18n/index.js";
+import { InjectedHtml } from "./InjectedHtml.js";
 
 /**
  * One authored edge, as read back from the SVG's `data-edge-*` attributes.
@@ -136,10 +137,7 @@ export function EdgeDetailPanel(props: EdgeDetailPanelProps) {
           )}
 
           {descriptionHtml && (
-            <div
-              className="node-detail-description"
-              dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-            />
+            <InjectedHtml className="node-detail-description" html={descriptionHtml} />
           )}
 
           {props.edge.links.length > 0 && (

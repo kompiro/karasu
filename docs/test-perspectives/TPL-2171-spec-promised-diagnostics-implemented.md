@@ -74,7 +74,8 @@ spec に診断の約束を書く / 約束済み領域の実装を変更すると
 - [ ] spec に「警告 / エラーを出す」と書いた約束それぞれに、対応する専用診断コードが実装に存在するか（`.claude/rules/spec-audit.md` の経路 — `types/warnings.ts` の kind → `resolver/warnings.ts` の発行箇所 → i18n メッセージ — を repo-wide で追って確認。構文処理本体だけの grep で「不在」と結論しない） [judgment]
 - [ ] 約束だけ先行する場合、同じ PR で実装するか、tracking Issue を起こして spec 側に注記したか [judgment]
 - [ ] 禁止構文（配置制限など）は汎用 unexpected-token ではなく、spec の意図を伝える専用メッセージで拒否しているか
-- [ ] 診断の register（error / warning / info）は spec の約束および TPL-1386 の判定樹と一致しているか
+- [ ] 診断の register（error / warning / info）は `docs/spec/diagnostics.md` / `.ja.md` の Severity 列と一致しているか [guard: `packages/core/src/types/diagnostics-catalog.test.ts`]
+- [ ] 診断の register は TPL-1386 の判定樹と一致しているか [judgment]
 - [ ] 実装から診断を削除・rename するとき、spec 側の約束も同じ PR で更新したか [guard: `packages/core/src/types/diagnostics-catalog.test.ts`]
 
 ## 既知の対処パターン
@@ -98,6 +99,7 @@ spec に診断の約束を書く / 約束済み領域の実装を変更すると
   実装の全診断コードと warning kind が `docs/spec/diagnostics.md` / `.ja.md` に載っていること、
   逆に実装から消えたコードが catalog の表に残っていないこと（「names no retired code」）。
   診断の削除・rename で spec 側を更新し忘れると落ちる。spec の散文が約束した診断の存在そのものは対象外
+- `packages/core/src/types/diagnostics-catalog.test.ts` — `diagnostics catalog severity (TPL-2171)`。`Diagnostic` の `severity` はコードごとに `packages/core/src/types/diagnostic-severity.ts` の `DIAGNOSTIC_SEVERITY` から型が決まるので、発行箇所が別の severity を書くと CI の `pnpm typecheck` で落ちる。`severity: "error"` を固定で書く helper（`ctx.error`・`rejectConstruct` など）は `ErrorDiagnosticCode` しか受け取らない。その表と `warningSeverity()` を catalog の Severity 列と突き合わせる
 
 ## 派生元 spec
 
