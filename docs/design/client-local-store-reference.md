@@ -214,7 +214,7 @@ resource <storageKind> [<Id>] "<name>"
 - `<Id>` は省略できる。名前（文字列）は省略不可のまま。storage のキーやパスは事実として残したい。
 - **client の storage の形として読む条件**: client の中の `resource` で、次の token が 6 つの storage kind のどれかであるか、3 つ目の token が StringLiteral である（今日の条件）とき。どちらでもなければ今日どおり通常の `resource` の宣言として読み、KRS010 になる（`resource Foo { }` の扱いは変わらない）。
 - この形として読んだ後、id の位置には Identifier を置く。キーワードとして字句解析される語（`table`、`storage` など）がそこにあれば、id に使えない語の error を出す。名前が無い（`resource opfs Projects` で行が終わる）ときは、名前が無い error を出す。どちらも今日は KRS010 + KRS100 になる。
-- 名前は `resource` と同じ行に書く。次の行の文字列を名前として読まないよう、TPL-3752 の共有の読み手（`opensEdgeOnLaterLine` / `readValueAfter` / `reportMissingValue`）を通す。今日の 3 token の判定もこれに揃える。client の block は明示した source のエッジを受け付けるので、今日 `resource opfs` の次の行に `"WebApp" -> A` を書くと、文字列が名前として読まれて `->` で KRS100 になる。TPL-3752 のチェックリストは「client の `resource` の名前」を `ctx.expect` でよい箇所に挙げているので、同じ PR でこの例を添えて直す。
+- 名前は TPL-3752 の共有の読み手（`opensEdgeOnLaterLine` / `readValueAfter` / `reportMissingValue`）で読み、今日の 3 token の判定もこれに揃える。後の行の文字列は、今日どおり名前として読む（今日パースが通るファイルを通し続けるため）。ただしその行がエッジを始める（`"WebApp" -> A`）なら名前として読まず、名前が無い error を出す。これは ADR-3752 が省略できる token に定めた「次の行のエッジで止まる」と同じ規則で、今日 KRS100 になっている形だけが変わる。後の行の名前そのものを error にするかは、edge の label について同じ問いを扱う #3766 の決定に合わせ、本 Design Doc では決めない。client の block は明示した source のエッジを受け付けるので、今日 `resource opfs` の次の行に `"WebApp" -> A` を書くと、文字列が名前として読まれて `->` で KRS100 になる。TPL-3752 のチェックリストは「client の `resource` の名前」を `ctx.expect` でよい箇所に挙げているので、同じ PR でこの例を添えて直す。
 - formatter は id を含めて round-trip する（TPL-1101）。
 
 ### 2. 参照の解決
