@@ -124,8 +124,9 @@ Low のファイルから URL を拾い、新しく増えたもののホスト�
     - `karasu-nest.kompiro.dev` で query が無いもの（ギャラリーの投稿は operator だけ。ADR-2969）
     - `kompiro.github.io`（ドキュメントサイトと kompiro のページ）
     - `karasu.pages.dev`（本番の Cloudflare Pages）。branch の preview（`*.karasu.pages.dev`）は `spike/**` の push だけで誰の中身でも出せるので許さない
+    - `taka.kompiro.dev` で、パスが空・`/`・`/<slug>` のもの。`<slug>` は ASCII の英数字・`-`・`_` だけからなる 1 つの区切りで、その後に `/`・query（`?`）・fragment（`#`）が続けば外として数える。permalink の `short:`（ADR-1829）の形はこれに当たる
     - 登録できない名前（RFC 2606・RFC 6761）: `localhost`、`127.0.0.1`、`example.com`・`example.net`・`example.org` とそのサブドメイン、`*.example`・`*.test`・`*.invalid`・`*.localhost`
-  - `taka.kompiro.dev` は短縮リンクで行き先を確かめられないので許さない。permalink の `short:` に taka を書いた ADR は Medium になる
+  - `taka.kompiro.dev` の短縮リンクは、行き先を差分から確かめられないが、karasu のドメインと見なす（kompiro の決定）。残るリスクは、短縮リンクの行き先が外のサイトであること（マージの後に行き先を差し替えることも含む）で、分類器はそれを見分けない。行き先は kompiro のドメインの上にある taka のレコードが決め、Low の PR の差分からは変えられない。ADR-1829 の permalink は `source:`（リポジトリの中の `.krs`）を必須にしているので、記録は短縮リンクの行き先に頼らない
 - **D7: 結果。** 外の URL を 1 つでも新しく足したファイルは Medium になり、PR も Medium 以上になる。Review tier の summary と reasons に、ファイルとホスト（読めなかったものは「読めない URL」）を 1 行ずつ出す。Medium の PR は auto-merge されず、記録と人間の判断で通る
 - **D8: 一覧の置き場。** 分類器（`scripts/review/tier.ts`）の中に定数で置く。分類器は High のパスなので、一覧を広げる変更は CodeRabbit のラウンドと kompiro のレビューを通る
 
@@ -165,7 +166,7 @@ Low のファイルから URL を拾い、新しく増えたもののホスト�
    差分に含まれる場合）も同様に例外を適用せず、通常通りユーザー確認を経る
 +- 新しい ADR が karasu のドメインの外への URL を足すと、その ADR は Medium になり、
 +  auto-merge しない（`docs/process/review.md`「リスク段階」の「外のドメインへのリンク」）。
-+  上流の Issue や PR を引くトリアージの ADR や、taka の短縮リンクを書いた ADR はこれに当たり、人間が読む
++  上流の Issue や PR を引くトリアージの ADR はこれに当たり、人間が読む
  - PR を作った後に差分を足すときは、**push の前に** auto-merge を解いて draft に戻す。
    push した瞬間に auto-merge が確認前の差分をマージしうるからである。
    ```
@@ -178,8 +179,8 @@ Low のファイルから URL を拾い、新しく増えたもののホスト�
 3. `outsideLinks(f: ChangedFile): string[]` を足す。D3 の正規化、D4 の拾い方、D6 の判定、D5 の数の比較を行い、外として数えた URL の説明（ホストか「読めない URL」）を返す。読めないファイルは「読めないファイル」を返す。一覧（D6）は同じファイルの定数にする
 4. `classifyChange` で、ファイルの段階が Low でテストファイルでなく、`outsideLinks` が空でないとき、そのファイルを Medium にし、reasons と summary に出す。`fileTier` の中ではなく後段に置くのは、張り替えや ADR の判定がどの経路で Low を出しても同じ検査を通すためである
 5. `scripts/review/tier.test.ts` に足すテスト（TPL-2287）:
-   - 受け入れる（Low のまま）: `github.com/kompiro/karasu/issues/1`・`github.com/Kompiro/hane`・`github.com/kompiro/karasu/blob/main/x.md`、`karasu.kompiro.dev/`・`karasu-nest.kompiro.dev/auth/callback`、`kompiro.github.io/karasu/`、`karasu.pages.dev`、`localhost:5173`・`127.0.0.1`、`example.com` 系と `.example`・`.test`・`.invalid`、文末の `.` や `**…**` で囲んだ karasu の URL、既にある外のリンクを含む行の書き換えと、同じファイルの中での移動、テストファイルに足した外の URL
-   - 拒む（Medium）: github.com のほかの owner と `github.com/kompiro-evil/x`、`github.com/kompiro/../x`・`%2e%2e`、`github.com/kompiro/karasu/raw/main/x`・`/blob/<40 桁の SHA>/x`・`/commit/<SHA>`、`gist.github.com`・`raw.githubusercontent.com`、`taka.kompiro.dev/x`、`karasu.kompiro.dev/s?s=…`・`karasu.kompiro.dev/attacker/repo`、`spike-x.karasu.pages.dev`、`kompiro.dev.evil.com`・`evilkompiro.dev`、userinfo（`https://karasu.kompiro.dev@evil.com`）、非 ASCII のホスト（キリル文字の `о` を含む `kompirо.dev`）、パーセントエンコードしたホスト、バックスラッシュ（`https://karasu.kompiro.dev\@evil.com`・`/\evil.com`・`https:\\evil.com`・`https:\/\/evil.com`）、`http:evil.com`・`http:/evil.com`、大文字の `HTTPS://EVIL.COM`・`Www.evil.com`、`www.evil.com`、`//evil.com`（前が `(` `<` `"` `;` `,` `>` 空白・行頭のどれでも）・`///evil.com`・`//%65vil.com`・`//évil.com`、`<https://evil.com>`、参照の定義 `[x]: https://evil.com`、`[https://karasu.kompiro.dev](https://evil.com)`（リンクの文字列と行き先が違う）、画像 `![](https://evil.com/x.png)`、HTML の `href` と `src`、メールアドレス、`mailto:`・`javascript:`・`data:`、数値の文字参照（`https&#58;//evil.com`・`&#x2F;&#x2F;evil.com`・`;` の無い `&#58`）、名前付きの文字参照（`&colon;`）、改行・CR・タブで分けた URL（隣の行、空行をはさんだ別の hunk、変えていない行で始まる URL）、コードブロックの中の外の URL（構造を見分けないので数える）、別のファイルから移した外のリンク、新しい ADR とその昇格の PR、バイナリや hunk の無い TPL のファイル、リポジトリの根より上に出る相対パス（`![x](/../../../../attacker/repo/blob/main/x.png)`・`docs/adr/` からの `../../../x/y`）と `%2e%2e/` の相対パス
+   - 受け入れる（Low のまま）: `github.com/kompiro/karasu/issues/1`・`github.com/Kompiro/hane`・`github.com/kompiro/karasu/blob/main/x.md`、`karasu.kompiro.dev/`・`karasu-nest.kompiro.dev/auth/callback`、`kompiro.github.io/karasu/`、`karasu.pages.dev`、`taka.kompiro.dev/TkrZQG`・`taka.kompiro.dev/`、`localhost:5173`・`127.0.0.1`、`example.com` 系と `.example`・`.test`・`.invalid`、文末の `.` や `**…**` で囲んだ karasu の URL、既にある外のリンクを含む行の書き換えと、同じファイルの中での移動、テストファイルに足した外の URL
+   - 拒む（Medium）: github.com のほかの owner と `github.com/kompiro-evil/x`、`github.com/kompiro/../x`・`%2e%2e`、`github.com/kompiro/karasu/raw/main/x`・`/blob/<40 桁の SHA>/x`・`/commit/<SHA>`、`gist.github.com`・`raw.githubusercontent.com`、taka の形から外れたもの（`taka.kompiro.dev.evil.com`・`x.taka.kompiro.dev`・userinfo の `https://taka.kompiro.dev@evil.com`・`taka.kompiro.dev/a/b`・`taka.kompiro.dev/x?u=1`・`taka.kompiro.dev/x#y`・`taka.kompiro.dev/%41`・`taka.kompiro.dev/../x`）、`karasu.kompiro.dev/s?s=…`・`karasu.kompiro.dev/attacker/repo`、`spike-x.karasu.pages.dev`、`kompiro.dev.evil.com`・`evilkompiro.dev`、userinfo（`https://karasu.kompiro.dev@evil.com`）、非 ASCII のホスト（キリル文字の `о` を含む `kompirо.dev`）、パーセントエンコードしたホスト、バックスラッシュ（`https://karasu.kompiro.dev\@evil.com`・`/\evil.com`・`https:\\evil.com`・`https:\/\/evil.com`）、`http:evil.com`・`http:/evil.com`、大文字の `HTTPS://EVIL.COM`・`Www.evil.com`、`www.evil.com`、`//evil.com`（前が `(` `<` `"` `;` `,` `>` 空白・行頭のどれでも）・`///evil.com`・`//%65vil.com`・`//évil.com`、`<https://evil.com>`、参照の定義 `[x]: https://evil.com`、`[https://karasu.kompiro.dev](https://evil.com)`（リンクの文字列と行き先が違う）、画像 `![](https://evil.com/x.png)`、HTML の `href` と `src`、メールアドレス、`mailto:`・`javascript:`・`data:`、数値の文字参照（`https&#58;//evil.com`・`&#x2F;&#x2F;evil.com`・`;` の無い `&#58`）、名前付きの文字参照（`&colon;`）、改行・CR・タブで分けた URL（隣の行、空行をはさんだ別の hunk、変えていない行で始まる URL）、コードブロックの中の外の URL（構造を見分けないので数える）、別のファイルから移した外のリンク、新しい ADR とその昇格の PR、バイナリや hunk の無い TPL のファイル、リポジトリの根より上に出る相対パス（`![x](/../../../../attacker/repo/blob/main/x.png)`・`docs/adr/` からの `../../../x/y`）と `%2e%2e/` の相対パス
    - 相対パスで受け入れる（Low のまま）: `../adr/12-x.md`・`../test-perspectives/TPL-1-x.md`・`/docs/adr/12-x.md` のようにリポジトリの中に留まるもの
    - 段階が変わること: `docs/guide/` の Markdown と SVG、`docs/test-perspectives/` の `.md` 以外のファイルは Medium
    - 段階が変わらないこと: Medium・Design・High のファイルが外の URL を足しても、段階はそのまま
@@ -191,7 +192,7 @@ Low のファイルから URL を拾い、新しく増えたもののホスト�
 
 - 既存ユーザーへの影響: なし（開発の運用だけ）
 - `docs/guide/` の変更は Medium になり、kompiro が読む
-- 上流の Issue や PR を引く Dependabot のトリアージ ADR、公式ドキュメントへのリンクや taka の短縮リンクを足す ADR や TPL は Medium になり、kompiro が読む。2 か月半の実績では 12 件程度
+- 上流の Issue や PR を引く Dependabot のトリアージ ADR、公式ドキュメントへのリンクを足す ADR や TPL は Medium になり、kompiro が読む。2 か月半の実績では 12 件程度
 - 構造を見分けないので、コードブロックや地の文で外の URL に触れるだけ（`javascript:` スキームの説明など）でも Medium になる
 - ADR と TPL の索引の再生成 PR は、生成物が今 URL を含まないので影響しない。生成物が外の URL を含むようになると Medium になって自動マージが止まるので、そのときに扱いを決める
 - ドキュメント更新: `docs/process/review.md`、`.claude/rules/adr.md`
@@ -200,5 +201,5 @@ Low のファイルから URL を拾い、新しく増えたもののホスト�
 
 - ドメインの一覧は、実際に人に回ったリンクを見てから広げる。広げるのは分類器を変える High の PR で行う
 - 外のリンクの行き先が安全かどうか（中身）は判定しない。人に回すところまでを分類器が行う
-- 残るリスクとして受け入れるもの: 既にファイルにある外の URL（コードブロックの中の例を含む）を、数を増やさずにリンクへ書き換える変更は通る。本件の後にその URL が入ったなら、入ったときに人が読んでいる。許可したドメインの中の、karasu の誰かが置いた中身（Issue に貼った画像など）は確かめない
+- 残るリスクとして受け入れるもの: 既にファイルにある外の URL（コードブロックの中の例を含む）を、数を増やさずにリンクへ書き換える変更は通る。本件の後にその URL が入ったなら、入ったときに人が読んでいる。許可したドメインの中の、karasu の誰かが置いた中身（Issue に貼った画像など）は確かめない。taka の短縮リンクの行き先も確かめない（D6）
 - テストファイルの URL（テストの実行時に取りにいく先）は本件の対象外。新しいテストファイルが CI でコードを動かすのは ADR-3286 で受け入れた範囲である
