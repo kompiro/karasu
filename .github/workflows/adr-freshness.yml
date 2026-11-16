@@ -42,7 +42,7 @@ jobs:
           # The check walks main's first-parent history back 50 hours.
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
 
       - uses: actions/setup-node@v7.1.0
         with:
