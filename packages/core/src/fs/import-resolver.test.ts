@@ -3289,6 +3289,26 @@ facet pii {
       expect(result.diagnostics.filter((d) => d.severity !== "info")).toEqual([]);
     });
 
+    // The current, wrong state of #3846: the stub the path import left collides
+    // with the declaration it stands for. The fix for #3846 has to flip this.
+    it("a path import, then the named import of its system, collides with its own stub (#3846)", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { Shop.Api.Order } from "lib.krs"\nimport { Shop } from "lib.krs"\n`,
+      );
+      await fs.writeFile(
+        "/project/lib.krs",
+        `system Shop {\n  service Api {\n    domain Order {}\n    domain Catalog {}\n  }\n}\n`,
+      );
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.krsFile.systems.map((s) => s.id)).toEqual(["Shop"]);
+      expect(result.diagnostics.map((d) => [d.code, d.params])).toEqual([
+        ["duplicate-node-in-system", { nodeId: "Api", systemId: "Shop" }],
+      ]);
+      const api = result.krsFile.systems[0].children.find((c) => c.id === "Api");
+      expect(api?.children.map((c) => c.id)).toEqual(["Order"]);
+    });
+
     it("a same-id system from another file reopens, as through a whole-file import", async () => {
       await fs.writeFile(
         "/project/index.krs",
