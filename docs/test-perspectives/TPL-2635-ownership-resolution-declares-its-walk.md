@@ -84,6 +84,13 @@ Group by: team のフレーム）と、**直近の owned 祖先まで遡る**読
 - `packages/core/src/view/derivation-contracts.test.ts` — `extractTeamDependencies` の
   preserves / transforms 行（TPL-510 の登録義務）
 
+チェックリスト 1 項目目には印を付けない。新しい箇所に当たるのは `ownerIndex` を直接読む新しい読み手だが、
+`KrsFile.ownerIndex` はただの `Map` で、読み手は renderer（`group-collapse.ts`・`layout-measure.ts`・
+`makeOwnerResolver` 経由の layout）、`compile-diff.ts`、app の `useChatSession/prompt.ts` に散っている。
+読み手を「宣言だけ」と「直近の owned 祖先まで遡る」の 2 つの helper に集めても、`Map` のままなら新しい
+`.get` を書けてしまうので、ガードにするには `ownerIndex` を helper からしか読めない型に変える必要があり、
+renderer と app の広い範囲を変えることになる。
+
 ## 派生元 spec
 
 - `docs/spec/syntax.md` §「team node」→「Ownership inheritance — the nearest owned ancestor」
