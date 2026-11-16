@@ -56,7 +56,19 @@ describe("a11y sweep: roles (TPL-1399 item 2)", () => {
     ).toContain('role: role "listitem" is not allowed on <button>');
   });
 
-  it("reports a menu owning a role it may not own", () => {
+  it("reports an option outside a listbox", () => {
+    expect(
+      problemsOf(
+        <div role="dialog" aria-label="Pick">
+          <div role="option" aria-selected="false">
+            a
+          </div>
+        </div>,
+      ),
+    ).toEqual(['role: role "option" needs a parent of group / listbox, found dialog']);
+  });
+
+  it("reports a menu that owns no menu item", () => {
     expect(
       problemsOf(
         <div role="menu">
@@ -65,7 +77,7 @@ describe("a11y sweep: roles (TPL-1399 item 2)", () => {
       ),
     ).toEqual(
       expect.arrayContaining([
-        'role: role "menu" may not own role "option"',
+        'role: role "menu" owns no group / menuitem / menuitemcheckbox / menuitemradio, only option',
         'role: role "option" needs a parent of group / listbox, found menu',
       ]),
     );
@@ -140,17 +152,19 @@ describe("a11y sweep: native elements and allowed roles", () => {
     ).toEqual([]);
   });
 
-  it("reports a menu owning a native checkbox", () => {
+  it("reports a menu whose only child is a native checkbox", () => {
     expect(
       problemsOf(
         <div role="menu">
           <input type="checkbox" aria-label="Wrap" />
         </div>,
       ),
-    ).toContain('role: role "menu" may not own role "checkbox"');
+    ).toContain(
+      'role: role "menu" owns no group / menuitem / menuitemcheckbox / menuitemradio, only checkbox',
+    );
   });
 
-  it("reports a tablist owning a heading", () => {
+  it("accepts a heading beside the tabs of a tablist (required owned roles are not the only ones allowed)", () => {
     expect(
       problemsOf(
         <div role="tablist">
@@ -158,7 +172,7 @@ describe("a11y sweep: native elements and allowed roles", () => {
           <button role="tab">System</button>
         </div>,
       ),
-    ).toContain('role: role "tablist" may not own role "heading"');
+    ).toEqual([]);
   });
 
   it("leaves a native select and its options alone", () => {
@@ -205,6 +219,33 @@ describe("a11y sweep: timing and inheritance", () => {
         </ul>,
       ),
     ).toEqual([]);
+  });
+
+  it("accepts an empty listbox, as an empty state renders it", () => {
+    expect(
+      problemsOf(
+        <div role="listbox" aria-label="Commands">
+          <div>No matching commands</div>
+        </div>,
+      ),
+    ).toEqual([]);
+  });
+
+  it("accepts a listbox that owns no option yet while it is aria-busy, and reports it otherwise", () => {
+    expect(
+      problemsOf(
+        <div role="listbox" aria-label="Projects" aria-busy="true">
+          <div role="status">Loading</div>
+        </div>,
+      ),
+    ).toEqual([]);
+    expect(
+      problemsOf(
+        <div role="listbox" aria-label="Projects">
+          <div role="status">Loading</div>
+        </div>,
+      ),
+    ).toEqual(['role: role "listbox" owns no group / option, only status']);
   });
 
   it("allows a caption in a grid", () => {

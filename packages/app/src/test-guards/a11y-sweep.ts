@@ -64,7 +64,7 @@ function checkAround(node: Node) {
   const el = node.nodeType === 1 ? (node as Element) : node.parentElement;
   if (!el?.isConnected) return;
   // A change inside a button can take its text away; a change inside a
-  // container can give it a child it may not own.
+  // container can take away the last child it must own.
   const button = el.closest(BUTTON_SELECTOR);
   if (button) checkOne(button);
   const owner = el.closest("[role], ul, ol, menu, table, thead, tbody, tfoot, tr");
@@ -146,8 +146,17 @@ export function startA11ySweep(): void {
     characterData: true,
     attributes: true,
     // Every attribute the checks read: `class` feeds `sr-only` and the
-    // exemption selectors, `aria-haspopup` the split-caret exemption.
-    attributeFilter: ["role", "aria-hidden", "hidden", "href", "class", "aria-haspopup"],
+    // exemption selectors, `aria-haspopup` the split-caret exemption,
+    // `aria-busy` the loading exception of required owned roles.
+    attributeFilter: [
+      "role",
+      "aria-hidden",
+      "hidden",
+      "href",
+      "class",
+      "aria-haspopup",
+      "aria-busy",
+    ],
   });
   // What is already in the document when the test starts.
   if (document.body) checkSubtree(document.body);

@@ -3,14 +3,17 @@
 //
 // - REQUIRED_CONTEXT: every ARIA 1.2 role that must sit inside a given parent
 //   role (`listitem` in a `list`, `menuitem` in a `menu`, …), and
-//   REQUIRED_OWNED: the container roles whose owned roles are fixed.
+//   REQUIRED_OWNED: the container roles that must own at least one of the
+//   listed roles (a `listbox` owns an `option`). As in ARIA 1.2, the list is
+//   what must be present, not the only children allowed: a `caption` in a
+//   `grid` or a heading beside the tabs of a `tablist` passes.
 // - ALLOWED_ROLES: the explicit roles ARIA in HTML allows on the interactive
 //   and list tags (`button` may be a `menuitem`, never a `listitem`).
 //
 // Native elements count by their implicit role (ARIA in HTML): lists, table
 // parts, buttons, links, nav, inputs by type, select, textarea, img, headings
-// and hr. So a `menu` owning a native checkbox or a `tablist` owning an `<h3>`
-// is reported. Native `<option>` / `<optgroup>` belong to their `<select>` and
+// and hr. So an explicit `menu` whose only child is a native checkbox is
+// reported. Native `<option>` / `<optgroup>` belong to their `<select>` and
 // are left out, as are tags whose implicit role no container rule names.
 //
 // The tables are the spec, not a list of the app's components, so a new
@@ -39,25 +42,30 @@ const REQUIRED_CONTEXT: Readonly<Record<string, readonly string[]>> = {
 };
 
 /**
- * The roles each container may own: ARIA 1.2 "Required Owned Elements" plus
- * `caption` and `separator` where the spec allows them. Used as the allowed
- * set (as axe-core's aria-required-children does), not as a presence check:
- * an empty list stays legal, so a loading state needs no exception.
+ * ARIA 1.2 "Required Owned Elements": a container with one of these roles owns
+ * at least one element with a listed role (`group` stands for the spec's
+ * "group → menuitem" and the like). It is a presence requirement, not a list
+ * of the only children allowed. Checked on explicit roles only (HTML allows
+ * an empty `<ul>` or `<table>`), and only on a container that owns some
+ * roled child: an empty one is left for review, as axe-core's
+ * aria-required-children does, because the app's empty states ("No matching
+ * commands") render an empty listbox. ARIA 1.2's loading exception,
+ * `aria-busy="true"` on the container or around it, also passes.
  */
 const REQUIRED_OWNED: Readonly<Record<string, readonly string[]>> = {
   directory: ["listitem"],
   feed: ["article"],
-  grid: ["caption", "row", "rowgroup"],
+  grid: ["row", "rowgroup"],
   list: ["listitem"],
   listbox: ["group", "option"],
-  menu: ["group", "menuitem", "menuitemcheckbox", "menuitemradio", "separator"],
-  menubar: ["group", "menuitem", "menuitemcheckbox", "menuitemradio", "separator"],
+  menu: ["group", "menuitem", "menuitemcheckbox", "menuitemradio"],
+  menubar: ["group", "menuitem", "menuitemcheckbox", "menuitemradio"],
   row: ["cell", "columnheader", "gridcell", "rowheader"],
   rowgroup: ["row"],
-  table: ["caption", "row", "rowgroup"],
+  table: ["row", "rowgroup"],
   tablist: ["tab"],
   tree: ["group", "treeitem"],
-  treegrid: ["caption", "row", "rowgroup"],
+  treegrid: ["row", "rowgroup"],
 };
 
 const LIST_ROLES = [
@@ -284,10 +292,11 @@ export function roleProblems(el: Element): string[] {
       );
     }
   }
-  const owned = REQUIRED_OWNED[role];
-  if (owned) {
-    for (const child of ownedRoles(el)) {
-      if (!owned.includes(child)) problems.push(`role "${role}" may not own role "${child}"`);
+  const required = explicit === role ? REQUIRED_OWNED[role] : undefined;
+  if (required && !el.closest('[aria-busy="true"]')) {
+    const owned = ownedRoles(el);
+    if (owned.length > 0 && !owned.some((child) => required.includes(child))) {
+      problems.push(`role "${role}" owns no ${required.join(" / ")}, only ${owned.join(", ")}`);
     }
   }
   return problems;
