@@ -9,8 +9,9 @@ import type {
   OrganizationBlock,
   ImportDeclaration,
   ImportEntry,
+  InfraKind,
 } from "../types/ast.js";
-import { createEmptyKrsFile } from "../types/ast.js";
+import { INFRA_KIND_SET, createEmptyKrsFile } from "../types/ast.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 import {
@@ -40,7 +41,7 @@ import {
 } from "../parser/node-path.js";
 
 import { MERGED_SPACE_REFERENCE_CODE_SET } from "./merged-space-codes.js";
-import { addStyleImport, isSameEdge } from "./merge-identity.js";
+import { addStyleImport, copyForReopen, isSameEdge, topLevelHomes } from "./merge-identity.js";
 import { INFRA_UNION_FIELDS, type InfraUnionField } from "./infra-merge.js";
 
 /** One candidate chain of an imported file: the nodes, and their id path. */
@@ -557,8 +558,16 @@ export class ImportResolver {
     for (const styleImport of resolved.styleImports) addStyleImport(mergedFile, styleImport);
   }
 
-  private isInfraKind(kind: string): kind is "database" | "queue" | "storage" {
-    return kind === "database" || kind === "queue" || kind === "storage";
+  private isInfraKind(kind: string): kind is InfraKind {
+    return INFRA_KIND_SET.has(kind);
+  }
+
+  /** A block this merge may reopen without touching the declaration's own arrays. */
+  private ownCopy(system: SystemNode): SystemNode {
+    const copy = copyForReopen(system);
+    this.reconciler.inherit(copy, system);
+    this.inheritDeclaringFile(copy, system);
+    return copy;
   }
 
   /**
@@ -811,12 +820,13 @@ export class ImportResolver {
 
       if (system.id === id) {
         // Look the id up first, as the wildcard path does (#3801): the importer
-        // may already hold this block, from a whole-file import of the same
-        // file or an earlier named import, and pushing it again draws it twice.
-        // A different block with the same id reopens.
+        // may already hold this block, and pushing it again draws it twice. A
+        // different block with the same id reopens. What lands is a copy, so a
+        // later reopen in this file does not write into the imported file's
+        // cached block (the wildcard path still does: #3847).
         const existing = mergedFile.systems.find((s) => s.id === system.id);
         if (existing) this.mergeSystemIntoExisting(existing, system);
-        else mergedFile.systems.push(system);
+        else mergedFile.systems.push(this.ownCopy(system));
         found = true;
       }
     }
@@ -904,7 +914,7 @@ export class ImportResolver {
         candidates.push({ path: chain.map((n) => n.id), chain });
         for (const child of node.children) walk(child, chain);
       };
-      for (const roots of this.topLevelHomes(importedFile).values()) {
+      for (const roots of topLevelHomes(importedFile).values()) {
         for (const root of roots) walk(root, []);
       }
       cached = candidates;
@@ -1020,7 +1030,7 @@ export class ImportResolver {
   private materializeChain(mergedFile: KrsFile, chain: KrsNode[]): void {
     const root = chain[0];
     const leaf = chain[chain.length - 1];
-    const home = this.topLevelHomes(mergedFile).get(root.kind);
+    const home = topLevelHomes(mergedFile).get(root.kind);
     if (home === undefined) return;
 
     let target = home.find((n) => n.id === root.id);
@@ -1059,24 +1069,6 @@ export class ImportResolver {
   }
 
   /**
-   * The top-level list each root kind lives in. One enumeration, read by the
-   * chain walk (which roots are candidates) and by materialization (where a
-   * root lands), so a future top-level kind cannot reach one and miss the
-   * other (TPL-1720).
-   */
-  private topLevelHomes(file: KrsFile): Map<string, KrsNode[]> {
-    return new Map<string, KrsNode[]>([
-      ["system", file.systems as KrsNode[]],
-      ["service", file.services as KrsNode[]],
-      ["client", file.clients as KrsNode[]],
-      ["domain", file.domains as KrsNode[]],
-      ["database", file.databases as KrsNode[]],
-      ["queue", file.queues as KrsNode[]],
-      ["storage", file.storages as KrsNode[]],
-    ]);
-  }
-
-  /**
    * Shallow stub of a chain node: identity and metadata, but no children or
    * edges, so a later import into the same root adds to it instead of
    * dragging in siblings the author did not name. The declaration it stands
@@ -1109,7 +1101,7 @@ export class ImportResolver {
       this.declaringFile.set(node, filePath);
       for (const child of node.children) walk(child);
     };
-    for (const roots of this.topLevelHomes(file).values()) {
+    for (const roots of topLevelHomes(file).values()) {
       for (const root of roots) walk(root);
     }
   }

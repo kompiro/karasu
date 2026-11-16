@@ -3309,6 +3309,24 @@ facet pii {
       expect(api?.children.map((c) => c.id)).toEqual(["Order"]);
     });
 
+    // What a named import lands is a copy: reopening it in one file must not
+    // change what the imported file exports to another (CodeRabbit on #3801).
+    it("reopening a named system leaves the imported file's own block unchanged", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { Unrelated } from "a.krs"\nimport { S } from "shared.krs"\n`,
+      );
+      await fs.writeFile(
+        "/project/a.krs",
+        `import { S } from "shared.krs"\nimport { S } from "extra.krs"\nsystem Unrelated {\n  service U\n}\n`,
+      );
+      await fs.writeFile("/project/shared.krs", `system S {\n  service Base\n}\n`);
+      await fs.writeFile("/project/extra.krs", `system S {\n  service Extra\n}\n`);
+      const result = await resolver.resolve("/project/index.krs");
+      const s = result.krsFile.systems.find((n) => n.id === "S");
+      expect(s?.children.map((c) => c.id)).toEqual(["Base"]);
+    });
+
     it("a same-id system from another file reopens, as through a whole-file import", async () => {
       await fs.writeFile(
         "/project/index.krs",
