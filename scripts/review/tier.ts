@@ -1003,11 +1003,11 @@ const CHARACTER_REFERENCE = /&#x([0-9a-f]+);?|&#([0-9]+);?|&([a-z][a-z0-9]*);/gi
 const UNREADABLE_REFERENCE = "\u0000reference:";
 
 /**
- * D3: numeric references and the six named ones decoded, every backslash read as
- * `/`, and the text lowercased. Another named reference is kept as a marker that
- * {@link collectLinks} counts as an unreadable URL.
+ * D3: numeric references and the six named ones decoded, and the text lowercased.
+ * Another named reference is kept as a marker that {@link collectLinks} counts as
+ * an unreadable URL. Backslashes are read in {@link countLinks}.
  */
-function normalizeLinks(text: string): string {
+function decodeReferences(text: string): string {
   return text
     .replace(CHARACTER_REFERENCE, (whole, hex: string, dec: string, name: string) => {
       if (name !== undefined) {
@@ -1020,9 +1020,17 @@ function normalizeLinks(text: string): string {
         ? ` ${UNREADABLE_REFERENCE}${whole.toLowerCase()} `
         : String.fromCodePoint(code);
     })
-    .replaceAll("\\", "/")
     .toLowerCase();
 }
+
+/**
+ * A backslash as Markdown reads it in a link: removed before ASCII punctuation
+ * (`\@`, `\.`), kept and written `%5c` before anything else. Read only as `/`
+ * (D3), `[x](https://kompiro.github.io\@evil.com)` would look like a path while
+ * GitHub opens evil.com (#3786).
+ */
+const markdownEscapes = (text: string): string =>
+  text.replace(/\\([!-/:-@[-`{-~])/g, "$1").replaceAll("\\", "%5c");
 
 /** Where a word ends: what may follow an authority directly (D6). */
 const WORD_END = /[\s)\]>"'`]/;
@@ -1036,8 +1044,8 @@ const TRAILING_AFTER_HOST = /^[*_~,;!:][*_~,;!:.]*$/;
 const PATH_END = /[\s)>"'`]/;
 /** Trailing punctuation an autolink leaves out (GFM). */
 const TRAILING_PUNCTUATION = /[.,:;!?*_~]+$/;
-/** A commit SHA as a path segment. */
-const SHA_SEGMENT = /^[0-9a-f]{7,}$/;
+/** A commit SHA as a path segment, alone or before a suffix (`.patch`, `~1`, `^`). */
+const SHA_SEGMENT = /^[0-9a-f]{7,}(?:[.~^]|$)/;
 /** The only fragment the app hosts take: an element anchor, which carries no content (#3786). */
 const APP_FRAGMENT = /^#krs-[a-z0-9._-]*$/;
 /** One taka short link segment (D6). */
@@ -1065,12 +1073,10 @@ function isKarasuDomain(host: string, rest: string): boolean {
     case "github.com": {
       const segments = pathname.split("/");
       if (segments[1] !== "kompiro") return false;
-      if (segments.includes("raw")) return false;
-      return !segments.some(
-        (s, i) =>
-          (s === "blob" || s === "tree" || s === "commit") &&
-          SHA_SEGMENT.test(segments[i + 1] ?? ""),
-      );
+      // A commit, by SHA in any route (`blob`, `blame`, `commit/<sha>.patch`,
+      // `archive/<sha>.zip`) or by ref (`refs/pull/<n>/head`), can be a fork's.
+      if (segments.includes("raw") || segments.includes("refs")) return false;
+      return !segments.slice(3).some((s) => SHA_SEGMENT.test(s));
     }
     // The app opens a `.krs` from `?s=` and from `#s=`, which can carry anyone's links.
     case "karasu.kompiro.dev":
@@ -1130,18 +1136,31 @@ const OTHER_SCHEMES = /(?<![a-z0-9+.-])(?:mailto|javascript|data|vbscript|file):
  */
 const EMAIL = /[a-z0-9._+-]+@[a-z0-9_-]+(?:\.[a-z0-9_-]+)*\.[a-z0-9_-]*[a-z][a-z0-9_-]*/g;
 /**
- * The second slash of a `//` that a host can follow (D4): a letter, a digit, `_`,
- * `-`, `%`, `@`, a non-ASCII character or an IPv6 literal. One slash at a time, so
- * `///evil.com` is found at its last pair. A regex escape read as `//.`, `//(` or
- * `//[x` starts no host anyone can register (kompiro's decision, #3786); a
- * scheme-relative `//.evil.com` is the residual this accepts.
+ * The second slash of a `//` (D4), one slash at a time so `///evil.com` is found
+ * at its last pair. As kompiro decided (#3786), it counts when a letter, a digit,
+ * `_`, `-`, `%`, `@`, a non-ASCII character or an IPv6 literal follows, and the
+ * regex escapes `//.`, `//(` and `//[x` do not count. `//^` and `//|` start no
+ * host a URL parser takes.
  */
-const HOST_SLASH = /(?<=\/)\/(?=[a-z0-9_%@\u0080-\uffff-]|\[[0-9a-f:.]*\])/g;
+const HOST_SLASH = /(?<=\/)\/(?=[^\s/.(^|[]|\[[0-9a-f:.]*\])/g;
+/** What {@link HOST_SLASH} always counts: the start of a host by the decision. */
+const HOST_START = /^(?:[a-z0-9_%@\u0080-\uffff-]|\[)/;
+/**
+ * After other punctuation (`$`, `*`, `+`, `{`, `)` ...), the authority up to the
+ * end of the word counts when it can still name a host on the internet: userinfo,
+ * an escape, or a dot inside a name (the ideographic and full-width dots, which
+ * IDNA reads as `.`, included). `//$x.evil.com` is a
+ * name under evil.com's wildcard record; a glob's star or a regex's `//{port//}`
+ * is not. A scheme-relative `//.evil.com` or `//(x.evil.com` is the
+ * residual this accepts.
+ */
+const NAMES_A_HOST =
+  /^[^\s/?#)\]>"'`<]*?(?:[@%]|[^.\u3002\uff0e\uff61][.\u3002\uff0e\uff61][^.\u3002\uff0e\uff61\s/?#)\]>"'`<])/;
 /** What splits words for the relative-path rule (D4). */
 const WORD_SPLIT = /[\s()<>"'`[\]]+/;
 
 /**
- * D4: every outside URL-like form in normalized `text`, as keys (one per
+ * D4: every outside URL-like form in a reading of `text`, as keys (one per
  * occurrence). `dir` is the file's directory, which a relative path resolves from.
  */
 function collectLinks(text: string, dir: string): string[] {
@@ -1157,7 +1176,9 @@ function collectLinks(text: string, dir: string): string[] {
   }
   for (const m of text.matchAll(OTHER_SCHEMES)) keys.push(m[0]);
   for (const m of text.matchAll(HOST_SLASH)) {
-    const key = outsideAuthority(text.slice(m.index + 1));
+    const after = text.slice(m.index + 1);
+    if (!HOST_START.test(after) && !NAMES_A_HOST.test(after)) continue;
+    const key = outsideAuthority(after);
     if (key !== null) keys.push(key);
   }
   for (const m of text.matchAll(/(?<![a-z0-9./-])www\./g)) {
@@ -1183,12 +1204,20 @@ function collectLinks(text: string, dir: string): string[] {
   return keys;
 }
 
-/** D4: the forms in `text` as is and with line breaks and tabs removed, counted by key. */
+/**
+ * D4: the forms in `text` counted by key, read with every backslash as `/` (D3)
+ * and with Markdown's escapes, each as is and with line breaks and tabs removed.
+ */
 function countLinks(text: string, dir: string): Map<string, number> {
-  const normalized = normalizeLinks(text);
+  const decoded = decodeReferences(text);
   const counts = new Map<string, number>();
-  for (const variant of [normalized, normalized.replace(/[\n\r\t]/g, "")]) {
-    for (const key of collectLinks(variant, dir)) counts.set(key, (counts.get(key) ?? 0) + 1);
+  const readings = [decoded.replaceAll("\\", "/"), markdownEscapes(decoded)];
+  // The most any one reading finds, so a link the readings share is not counted
+  // once per reading: moving it then changes no count.
+  for (const variant of readings.flatMap((r) => [r, r.replace(/[\n\r\t]/g, "")])) {
+    const found = new Map<string, number>();
+    for (const key of collectLinks(variant, dir)) found.set(key, (found.get(key) ?? 0) + 1);
+    for (const [key, n] of found) counts.set(key, Math.max(counts.get(key) ?? 0, n));
   }
   return counts;
 }

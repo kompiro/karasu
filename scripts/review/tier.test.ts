@@ -2536,6 +2536,11 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     "**https://karasu.kompiro.dev**",
     "_https://github.com/kompiro/karasu_",
     "[ADR](../adr/12-x.md) and [TPL](TPL-2-y.md) and `/docs/adr/12-x.md`",
+    "[TPL](../test-perspectives/TPL-1-x.md)",
+    // A glob or a regex escape after `//` that names no host on the internet.
+    '"docs/adr/graph/\\\\*\\\\*" and `$\\\\{port\\\\}` and `\\\\)`',
+    "\\*\\*種類\\*\\* and `\\\\{` and `\\\\}`",
+    "`\\\\|` and `\\\\.` stay regex escapes",
     // Kept out by kompiro's decision of 2026-11-16 (#3786): not URLs anyone opens.
     "  - file: packages/core/src/parser.ts\n  - root_cause_file: packages/x.ts",
     "nodeMetadata: Map<string, X>; form-data: ^4.0.6",
@@ -2621,6 +2626,34 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     ["![x](/../../../../attacker/repo/blob/main/x.png)", "a relative path outside the repository"],
     ["[x](../../../x/y)", "a relative path outside the repository"],
     ["[x](%2e%2e/x)", "a relative path outside the repository"],
+    // Markdown drops a backslash before punctuation in a link (#3786 review).
+    ["[x](https://kompiro.github.io\\@evil.com/)", "an unreadable URL"],
+    ["[x](https://example.com\\@evil.com/)", "an unreadable URL"],
+    ["[x](https://karasu-nest.kompiro.dev\\.evil.com/)", "karasu-nest.kompiro.dev.evil.com"],
+    ["[x]: https://kompiro.github.io\\@evil.com/", "an unreadable URL"],
+    [
+      "[x](\\.\\./\\.\\./\\.\\./\\.\\./\\.\\./\\.\\./attacker/repo)",
+      "a relative path outside the repository",
+    ],
+    // A commit by SHA in any route, or by ref, can be a fork's.
+    ["https://github.com/kompiro/karasu/commit/abcdef1234567.patch", "github.com"],
+    ["https://github.com/kompiro/karasu/blame/abcdef1234567/README.md", "github.com"],
+    ["https://github.com/kompiro/karasu/archive/abcdef1234567.zip", "github.com"],
+    ["https://github.com/kompiro/karasu/blob/refs/pull/3800/head/x.md", "github.com"],
+    // Any character a URL parser takes can start a name under a wildcard record.
+    ["[x](//~x.evil.com/)", "an unreadable URL"],
+    ["[x](//!x.evil.com/)", "an unreadable URL"],
+    ["[x](//$x.evil.com/)", "an unreadable URL"],
+    ["[x](//=x.evil.com/)", "an unreadable URL"],
+    ["[x](//+x.evil.com/)", "an unreadable URL"],
+    ["[x](//:@evil.com)", "an unreadable URL"],
+    ["[x](//*.evil.com)", "an unreadable URL"],
+    ["[x](//{x}.evil.com)", "an unreadable URL"],
+    ["[x](//$x。evil.com)", "an unreadable URL"],
+    ["<//evil.com>", "evil.com"],
+    ["a //evil.com", "evil.com"],
+    ["[x](vbscript:msgbox)", "a vbscript: URL"],
+    ['<img src="https://evil.com/x.png">', "evil.com"],
   ])("finds %j outside as %j", (text, host) => {
     expect(outside(text, "docs/adr/12-x.md")).toContain(host);
   });
@@ -2638,6 +2671,28 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     const before = "# x\n\nSee https://evil.com for y.\n\nend";
     expect(outsideLinks(edit(before, "# x\n\nSee [y](https://evil.com).\n\nend"))).toEqual([]);
     expect(outsideLinks(edit(before, "# x\n\nend\n\nSee https://evil.com for y."))).toEqual([]);
+  });
+
+  it("does not count a link moved past a line it was joined to", () => {
+    expect(
+      outsideLinks(edit("# x\n\nhttps://evil.com\nend", "# x\n\nend\nhttps://evil.com")),
+    ).toEqual([]);
+  });
+
+  it("counts a URL completed on a later line, starting on a line the change keeps", () => {
+    const before = '<a href="https://karasu.kompiro.dev\n">x</a>';
+    const after = '<a href="https://karasu.kompiro.dev\n.evil.com">x</a>';
+    expect(outsideLinks(edit(before, after))).toEqual(["karasu.kompiro.dev.evil.com"]);
+  });
+
+  it("counts a link moved in from another file", () => {
+    const from = edit("# a\n\nhttps://evil.com", "# a", "docs/test-perspectives/TPL-2-a.md");
+    const to = edit("# b", "# b\n\nhttps://evil.com", "docs/test-perspectives/TPL-3-b.md");
+    const r = classifyChange({ files: [from, to], author: "kompiro" });
+    expect(r.files.map((f) => [f.path, f.tier])).toEqual([
+      ["docs/test-perspectives/TPL-3-b.md", "medium"],
+      ["docs/test-perspectives/TPL-2-a.md", "low"],
+    ]);
   });
 
   it("counts a second copy of a link the file had, and one from another file", () => {
