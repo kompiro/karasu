@@ -248,6 +248,94 @@ describe("a11y sweep: timing and inheritance", () => {
     ).toEqual(['role: role "listbox" owns no group / option, only status']);
   });
 
+  it("accepts a listbox inside an aria-busy region", () => {
+    expect(
+      problemsOf(
+        <section aria-busy="true">
+          <div role="listbox" aria-label="Projects">
+            <div role="status">Loading</div>
+          </div>
+        </section>,
+      ),
+    ).toEqual([]);
+  });
+
+  it("reports a listbox once its aria-busy is removed", () => {
+    const { container } = render(
+      <div role="listbox" aria-label="Projects" aria-busy="true">
+        <div role="status">Loading</div>
+      </div>,
+    );
+    flushA11ySweep();
+    container.querySelector('[role="listbox"]')!.removeAttribute("aria-busy");
+    const { problems } = flushA11ySweep();
+    // Unmount first: removal checks the subtree again.
+    cleanup();
+    clearA11yProblems();
+    expect(problems.map((p) => p.message)).toEqual([
+      'role "listbox" owns no group / option, only status',
+    ]);
+  });
+
+  it("reports a listbox whose last option, inside a role=none wrapper, is replaced", () => {
+    const view = (option: boolean) => (
+      <ul role="listbox" aria-label="Commands">
+        <li role="none">
+          {option ? (
+            <div role="option" aria-selected="false">
+              Open
+            </div>
+          ) : (
+            <a href="#open">Open</a>
+          )}
+        </li>
+      </ul>
+    );
+    const { rerender } = render(view(true));
+    expect(flushA11ySweep().problems).toEqual([]);
+    rerender(view(false));
+    const { problems } = flushA11ySweep();
+    // Unmount first: removal checks the subtree again.
+    cleanup();
+    clearA11yProblems();
+    expect(problems.map((p) => p.message)).toContain(
+      'role "listbox" owns no group / option, only link',
+    );
+  });
+
+  it("does not count hidden children as owned", () => {
+    expect(
+      problemsOf(
+        <div role="listbox" aria-label="Commands">
+          <div>No results</div>
+          <button hidden>Clear</button>
+        </div>,
+      ),
+    ).toEqual([]);
+    expect(
+      problemsOf(
+        <div role="listbox" aria-label="Commands">
+          <div role="option" aria-selected="false" hidden>
+            Old
+          </div>
+          <a href="#x">x</a>
+        </div>,
+      ),
+    ).toContain('role: role "listbox" owns no group / option, only link');
+  });
+
+  it("checks the owned roles of explicit roles only, not of a native list", () => {
+    expect(
+      problemsOf(
+        <ul>
+          <div>
+            <button>Go</button>
+          </div>
+        </ul>,
+      ),
+    ).toEqual([]);
+  });
+
   it("allows a caption in a grid", () => {
     expect(
       problemsOf(

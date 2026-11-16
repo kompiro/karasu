@@ -60,6 +60,8 @@ function checkSubtree(root: Element) {
     checkOne(el);
 }
 
+const OWNER_SELECTOR = "[role], ul, ol, menu, table, thead, tbody, tfoot, tr";
+
 function checkAround(node: Node) {
   const el = node.nodeType === 1 ? (node as Element) : node.parentElement;
   if (!el?.isConnected) return;
@@ -67,8 +69,17 @@ function checkAround(node: Node) {
   // container can take away the last child it must own.
   const button = el.closest(BUTTON_SELECTOR);
   if (button) checkOne(button);
-  const owner = el.closest("[role], ul, ol, menu, table, thead, tbody, tfoot, tr");
-  if (owner) checkOne(owner);
+  // Look through presentational and generic owners (`<li role="none">` around
+  // an option) up to the first one whose role counts.
+  for (
+    let owner = el.closest(OWNER_SELECTOR);
+    owner;
+    owner = owner.parentElement?.closest(OWNER_SELECTOR) ?? null
+  ) {
+    checkOne(owner);
+    const role = owner.getAttribute("role")?.trim().split(/\s+/)[0];
+    if (role !== "none" && role !== "presentation" && role !== "generic") break;
+  }
 }
 
 function processRecords(records: MutationRecord[]) {

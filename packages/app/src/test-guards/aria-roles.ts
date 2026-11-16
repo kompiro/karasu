@@ -47,19 +47,19 @@ const REQUIRED_CONTEXT: Readonly<Record<string, readonly string[]>> = {
  * "group → menuitem" and the like). It is a presence requirement, not a list
  * of the only children allowed. Checked on explicit roles only (HTML allows
  * an empty `<ul>` or `<table>`), and only on a container that owns some
- * roled child: an empty one is left for review, as axe-core's
- * aria-required-children does, because the app's empty states ("No matching
- * commands") render an empty listbox. ARIA 1.2's loading exception,
+ * roled child: an empty one is left for review (axe-core's
+ * aria-required-children does the same for most of these roles), because the
+ * app's empty states ("No matching commands") render an empty listbox. ARIA 1.2's loading exception,
  * `aria-busy="true"` on the container or around it, also passes.
  */
 const REQUIRED_OWNED: Readonly<Record<string, readonly string[]>> = {
-  directory: ["listitem"],
   feed: ["article"],
   grid: ["row", "rowgroup"],
   list: ["listitem"],
   listbox: ["group", "option"],
   menu: ["group", "menuitem", "menuitemcheckbox", "menuitemradio"],
   menubar: ["group", "menuitem", "menuitemcheckbox", "menuitemradio"],
+  radiogroup: ["radio"],
   row: ["cell", "columnheader", "gridcell", "rowheader"],
   rowgroup: ["row"],
   table: ["row", "rowgroup"],
@@ -245,11 +245,15 @@ function contextRole(el: Element): string | null {
   return null;
 }
 
-/** The nearest descendants with a role that counts, looking through generic wrappers. */
+/**
+ * The nearest descendants with a role that counts, looking through generic
+ * wrappers. Hidden subtrees are not in the accessibility tree, so they own nothing.
+ */
 function ownedRoles(el: Element): string[] {
   const out: string[] = [];
   const walk = (node: Element) => {
     for (const child of node.children) {
+      if (child.hasAttribute("hidden") || child.getAttribute("aria-hidden") === "true") continue;
       const r = roleOf(child);
       if (r && !TRANSPARENT.has(r)) out.push(r);
       else walk(child);
