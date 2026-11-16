@@ -1265,7 +1265,7 @@ A `realizes` target may be any kind in the table below. A **`client`** is among 
 client's physical form, symmetrically to how an `oci` unit realizes a service (see _Realizing shared infra_
 below for `database` / `queue` / `storage` targets).
 
-<!-- gen:reference:realizes-target-kinds — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
+<!-- gen:reference:realizes-target-kinds — DO NOT EDIT. Generated from `REALIZES_TARGET_KIND_SET` in packages/core/src/types/ast.ts (descriptions from reference-data.ts); run `pnpm gen:reference`. -->
 | Keyword | Meaning |
 |---------|---------|
 | `service` | An independent unit of business capability |
@@ -1521,7 +1521,7 @@ organization TechCorp {
 
 The kinds `owns` accepts:
 
-<!-- gen:reference:owns-target-kinds — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
+<!-- gen:reference:owns-target-kinds — DO NOT EDIT. Generated from `OWNS_TARGET_KINDS` in packages/core/src/types/ast.ts (descriptions from reference-data.ts); run `pnpm gen:reference`. -->
 | Keyword | Meaning |
 |---------|---------|
 | `service` | An independent unit of business capability |
@@ -2132,7 +2132,7 @@ The importer absorbs:
 When the same `system` id appears in more than one file (the importer's own file and an imported file, or two imported files), the blocks are **merged into one** rather than treated as duplicates:
 
 - **System body properties** (`label` / `description` / tags): the declaration in the file **closer to the import-graph root** wins. The root is `ImportResolver.resolve(entryPath)`'s `entryPath` — in practice the file currently open in the App / VS Code extension, or the file passed to `karasu render`. The resolver walks the graph bottom-up; values from deeper imports fill in only where the closer file left them unset.
-  - "Closer" is the shortest import path from the root, whatever order the `import` lines come in. A value filled in from a deeper file keeps that file's distance, so a file one level down beats a value carried up from two levels down. At equal distance, the file merged first (the earlier `import`) wins. This holds for whole-file and directory imports; a named import that brings a block a second time does not reconcile its properties yet (#3720).
+  - "Closer" is the shortest import path from the root, whatever order the `import` lines come in. A value filled in from a deeper file keeps that file's distance, so a file one level down beats a value carried up from two levels down. At equal distance, the file merged first (the earlier `import`) wins. This holds for whole-file and directory imports, and for a named import of a whole `system` (`import { S }`); a path import into a block already there (`import { S.A }`) and a named import of a deploy unit do not reconcile the block's properties yet (#3720).
   - When two files declare conflicting non-empty values, the resolver picks the closer-to-root one and emits a `system-property-conflict` warning with the chosen and ignored values, located at the declaration that lost.
 - **Children**: merged by id with find-or-create. Two children with the same id in the same merged system produce a `duplicate-node-in-system` error (existing behavior). Two different ids merge cleanly.
 - **Edges**: union. Exact duplicates (same `from`, `to`, kind, label) are deduplicated; otherwise both are kept.

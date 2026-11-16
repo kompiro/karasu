@@ -4,7 +4,6 @@ import type {
   KrsFile,
   SystemNode,
   KrsNode,
-  KrsEdge,
   ServiceNode,
   DeployBlock,
   OrganizationBlock,
@@ -41,6 +40,7 @@ import {
 } from "../parser/node-path.js";
 
 import { MERGED_SPACE_REFERENCE_CODE_SET } from "./merged-space-codes.js";
+import { addStyleImport, isSameEdge } from "./merge-identity.js";
 import { INFRA_UNION_FIELDS, type InfraUnionField } from "./infra-merge.js";
 
 /** One candidate chain of an imported file: the nodes, and their id path. */
@@ -57,25 +57,6 @@ export interface ResolvedProject {
   styleSheets: StyleSheet[];
   /** 解決中に発生した diagnostic */
   diagnostics: Diagnostic[];
-}
-
-/**
- * Whether two edges are the same edge for the cross-file union.
- *
- * The identity is the one `docs/spec/syntax.md` § multi-file import semantics
- * states — "Exact duplicates (same `from`, `to`, kind, label) are
- * deduplicated; otherwise both are kept". `kind` is load-bearing: dropping it
- * fuses `a -> b` and `a --> b` into whichever entry merged first, which is the
- * sync/async distinction disappearing rather than a duplicate being removed.
- *
- * Every edge merge goes through here (#2780). The system reopen, the infra
- * body union and the named-import merge each once spelled the comparison
- * inline, and they had drifted to three different identities — the shape
- * TPL-1385 warns about, where a merge enumerating fields disagrees with the
- * spec once a field is left out.
- */
-function isSameEdge(a: KrsEdge, b: KrsEdge): boolean {
-  return a.from === b.from && a.to === b.to && a.kind === b.kind && a.label === b.label;
 }
 
 /**
@@ -672,7 +653,9 @@ export class ImportResolver {
       // 同一インスタンス: DAG 経由で同じノードに到達した場合（cache hit）— 黙って dedup
       if (target.children.includes(child)) continue;
       const idConflict = target.children.find((c) => c.id === child.id);
-      if (idConflict) {
+      if (idConflict && this.chainOrigins.get(idConflict)?.has(child)) {
+        this.fillChainStub(idConflict, child);
+      } else if (idConflict) {
         if (this.isInfraKind(child.kind) && idConflict.kind === child.kind) {
           // 同名 infra (database / queue / storage) の再オープンは union merge。
           // 「shared infra」は karasu が可視化はするが prescribe しない事実なので
@@ -1115,6 +1098,23 @@ export class ImportResolver {
     return stub;
   }
 
+  /**
+   * The declaration a path import stubbed arrives whole (a whole-file or named
+   * import after `import { S.A.B }`): it is the same node, not a duplicate, so
+   * the stub takes the declaration's children and edges, stub by stub.
+   */
+  private fillChainStub(stub: KrsNode, source: KrsNode): void {
+    for (const child of source.children) {
+      if (stub.children.includes(child)) continue;
+      const existing = stub.children.find((c) => c.id === child.id && c.kind === child.kind);
+      if (!existing) stub.children.push(child);
+      else if (this.chainOrigins.get(existing)?.has(child)) this.fillChainStub(existing, child);
+    }
+    for (const edge of source.edges) {
+      if (!stub.edges.some((e) => e === edge || isSameEdge(e, edge))) stub.edges.push(edge);
+    }
+  }
+
   /** A copy of `source` stands for the same declaration, so it is filed with it. */
   private inheritDeclaringFile(copy: KrsNode, source: KrsNode): void {
     const file = this.declaringFile.get(source);
@@ -1276,9 +1276,4 @@ export class ImportResolver {
 
     return parseResult.value;
   }
-}
-
-/** Appends a resolved style path unless the merged model already holds it. */
-function addStyleImport(mergedFile: KrsFile, styleImport: string): void {
-  if (!mergedFile.styleImports.includes(styleImport)) mergedFile.styleImports.push(styleImport);
 }

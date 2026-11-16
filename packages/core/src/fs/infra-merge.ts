@@ -1,8 +1,11 @@
-import type { DatabaseNode, QueueGroupNode, StorageNode } from "../types/ast.js";
+import type { INFRA_BLOCK_KINDS, KrsNode } from "../types/ast.js";
 
+export type InfraKind = (typeof INFRA_BLOCK_KINDS)[number];
 /** A top-level or system-level infra block: the nodes S4.5 reopens across files. */
-export type InfraNode = DatabaseNode | QueueGroupNode | StorageNode;
-type InfraField = keyof InfraNode;
+export type InfraNode = Extract<KrsNode, { kind: InfraKind }>;
+/** Every key of every infra node type, not only the keys they share. */
+type KeysOfUnion<T> = T extends unknown ? keyof T : never;
+type InfraField = KeysOfUnion<InfraNode>;
 
 /**
  * How a field of a reopened infra block is merged (spec S4.5):

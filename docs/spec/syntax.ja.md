@@ -1170,7 +1170,7 @@ deploy "本番環境" {
 デプロイ対象となる論理ノードで、それを realize する `war` / `assets` 等が、`oci` がサービスを realize するのと
 同じく client の物理形態を記録するからである（`database` / `queue` / `storage` を対象とする場合は後述の _共有 infra の realize_ を参照）。
 
-<!-- gen:reference:realizes-target-kinds — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
+<!-- gen:reference:realizes-target-kinds — DO NOT EDIT. Generated from `REALIZES_TARGET_KIND_SET` in packages/core/src/types/ast.ts (descriptions from reference-data.ts); run `pnpm gen:reference`. -->
 | キーワード | 意味 |
 |------------|------|
 | `service` | 独立したビジネス機能の単位 |
@@ -1410,7 +1410,7 @@ organization TechCorp {
 
 `owns` の対象になれる kind:
 
-<!-- gen:reference:owns-target-kinds — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
+<!-- gen:reference:owns-target-kinds — DO NOT EDIT. Generated from `OWNS_TARGET_KINDS` in packages/core/src/types/ast.ts (descriptions from reference-data.ts); run `pnpm gen:reference`. -->
 | キーワード | 意味 |
 |------------|------|
 | `service` | 独立したビジネス機能の単位 |
@@ -2004,7 +2004,7 @@ importer が吸収するもの:
 同じ id の `system` が複数ファイルに現れた場合（importer 自身のファイルと imported ファイル、あるいは複数の imported ファイル）、重複として扱わず **1 つに merge** する:
 
 - **system 本体プロパティ**（`label` / `description` / タグ）: **import グラフの root に近いファイル**で書かれた宣言が勝つ。root とは `ImportResolver.resolve(entryPath)` に渡された `entryPath` — 実用上は App / VS Code 拡張で開いているファイル、または `karasu render` に渡したファイル。resolver は import グラフを bottom-up に traverse し、root 側で未設定のフィールドだけを imported 側の値で埋める。
-  - 「近い」は root からの最短の import 経路で測り、`import` 行の順には依らない。深いファイルから埋めた値はそのファイルの距離を持ち続けるので、1 段下のファイルは 2 段下から運ばれた値に勝つ。距離が同じなら、先にマージしたファイル（先の `import`）が勝つ。これは whole-file import と directory import での規則で、同じブロックを 2 回目に持ち込む named import はまだプロパティを照合しない（#3720）。
+  - 「近い」は root からの最短の import 経路で測り、`import` 行の順には依らない。深いファイルから埋めた値はそのファイルの距離を持ち続けるので、1 段下のファイルは 2 段下から運ばれた値に勝つ。距離が同じなら、先にマージしたファイル（先の `import`）が勝つ。これは whole-file import・directory import と、`system` 全体の named import（`import { S }`）での規則で、すでにあるブロックへの path import（`import { S.A }`）と deploy unit の named import はまだブロックのプロパティを照合しない（#3720）。
   - 2 つのファイルが異なる non-empty 値で衝突した場合、root に近い側が採用され、`system-property-conflict` 警告が出る。警告は採用値と無視値を持ち、負けた側の宣言の位置を指す。
 - **children**: id ごとに find-or-create で union。同じ merged system 内で 2 つの children が同じ id を持つと `duplicate-node-in-system` エラー（既存挙動）。異なる id なら問題なく union される。
 - **edges**: union。完全に同一な edge（`from` / `to` / kind / label すべて一致）のみ dedup、それ以外は両方残る。

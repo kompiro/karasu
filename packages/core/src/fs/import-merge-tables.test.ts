@@ -85,7 +85,7 @@ const CASES: (readonly [TopLevelKey, SourceCase])[] = Object.entries(
 ).flatMap(([key, c]) => ("src" in c ? [[key as TopLevelKey, c] as const] : []));
 
 /** Every lib carries one nameable node, so the named-import shapes have something to name. */
-const ANCHOR = `system Anchor {\n  service AnchorSvc\n}\n`;
+const ANCHOR = `system Anchor {\n  service AnchorSvc {\n    domain AnchorDomain {}\n  }\n}\n`;
 
 /** How an element of a top-level array is told apart from its siblings. */
 function identity(element: unknown): string {
@@ -128,6 +128,14 @@ const SHAPES: Record<string, { lib: string; files: Record<string, string> }> = {
     lib: "lib.krs",
     files: {
       "index.krs": `import "lib.krs"\nimport { Anchor } from "lib.krs"\n`,
+    },
+  },
+  // A path import stubs the chain down to the named node; the whole
+  // declaration arriving afterwards fills the stubs rather than colliding.
+  "path import, then whole-file import of the same file": {
+    lib: "lib.krs",
+    files: {
+      "index.krs": `import { Anchor.AnchorSvc.AnchorDomain } from "lib.krs"\nimport "lib.krs"\n`,
     },
   },
   "diamond: a named branch, then a whole-file branch (cached re-reach)": {

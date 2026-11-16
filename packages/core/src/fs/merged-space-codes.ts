@@ -39,11 +39,11 @@ export const MERGED_SPACE_REFERENCE_CODES = [
   // declared in a dedicated file every slice imports (§S4.5), so a per-file
   // verdict would warn on the recommended layout: every `resource ArticleDB.x`
   // in `reader.krs` would look unresolved because the block lives in
-  // `infra.krs`. Suppressed per file, re-derived against the merged tree below.
+  // `infra.krs`. Suppressed per file, re-derived against the merged tree in `resolve()`.
   "unresolved-resource-ref",
   "unresolved-table-ref",
   // `facet` declarations merge across files, so uniqueness is a property of the
-  // merged namespace. Suppressed per file and re-derived below — otherwise a
+  // merged namespace. Suppressed per file and re-derived in `resolve()` — otherwise a
   // duplicate split across two files would go unreported, and a duplicate inside
   // one file would be reported twice (#2065 Part B).
   "duplicate-facet-id",
@@ -61,7 +61,7 @@ export const MERGED_SPACE_REFERENCE_CODES = [
   // same reason (#2596): `system Legacy { service Search }` in one file and
   // `system Next { service Search }` in another collide in a way neither file
   // can see, so the per-file verdict reported nothing at all while the index
-  // silently kept whichever file merged first. Re-derived below together with
+  // silently kept whichever file merged first. Re-derived in `resolve()` together with
   // the index it explains.
   "node-id-multiple-locations",
 ] as const satisfies readonly DiagnosticCode[];

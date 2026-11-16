@@ -33,6 +33,8 @@ export interface TableSpec {
   file: Record<Locale, string>;
   /** Column headers per locale. */
   headers: Record<Locale, string[]>;
+  /** Where the rows come from, when it is not only `reference-data.ts`; named in the marker. */
+  source?: string;
   /** The table body for a locale: one array of cell strings per row. */
   rows: (locale: Locale) => string[][];
 }
@@ -195,12 +197,16 @@ export const TABLES: TableSpec[] = [
   {
     id: "owns-target-kinds",
     file: { en: "docs/spec/syntax.md", ja: "docs/spec/syntax.ja.md" },
+    source:
+      "`OWNS_TARGET_KINDS` in packages/core/src/types/ast.ts (descriptions from reference-data.ts)",
     headers: { en: ["Keyword", "Meaning"], ja: ["キーワード", "意味"] },
     rows: (locale) => targetKindRows(OWNS_TARGET_KINDS, locale),
   },
   {
     id: "realizes-target-kinds",
     file: { en: "docs/spec/syntax.md", ja: "docs/spec/syntax.ja.md" },
+    source:
+      "`REALIZES_TARGET_KIND_SET` in packages/core/src/types/ast.ts (descriptions from reference-data.ts)",
     headers: { en: ["Keyword", "Meaning"], ja: ["キーワード", "意味"] },
     rows: (locale) => targetKindRows([...REALIZES_TARGET_KIND_SET], locale),
   },
@@ -231,7 +237,10 @@ function renderTable(headers: string[], rows: string[][]): string {
 }
 
 export function blockFor(spec: TableSpec, locale: Locale): string {
-  const open = `<!-- gen:reference:${spec.id} — ${MARKER_NOTE} -->`;
+  const note = spec.source
+    ? `DO NOT EDIT. Generated from ${spec.source}; run \`pnpm gen:reference\`.`
+    : MARKER_NOTE;
+  const open = `<!-- gen:reference:${spec.id} — ${note} -->`;
   const close = `<!-- /gen:reference:${spec.id} -->`;
   return `${open}\n${renderTable(spec.headers[locale], spec.rows(locale))}\n${close}`;
 }

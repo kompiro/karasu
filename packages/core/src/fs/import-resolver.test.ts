@@ -3289,6 +3289,38 @@ facet pii {
       expect(result.diagnostics.filter((d) => d.severity !== "info")).toEqual([]);
     });
 
+    // A path import leaves stubs for the chain; the declaration arriving whole
+    // afterwards is the same node, not a duplicate of it.
+    it.each([
+      ["named", `import { Shop }`],
+      ["whole-file", `import`],
+    ])("a path import, then the %s import of its system, fills the stubs", async (_n, second) => {
+      const target = second === "import" ? `import "lib.krs"` : `${second} from "lib.krs"`;
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { Shop.Api.Order } from "lib.krs"\nimport { Shop.DB.users } from "lib.krs"\n${target}\n`,
+      );
+      await fs.writeFile(
+        "/project/lib.krs",
+        `system Shop {\n  service Api {\n    domain Order {}\n    domain Catalog {}\n  }\n  database DB {\n    table users\n    table orders\n  }\n}\n`,
+      );
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.diagnostics).toEqual([]);
+      expect(result.krsFile.systems).toHaveLength(1);
+      const shop = result.krsFile.systems[0];
+      const child = (id: string) => shop.children.find((c) => c.id === id);
+      expect(
+        child("Api")
+          ?.children.map((c) => c.id)
+          .sort(),
+      ).toEqual(["Catalog", "Order"]);
+      expect(
+        child("DB")
+          ?.children.map((c) => c.id)
+          .sort(),
+      ).toEqual(["orders", "users"]);
+    });
+
     it("a same-id system from another file reopens, as through a whole-file import", async () => {
       await fs.writeFile(
         "/project/index.krs",
@@ -3298,6 +3330,24 @@ facet pii {
       const result = await resolver.resolve("/project/index.krs");
       expect(result.krsFile.systems).toHaveLength(1);
       expect(result.krsFile.systems[0].children.map((c) => c.id).sort()).toEqual(["A", "B"]);
+    });
+
+    it("the reopened system's label follows S3: the entry's wins, with a warning", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { Anchor } from "lib.krs"\nsystem Anchor {\n  label "FromIndex"\n  service B\n}\n`,
+      );
+      await fs.writeFile(
+        "/project/lib.krs",
+        `system Anchor {\n  label "FromLib"\n  service A\n}\n`,
+      );
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.krsFile.systems.map((s) => s.label)).toEqual(["FromIndex"]);
+      expect(
+        result.diagnostics
+          .filter((d) => d.code === "system-property-conflict")
+          .map((d) => d.params),
+      ).toEqual([expect.objectContaining({ chosen: "FromIndex", ignored: "FromLib" })]);
     });
   });
 });
