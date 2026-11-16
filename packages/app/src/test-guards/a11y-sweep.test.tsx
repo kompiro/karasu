@@ -303,6 +303,31 @@ describe("a11y sweep: timing and inheritance", () => {
     );
   });
 
+  it.each(["hidden", "aria-hidden"])(
+    "reports a listbox once %s takes away its only option",
+    (attr) => {
+      const { container } = render(
+        <div role="listbox" aria-label="Commands">
+          <div role="option" aria-selected="false">
+            Open
+          </div>
+          <a href="#x">x</a>
+        </div>,
+      );
+      expect(flushA11ySweep().problems).toEqual([]);
+      container
+        .querySelector('[role="option"]')!
+        .setAttribute(attr, attr === "hidden" ? "" : "true");
+      const { problems } = flushA11ySweep();
+      // Unmount first: removal checks the subtree again.
+      cleanup();
+      clearA11yProblems();
+      expect(problems.map((p) => p.message)).toEqual([
+        'role "listbox" owns no group / option, only link',
+      ]);
+    },
+  );
+
   it("does not count hidden children as owned", () => {
     expect(
       problemsOf(

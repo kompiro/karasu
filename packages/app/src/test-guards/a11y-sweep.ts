@@ -92,6 +92,8 @@ function processRecords(records: MutationRecord[]) {
       // container around it (hiding a button's only label, for one).
       if (r.target.nodeType === 1) checkSubtree(r.target as Element);
       checkAround(r.target);
+      // Hiding a child or changing its role changes what its owner owns.
+      if (r.target.parentElement) checkAround(r.target.parentElement);
     } else {
       checkAround(r.target);
     }
