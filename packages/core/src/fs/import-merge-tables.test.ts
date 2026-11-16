@@ -130,14 +130,6 @@ const SHAPES: Record<string, { lib: string; files: Record<string, string> }> = {
       "index.krs": `import "lib.krs"\nimport { Anchor } from "lib.krs"\n`,
     },
   },
-  // A path import stubs the chain down to the named node; the whole
-  // declaration arriving afterwards fills the stubs rather than colliding.
-  "path import, then whole-file import of the same file": {
-    lib: "lib.krs",
-    files: {
-      "index.krs": `import { Anchor.AnchorSvc.AnchorDomain } from "lib.krs"\nimport "lib.krs"\n`,
-    },
-  },
   "diamond: a named branch, then a whole-file branch (cached re-reach)": {
     lib: "lib.krs",
     files: {

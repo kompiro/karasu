@@ -226,8 +226,9 @@ function targetKindRows(kinds: readonly string[], locale: Locale): string[][] {
   });
 }
 
-const MARKER_NOTE =
-  "DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`.";
+/** The marker's note: where the rows come from, and how to regenerate them. */
+const markerNote = (source = "packages/core/src/builtins/reference-data.ts"): string =>
+  `DO NOT EDIT. Generated from ${source}; run \`pnpm gen:reference\`.`;
 
 function renderTable(headers: string[], rows: string[][]): string {
   const headerLine = `| ${headers.join(" | ")} |`;
@@ -237,10 +238,7 @@ function renderTable(headers: string[], rows: string[][]): string {
 }
 
 export function blockFor(spec: TableSpec, locale: Locale): string {
-  const note = spec.source
-    ? `DO NOT EDIT. Generated from ${spec.source}; run \`pnpm gen:reference\`.`
-    : MARKER_NOTE;
-  const open = `<!-- gen:reference:${spec.id} — ${note} -->`;
+  const open = `<!-- gen:reference:${spec.id} — ${markerNote(spec.source)} -->`;
   const close = `<!-- /gen:reference:${spec.id} -->`;
   return `${open}\n${renderTable(spec.headers[locale], spec.rows(locale))}\n${close}`;
 }

@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { InMemoryFileSystemProvider } from "./in-memory-provider";
 import { ImportResolver } from "./import-resolver";
-import { INFRA_MERGE_POLICY, type InfraKind, type InfraNode } from "./infra-merge";
+import { INFRA_MERGE_POLICY, type InfraNode } from "./infra-merge";
 import { Parser } from "../parser/parser";
-import { INFRA_BLOCK_KINDS, type KrsFile } from "../types/ast";
+import { INFRA_BLOCK_KINDS, type InfraKind, type KrsFile } from "../types/ast";
 
 // Every field of a reopened infra block follows its rule in
 // `INFRA_MERGE_POLICY`, through both paths that reopen one (TPL-1385). The

@@ -653,9 +653,7 @@ export class ImportResolver {
       // 同一インスタンス: DAG 経由で同じノードに到達した場合（cache hit）— 黙って dedup
       if (target.children.includes(child)) continue;
       const idConflict = target.children.find((c) => c.id === child.id);
-      if (idConflict && this.chainOrigins.get(idConflict)?.has(child)) {
-        this.fillChainStub(idConflict, child);
-      } else if (idConflict) {
+      if (idConflict) {
         if (this.isInfraKind(child.kind) && idConflict.kind === child.kind) {
           // 同名 infra (database / queue / storage) の再オープンは union merge。
           // 「shared infra」は karasu が可視化はするが prescribe しない事実なので
@@ -1096,23 +1094,6 @@ export class ImportResolver {
     this.chainOriginsOf(stub).add(source);
     this.inheritDeclaringFile(stub, source);
     return stub;
-  }
-
-  /**
-   * The declaration a path import stubbed arrives whole (a whole-file or named
-   * import after `import { S.A.B }`): it is the same node, not a duplicate, so
-   * the stub takes the declaration's children and edges, stub by stub.
-   */
-  private fillChainStub(stub: KrsNode, source: KrsNode): void {
-    for (const child of source.children) {
-      if (stub.children.includes(child)) continue;
-      const existing = stub.children.find((c) => c.id === child.id && c.kind === child.kind);
-      if (!existing) stub.children.push(child);
-      else if (this.chainOrigins.get(existing)?.has(child)) this.fillChainStub(existing, child);
-    }
-    for (const edge of source.edges) {
-      if (!stub.edges.some((e) => e === edge || isSameEdge(e, edge))) stub.edges.push(edge);
-    }
   }
 
   /** A copy of `source` stands for the same declaration, so it is filed with it. */

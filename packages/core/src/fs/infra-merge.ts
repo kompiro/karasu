@@ -1,6 +1,5 @@
-import type { INFRA_BLOCK_KINDS, KrsNode } from "../types/ast.js";
+import type { InfraKind, KrsNode } from "../types/ast.js";
 
-export type InfraKind = (typeof INFRA_BLOCK_KINDS)[number];
 /** A top-level or system-level infra block: the nodes S4.5 reopens across files. */
 export type InfraNode = Extract<KrsNode, { kind: InfraKind }>;
 /** Every key of every infra node type, not only the keys they share. */
