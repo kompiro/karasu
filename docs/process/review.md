@@ -45,9 +45,9 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 
 | 段階 | 変更したもの | PR での CodeRabbit | 通す条件 |
 | --- | --- | --- | --- |
-| Low | `docs/test-perspectives/**`・`docs/guide/**`・新しいテストファイル（既存のテストファイルの変更は Medium）、新しい ADR、ADR の昇格（Design Doc の削除、リンクの張り替え、ADR へのリンクの追加）、既存 ADR の frontmatter、ADR の生成物と TPL の索引だけを変える再生成 PR | 回さない | 記録と CI が通れば auto-merge（再生成 PR は記録なしで、スクリプトが REST でマージする） |
+| Low | `docs/test-perspectives/**` の Markdown・新しいテストファイル（既存のテストファイルの変更は Medium）、新しい ADR、ADR の昇格（Design Doc の削除、リンクの張り替え、ADR へのリンクの追加）、既存 ADR の frontmatter、ADR の生成物と TPL の索引だけを変える再生成 PR | 回さない | 記録と CI が通れば auto-merge（再生成 PR は記録なしで、スクリプトが REST でマージする） |
 | Design | `docs/design/**` | ready の直後に 1 回だけ。ゲートにしない | 記録と人間のレビュー |
-| Medium | ほかのすべて（`packages/*`・`docs/acceptance/**`・`examples/**`・既存 ADR の本文など） | 回さない | 記録と、人間の判断。描画やレイアウトが変わる PR（`rendering-change` ラベル、下）は人間が preview で動作を確かめる |
+| Medium | ほかのすべて（`packages/*`・`docs/acceptance/**`・`docs/guide/**`・`examples/**`・既存 ADR の本文など） | 回さない | 記録と、人間の判断。描画やレイアウトが変わる PR（`rendering-change` ラベル、下）は人間が preview で動作を確かめる |
 | High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・`.claude/rules/**`・`.coderabbit.yaml`・レビューの仕組み（`scripts/review/**`・`scripts/coderabbit/**`・`scripts/render-equivalence/**`・`.claude/skills/**` など）・セキュリティの境界（下）・言語の挙動（下） | Critical / Major の未対応が無くなるまで回す（再レビューは 3 回まで） | 人間が High のファイルと `## For Reviewers` 節を読む。合意済みの Design Doc が裏付ける PR は、節と、summary が並べるファイル（セキュリティの境界と、決定・言語の挙動のパスの外の High のファイル）を読む（下の「High の PR で人間が読むもの」）。決定のパスのファイルは、差分が裏付けの Design Doc に載せた文面とちょうど一致すれば Medium に数える（下の「Design Doc に載せた仕様の文面」） |
 
 - **セキュリティの境界**：信頼できない入力（他人の `.krs`、URL、webview のメッセージ、ディスクのパス）を受ける
@@ -60,6 +60,11 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
   なったら Medium に下げる。#3540）
 - テストファイルはこの 2 つの規則から外れ、新しいファイルは Low、既存のファイルの変更は Medium のまま。ただし
   セキュリティの境界のテストから行を消す変更は High になる
+- **外のドメインへのリンク**：Low になる Markdown（テストファイルを除く）が URL を足し、その URL が karasu の
+  ドメインを指していなければ、そのファイルは Medium になる。karasu のドメインは `github.com/kompiro/` 以下、
+  `karasu.kompiro.dev`・`karasu-nest.kompiro.dev`・`kompiro.github.io`・`karasu.pages.dev`・`taka.kompiro.dev`、登録できない名前
+  （`localhost`・`127.0.0.1`・`example.com` など）で、パス・query・fragment に条件がある。読めない URL も外として数える。
+  一覧の正本は分類器で、分類器は High のパスにあるので、Low の PR からは広げられない
 
 - **`rendering-change` ラベル**：check「Render equivalence」が merge base と HEAD で描画・診断・整形の出力に差を
   見つけたか、比較を終えられなかった PR に、workflow が付ける。次の比較で差が無ければ外す。マージは止めない。比較が
