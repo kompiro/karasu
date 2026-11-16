@@ -1205,21 +1205,24 @@ function collectLinks(text: string, dir: string): string[] {
 }
 
 /**
- * D4: the forms in `text` counted by key, read with every backslash as `/` (D3)
- * and with Markdown's escapes, each as is and with line breaks and tabs removed.
+ * D4: the forms in `text` counted by key, once per reading of its backslashes:
+ * every backslash as `/` (D3), and Markdown's escapes. Each reading is compared
+ * only with itself, so a link one reading sees cannot hide behind a copy only the
+ * other saw before. Within a reading, the text as is and with line breaks and tabs
+ * removed give the most either finds, so a link moved past a line it was joined to
+ * changes no count.
  */
-function countLinks(text: string, dir: string): Map<string, number> {
+function countLinks(text: string, dir: string): Map<string, number>[] {
   const decoded = decodeReferences(text);
-  const counts = new Map<string, number>();
-  const readings = [decoded.replaceAll("\\", "/"), markdownEscapes(decoded)];
-  // The most any one reading finds, so a link the readings share is not counted
-  // once per reading: moving it then changes no count.
-  for (const variant of readings.flatMap((r) => [r, r.replace(/[\n\r\t]/g, "")])) {
-    const found = new Map<string, number>();
-    for (const key of collectLinks(variant, dir)) found.set(key, (found.get(key) ?? 0) + 1);
-    for (const [key, n] of found) counts.set(key, Math.max(counts.get(key) ?? 0, n));
-  }
-  return counts;
+  return [decoded.replaceAll("\\", "/"), markdownEscapes(decoded)].map((reading) => {
+    const counts = new Map<string, number>();
+    for (const variant of [reading, reading.replace(/[\n\r\t]/g, "")]) {
+      const found = new Map<string, number>();
+      for (const key of collectLinks(variant, dir)) found.set(key, (found.get(key) ?? 0) + 1);
+      for (const [key, n] of found) counts.set(key, Math.max(counts.get(key) ?? 0, n));
+    }
+    return counts;
+  });
 }
 
 /** How a key is shown in the reasons and the summary: the host, or what could not be read. */
@@ -1249,7 +1252,9 @@ export function outsideLinks(f: ChangedFile): string[] {
   const was = countLinks(before as string, dir);
   const now = countLinks(f.after as string, dir);
   const added = new Set<string>();
-  for (const [key, n] of now) if (n > (was.get(key) ?? 0)) added.add(describeLink(key));
+  now.forEach((reading, i) => {
+    for (const [key, n] of reading) if (n > (was[i].get(key) ?? 0)) added.add(describeLink(key));
+  });
   // The hosts come from the PR's text: bounded, so a crafted file cannot flood the summary.
   const shown = [...added].sort().map((h) => (h.length > 80 ? `${h.slice(0, 80)}…` : h));
   return shown.length > 10 ? [...shown.slice(0, 10), `${shown.length - 10} more`] : shown;

@@ -2679,6 +2679,14 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     ).toEqual([]);
   });
 
+  it("does not let a link one backslash reading sees hide behind a copy the other saw", () => {
+    // `https:\/\/evil.com/` in a code span: Markdown's escapes read it as a URL,
+    // every-backslash-as-/ reads `https:////`. The new tag is the other way round.
+    const before = "# t\n\nUpstream: `https:\\/\\/evil.com/`";
+    const after = `${before}\n<a href="/\\evil.com/">click</a>`;
+    expect(outsideLinks(edit(before, after))).toContain("evil.com");
+  });
+
   it("counts a URL completed on a later line, starting on a line the change keeps", () => {
     const before = '<a href="https://karasu.kompiro.dev\n">x</a>';
     const after = '<a href="https://karasu.kompiro.dev\n.evil.com">x</a>';
