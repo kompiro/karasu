@@ -1260,10 +1260,23 @@ deploy "production" {
 
 `realizes` corresponds to UML's Realization relationship. The arrow points from physical (concrete) to logical (abstract).
 
-A `realizes` target may be a `service`, a `domain`, or a **`client`** — a client (SPA / mobile app)
-is a deployable logical node, so a `war` / `assets` bundle that realizes it records the client's
-physical form, symmetrically to how an `oci` unit realizes a service (see also _Realizing shared infra_
-below for `database` / `queue` / `storage` targets). The target is written as a node reference path
+A `realizes` target may be any kind in the table below. A **`client`** is among them because a client
+(SPA / mobile app) is a deployable logical node, so a `war` / `assets` bundle that realizes it records the
+client's physical form, symmetrically to how an `oci` unit realizes a service (see _Realizing shared infra_
+below for `database` / `queue` / `storage` targets).
+
+<!-- gen:reference:realizes-target-kinds — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
+| Keyword | Meaning |
+|---------|---------|
+| `service` | An independent unit of business capability |
+| `domain` | A business-concern boundary (top-level, inside a system, or inside a service) |
+| `client` | User-delegated software the project itself ships (mobile / web / desktop / cli / device / extension / embed) |
+| `database` | Shared database declared at system level — infra that services depend on |
+| `queue` | Shared message queue declared at system level — infra that services depend on |
+| `storage` | Shared storage (object store, etc.) declared at system level — infra that services depend on |
+<!-- /gen:reference:realizes-target-kinds -->
+
+The target is written as a node reference path
 (see [§ Node reference path notation](#node-reference-path-notation)): a bare id or a qualifying
 suffix like `realizes Shop.Api`; a mixed-kind/depth multi-match draws `realizes-target-ambiguous`.
 
@@ -1503,8 +1516,21 @@ organization TechCorp {
 - Teams can be nested — placing child teams under a parent team expresses organizational hierarchy.
 - Team IDs must be unique within the same organization. Duplicates produce an error.
 - During parsing, an `ownerIndex` (`node full path → team id`, #2548) is built so that a logical-diagram node can look up its owner team; each `owns` reference is expanded through the suffix rule at build time.
-- `owns` accepts `service` / `domain` / `client` and the infra blocks (`database` / `queue` / `storage`) at any depth; an infra **leaf** (`table` / `queue-item` / `bucket`) and a `capability` are not ownership units and are reported by `invalid-owns`.
+- `owns` accepts the kinds in the table below, at any depth; an infra **leaf** (`table` / `queue-item` / `bucket`) and a `capability` are not ownership units and are reported by `invalid-owns`.
 - Ownership is **rendered on the owned node's card** in the system view as a team chip (a person-group vector glyph, `data-meta-glyph="team"`), on the logical kinds only (`service` / `domain` / `client`) — an owned infra block draws no chip, because the rectangular chip does not fit a cylinder / cloud corner (the same constraint the deploy button carries). Its ownership still reads on the system view under *Group by: team*, whose frames resolve by id, and in the org view. The chip shows the team's declared `label` (falling back to its id) so a card and a *Group by: team* frame name the same team the same way; clicking it navigates to the org view by team **id**.
+
+The kinds `owns` accepts:
+
+<!-- gen:reference:owns-target-kinds — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
+| Keyword | Meaning |
+|---------|---------|
+| `service` | An independent unit of business capability |
+| `domain` | A business-concern boundary (top-level, inside a system, or inside a service) |
+| `client` | User-delegated software the project itself ships (mobile / web / desktop / cli / device / extension / embed) |
+| `database` | Shared database declared at system level — infra that services depend on |
+| `queue` | Shared message queue declared at system level — infra that services depend on |
+| `storage` | Shared storage (object store, etc.) declared at system level — infra that services depend on |
+<!-- /gen:reference:owns-target-kinds -->
 
 #### Ownership inheritance — the nearest owned ancestor
 

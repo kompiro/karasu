@@ -1166,9 +1166,21 @@ deploy "本番環境" {
 
 `realizes` はUMLのRealization（実現）関係。矢印は物理（具象）→ 論理（抽象）の向き。
 
-`realizes` の対象は `service` / `domain` に加えて **`client`** も指定できる。client（SPA・モバイルアプリ）は
-デプロイ対象となる論理ノードなので、それを realize する `war` / `assets` 等は、`oci` がサービスを realize するのと
-同じく client の物理形態を記録する（`database` / `queue` / `storage` を対象とする場合は後述の _共有 infra の realize_ を参照）。
+`realizes` の対象は下の表の kind。**`client`** が入るのは、client（SPA・モバイルアプリ）が
+デプロイ対象となる論理ノードで、それを realize する `war` / `assets` 等が、`oci` がサービスを realize するのと
+同じく client の物理形態を記録するからである（`database` / `queue` / `storage` を対象とする場合は後述の _共有 infra の realize_ を参照）。
+
+<!-- gen:reference:realizes-target-kinds — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
+| キーワード | 意味 |
+|------------|------|
+| `service` | 独立したビジネス機能の単位 |
+| `domain` | ビジネス上の関心事の境界（トップレベル / system 直下 / service 内） |
+| `client` | ユーザーの委譲で動く、自社が出荷するクライアントソフトウェア（mobile / web / desktop / cli / device / extension / embed） |
+| `database` | system 直下に置く共有データベース。service が依存する infra |
+| `queue` | system 直下に置く共有メッセージキュー。service が依存する infra |
+| `storage` | system 直下に置く共有ストレージ（オブジェクトストレージ等）。service が依存する infra |
+<!-- /gen:reference:realizes-target-kinds -->
+
 対象はノード参照 path（「ノード参照の path 記法」節）で書く: bare id でも `realizes Shop.Api` のような
 接尾辞修飾でもよい。kind・深さの混在する多重一致は `realizes-target-ambiguous` を引く。
 
@@ -1393,8 +1405,21 @@ organization TechCorp {
 - team は入れ子にでき、親 team の下に子 team を並べると組織階層を表現できる。
 - team ID は同一 organization 内で一意。重複するとエラーになる。
 - パース時に `ownerIndex`（`node full path → team id`、#2548）が構築され、論理図のノードから所有チームを逆引きできる。各 `owns` 参照は構築時に接尾辞規則で展開される。
-- `owns` の対象になれるのは `service` / `domain` / `client` と infra ブロック（`database` / `queue` / `storage`。深さは問わない）。infra の **leaf**（`table` / `queue-item` / `bucket`）と `capability` は所有の単位ではなく、`invalid-owns` で報告される。
+- `owns` の対象になれるのは下の表の kind（深さは問わない）。infra の **leaf**（`table` / `queue-item` / `bucket`）と `capability` は所有の単位ではなく、`invalid-owns` で報告される。
 - 所有関係はシステムビューの**所有されるノードのカード上**に team チップ（人型グループのベクターグリフ、`data-meta-glyph="team"`）として描画される。対象は論理 kind のみ（`service` / `domain` / `client`）— 所有された infra ブロックにチップは出ない（矩形のチップが円柱・雲の角に収まらないため。deploy ボタンと同じ制約）。その所有関係はシステムビューでは *Group by: team* のフレーム（id で解決する）に、また org view に現れる。チップの表示は team の `label`（無ければ id）で、*Group by: team* のフレームと同じ名乗りになる。クリック時の遷移先は team の **id** で解決する。
+
+`owns` の対象になれる kind:
+
+<!-- gen:reference:owns-target-kinds — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
+| キーワード | 意味 |
+|------------|------|
+| `service` | 独立したビジネス機能の単位 |
+| `domain` | ビジネス上の関心事の境界（トップレベル / system 直下 / service 内） |
+| `client` | ユーザーの委譲で動く、自社が出荷するクライアントソフトウェア（mobile / web / desktop / cli / device / extension / embed） |
+| `database` | system 直下に置く共有データベース。service が依存する infra |
+| `queue` | system 直下に置く共有メッセージキュー。service が依存する infra |
+| `storage` | system 直下に置く共有ストレージ（オブジェクトストレージ等）。service が依存する infra |
+<!-- /gen:reference:owns-target-kinds -->
 
 #### 所有の継承 — 直近の owned 祖先
 

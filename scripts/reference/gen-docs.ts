@@ -22,6 +22,7 @@ import {
   REFERENCE_DATA,
   SELECTOR_SPECIFICITY,
 } from "../../packages/core/src/builtins/reference-data.ts";
+import { OWNS_TARGET_KINDS, REALIZES_TARGET_KIND_SET } from "../../packages/core/src/types/ast.ts";
 
 export type Locale = "en" | "ja";
 
@@ -191,7 +192,33 @@ export const TABLES: TableSpec[] = [
           : [],
       ),
   },
+  {
+    id: "owns-target-kinds",
+    file: { en: "docs/spec/syntax.md", ja: "docs/spec/syntax.ja.md" },
+    headers: { en: ["Keyword", "Meaning"], ja: ["キーワード", "意味"] },
+    rows: (locale) => targetKindRows(OWNS_TARGET_KINDS, locale),
+  },
+  {
+    id: "realizes-target-kinds",
+    file: { en: "docs/spec/syntax.md", ja: "docs/spec/syntax.ja.md" },
+    headers: { en: ["Keyword", "Meaning"], ja: ["キーワード", "意味"] },
+    rows: (locale) => targetKindRows([...REALIZES_TARGET_KIND_SET], locale),
+  },
 ];
+
+/**
+ * The kinds a relation accepts as its target, from the constant the checks
+ * read (TPL-1720), so the spec cannot name a different set. A kind the
+ * reference data does not describe fails the generation rather than vanishing
+ * from the table.
+ */
+function targetKindRows(kinds: readonly string[], locale: Locale): string[][] {
+  return kinds.map((kind) => {
+    const entry = REFERENCE_DATA.nodeKinds.find((k) => k.kind === kind);
+    if (!entry) throw new Error(`no reference data for node kind \`${kind}\``);
+    return [code(kind), entry.description[locale]];
+  });
+}
 
 const MARKER_NOTE =
   "DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`.";

@@ -60,7 +60,7 @@ assert している（presentation が狭いのは infra の図形にチップ�
 
 valid-target set を構築・変更するとき、以下を確認する:
 
-- [ ] valid-target set が **spec（`docs/spec/syntax.md`）が realize / owns 可能と定める全 kind** を列挙しているか（service / domain / client / infra …）。subset で済ませていないか
+- [ ] valid-target set が **spec（`docs/spec/syntax.md`）が realize / owns 可能と定める全 kind** を列挙しているか（service / domain / client / infra …）。subset で済ませていないか [guard: `scripts/reference/gen-docs.test.ts`]
 - [ ] 同じ参照関係について **複数箇所に valid-id 集合がある**なら、**列挙を 1 つの定数に畳んだか**（`types/ast.ts` の `OWNS_TARGET_KINDS` が `owns` の実装例）。「すべてに同じ kind を足す」で済ませると、次に kind が増えたとき同じ取り残しが起きる（#2408）
 - [ ] 畳まずに集合を分ける場合、**分ける理由をコメントに書き、集合間の関係をテストで固定したか**（例: resolution ⊇ presentation を `owner-affordance-kinds.test.ts` が assert）
 - [ ] **system 内に nest した kind** と **top-level 宣言（`file.clients` 等）** の両方を集合に入れたか
@@ -82,3 +82,4 @@ valid-target set を構築・変更するとき、以下を確認する:
 
 - `packages/core/src/resolver/warnings.test.ts`（`unresolved-realizes` / `invalid-owns` の client positive ケース）
 - `packages/core/src/parser/parser.test.ts`（`owns-target-not-found` の client positive ケース）
+- `scripts/reference/gen-docs.test.ts`：`docs/spec/syntax.md` / `syntax.ja.md` の `owns` と `realizes` の対象 kind の表（`gen:reference:owns-target-kinds` / `realizes-target-kinds`）は `OWNS_TARGET_KINDS` / `REALIZES_TARGET_KIND_SET` から `scripts/reference/gen-docs.ts` が生成し、テストが生成結果と commit 済みの spec の一致を assert する。定数に kind を足すか外すと、spec を生成し直すまで CI（`test:scripts`）が落ちるので、spec と検証の集合は食い違えない（チェックリスト 1 項目目のガード）。どの kind を許すかは ADR の判断のまま
