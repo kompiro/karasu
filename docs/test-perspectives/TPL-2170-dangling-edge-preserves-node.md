@@ -68,7 +68,8 @@ cross-reference を持つ宣言の検証 / resolver 経路を実装 / 変更す�
   import は追加した日から加わる。corpus が形を持つこと（変異したエッジが 500 本を超えること、import を落とすと
   参照が宙に浮く example があること）もテストが確かめる。named import で読み込んだ top-level service は、それを
   名指すエッジの `system` に置かれる（`resolveBareIdImport` の規則 2）。そのエッジを書き換えると service は
-  top-level に移るので、描画の比較では root の segment だけ違う path を「残った」と数える
+  top-level に移るので、そうして移った service とその配下に限り、root の segment を外した path（配下は
+  `__unassigned__` の下）を「残った」と数える。ほかのノードは path が完全に一致しなければ失ったと数える
 
 ## 派生元 spec
 

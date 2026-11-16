@@ -64,7 +64,8 @@ karasu は論理 (`system`)・物理 (`deploy`)・組織 (`organization`) の三
   がそれぞれ system / deploy / org の pane に描かれることを確かめる。期待値は merge 結果から導くので、新しい example と
   新しい宣言は追加した日から加わる。3 面すべてを import 先のファイルから埋める entry が corpus にあることも確かめる。
   例外は 2 つで、テストに理由を書いてある: `system` が 1 つのモデルではその `system` が root の canvas になること、
-  同じ id のコンテナが 2 か所にあるとき bundle は anchor id ごとに 1 階層しか持たないこと（#2933）
+  同じ id のコンテナが 2 か所にあるとき bundle は anchor id ごとに 1 階層しか持たないこと（#2933）。
+  後者では anchor が解決する側（`nodePathIndex` の勝者）の配下は期待値に残し、もう一方の配下だけを外す
 
 top-level block 種別を列挙する curated table（チェックリスト 1 項目目）はまだ無い。
 

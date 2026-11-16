@@ -8,7 +8,7 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
-import { dirname, relative, resolve } from "node:path";
+import { dirname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { InMemoryFileSystemProvider } from "../fs/in-memory-provider.js";
 import { ImportResolver } from "../fs/import-resolver.js";
@@ -18,6 +18,9 @@ import type { KrsFile, KrsNode } from "../types/ast.js";
 import { buildAllViewsSvgProject } from "./compile.js";
 
 const EXAMPLES = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../examples");
+
+/** An example's path under `examples/`, `/`-separated on every platform (the in-memory file system's form). */
+const logical = (absolute: string): string => relative(EXAMPLES, absolute).split(sep).join("/");
 
 function walk(dir: string, out: string[]): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -82,10 +85,15 @@ function declared(file: KrsFile): Record<Face, Expected[]> {
     // and the anchor carries no path (#2933, docs/spec/permalink.md). When a
     // container's id is declared at two paths, the bundle draws the level of
     // the one the app resolves the anchor to, and the other's contents have
-    // no level. Decided there; not a loss this guard should report.
-    const behindSharedAnchor = prefix.some(
-      (ancestor, i) => i > 0 && (pathsPerId.get(ancestor.id) ?? 0) > 1,
-    );
+    // no level. Decided there; not a loss this guard should report. The
+    // winner's contents stay expected: only the branches the anchor does not
+    // resolve to are left out.
+    const behindSharedAnchor = prefix.some((ancestor, i) => {
+      if (i === 0 || (pathsPerId.get(ancestor.id) ?? 0) < 2) return false;
+      const own = prefix.slice(0, i + 1).map((n) => n.id);
+      const winner = file.nodePathIndex.get(ancestor.id)?.join(".");
+      return winner !== own.join(".") && winner !== own.slice(1).join(".");
+    });
     if (!isRootCanvas && !behindSharedAnchor) {
       system.push({
         key: nodePathRefId(chain.map((n) => n.id)),
@@ -131,12 +139,11 @@ function draws(face: Face, markup: string, expected: Expected): boolean {
 
 describe("every shipped example draws all of its model on each of the three faces (TPL-2169)", () => {
   const files = walk(EXAMPLES, []).sort();
-  const entries = files.filter((f) => f.endsWith(".krs")).map((f) => `/${relative(EXAMPLES, f)}`);
+  const entries = files.filter((f) => f.endsWith(".krs")).map((f) => `/${logical(f)}`);
   const fs = new InMemoryFileSystemProvider();
 
   beforeAll(async () => {
-    for (const file of files)
-      await fs.writeFile(`/${relative(EXAMPLES, file)}`, readFileSync(file, "utf8"));
+    for (const file of files) await fs.writeFile(`/${logical(file)}`, readFileSync(file, "utf8"));
   });
 
   // The guard measures the cross-face case only if the corpus has it: one

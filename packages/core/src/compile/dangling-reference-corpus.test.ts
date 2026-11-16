@@ -15,17 +15,20 @@
 
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
-import { dirname, relative, resolve } from "node:path";
+import { dirname, posix, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { InMemoryFileSystemProvider } from "../fs/in-memory-provider.js";
 import { resolvePath } from "../fs/path-utils.js";
 import { ImportResolver } from "../fs/import-resolver.js";
 import { Parser } from "../parser/parser.js";
-import { nodePathRefId } from "../parser/node-path.js";
+import { nodePathRefId, parseNodePathRefId } from "../parser/node-path.js";
 import type { KrsEdge, KrsFile, KrsNode } from "../types/ast.js";
 import { buildAllViewsSvgProject } from "./compile.js";
 
 const EXAMPLES = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../examples");
+
+/** An example's path under `examples/`, `/`-separated on every platform (the in-memory file system's form). */
+const logical = (absolute: string): string => relative(EXAMPLES, absolute).split(sep).join("/");
 const DANGLING = "__dangling_reference__";
 
 function walk(dir: string, out: string[]): string[] {
@@ -80,19 +83,35 @@ function drawnNodes(svg: string): Set<string> {
 }
 
 /**
- * Whether a node drawn at `path` before is still drawn after. Below its root,
- * the path must match exactly. The root may change: a named-imported
- * top-level service is placed in the `system` whose edge names it (rule 2 of
- * `resolveBareIdImport`), so when that edge's endpoint is rewritten the
- * service moves to the top level and is still drawn there. A move is not a
- * drop; losing the subtree is.
+ * Whether a node drawn at `path` before is still drawn after. The path must
+ * match exactly, with one exception: a named-imported top-level service is
+ * placed in the `system` whose edge names it (rule 2 of `resolveBareIdImport`),
+ * so when that edge's endpoint is rewritten the service moves to the top level.
+ * Only for a service `relocated` that way, a path that loses its root segment
+ * still counts: the service itself at its own id, its subtree under
+ * `__unassigned__`. A move is not a drop; losing the subtree is.
  */
-function stillDrawn(path: string, after: Set<string>): boolean {
+function stillDrawn(path: string, after: Set<string>, relocated: Set<string>): boolean {
   if (after.has(path)) return true;
-  const dot = path.indexOf(".");
-  if (dot < 0) return false;
-  const below = path.slice(dot + 1);
-  return after.has(below) || [...after].some((p) => p.endsWith(`.${below}`));
+  const segments = parseNodePathRefId(path);
+  if (segments.length < 2 || !relocated.has(segments[1])) return false;
+  const below = nodePathRefId(segments.slice(1));
+  return after.has(below) || after.has(`__unassigned__.${below}`);
+}
+
+/**
+ * The top-level services `after` holds that `before` held inside a `system`:
+ * the named-imported services the rewrite moved (see {@link stillDrawn}).
+ */
+function relocatedServices(before: KrsFile, after: KrsFile): Set<string> {
+  const placed = new Set(
+    before.systems.flatMap((system) =>
+      system.children.filter((c) => c.kind === "service").map((c) => c.id),
+    ),
+  );
+  return new Set(
+    after.services.filter((service) => placed.has(service.id)).map((service) => service.id),
+  );
 }
 
 /** Where an edge was written, so the same edge can be found in the merged model. */
@@ -116,13 +135,12 @@ let parsedPaths: string[] = [];
 
 describe("a dangling reference drops the reference, not a node (TPL-2170)", () => {
   const files = walk(EXAMPLES, []).sort();
-  const entries = files.filter((f) => f.endsWith(".krs")).map((f) => `/${relative(EXAMPLES, f)}`);
+  const entries = files.filter((f) => f.endsWith(".krs")).map((f) => `/${logical(f)}`);
   const fs = new InMemoryFileSystemProvider();
   const parse = Parser.parse.bind(Parser);
 
   beforeAll(async () => {
-    for (const file of files)
-      await fs.writeFile(`/${relative(EXAMPLES, file)}`, readFileSync(file, "utf8"));
+    for (const file of files) await fs.writeFile(`/${logical(file)}`, readFileSync(file, "utf8"));
     vi.spyOn(Parser, "parse").mockImplementation((source, filePath) => {
       const result = parse(source, filePath);
       if (filePath !== undefined) parsedPaths.push(filePath);
@@ -156,7 +174,7 @@ describe("a dangling reference drops the reference, not a node (TPL-2170)", () =
         if (decl.ids.length > 0 || decl.path === "") continue;
         const target = resolvePath(file, decl.path);
         const targets = decl.path.endsWith("/")
-          ? entries.filter((p) => dirname(p) === target && p !== file)
+          ? entries.filter((p) => posix.dirname(p) === target && p !== file)
           : [target];
         for (const t of targets) if (entries.includes(t)) await reach(t);
       }
@@ -212,7 +230,8 @@ describe("a dangling reference drops the reference, not a node (TPL-2170)", () =
               failures.push(`${label}: no unresolved-edge-endpoint names the dangling id`);
             }
             const drawnAfter = drawnNodes(after.svg);
-            const lost = [...drawnBefore].filter((n) => !stillDrawn(n, drawnAfter));
+            const relocated = relocatedServices(before.krsFile, after.krsFile);
+            const lost = [...drawnBefore].filter((n) => !stillDrawn(n, drawnAfter, relocated));
             if (lost.length > 0) failures.push(`${label}: lost ${lost.join(", ")}`);
           }
         }

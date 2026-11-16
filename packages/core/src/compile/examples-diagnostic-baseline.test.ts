@@ -18,7 +18,7 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
-import { dirname, relative, resolve } from "node:path";
+import { dirname, posix, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { InMemoryFileSystemProvider } from "../fs/in-memory-provider.js";
 import { Parser } from "../parser/parser.js";
@@ -26,6 +26,9 @@ import type { KrsEdge, KrsFile, KrsNode } from "../types/ast.js";
 import { compileProject, type DiagramType } from "./compile.js";
 
 const EXAMPLES = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../examples");
+
+/** An example's path under `examples/`, `/`-separated on every platform (the in-memory file system's form). */
+const logical = (absolute: string): string => relative(EXAMPLES, absolute).split(sep).join("/");
 
 // ─── Why each example may draw what it draws ──────────────────────────────
 
@@ -189,15 +192,15 @@ function edgesOf(nodes: KrsNode[]): KrsEdge[] {
 
 describe("examples: every shipped .krs draws only its recorded diagnostics (TPL-2577, TPL-2075)", () => {
   const files = walk(EXAMPLES, []).sort();
-  const entries = files.filter((f) => f.endsWith(".krs")).map((f) => relative(EXAMPLES, f));
+  const entries = files.filter((f) => f.endsWith(".krs")).map((f) => logical(f));
   const parsed = new Map<string, KrsFile>();
   const fs = new InMemoryFileSystemProvider();
 
   beforeAll(async () => {
     for (const file of files) {
       const content = readFileSync(file, "utf8");
-      await fs.writeFile(`/${relative(EXAMPLES, file)}`, content);
-      if (file.endsWith(".krs")) parsed.set(relative(EXAMPLES, file), Parser.parse(content).value);
+      await fs.writeFile(`/${logical(file)}`, content);
+      if (file.endsWith(".krs")) parsed.set(logical(file), Parser.parse(content).value);
     }
   });
 
@@ -230,7 +233,7 @@ describe("examples: every shipped .krs draws only its recorded diagnostics (TPL-
       file.nodeImports
         .filter((i) => i.ids.length === 0 && i.path.endsWith(".krs"))
         .some((i) => {
-          const imported = parsed.get(relative(EXAMPLES, resolve(EXAMPLES, dirname(name), i.path)));
+          const imported = parsed.get(posix.normalize(posix.join(posix.dirname(name), i.path)));
           return file.systems.some((s) => imported?.systems.some((t) => t.id === s.id));
         }),
     );
