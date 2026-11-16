@@ -74,6 +74,7 @@ TPL-1296 と同じ「並列に存在するものは drift する」発想を診�
 ## 関連テスト
 
 - `packages/core/src/types/diagnostics-catalog.test.ts` — カタログ完全性の meta-test
+- `packages/core/src/types/diagnostic-ids.ts` と `scripts/lint/diagnostic-ids-history.ts` — コードの rename は、ID をそのまま新しいコードに付け替えれば履歴の検査が、新しい ID を取って古いコードを消せば番号の欠けの検査（`diagnostic-ids.test.ts`）が落とす。ただし履歴の検査は公開済みのリリースのレジストリと比べるので、レジストリを含むリリース（`karasu@0.10.0` より後）が出るまでは前者を捕まえない。それまで「rename していない」の項目は印なしにしておく
 - `scripts/lint/spec-structure-sync.ts` — `diagnostics.md` / `.ja.md` の en/ja
   構造 parity（`SPEC_PAIRS` に登録）
 

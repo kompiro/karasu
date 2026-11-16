@@ -240,8 +240,15 @@ export class GitHubRawFileSystemProvider implements FileSystemProvider {
   }
 }
 
+/**
+ * Every status {@link resolveRepoPermalink} answers with. A closed union so a
+ * caller that decides per status (the bare route's fallthrough and cache
+ * decisions) has to be revisited when a status is added (TPL-1961).
+ */
+export type ResolveStatus = 200 | 400 | 404 | 413 | 500 | 502;
+
 export interface ResolveResult {
-  status: number;
+  status: ResolveStatus;
   /** Present on 200: the `encodeShare` payload for `/s?s=<payload>`. */
   encodedPayload?: string;
   /**
