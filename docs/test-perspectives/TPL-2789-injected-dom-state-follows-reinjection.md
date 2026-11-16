@@ -35,6 +35,8 @@ scope:
 
 React 19 は props を参照で比較し、`dangerouslySetInnerHTML` のオブジェクトが前回と
 別物なら、中の文字列を比べずに `innerHTML` を代入し直す（React 18 は文字列を比べていた）。
+これは #2789 を直した時点の react-dom 19.2 の挙動で、19.3 は再び文字列を比べてから代入する。memo は
+どちらの版でも正しく動かすために残し、19.3 で memo を外すと落ちる回帰テストの形は [#3806](https://github.com/kompiro/karasu/issues/3806) で決める。
 JSX にインラインで `{{ __html: svg }}` と書くと、オブジェクトは毎レンダリング新しいので、
 **無関係な理由の再レンダリングでも部分木が作り直される**。一方、状態を当てる effect は
 依存（`[highlightedNodeId, svg]` など）が変わったときしか走らない。結果として
@@ -67,7 +69,9 @@ effect が走らなかっただけである。runner が重く、再レンダリ
 流し込んだ DOM に命令的に状態を当てる実装・修正のとき:
 
 - [ ] `{ __html }` オブジェクトの identity が、流し込む文字列にだけ依存しているか
-      （`useMemo(() => ({ __html: svg }), [svg])`）。インラインのオブジェクトリテラルになっていないか
+      （`useMemo(() => ({ __html: svg }), [svg])`）。インラインのオブジェクトリテラルになっていないか。
+      流し込みは `InjectedHtml` だけが行い、ほかの場所の `dangerouslySetInnerHTML` / `innerHTML` は
+      CI の `pnpm run lint`（oxlint `react/no-danger` / `no-restricted-properties`）が拒む [guard: `.github/workflows/ci.yml`]
 - [ ] 状態を当てる effect の依存に同じ文字列が入っていて、作り直しと当て直しが同じ値で動くか
 - [ ] 「同じ値・新しいオブジェクトの props で再レンダリングする」テストを 1 回挟み、
       状態が残ることと、DOM ノードが同一であることの両方を assert したか
@@ -90,6 +94,8 @@ effect が走らなかっただけである。runner が重く、再レンダリ
 
 ## 関連テスト
 
+- `packages/app/src/components/InjectedHtml.test.tsx`（同じ文字列での再レンダリングで DOM ノードと当てた class が残る。
+  react-dom 19.3 は `__html` の文字列を比べてから代入するので、memo を外してもこのテストは落ちない）
 - `packages/app/src/components/PreviewPane.test.tsx` ›
   `keeps .karasu-highlighted across a re-render that leaves the diagram unchanged (#2789)`
 - `packages/app/src/components/PreviewPane.test.tsx` ›

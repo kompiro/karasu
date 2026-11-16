@@ -15,7 +15,35 @@
       "error",
       { "assertFunctionNames": ["expect", "expect*", "assert*"] }
     ],
-    "no-underscore-dangle": "off"
+    "no-underscore-dangle": "off",
+    "react/no-danger": "error",
+    "react/forbid-dom-props": [
+      "error",
+      {
+        "forbid": [
+          { "propName": "onWheel", "message": "React registers wheel listeners as passive, so preventDefault() does nothing and a stopPropagation() opt-out never reaches a native listener. Register a native listener with addEventListener(\"wheel\", h, { passive: false }) in an effect, and opt children out with data-wheel-zoom-ignore (TPL-1537)." },
+          { "propName": "onWheelCapture", "message": "React registers wheel listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchStart", "message": "React registers touchstart listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchStartCapture", "message": "React registers touchstart listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchMove", "message": "React registers touchmove listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchMoveCapture", "message": "React registers touchmove listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "srcDoc", "message": "Only AllLayersFrame.tsx sets srcDoc: a diagram surface goes through PreviewPane, not a raw iframe (TPL-2800)." }
+        ]
+      }
+    ],
+    "react/forbid-component-props": [
+      "error",
+      {
+        "forbid": [
+          { "propName": "onWheel", "message": "React registers wheel listeners as passive, so preventDefault() does nothing and a stopPropagation() opt-out never reaches a native listener. Register a native listener with addEventListener(\"wheel\", h, { passive: false }) in an effect, and opt children out with data-wheel-zoom-ignore (TPL-1537)." },
+          { "propName": "onWheelCapture", "message": "React registers wheel listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchStart", "message": "React registers touchstart listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchStartCapture", "message": "React registers touchstart listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchMove", "message": "React registers touchmove listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+          { "propName": "onTouchMoveCapture", "message": "React registers touchmove listeners as passive; register a native non-passive listener instead (TPL-1537)." }
+        ]
+      }
+    ]
   },
   "overrides": [
     {
@@ -24,6 +52,85 @@
         "react/no-object-type-as-default-prop": "off",
         "react/globals": "off",
         "react/immutability": "off"
+      }
+    },
+    {
+      "files": ["packages/app/src/**/*.{ts,tsx}"],
+      "excludeFiles": ["**/*.{test,spec}.{ts,tsx}"],
+      "rules": {
+        "no-restricted-properties": [
+          "error",
+          { "property": "innerHTML", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
+          { "property": "outerHTML", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
+          { "property": "insertAdjacentHTML", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
+          { "property": "setHTMLUnsafe", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
+          { "property": "createContextualFragment", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
+          { "object": "document", "property": "write", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
+          { "property": "srcdoc", "message": "Only AllLayersFrame.tsx sets srcDoc (TPL-2800)." },
+          { "property": "writeln", "message": "Inject markup with InjectedHtml (TPL-2789, TPL-2800)." },
+          { "property": "contentDocument", "message": "Only AllLayersFrame.tsx fills an iframe (TPL-2800)." },
+          { "object": "React", "property": "createElement", "message": "Write JSX: lint checks srcDoc and the passive listeners as JSX attributes only (TPL-1537, TPL-2800)." }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              { "name": "react/jsx-runtime", "message": "Write JSX: lint checks dangerouslySetInnerHTML, srcDoc and the passive listeners as JSX attributes (TPL-1537, TPL-2789, TPL-2800)." },
+              { "name": "react/jsx-dev-runtime", "message": "Write JSX: lint checks dangerouslySetInnerHTML, srcDoc and the passive listeners as JSX attributes (TPL-1537, TPL-2789, TPL-2800)." }
+            ],
+            "patterns": [
+              {
+                "regex": "(^|/)InjectedHtml(\\.js)?$",
+                "message": "InjectedHtml is the app's only markup injection point. A surface that draws a diagram goes through PreviewPane instead (TPL-2800); add this file to the InjectedHtml allowlist in .oxlintrc.json only for content that is not a diagram."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "packages/app/src/components/PreviewPane.tsx",
+        "packages/app/src/components/focus-canvas/FocusCanvas.tsx",
+        "packages/app/src/components/NodeDetailPanel.tsx",
+        "packages/app/src/components/EdgeDetailPanel.tsx",
+        "packages/app/src/components/ChatPane.tsx",
+        "packages/app/src/components/OutlineView.tsx"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              { "name": "react/jsx-runtime", "message": "Write JSX: lint checks dangerouslySetInnerHTML, srcDoc and the passive listeners as JSX attributes (TPL-1537, TPL-2789, TPL-2800)." },
+              { "name": "react/jsx-dev-runtime", "message": "Write JSX: lint checks dangerouslySetInnerHTML, srcDoc and the passive listeners as JSX attributes (TPL-1537, TPL-2789, TPL-2800)." }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/app/src/components/InjectedHtml.tsx"],
+      "rules": {
+        "react/no-danger": "off"
+      }
+    },
+    {
+      "files": ["packages/app/src/components/AllLayersFrame.tsx"],
+      "rules": {
+        "react/forbid-dom-props": [
+          "error",
+          {
+            "forbid": [
+              { "propName": "onWheel", "message": "React registers wheel listeners as passive, so preventDefault() does nothing and a stopPropagation() opt-out never reaches a native listener. Register a native listener with addEventListener(\"wheel\", h, { passive: false }) in an effect, and opt children out with data-wheel-zoom-ignore (TPL-1537)." },
+              { "propName": "onWheelCapture", "message": "React registers wheel listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+              { "propName": "onTouchStart", "message": "React registers touchstart listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+              { "propName": "onTouchStartCapture", "message": "React registers touchstart listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+              { "propName": "onTouchMove", "message": "React registers touchmove listeners as passive; register a native non-passive listener instead (TPL-1537)." },
+              { "propName": "onTouchMoveCapture", "message": "React registers touchmove listeners as passive; register a native non-passive listener instead (TPL-1537)." }
+            ]
+          }
+        ]
       }
     },
     {
@@ -85,12 +192,12 @@
         "max-lines": ["error", { "max": 600 }]
       }
     },
-    { "files": ["packages/app/src/components/PreviewPane.tsx"], "rules": { "max-lines": ["error", { "max": 850 }] } },
+    { "files": ["packages/app/src/components/PreviewPane.tsx"], "rules": { "max-lines": ["error", { "max": 846 }] } },
     { "files": ["packages/app/src/components/focus-canvas/build.ts"], "rules": { "max-lines": ["error", { "max": 860 }] } },
     { "files": ["packages/app/src/hooks/useChatSession.ts"], "rules": { "max-lines": ["error", { "max": 626 }] } },
     { "files": ["packages/app/src/hooks/useChatSession/prompt.ts"], "rules": { "max-lines": ["error", { "max": 610 }] } },
     { "files": ["packages/cli/src/index.ts"], "rules": { "max-lines": ["error", { "max": 656 }] } },
-    { "files": ["packages/core/src/builtins/default-style.ts"], "rules": { "max-lines": ["error", { "max": 711 }] } },
+    { "files": ["packages/core/src/builtins/default-style.ts"], "rules": { "max-lines": ["error", { "max": 687 }] } },
     { "files": ["packages/core/src/builtins/reference-data.ts"], "rules": { "max-lines": ["error", { "max": 1158 }] } },
     { "files": ["packages/core/src/compile/compile-diff.ts"], "rules": { "max-lines": ["error", { "max": 913 }] } },
     { "files": ["packages/core/src/compile/compile.ts"], "rules": { "max-lines": ["error", { "max": 1087 }] } },
@@ -100,16 +207,16 @@
     { "files": ["packages/core/src/parser/style-parser.ts"], "rules": { "max-lines": ["error", { "max": 642 }] } },
     { "files": ["packages/core/src/renderer/crossing-marks.ts"], "rules": { "max-lines": ["error", { "max": 717 }] } },
     { "files": ["packages/core/src/renderer/deploy-layout.ts"], "rules": { "max-lines": ["error", { "max": 683 }] } },
-    { "files": ["packages/core/src/renderer/drill-down-svg.ts"], "rules": { "max-lines": ["error", { "max": 918 }] } },
+    { "files": ["packages/core/src/renderer/drill-down-svg.ts"], "rules": { "max-lines": ["error", { "max": 913 }] } },
     { "files": ["packages/core/src/renderer/edge-routing-groups.ts"], "rules": { "max-lines": ["error", { "max": 2437 }] } },
     { "files": ["packages/core/src/renderer/group-layout.ts"], "rules": { "max-lines": ["error", { "max": 611 }] } },
     { "files": ["packages/core/src/renderer/label-placement.ts"], "rules": { "max-lines": ["error", { "max": 1012 }] } },
     { "files": ["packages/core/src/renderer/org-renderer.ts"], "rules": { "max-lines": ["error", { "max": 768 }] } },
     { "files": ["packages/core/src/renderer/org-tree-renderer.ts"], "rules": { "max-lines": ["error", { "max": 676 }] } },
-    { "files": ["packages/core/src/resolver/style-resolver.ts"], "rules": { "max-lines": ["error", { "max": 860 }] } },
+    { "files": ["packages/core/src/resolver/style-resolver.ts"], "rules": { "max-lines": ["error", { "max": 859 }] } },
     { "files": ["packages/core/src/resolver/warnings.ts"], "rules": { "max-lines": ["error", { "max": 1703 }] } },
     { "files": ["packages/core/src/translate/db.ts"], "rules": { "max-lines": ["error", { "max": 718 }] } },
-    { "files": ["packages/core/src/types/ast.ts"], "rules": { "max-lines": ["error", { "max": 1245 }] } },
+    { "files": ["packages/core/src/types/ast.ts"], "rules": { "max-lines": ["error", { "max": 1237 }] } },
     { "files": ["packages/i18n/src/en.ts"], "rules": { "max-lines": ["error", { "max": 633 }] } },
     { "files": ["packages/i18n/src/ja.ts"], "rules": { "max-lines": ["error", { "max": 632 }] } },
     { "files": ["packages/i18n/src/types.ts"], "rules": { "max-lines": ["error", { "max": 720 }] } }

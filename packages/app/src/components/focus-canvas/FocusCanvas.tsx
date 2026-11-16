@@ -9,6 +9,7 @@ import {
   type MouseEvent,
 } from "react";
 import { Button } from "@/components/ui/button";
+import { InjectedHtml } from "../InjectedHtml.js";
 import { useTranslation } from "../../i18n/index.js";
 import { buildFocusCanvas, type Focus, type FocusSource } from "./build.js";
 
@@ -150,15 +151,17 @@ export function FocusCanvas({
   // One layout at its natural size, whatever the pane's width: the panel
   // scrolls instead of the picture rearranging.
   const drawing = useMemo(() => buildFocusCanvas(source, focus), [source, focus]);
-  const html = useMemo(() => ({ __html: drawing.svg }), [drawing]);
+  // The string, not an object: `InjectedHtml` replaces the DOM exactly when it
+  // changes, so the effects below that act on the drawing key on it too.
+  const svg = drawing.svg;
 
   useEffect(() => {
     const active = document.activeElement;
     if (focusInDrawing.current && !(active && bodyRef.current?.contains(active))) focusPanel();
-    // `html` is a trigger, not a value this body reads: a new drawing
+    // `svg` is a trigger, not a value this body reads: a new drawing
     // replaces the control that had focus.
     // eslint-disable-next-line react/exhaustive-effect-dependencies
-  }, [html, focusPanel]);
+  }, [svg, focusPanel]);
 
   // Not a Radix Dialog (that is for modal dialogs, `.claude/rules/dialog.md`),
   // so Esc is ours to handle.
@@ -190,10 +193,10 @@ export function FocusCanvas({
     const view = body.getBoundingClientRect();
     body.scrollLeft += target.left - view.left - (view.width - target.width) / 2;
     body.scrollTop += target.top - view.top - (view.height - target.height) / 2;
-    // `html` is a trigger, not a value this body reads: each new drawing
+    // `svg` is a trigger, not a value this body reads: each new drawing
     // replaces the body's content, so the scroll has to be set again.
     // eslint-disable-next-line react/exhaustive-effect-dependencies
-  }, [html, focus]);
+  }, [svg, focus]);
 
   const name = (id: string) => source.cards.get(id)?.name ?? id;
   const title = focus.kind === "edge" ? `${name(focus.from)} → ${name(focus.to)}` : name(focus.id);
@@ -277,7 +280,7 @@ export function FocusCanvas({
             {t("focusCanvas.close")}
           </Button>
         </div>
-        <div
+        <InjectedHtml
           ref={bodyRef}
           className="focus-canvas__body"
           data-panning={panning ? "" : undefined}
@@ -294,7 +297,7 @@ export function FocusCanvas({
               focusInDrawing.current = false;
             }
           }}
-          dangerouslySetInnerHTML={html}
+          html={svg}
         />
       </div>
     </div>

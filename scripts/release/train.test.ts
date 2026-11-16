@@ -5,6 +5,7 @@ import {
   composeCommitSubject,
   composeTrainIssueBody,
   marketplaceStatus,
+  npmTrainState,
   shouldDepart,
 } from "./train.mts";
 
@@ -61,6 +62,7 @@ describe("tracking Issue", () => {
     repository: "kompiro/karasu",
     branch: "chore/release-2026-10-25",
     bumps: [{ name: "karasu", from: "0.7.0", to: "0.8.0" }],
+    npmNames: ["karasu", "@karasu-tools/core", "karasu-skills"],
   });
 
   it("carries the branch so the close job can find it", () => {
@@ -72,6 +74,25 @@ describe("tracking Issue", () => {
       "https://github.com/kompiro/karasu/compare/main...chore/release-2026-10-25?expand=1",
     );
     expect(body).toContain("| `karasu` | 0.7.0 | 0.8.0 |");
+  });
+
+  it("asks for the stage-only connection and the approval when npm packages move (#3240)", () => {
+    expect(body).toContain("stage-only Trusted Publisher connection");
+    expect(body).toContain("conditioned on the environment `npm`");
+    expect(body).toContain("- [ ] Approve the staged npm versions (`pnpm release:approve`)");
+    expect(body.indexOf("Squash-merge")).toBeLessThan(body.indexOf("Approve the staged"));
+    expect(body).toContain("`release-confirm.yml`");
+  });
+
+  it("leaves the npm steps out of a train that only moves the extension", () => {
+    const vscodeOnly = composeTrainIssueBody({
+      repository: "kompiro/karasu",
+      branch: "chore/release-2026-10-25",
+      bumps: [{ name: "karasu-vscode", from: "0.2.0", to: "0.2.1" }],
+      npmNames: ["karasu", "@karasu-tools/core", "karasu-skills"],
+    });
+    expect(vscodeOnly).not.toContain("release:approve");
+    expect(vscodeOnly).not.toContain("Trusted Publisher");
   });
 
   it("finds no branch in an unrelated Issue", () => {
@@ -105,5 +126,28 @@ describe("marketplaceStatus", () => {
   it("is absent for a new version", () => {
     expect(marketplaceStatus(show, "0.4.0")).toBe("absent");
     expect(marketplaceStatus({}, "0.4.0")).toBe("absent");
+  });
+});
+
+describe("npmTrainState", () => {
+  const bumped = [
+    { name: "karasu-skills", version: "0.3.0" },
+    { name: "karasu", version: "0.11.0" },
+  ];
+
+  it("is done when every bumped version is tagged on the release commit (#3240)", () => {
+    expect(npmTrainState(bumped, () => "sha", "sha")).toEqual({ pending: [], misplaced: [] });
+  });
+
+  it("waits for untagged versions and reports tags on another commit", () => {
+    const targets: Record<string, string> = { "karasu-skills@0.3.0": "other" };
+    expect(npmTrainState(bumped, (tag) => targets[tag] ?? null, "sha")).toEqual({
+      pending: ["karasu@0.11.0"],
+      misplaced: ["karasu-skills@0.3.0"],
+    });
+  });
+
+  it("has nothing to wait for when no npm package was bumped", () => {
+    expect(npmTrainState([], () => null, "sha")).toEqual({ pending: [], misplaced: [] });
   });
 });

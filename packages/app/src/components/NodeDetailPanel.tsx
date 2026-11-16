@@ -13,6 +13,7 @@ import {
 import type { NodeMetadata } from "@karasu-tools/core";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "../i18n/index.js";
+import { InjectedHtml } from "./InjectedHtml.js";
 
 interface NodeDetailPanelProps {
   nodeId: string;
@@ -111,7 +112,7 @@ export function NodeDetailPanel({
     >
       <div className="node-detail-header">
         {pictogramSvg ? (
-          <span className="node-detail-icon" dangerouslySetInnerHTML={{ __html: pictogramSvg }} />
+          <InjectedHtml as="span" className="node-detail-icon" html={pictogramSvg} />
         ) : (
           <span className="node-detail-icon">{fallbackIcon}</span>
         )}
@@ -124,10 +125,7 @@ export function NodeDetailPanel({
       </div>
 
       {descriptionHtml && (
-        <div
-          className="node-detail-description"
-          dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-        />
+        <InjectedHtml className="node-detail-description" html={descriptionHtml} />
       )}
 
       {metadata.links.length > 0 && (

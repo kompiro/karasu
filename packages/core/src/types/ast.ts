@@ -1,5 +1,6 @@
 import type { SourceRange } from "./tokens.js";
 import type { ResourceOperation } from "../spec/operations.js";
+import type { DIAGNOSTIC_SEVERITY } from "./diagnostic-severity.js";
 
 export type LogicalNodeKind =
   | "system"
@@ -992,16 +993,7 @@ export function createEmptyKrsFile(): KrsFile {
 
 // ─── Diagnostics ───────────────────────────────────
 
-/**
- * Three-level severity. `info` is reserved for diagnostics that surface a
- * **structural fact karasu visualizes but does not prescribe** — e.g. shared
- * databases across services (`infra-redeclared-across-files`). The wording
- * is fact-first; any "this is a smell" framing belongs in linked
- * documentation, not in the message itself. `info` SHOULD render less
- * prominently than `warning` in downstream surfaces (App diagnostic banner,
- * LSP, CLI). See design doc `karasu-position-on-style-prescriptions.md`.
- */
-export type DiagnosticSeverity = "error" | "warning" | "info";
+export type { DiagnosticSeverity } from "./diagnostic-severity.js";
 
 /**
  * Per-code params shape. Each entry carries only the structured data needed
@@ -1232,7 +1224,7 @@ export type DiagnosticCode = keyof DiagnosticParamsByCode;
  */
 export type Diagnostic = {
   [K in DiagnosticCode]: {
-    severity: DiagnosticSeverity;
+    severity: (typeof DIAGNOSTIC_SEVERITY)[K];
     code: K;
     params: DiagnosticParamsByCode[K];
     loc?: SourceRange;

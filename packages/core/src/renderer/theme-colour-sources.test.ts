@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import { buildAllViewsSvg } from "../index.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
+import { INFRA_SUB_KIND_TO_TAG } from "../resolver/style-resolver.js";
 import { FACET_OVERLAY_COLORS } from "./facet-overlay.js";
 import { resolvePalette, type DiagramTheme } from "./palette.js";
 import { GHOST_OPACITY } from "./rendering-constants.js";
@@ -104,16 +105,15 @@ function themeColours(theme: DiagramTheme): Set<string> {
 }
 
 /**
- * Node kinds whose card no builtin rule paints, so it falls to the resolver's
- * `DEFAULT_NODE_STYLE`, a dark-theme card, in both themes. Known, and left as a
- * decision about their colours rather than fixed here; each entry is checked to
- * still need its exemption, so fixing one fails until it is removed.
+ * The infra leaf kinds (`table`, `queue-item`, `bucket`). They have no rule of
+ * their own: each takes its store's colours from a selector list in the builtin
+ * sheet (`database, table { … }`). Before that, nothing painted them and they
+ * fell to the resolver's dark `DEFAULT_NODE_STYLE` in both themes (#3777), so
+ * the scan below has to reach every one of them for the check to cover it.
+ * `INFRA_SUB_KIND_TO_TAG` is keyed by leaf kind (its values are the shape tags
+ * a dot-notation `resource` infers), so its keys are the closed set of leaves.
  */
-const BASE_CARD_KINDS: Record<string, string> = {
-  table: "infra leaf inside a database level; no builtin rule paints it",
-  "queue-item": "infra leaf inside a queue level; no builtin rule paints it",
-  bucket: "infra leaf inside a storage level; no builtin rule paints it",
-};
+const INFRA_LEAF_KINDS = Object.keys(INFRA_SUB_KIND_TO_TAG);
 
 /** The index just past the `</g>` that closes the `<g` opening at `start`. */
 function groupEnd(svg: string, start: number): number {
@@ -125,23 +125,6 @@ function groupEnd(svg: string, start: number): number {
     if (depth === 0) return m.index + m[0].length;
   }
   return svg.length;
-}
-
-/** `svg` split into the node groups of `kinds` (each cut at its matching `</g>`) and the rest. */
-function splitNodeGroups(svg: string, kinds: readonly string[]): { rest: string; cut: string[] } {
-  let rest = svg;
-  const cut: string[] = [];
-  for (const kind of kinds) {
-    const marker = `data-node-kind="${kind}"`;
-    let at: number;
-    while ((at = rest.indexOf(marker)) !== -1) {
-      const start = rest.lastIndexOf("<g ", at);
-      const end = groupEnd(rest, start);
-      cut.push(rest.slice(start, end));
-      rest = rest.slice(0, start) + rest.slice(end);
-    }
-  }
-  return { rest, cut };
 }
 
 const EXAMPLES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../examples");
@@ -200,7 +183,7 @@ describe("every colour of a themed render comes from that theme or the model (TP
       const found = { group: false, ghost: false };
       for (const [, krs] of EXAMPLES) {
         for (const groupBy of GROUPINGS) {
-          const svg = splitNodeGroups(draw(krs, theme, groupBy), Object.keys(BASE_CARD_KINDS)).rest;
+          const svg = draw(krs, theme, groupBy);
           const frames = fallbackFrames(svg, theme);
           found.group ||= frames.group;
           found.ghost ||= frames.ghost;
@@ -217,22 +200,19 @@ describe("every colour of a themed render comes from that theme or the model (TP
       const allowed = new Set([...supplied, ...hexesIn(krs)]);
       const stray = new Set<string>();
       for (const groupBy of GROUPINGS) {
-        const svg = splitNodeGroups(draw(krs, theme, groupBy), Object.keys(BASE_CARD_KINDS)).rest;
+        const svg = draw(krs, theme, groupBy);
         for (const colour of paintsIn(svg)) if (!allowed.has(colour)) stray.add(colour);
       }
       expect([...stray]).toEqual([]);
     });
 
-    it.each(Object.keys(BASE_CARD_KINDS))("%s still needs its exemption", (kind) => {
-      const cards = EXAMPLES.flatMap(
-        ([, krs]) => splitNodeGroups(draw(krs, theme, undefined), [kind]).cut,
+    // The leaves are drawn on their store's drill-down level only, so a scan
+    // that never reaches one would pass the check above without covering it.
+    it.each(INFRA_LEAF_KINDS)("draws a %s card", (kind) => {
+      const drawn = EXAMPLES.some(([, krs]) =>
+        draw(krs, theme, undefined).includes(`data-node-kind="${kind}"`),
       );
-      expect(cards.length, `no example draws a ${kind}`).toBeGreaterThan(0);
-      const unsupplied = cards.flatMap(paintsIn).filter((colour) => !supplied.has(colour));
-      expect(
-        unsupplied,
-        `${kind} is painted from the theme now; drop it from BASE_CARD_KINDS`,
-      ).not.toEqual([]);
+      expect(drawn, `no example draws a ${kind}`).toBe(true);
     });
   });
 });

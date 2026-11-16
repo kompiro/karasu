@@ -2,59 +2,13 @@ import type { StyleSheet } from "../types/style.js";
 import { StyleParser } from "../parser/style-parser.js";
 import type { DiagramTheme } from "../renderer/palette.js";
 import { REFERENCE_DATA } from "./reference-data.js";
+import {
+  ANNOTATION_LABEL_KEYS,
+  buildAnnotationRules,
+  type AnnotationBadgeLabels,
+} from "./annotation-badge-rules.js";
 
-/**
- * Translated labels for the built-in annotation badges, injected by the
- * caller per docs/spec/i18n.md (same pattern as EmptyStateLabels). Omitted
- * keys fall back to the `reference-data.ts` en labels, so the builtin
- * sheet and the Reference panel can never drift (TPL-1415).
- */
-export interface AnnotationBadgeLabels {
-  deprecated?: string;
-  new?: string;
-  experimental?: string;
-  draft?: string;
-  planned?: string;
-  migrationTarget?: string;
-}
-
-/** reference-data annotation name → AnnotationBadgeLabels key. */
-export const ANNOTATION_LABEL_KEYS: Record<string, keyof AnnotationBadgeLabels> = {
-  deprecated: "deprecated",
-  new: "new",
-  experimental: "experimental",
-  draft: "draft",
-  planned: "planned",
-  migration_target: "migrationTarget",
-};
-
-/** Escape a label for embedding in a double-quoted style string literal. */
-function escapeStyleString(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
-
-/**
- * Generate the `@deprecated` / `@new` / `@experimental` / `@draft` /
- * `@planned` / `@migration_target` rule blocks from `reference-data.ts` (colors /
- * icons / en label defaults) plus optional injected labels.
- */
-function buildAnnotationRules(theme: DiagramTheme, badgeLabels?: AnnotationBadgeLabels): string {
-  return REFERENCE_DATA.annotations
-    .map((a) => {
-      const label = badgeLabels?.[ANNOTATION_LABEL_KEYS[a.name]] ?? a.defaultBadge.label.en;
-      // Both palettes come from `reference-data.ts`, so the Reference panel's
-      // swatch and this sheet cannot disagree about what the theme paints
-      // (#2482; same single-source reasoning as the labels above, TPL-1415).
-      const color = a.defaultBadge.color[theme];
-      const extra = a.name === "deprecated" ? "\n  opacity: 0.6;" : "";
-      return `@${a.name} {
-  badge-color: ${color};
-  badge-icon: "${a.defaultBadge.icon}";
-  badge-label: "${escapeStyleString(label)}";${extra}
-}`;
-    })
-    .join("\n\n");
-}
+export { ANNOTATION_LABEL_KEYS, type AnnotationBadgeLabels } from "./annotation-badge-rules.js";
 
 const ANNOTATION_RULES_PLACEHOLDER = "/* __ANNOTATION_RULES__ */";
 
@@ -161,31 +115,42 @@ member {
   font-size: 12;
 }
 
-/* ── インフラリソース種別 ── */
-database {
+/* ── インフラリソース種別 ──
+   A leaf (table, queue-item, bucket) is part of its store, so it takes the
+   store's colours; the shape and weight stay the store's own (#3777). */
+database, table {
   background-color: #1C3A2E;
   color: #86EFAC;
   border-color: #166534;
+}
+
+database {
   border-width: 2;
   shape: cylinder;
   font-weight: bold;
   font-size: 13;
 }
 
-queue {
+queue, queue-item {
   background-color: #2D2310;
   color: #FCD34D;
   border-color: #92400E;
+}
+
+queue {
   border-width: 2;
   shape: queue;
   font-weight: bold;
   font-size: 13;
 }
 
-storage {
+storage, bucket {
   background-color: #1E2A3B;
   color: #93C5FD;
   border-color: #1D4ED8;
+}
+
+storage {
   border-width: 2;
   shape: cloud;
   font-weight: bold;
@@ -458,31 +423,42 @@ member {
   font-size: 12;
 }
 
-/* ── インフラリソース種別 ── */
-database {
+/* ── インフラリソース種別 ──
+   A leaf (table, queue-item, bucket) is part of its store, so it takes the
+   store's colours; the shape and weight stay the store's own (#3777). */
+database, table {
   background-color: #DCFCE7;
   color: #14532D;
   border-color: #86EFAC;
+}
+
+database {
   border-width: 2;
   shape: cylinder;
   font-weight: bold;
   font-size: 13;
 }
 
-queue {
+queue, queue-item {
   background-color: #FEF3C7;
   color: #78350F;
   border-color: #FCD34D;
+}
+
+queue {
   border-width: 2;
   shape: queue;
   font-weight: bold;
   font-size: 13;
 }
 
-storage {
+storage, bucket {
   background-color: #DBEAFE;
   color: #1E3A8A;
   border-color: #93C5FD;
+}
+
+storage {
   border-width: 2;
   shape: cloud;
   font-weight: bold;
