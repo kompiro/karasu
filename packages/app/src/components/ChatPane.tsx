@@ -5,6 +5,7 @@ import type { SystemNode, OrganizationBlock } from "@karasu-tools/core";
 import { ApiKeySetup } from "./ApiKeySetup.js";
 import { useChatSession, type PatchProposal } from "../hooks/useChatSession.js";
 import { useTranslation } from "../i18n/index.js";
+import { InjectedHtml } from "./InjectedHtml.js";
 import { Button } from "@/components/ui/button";
 
 interface ChatPaneProps {
@@ -199,10 +200,7 @@ function MarkdownContent({ content }: { content: string }) {
     return DOMPurify.sanitize(raw);
   }, [content]);
   return (
-    <div
-      className="chat-message-content chat-message-content--markdown"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <InjectedHtml className="chat-message-content chat-message-content--markdown" html={html} />
   );
 }
 

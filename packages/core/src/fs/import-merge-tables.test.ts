@@ -25,7 +25,8 @@ import type { DiagnosticParamsByCode, KrsFile } from "../types/ast";
 // them to enumerate. What is closed is the set of `KrsFile` arrays.
 
 type ArrayKeys<T> = {
-  [K in keyof T]-?: T[K] extends readonly unknown[] ? K : never;
+  // An optional array counts too; the key check below then needs createEmptyKrsFile to set it.
+  [K in keyof T]-?: NonNullable<T[K]> extends readonly unknown[] ? K : never;
 }[keyof T];
 type TopLevelKey = ArrayKeys<KrsFile>;
 
@@ -104,9 +105,9 @@ function errors(result: ResolvedProject): string[] {
 /**
  * The ways a file's content can reach the entry. `lib` is where the case's
  * source sits; `files` are the other files, with the entry at `index.krs`.
- * The named-import shapes put a second reach of `lib.krs` behind the first, so
- * the second is answered from the resolver's per-file cache and has to bring
- * the whole file (TPL-1383 items 2 and 3).
+ * The shapes that reach `lib.krs` twice answer the second reach from the
+ * resolver's per-file cache (`resolvedCache`), which exercises TPL-1383 items
+ * 2 and 3 for that cache.
  */
 const SHAPES: Record<string, { lib: string; files: Record<string, string> }> = {
   "whole-file import": {
@@ -151,7 +152,7 @@ const SHAPES: Record<string, { lib: string; files: Record<string, string> }> = {
  * Rows that fail on main, each with its Issue. A row listed here is asserted to
  * still fail, so the entry has to go when the fix lands.
  */
-const KNOWN_GAPS: Record<string, string> = {};
+const KNOWN_GAPS: Record<string, { issue: string; actual: string[] }> = {};
 
 function dirOf(path: string): string {
   const slash = path.lastIndexOf("/");
@@ -183,6 +184,15 @@ async function resolveShape(
 }
 
 describe("every top-level KrsFile array reaches the importer (TPL-1383, TPL-2169)", () => {
+  // `skip` is an escape hatch the type cannot narrow, so the skipped keys are
+  // pinned here: a new array cannot opt out of the rows below unnoticed.
+  it("skips only nodeImports", () => {
+    const skipped = Object.entries(TOP_LEVEL as Record<TopLevelKey, TopLevelCase>).flatMap(
+      ([key, c]) => ("skip" in c ? [key] : []),
+    );
+    expect(skipped).toEqual(["nodeImports"]);
+  });
+
   it("has a case for every array-valued KrsFile key", () => {
     expect(Object.keys(TOP_LEVEL).sort()).toEqual(arrayKeysOfEmptyKrsFile().sort());
   });
@@ -207,11 +217,16 @@ describe("every top-level KrsFile array reaches the importer (TPL-1383, TPL-2169
     expect(identities(alone.krsFile, key).length).toBeGreaterThan(0);
   });
 
+  it("every KNOWN_GAPS entry names a row", () => {
+    const names = new Set(rows.map((r) => r.name));
+    expect(Object.keys(KNOWN_GAPS).filter((name) => !names.has(name))).toEqual([]);
+  });
+
   it.each(rows.filter((r) => KNOWN_GAPS[r.name]))(
     "$name still differs (known gap, remove from KNOWN_GAPS when fixed)",
-    async ({ shape, key, c }) => {
-      const { alone, merged } = await resolveShape(c, shape);
-      expect(identities(merged.krsFile, key)).not.toEqual(identities(alone.krsFile, key));
+    async ({ name, shape, key, c }) => {
+      const { merged } = await resolveShape(c, shape);
+      expect(identities(merged.krsFile, key)).toEqual(KNOWN_GAPS[name].actual);
     },
   );
 
@@ -245,8 +260,13 @@ type ReopenProperty = DiagnosticParamsByCode["system-property-conflict"]["proper
 interface ReopenCase {
   /** The `KrsFile` array the kind's blocks live in. */
   key: TopLevelKey;
-  /** The properties S3 reconciles for this kind. */
-  properties: readonly ReopenProperty[];
+  /**
+   * Every property `system-property-conflict` can name: reconciled for this
+   * kind, or the reason the kind does not have it.
+   */
+  properties: Record<ReopenProperty, true | { absent: string }>;
+  /** The error two same-id children of this kind's block draw. */
+  collision: string;
   /** Block `B` with the given properties and one child per id. */
   block(props: Partial<Record<ReopenProperty, string>>, children: readonly string[]): string;
   read(file: KrsFile, property: ReopenProperty): string | undefined;
@@ -272,7 +292,8 @@ function blockB<T extends { id: string }>(blocks: readonly T[]): T | undefined {
 const REOPEN = {
   system: {
     key: "systems",
-    properties: ["label", "description"],
+    properties: { label: true, description: true },
+    collision: "duplicate-node-in-system",
     block: (props, children) =>
       `system B {\n${propLines(props)}${children.map((c) => `  service ${c}\n`).join("")}}\n`,
     read: (f, p) => {
@@ -283,8 +304,8 @@ const REOPEN = {
   },
   deploy: {
     key: "deploys",
-    // `DeployBlock` has no description.
-    properties: ["label"],
+    properties: { label: true, description: { absent: "`DeployBlock` has no description" } },
+    collision: "duplicate-node-in-deploy",
     block: (props, children) =>
       `deploy B {\n${propLines(props)}${children
         .map((c) => `  oci ${c} {\n    runtime "Docker"\n  }\n`)
@@ -294,7 +315,8 @@ const REOPEN = {
   },
   organization: {
     key: "organizations",
-    properties: ["label", "description"],
+    properties: { label: true, description: true },
+    collision: "duplicate-team-in-organization",
     block: (props, children) =>
       `organization B {\n${propLines(props)}${children.map((c) => `  team ${c} { label "${c}" }\n`).join("")}}\n`,
     read: (f, p) => {
@@ -350,7 +372,10 @@ describe("every block kind reopened across files follows S3 / S4 (TPL-2168)", ()
   });
 
   describe.each(REOPEN_ROWS)("%s", (kind, c) => {
-    for (const property of c.properties) {
+    const reconciled = (Object.keys(c.properties) as ReopenProperty[]).filter(
+      (property) => c.properties[property] === true,
+    );
+    for (const property of reconciled) {
       // Item 1 and 2: y.krs carries a value from two levels down, x.krs one
       // from a single level down. x is closer and wins in either order, and
       // the warning names both values and points at the losing declaration.
@@ -430,7 +455,7 @@ describe("every block kind reopened across files follows S3 / S4 (TPL-2168)", ()
         }),
       );
       expect(outcomes[0].children).toEqual(["P", "Q", "R", "Shared"]);
-      expect(outcomes[0].errors).toHaveLength(1);
+      expect(outcomes[0].errors).toEqual([c.collision]);
       for (const outcome of outcomes) expect(outcome).toEqual(outcomes[0]);
     });
   });

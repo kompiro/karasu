@@ -251,7 +251,7 @@ resource への operation / CRUD decoration の文法。
 | Code | ID | Severity | 発火条件 |
 | --- | --- | --- | --- |
 | `invalid-crud-decoration` | KRS054 | error | CRUD decoration が認識されない verb / letter を使う。 |
-| `empty-crud-decoration` | KRS055 | warning | `verb:` decoration の右辺が空。 |
+| `empty-crud-decoration` | KRS055 | error | `verb:` decoration の右辺が空。 |
 | `unknown-resource-operation` | KRS056 | warning | resource operation の verb が create / read / update / delete のいずれでもない。 |
 
 ### 割り当てと凝集

@@ -13,6 +13,8 @@ known_consumers:
 discovered_from:
   - issue: "#2269"
   - root_cause_file: "packages/core/src/builtins/default-style.ts"
+  - issue: "#3776"
+  - root_cause_file: "packages/core/src/builtins/icon-theme.ts"
 related_to:
   - TPL-2234
   - TPL-1503
@@ -83,6 +85,10 @@ scope:
   （`<builtin>` / `<icon-theme>`）かどうかで判定する
   （`packages/core/src/resolver/style-resolver.ts` の `resolveTeamFrames`）。
   プロパティ名や値では切らない — 著者が同じ値を書いたときに区別できなくなる。
+  #3776 は値で切った例で、variant タグを 2 つ持つ client の解決済みの `shape` が
+  variant のアイコンなら最初のタグのアイコンに書き換える後段が、著者が `#App` で
+  選んだアイコンまで書き換えていた。後段をやめ、カスケードに入る前に出荷側シートの
+  負けた variant のルールだけを外す形にした（`packages/core/src/resolver/variant-rules.ts`）。
 - **面ごとに既定値の持ち主を spec に書く。** 「カードの既定値は builtin シート、
   フレームの既定値はレンダラー」と明記しておくと、次に 3 つ目の面を足す人が
   同じ判断に到達できる。
@@ -93,6 +99,10 @@ scope:
   — describe「the frame's default is the renderer's, not the built-in sheet's」
   （既定状態で builtin のカード色がフレームに出ないこと、light / dark 両テーマ、
   かつカード側では今までどおり builtin が効くこと）
+- `packages/core/src/builtins/icon-theme.test.ts`
+  — 「an author's id rule naming a losing variant wins」（`ICON_RULES` から作った
+  variant タグの組み合わせすべてで、著者が負けた variant のアイコンを id で選ぶと
+  shape mode でも icon mode でも著者の値になること。#3776）
 
 ## 派生元 spec
 
