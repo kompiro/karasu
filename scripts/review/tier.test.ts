@@ -2528,6 +2528,8 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     "http://127.0.0.1:8080",
     "https://example.com/x",
     "https://api.example.org",
+    "https://example.net/x",
+    "http://app.localhost:3000/",
     "https://karasu.example",
     "https://a.test/x",
     "https://x.invalid",
@@ -2743,6 +2745,24 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
       expect(r.files[0]).toMatchObject({ tier: "medium", outside: ["evil.com"] });
       expect(tierOf(newDoc(EVIL, "docs/adr/12-x.md"))).toBe("medium");
       expect(tierOf(newDoc(EVIL, "docs/adr/12-x.md"), deleted("docs/design/x.md"))).toBe("medium");
+    });
+
+    it("makes a promotion's link swap Medium when the file also gains an outside link", () => {
+      const swap = modified("docs/acceptance/x.md", {
+        hunks: [
+          {
+            oldStart: 5,
+            removed: ["- 設計: [x.md](../design/x.md)"],
+            newStart: 5,
+            added: ["- 設計: [ADR-12](../adr/12-x.md)"],
+          },
+        ],
+        before: "# x\n",
+        after: "# x\n\nhttps://evil.com\n",
+      });
+      const promotion = [added("docs/adr/12-x.md"), deleted("docs/design/x.md")];
+      expect(tierOf(...promotion, { ...swap, after: swap.before })).toBe("low");
+      expect(tierOf(...promotion, swap)).toBe("medium");
     });
 
     it("leaves a Low file with only karasu's links Low", () => {
