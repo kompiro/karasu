@@ -77,7 +77,7 @@ silent drop はとくに view 抽出側の filter で生まれる。
 - [ ] その要素が**どの view に描画されるか**を列挙し、いずれにも該当しない書き方を 1 つ以上作って、実際に全 view path で抽出結果に現れないことを確認したか
 - [ ] 現れない書き方に対して診断（warning / error）が出るか。出ないなら診断を足したか
 - [ ] 同じ意味の間違いが別のスコープでも書けるか。書けるなら、そのすべてで同じ register の診断が出るか（error / 沈黙に割れていないか）
-- [ ] 正準形（描画される綴り）で**誤って発火しない**ことを、cross-boundary・多ファイル merge（同 id 再オープン）の両方で assert したか
+- [ ] 正準形（描画される綴り）で**誤って発火しない**ことを、cross-boundary・多ファイル merge（同 id 再オープン）の両方で assert したか [guard: `packages/core/src/compile/examples-diagnostic-baseline.test.ts`]
 - [ ] view 側の filter 条件を変更したとき、診断側の判定式も追随したか（両者は同じ規則の表と裏）
 - [ ] 「診断されているか」を数えるとき、**parser の diagnostics も含めたか**。resolver の
       warning だけを見ると、parse 時 error で弾かれた宣言が「描画も診断もされている」状態を
@@ -119,3 +119,7 @@ silent drop はとくに view 抽出側の filter で生まれる。
 - `packages/core/src/view/view-extract.test.ts` › `service-anchored edges (#2223)`
 - `packages/core/src/fs/import-resolver.test.ts` › `edge-endpoint-not-at-scope across a system reopen (#2075)` — 別ファイルの `system` 再オープンで届いた端点に対して正準形のエッジが誤発火しないことを、多ファイル merge 経路で固定する
 - `packages/core/src/examples.test.ts` › `examples: every shipped .krs is free of edge endpoint diagnostics` — 出荷している全 example（正準形の実例）で `edge-endpoint-not-at-scope` と曖昧端点の診断が 0 件であることを assert する
+- `packages/core/src/compile/examples-diagnostic-baseline.test.ts` — 4 項目目のガード。全 example を
+  `compileProject` で（import を解決して）描き、出る診断と warning を code ごとに数えて、理由付きの例外表と
+  一致することを確かめる。正準形で誤って発火する新しい診断は、code を問わず赤になる。cross-boundary の
+  エッジと、別ファイルでの同 id `system` 再オープンを corpus が含むことも同じテストが確かめる

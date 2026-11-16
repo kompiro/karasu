@@ -41,7 +41,7 @@ karasu は論理 (`system`)・物理 (`deploy`)・組織 (`organization`) の三
 - [ ] resolver の wildcard merge 対象として全 top-level block 種別が一覧されているか（curated table またはそれに準ずる exhaustiveness 担保） [guard: `packages/core/src/fs/import-merge-tables.test.ts`]
 - [ ] 新 block の merge を追加したら、import 経由で imported ファイルの該当 block が importer に現れるテストを追加したか [guard: `packages/core/src/fs/import-merge-tables.test.ts`]
 - [ ] `deploy.nodes` / `organization.teams` のような nested の relation（`realizes` / `owns`）も union されているか
-- [ ] 3 並行ビュー（system / deploy / org）の cross-face integration test（同じ fixture から 3 面を render して全コンテンツが現れる）を 1 件持っているか
+- [ ] 3 並行ビュー（system / deploy / org）の cross-face integration test（同じ fixture から 3 面を render して全コンテンツが現れる）を 1 件持っているか [guard: `packages/core/src/compile/three-face-render-corpus.test.ts`]
 
 ## 既知の対処パターン
 
@@ -64,6 +64,13 @@ karasu は論理 (`system`)・物理 (`deploy`)・組織 (`organization`) の三
   （not-found も ambiguous の取り違えも出ない）ことを固定する。チェックリスト 3 項目目には印を付けない。新しい入れ子の
   relation がこの表に入るのは、その存在検証のコードを `MERGED_SPACE_REFERENCE_CODES` に足したときだけで、
   `realizes` の未解決（`unresolved-realizes`）のように集合の外で判定するものは加わらない
+- `packages/core/src/compile/three-face-render-corpus.test.ts` — 4 項目目のガード。全 example を
+  `buildAllViewsSvgProject`（`karasu render` が書く bundle）で描き、merge 結果が宣言する論理ノード・deploy node・team
+  がそれぞれ system / deploy / org の pane に描かれることを確かめる。期待値は merge 結果から導くので、新しい example と
+  新しい宣言は追加した日から加わる。3 面すべてを import 先のファイルから埋める entry が corpus にあることも確かめる。
+  例外は 2 つで、テストに理由を書いてある: `system` が 1 つのモデルではその `system` が root の canvas になること、
+  同じ id のコンテナが 2 か所にあるとき bundle は anchor id ごとに 1 階層しか持たないこと（#2933）。
+  後者では anchor が解決する側（`nodePathIndex` の勝者）の配下は期待値に残し、もう一方の配下だけを外す
 
 ## 派生元 spec
 
