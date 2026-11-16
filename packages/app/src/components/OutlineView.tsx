@@ -1,4 +1,5 @@
 import { iconNameForNode, renderPictogram } from "@karasu-tools/core";
+import { InjectedHtml } from "./InjectedHtml.js";
 
 /**
  * View-agnostic node the Outline renders. The three diagram ASTs
@@ -132,11 +133,12 @@ function OutlineItem({
         title={`${label} (${node.kind})`}
       >
         {pictogram ? (
-          <span
+          <InjectedHtml
+            as="span"
             className="outline-item__icon"
             aria-hidden="true"
             // Pictogram markup comes from core's renderPictogram — trusted, not user input.
-            dangerouslySetInnerHTML={{ __html: pictogram }}
+            html={pictogram}
           />
         ) : (
           <span className="outline-item__icon outline-item__icon--glyph" aria-hidden="true">

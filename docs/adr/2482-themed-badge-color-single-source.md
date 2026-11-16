@@ -11,7 +11,7 @@ scope:
   concerns: [accessibility]
 assumptions:
   - "symbol: packages/core/src/builtins/reference-data.ts :: ThemedBadgeColor"
-  - "grep: packages/core/src/builtins/default-style.ts :: a\\.defaultBadge\\.color\\[theme\\]"
+  - "grep: packages/core/src/builtins/annotation-badge-rules.ts :: a\\.defaultBadge\\.color\\[theme\\]"
   - "grep: packages/app/src/components/ReferenceContent.tsx :: defaultBadge\\.color\\[effectiveTheme\\]"
   - "grep: packages/app/src/styles/themes.css :: --badge-preview-text"
 ---
