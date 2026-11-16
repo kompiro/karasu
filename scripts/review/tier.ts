@@ -1137,22 +1137,21 @@ const OTHER_SCHEMES = /(?<![a-z0-9+.-])(?:mailto|javascript|data|vbscript|file):
 const EMAIL = /[a-z0-9._+-]+@[a-z0-9_-]+(?:\.[a-z0-9_-]+)*\.[a-z0-9_-]*[a-z][a-z0-9_-]*/g;
 /**
  * The second slash of a `//` (D4), one slash at a time so `///evil.com` is found
- * at its last pair. As kompiro decided (#3786), it counts when a letter, a digit,
- * `_`, `-`, `%`, `@`, a non-ASCII character or an IPv6 literal follows, and the
- * regex escapes `//.`, `//(` and `//[x` do not count. `//^` and `//|` start no
- * host a URL parser takes.
+ * at its last pair. `//^` and `//|` start no host a URL parser takes.
  */
-const HOST_SLASH = /(?<=\/)\/(?=[^\s/.(^|[]|\[[0-9a-f:.]*\])/g;
-/** What {@link HOST_SLASH} always counts: the start of a host by the decision. */
-const HOST_START = /^(?:[a-z0-9_%@\u0080-\uffff-]|\[)/;
+const HOST_SLASH = /(?<=\/)\/(?=[^\s/^|])/g;
 /**
- * After other punctuation (`$`, `*`, `+`, `{`, `)` ...), the authority up to the
+ * What {@link HOST_SLASH} always counts, as kompiro decided (#3786): a letter, a
+ * digit, `_`, `-`, `%`, `@`, a non-ASCII character or an IPv6 literal after `//`.
+ */
+const HOST_START = /^(?:[a-z0-9_%@\u0080-\uffff-]|\[[0-9a-f:.]*\])/;
+/**
+ * After anything else (`.`, `(`, `[`, `$`, `*`, `{` ...), the authority up to the
  * end of the word counts when it can still name a host on the internet: userinfo,
  * an escape, or a dot inside a name (the ideographic and full-width dots, which
- * IDNA reads as `.`, included). `//$x.evil.com` is a
- * name under evil.com's wildcard record; a glob's star or a regex's `//{port//}`
- * is not. A scheme-relative `//.evil.com` or `//(x.evil.com` is the
- * residual this accepts.
+ * IDNA reads as `.`, included). `//$x.evil.com`, `//(x.evil.com` and `//.evil.com`
+ * do; the regex escapes kompiro decided to leave out (`//.color`, `//(x//)`,
+ * `//[theme//]`), a glob's star and `//{port//}` do not.
  */
 const NAMES_A_HOST =
   /^[^\s/?#)\]>"'`<]*?(?:[@%]|[^.\u3002\uff0e\uff61][.\u3002\uff0e\uff61][^.\u3002\uff0e\uff61\s/?#)\]>"'`<])/;
