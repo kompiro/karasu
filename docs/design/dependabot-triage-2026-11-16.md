@@ -12,8 +12,8 @@
 
 ## 背景・課題
 
-2026-11-16（月）21:44–21:51 UTC に週次の Dependabot PR が 16 件起票された（npm 15 件、GitHub Actions 1 件）。
-これとは別に、11-15（土）に security update の #3821（`astro` 7.4.5 → 7.4.7）が起票されている。
+2026-11-16（月）21:44–21:50 UTC に週次の Dependabot PR が 16 件起票された（npm 15 件、GitHub Actions 1 件）。
+これとは別に、11-15（日）に security update の #3821（`astro` 7.4.5 → 7.4.7）が起票されている。
 
 **security alert が 1 件増えた。** #107（`astro`、GHSA-r3h5-4585-7x3w、medium）で、脆弱範囲は `>= 5.14.3, <= 7.4.6`、
 修正版は 7.4.7。`@astrojs/node` の image endpoint が、case-sensitive な filesystem で出力ディレクトリと大文字小文字だけ
@@ -25,7 +25,9 @@
 
 - #3852（`@types/vscode` 1.140.0 → 1.145.0）: Validate / Check / ExTester。前回の #3739 と同じ VS Code floor の柵で、
   `scripts/ci/vscode-version-policy.test.ts` が `engines.vscode`（`^1.140.0`）と `@types/vscode`（`^1.145.0`）のずれを止めた
-- #3865（`jsdom` 30.1.3 → 31.0.0、major）: Check。`packages/app` の 148 ファイル中 1 ファイル 1 件だけが落ちた。
+- #3865（`jsdom` 30.1.3 → 31.0.0、major）: Check。`packages/app` の 148 ファイル中 1 ファイル 1 件が落ちた。
+  ルートの `test:coverage` は最初の失敗で止まるので、app より後の package（cli / lsp / nest / vscode / docs-site）の
+  テストと、Check の後続の step（build、`build:viewer`、`test:pack` など）はこの PR では走っていない
   `PreviewPane.test.tsx` が `style.transform` を文字列 `"translate(0px, 0px) scale(1)"` と比べており、jsdom 31 の新しい
   CSS 実装が `translate(0px) scale(1)` と短く直列化する
 
@@ -102,14 +104,14 @@ maintainer（`fb55` / `43081j` / `rreverser` / `wooorm` / `inikulin`）で、Git
 | #3856 | `astro`                | 7.4.5 → 7.4.8     | patch     | docs-site（dev）           | green   | low    | 採用（alert #107 を解消）     |
 | #3857 | `vite`                 | 8.3.5 → 8.3.7     | patch     | app（dev）                 | green   | low    | 採用                          |
 | #3858 | `@vitejs/plugin-react` | 6.2.1 → 6.3.0     | minor     | app（dev）                 | green   | low    | 採用                          |
-| #3859 | `@playwright/test`     | 1.64.1 → 1.65.0   | minor     | e2e（dev）                 | green   | low    | 採用                          |
+| #3859 | `@playwright/test`     | 1.64.1 → 1.65.0   | minor     | root / e2e（dev）          | green   | low    | 採用                          |
 | #3860 | `lucide-react`         | 1.67.0 → 1.70.0   | minor     | app（runtime）             | green   | low    | 採用                          |
 | #3861 | `commander`            | 15.0.0 → 15.1.0   | minor     | cli（runtime）             | green   | low    | 採用                          |
 | #3862 | `tailwindcss`          | 4.3.4 → 4.3.5     | patch     | app（dev）                 | green   | low    | 採用（#3864 と対で）          |
 | #3863 | `@astrojs/starlight`   | 0.42.8 → 0.42.10  | patch     | docs-site（dev）           | green   | low    | 採用                          |
 | #3864 | `@tailwindcss/vite`    | 4.3.4 → 4.3.5     | patch     | app（runtime 宣言）        | green   | low    | 採用（#3862 と対で）          |
 | #3865 | `jsdom`                | 30.1.3 → 31.0.0   | **major** | app（dev）                 | **red** | low    | **採用（差し替え PR）**       |
-| #3821 | `astro`（security）    | 7.4.5 → 7.4.7     | patch     | docs-site（dev）           | green   | low    | close（#3856 が置き換える）   |
+| #3821 | `astro`（security）    | 7.4.5 → 7.4.7     | patch     | docs-site（dev）           | green   | low    | 採用（#3856 で反映、close）   |
 
 ## PR ごとの分析
 
@@ -134,6 +136,10 @@ maintainer（`fb55` / `43081j` / `rreverser` / `wooorm` / `inikulin`）で、Git
 正しい変更は「bump + この assertion を直列化の形に依存しない比較にする」で、bot が作れる diff の形には収まらない。
 bot ブランチに人手でコミットを足すと次の recreate で失われる。**#3865 を close し、同じ bump とテストの修正を 1 本の
 差し替え PR で入れる**ことを推奨する。判定は採用なので `@dependabot ignore` は設定しない。
+
+bot PR の CI は app のテストの失敗で止まり、後続の package のテストと build の step を走らせていない。`jsdom` を
+宣言するのは `packages/app` だけなので影響する見込みは小さいが、それらは差し替え PR の CI で初めて確かめることになる。
+差し替え PR の CI が app の 1 件以外で落ちたら、判定を見直す。
 
 **保留を選ばない理由**: 修正はテスト 1 行で、upstream の regression ではなく仕様に沿った直列化の変更である（ADR-2983 で
 30.1.0 を待ったのは upstream の regression だったから）。待っても bot の diff は直らない。
@@ -167,8 +173,12 @@ alert #107 の突き合わせ（`.claude/rules/dependabot.md`「Security alert �
 | 宣言（`packages/*/package.json`） | `packages/docs-site` の `"astro": "^7.4.5"` だけ。脆弱範囲と交差する |
 | #3856 の head | 宣言が `^7.4.8` に上がり、交差しなくなる。lock の `astro@` は 7.4.8 の 1 版だけ（7.4.5 は 0 件） |
 
-#3856 が #3821 を包むので、**#3856 を採用し、#3821 は close する**（#3856 のマージで Dependabot が自分で閉じなければ
-手で閉じる）。#3821 の head は base が古く、`rolldown` 1.3.2 / `vite` 8.3.8 など今回確かめていない版も連れてくる。
+#3856 が #3821 の修正を包むので、**#3821 の判定は採用とし、反映は #3856 のマージで行う**。#3821 自体は close する
+（#3856 のマージで Dependabot が自分で閉じなければ手で閉じる）。判定が採用なので `@dependabot ignore` は設定しない。
+
+#3821 をそのままマージしない理由はもう 1 つある。security update は cooldown を参照しない
+（`.claude/rules/dependabot.md`「Security update の即時起票」）ので、#3821 の lock は `rolldown` 1.3.2 / `vite` 8.3.8
+（どちらも 11-11 公開、起票の約 4 日前）を連れてくる。7 日の cooldown が止めている版で、今回のリスク分析でも確かめていない。
 
 ### #3850 `pnpm/action-setup` 6.1.0 → 6.1.1
 
@@ -206,7 +216,7 @@ karasu は React Compiler を使っていない。lock で動くのは `@rolldow
 
 Bun での実行、`failures` reporter、`-exclusive-` の test lock などの追加。breaking に当たりうる変更は
 `test.skip()` / `test.fixme()` / `test.fail()` / `test.slow()` が説明の文字列だけを受け取るようになった点だが、karasu の
-spec はこれらを呼んでいない（`packages/e2e/README.md` の文中に `test.fixme(...)` があるだけ）。ブラウザの版も上がるが、
+spec はこれらを呼んでいない（`packages/e2e/README.md` の文中に `test.fixme(...)` と `test.skip` が出てくるだけ）。ブラウザの版も上がるが、
 Playwright（required）が green。
 
 ### #3860 `lucide-react` 1.67.0 → 1.70.0
@@ -240,8 +250,8 @@ parser の置き換え（`js-yaml` → `yaml`、install サイズ削減）。tra
 
 ## 現時点の方針
 
-**15 件を採用し、#3852 を却下（close）、#3821 を close する。** 採用のうち 14 件は bot PR をそのままマージし、
-#3865 だけ差し替え PR で入れる。
+**15 件を採用し、#3852 を却下（close）する。** 採用のうち 14 件は bot PR をそのままマージし、#3865 だけ差し替え PR で
+入れる。security update の #3821 も判定は採用で、#3856 のマージで反映して bot PR は close する。
 
 マージの手順:
 
