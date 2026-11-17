@@ -48,7 +48,8 @@ identity（同一性）に依存する処理 — 重複検出 / クロスファ�
 
 identity に関わる処理を実装・修正するとき、以下を確認する:
 
-- [ ] 比較・集約・グルーピング・重複検出・参照解決のキーに **`id` のみ** を使っているか。`label` / annotation の表示部分 / 翻訳済み文字列を混ぜていないか [guard: `packages/core/src/compile/label-perturbation-corpus.test.ts`]
+- [ ] 比較・集約・グルーピング・重複検出・参照解決のキーに **`id` のみ** を使っているか。`label` を混ぜていないか [guard: `packages/core/src/compile/label-perturbation-corpus.test.ts`]
+- [ ] 同じキーに annotation の表示部分（`@deprecated(until: …)` の値など）や翻訳済み文字列を混ぜていないか
 - [ ] cross-file / cross-system で参照を辿るときも `id` ベースか（`SystemId.ServiceId` のドット記法も id ベース）
 - [ ] テストに **「`id` 同じ / `label` 違い」** と **「`id` 違い / `label` 同じ」** の両方の fixture が含まれているか。前者は同一視、後者は別物扱いされること
 - [ ] i18n 経由で表示文字列を切り替えた状態でも、identity 系の処理結果が変わらないことを確認したか
@@ -70,10 +71,10 @@ identity に関わる処理を実装・修正するとき、以下を確認す�
 - `packages/i18n/src/render-warning.test.ts` — `renderWarning — i18n coverage for every WarningKind` の同名の 2 テスト（en / ja）。全 warning kind で、en と ja のメッセージが識別子を含むこと
 - `packages/core/src/compile/label-perturbation-corpus.test.ts` — 1 項目目のガード。全 example を描いたあと、
   parser の出力にある全宣言（文字列の `id` を持つオブジェクト。エッジを除く）の label を「全部同じ」と「全部違う」に
-  書き換えて描き直し、診断・warning（label を表示するだけの param を除く）と、描かれたノード・エッジ・team の
-  identity が変わらないことを確かめる。前者は「`id` 違い / `label` 同じ」、後者は別ファイルで再オープンされた宣言の
+  書き換えて描き直し、診断・warning（label を表示するだけの param を除く）と、描かれたノード・エッジの
+  identity（team と member は org の pane のノード） が変わらないことを確かめる。前者は「`id` 違い / `label` 同じ」、後者は別ファイルで再オープンされた宣言の
   「`id` 同じ / `label` 違い」を全宣言に作る。import 解決・merge・resolver の検査・warning・全 view が書き換え後の
   モデルで走るので、そこで label を key にする新しい箇所は corpus が通る限り赤になる。parser の中の箇所は書き換えより
-  前に走るので測れない。annotation の表示値（`until` など）は書き換えていない。label 自体を主題にする診断
+  前に走るので測れない。2 項目目（annotation の表示値と翻訳済み文字列）には印を付けない。annotation の param には id を指すものもあり、表示だけの param を手で列挙しても新しい param は表に入らないので、書き換えの対象を閉じた集合にできない。label 自体を主題にする診断
   （S3 の `system-property-conflict`）は理由付きで比較から外す
 - `docs/concepts.ja.md` 「ドメイン分散の検出 → 検出キー」

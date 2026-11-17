@@ -73,13 +73,35 @@ function declaredPaths(file: KrsFile): Set<string> {
   return out;
 }
 
-/** Every node the rendered views carry, by `data-node-path` (or `data-node-id` where a card has no path). */
-function drawnNodes(svg: string): Set<string> {
-  return new Set(
-    [...svg.matchAll(/data-node-(?:path|id)="([^"]*)"/g)].map((m) =>
-      m[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&"),
-    ),
-  );
+const FACES = ["system", "deploy", "org"] as const;
+type Face = (typeof FACES)[number];
+
+/** The markup of one face's pane in the all-views bundle. */
+function pane(svg: string, face: Face): string {
+  const start = svg.indexOf(`class="krs-pane krs-pane--${face}"`);
+  if (start < 0) return "";
+  const end = svg.indexOf('class="krs-pane krs-pane--', start + 1);
+  return svg.slice(start, end < 0 ? undefined : end);
+}
+
+/** A node as one face draws it: `<face> <data-node-path or data-node-id>`. */
+const drawnKey = (face: Face, value: string) => `${face} ${value}`;
+
+/**
+ * Every node each face's pane carries, by `data-node-path` (or `data-node-id`
+ * where a card has no path). Keyed by face, so a node lost from one pane is not
+ * hidden by the same string in another. Compared by presence, not by count: a
+ * node also appears as the context card of each edge that reaches into a drill
+ * level, so a dangling edge rightly removes occurrences, not the node.
+ */
+function drawnNodes(svg: string): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const face of FACES)
+    for (const m of pane(svg, face).matchAll(/data-node-(?:path|id)="([^"]*)"/g)) {
+      const key = drawnKey(face, m[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&"));
+      out.set(key, (out.get(key) ?? 0) + 1);
+    }
+  return out;
 }
 
 /**
@@ -91,12 +113,14 @@ function drawnNodes(svg: string): Set<string> {
  * still counts: the service itself at its own id, its subtree under
  * `__unassigned__`. A move is not a drop; losing the subtree is.
  */
-function stillDrawn(path: string, after: Set<string>, relocated: Set<string>): boolean {
-  if (after.has(path)) return true;
-  const segments = parseNodePathRefId(path);
+function stillDrawn(key: string, after: Map<string, number>, relocated: Set<string>): boolean {
+  if (after.has(key)) return true;
+  const [face, ...rest] = key.split(" ");
+  if (face !== "system") return false;
+  const segments = parseNodePathRefId(rest.join(" "));
   if (segments.length < 2 || !relocated.has(segments[1])) return false;
   const below = nodePathRefId(segments.slice(1));
-  return after.has(below) || after.has(`__unassigned__.${below}`);
+  return after.has(drawnKey(face, below)) || after.has(drawnKey(face, `__unassigned__.${below}`));
 }
 
 /**
@@ -124,8 +148,11 @@ function mergedEdges(file: KrsFile): Set<string> {
 }
 
 /** Whether a node declared at `path` is drawn, at that path or, outside any `system`, under `__unassigned__`. */
-function isDrawn(path: string, drawn: Set<string>): boolean {
-  return drawn.has(path) || drawn.has(`__unassigned__.${path}`);
+/** Whether the system face draws the node at `path`. */
+function isDrawn(path: string, drawn: Map<string, number>): boolean {
+  return (
+    drawn.has(drawnKey("system", path)) || drawn.has(drawnKey("system", `__unassigned__.${path}`))
+  );
 }
 
 /** One mutation of one file's parse, or none. */
@@ -190,6 +217,8 @@ describe("a dangling reference drops the reference, not a node (TPL-2170)", () =
       mutation = null;
       const before = await render(entry);
       const drawnBefore = drawnNodes(before.svg);
+      // The panes were found: an empty map would make every comparison pass.
+      if (drawnBefore.size === 0) failures.push(`${entry}: no pane found in the bundle`);
       const inModel = mergedEdges(before.krsFile);
       const whole = (await wholeReach(entry)).files;
       for (const path of before.parsed) {
@@ -231,7 +260,9 @@ describe("a dangling reference drops the reference, not a node (TPL-2170)", () =
             }
             const drawnAfter = drawnNodes(after.svg);
             const relocated = relocatedServices(before.krsFile, after.krsFile);
-            const lost = [...drawnBefore].filter((n) => !stillDrawn(n, drawnAfter, relocated));
+            const lost = [...drawnBefore]
+              .filter(([key]) => !stillDrawn(key, drawnAfter, relocated))
+              .map(([key]) => key);
             if (lost.length > 0) failures.push(`${label}: lost ${lost.join(", ")}`);
           }
         }

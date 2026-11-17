@@ -14,7 +14,7 @@ import { InMemoryFileSystemProvider } from "../fs/in-memory-provider.js";
 import { ImportResolver } from "../fs/import-resolver.js";
 import { Parser } from "../parser/parser.js";
 import { nodePathRefId } from "../parser/node-path.js";
-import type { KrsFile, KrsNode } from "../types/ast.js";
+import type { KrsFile, KrsNode, OrgNode } from "../types/ast.js";
 import { buildAllViewsSvgProject } from "./compile.js";
 
 const EXAMPLES = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../examples");
@@ -92,6 +92,8 @@ function declared(file: KrsFile): Record<Face, Expected[]> {
       if (i === 0 || (pathsPerId.get(ancestor.id) ?? 0) < 2) return false;
       const own = prefix.slice(0, i + 1).map((n) => n.id);
       const winner = file.nodePathIndex.get(ancestor.id)?.join(".");
+      // No recorded winner means the exemption has nothing to go by: expect it.
+      if (winner === undefined) return false;
       return winner !== own.join(".") && winner !== own.slice(1).join(".");
     });
     if (!isRootCanvas && !behindSharedAnchor) {
@@ -106,8 +108,14 @@ function declared(file: KrsFile): Record<Face, Expected[]> {
   return {
     system,
     deploy: file.deploys.flatMap((block) => block.nodes.map((node) => ({ key: node.id }))),
-    org: file.organizations.flatMap((org) => org.teams.map((team) => ({ key: team.id }))),
+    // Every team and member, nested ones included: the org view draws each.
+    org: file.organizations.flatMap((org) => orgNodes(org.teams).map((node) => ({ key: node.id }))),
   };
+}
+
+/** A team list and everything under it, teams and members alike. */
+function orgNodes(nodes: readonly OrgNode[]): OrgNode[] {
+  return nodes.flatMap((node) => [node, ...(node.kind === "team" ? orgNodes(node.children) : [])]);
 }
 
 const unescape = (value: string) =>
@@ -134,7 +142,7 @@ function draws(face: Face, markup: string, expected: Expected): boolean {
       (id) => id === expected.key || id.endsWith(`::${expected.key}`),
     );
   }
-  return values("data-team-id").has(expected.key) || values("data-node-id").has(expected.key);
+  return values("data-node-id").has(expected.key);
 }
 
 describe("every shipped example draws all of its model on each of the three faces (TPL-2169)", () => {
@@ -166,6 +174,19 @@ describe("every shipped example draws all of its model on each of the three face
       }
     }
     expect(found).toBe(true);
+  });
+
+  // Nested teams and members are part of the org face only if some entry has
+  // them: a team inside a team, and a member.
+  it("holds an entry with a nested team and a member", async () => {
+    const kinds = new Set<string>();
+    for (const entry of entries) {
+      const { krsFile } = await new ImportResolver(fs).resolve(entry);
+      for (const org of krsFile.organizations)
+        for (const team of org.teams)
+          for (const node of orgNodes(team.children)) kinds.add(node.kind);
+    }
+    expect([...kinds].sort()).toEqual(["member", "team"]);
   });
 
   it.each(entries)("%s", async (entry) => {

@@ -44,6 +44,9 @@ const TUTORIAL_STEP =
 /** A slice of a multi-file example, opened on its own instead of through its entry. */
 const SLICE =
   "slice of a multi-file example opened on its own; its entry imports what the slice references";
+/** A feature sample about something else, whose `resource` lines name a store it does not declare. */
+const FOCUSED_SAMPLE =
+  "feature sample about another construct: its usecase `resource` lines name stores the sample does not declare, which is not its subject";
 /** The sample exists to show this diagnostic. */
 const TEACHES = "the sample exists to show this diagnostic";
 
@@ -129,11 +132,11 @@ const BASELINE: Record<string, Allowed> = Object.fromEntries([
   ["en/feature-samples/crud-matrix.krs", { why: INFO_FACT, draws: { "shared-infra-fan-in": 1 } }],
   [
     "en/feature-samples/domain-drill.krs",
-    { why: TUTORIAL_STEP, draws: { "unassigned-resource": 2 } },
+    { why: FOCUSED_SAMPLE, draws: { "unassigned-resource": 2 } },
   ],
   [
     "en/feature-samples/external-nodes.krs",
-    { why: TUTORIAL_STEP, draws: { "unassigned-resource": 1 } },
+    { why: FOCUSED_SAMPLE, draws: { "unassigned-resource": 1 } },
   ],
   ["en/feature-samples/legend.krs", { why: INFO_FACT, draws: { "missing-runtime": 2 } }],
 ]);
@@ -151,24 +154,32 @@ function walk(dir: string, out: string[]): string[] {
 
 const VIEWS: Record<DiagramType, true> = { system: true, deploy: true, org: true };
 
-/** Every diagnostic and warning an entry draws across the views, deduplicated, counted by code. */
+/**
+ * Every diagnostic and warning an entry draws, counted by code. One finding
+ * reported by every view is one finding, so each distinct finding counts as
+ * often as the view that reports it most; a finding one compile reports twice
+ * counts twice.
+ */
 async function draws(
   entry: string,
   fs: InMemoryFileSystemProvider,
 ): Promise<Record<string, number>> {
-  const seen = new Set<string>();
-  const counts: Record<string, number> = {};
-  const count = (code: string, key: string) => {
-    if (seen.has(key)) return;
-    seen.add(key);
-    counts[code] = (counts[code] ?? 0) + 1;
-  };
+  const most = new Map<string, { code: string; times: number }>();
   for (const view of Object.keys(VIEWS) as DiagramType[]) {
     const result = await compileProject(`/${entry}`, fs, { diagramType: view });
+    const inView = new Map<string, { code: string; times: number }>();
+    const note = (code: string, key: string) => {
+      const seen = inView.get(key) ?? { code, times: 0 };
+      inView.set(key, { code, times: seen.times + 1 });
+    };
     for (const d of result.diagnostics)
-      count(d.code, JSON.stringify(["d", d.code, d.params, d.loc]));
-    for (const w of result.warnings) count(w.kind, JSON.stringify(["w", w]));
+      note(d.code, JSON.stringify(["d", d.code, d.params, d.loc]));
+    for (const w of result.warnings) note(w.kind, JSON.stringify(["w", w]));
+    for (const [key, found] of inView)
+      if (found.times > (most.get(key)?.times ?? 0)) most.set(key, found);
   }
+  const counts: Record<string, number> = {};
+  for (const { code, times } of most.values()) counts[code] = (counts[code] ?? 0) + times;
   return Object.fromEntries(Object.entries(counts).sort(([a], [b]) => a.localeCompare(b)));
 }
 
@@ -248,7 +259,17 @@ describe("examples: every shipped .krs draws only its recorded diagnostics (TPL-
     expect(Object.keys(BASELINE).filter((name) => !entries.includes(name))).toEqual([]);
   });
 
+  // An emptied entry would still pass, with a reason nobody checks any more.
+  it("no baseline entry is empty", () => {
+    expect(
+      Object.entries(BASELINE).filter(([, allowed]) => Object.keys(allowed.draws).length === 0),
+    ).toEqual([]);
+  });
+
   it.each(entries)("%s", async (entry) => {
-    expect(await draws(entry, fs)).toEqual(BASELINE[entry]?.draws ?? {});
+    expect(
+      await draws(entry, fs),
+      "a new code or count is a regression to fix; a lower one means shrinking or removing this example's BASELINE entry",
+    ).toEqual(BASELINE[entry]?.draws ?? {});
   });
 });
