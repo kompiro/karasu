@@ -19,9 +19,9 @@
  * names both readings, rather than asserting a repo it never verified.
  *
  * English-only, matching the existing server-rendered pages (`share-page.ts`).
- * The Workers layer does not carry the i18n table — `docs/spec/i18n.md` governs
- * the app, SVG output and CLI, and pulling translations into a Pages Function
- * would duplicate that machinery for two pages.
+ * The Function has no locale source to pick a language from (#3838), so the
+ * page is not routed through `@karasu-tools/i18n` the way the resolver's 413
+ * body is.
  */
 
 const HTML = "text/html; charset=utf-8";

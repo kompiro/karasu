@@ -5,7 +5,8 @@ import {
   type FileSystemProvider,
   type DirEntry,
 } from "@karasu-tools/core";
-import { encodeShare, fitsUnfurlPayload, MAX_UNFURL_PAYLOAD } from "../utils/inline-share.js";
+import { bindTranslate } from "@karasu-tools/i18n";
+import { describeUnfurlOverflow, encodeShare, fitsUnfurlPayload } from "../utils/inline-share.js";
 
 /**
  * Repo-backed + ref-pinned permalink resolver for karasu-nest (Phase 2).
@@ -267,7 +268,7 @@ export interface ResolveResult {
 }
 
 /**
- * Status returned when the resolved model encodes above {@link MAX_UNFURL_PAYLOAD}.
+ * Status returned when the resolved model encodes past {@link fitsUnfurlPayload}.
  *
  * No HTTP status names this exactly: 413 and 414 both describe an oversized
  * *request*, whereas here the request is small and it is the `/s?s=` URL we
@@ -293,7 +294,7 @@ function isImmutableRef(ref: string): boolean {
  * @param fetchImpl injected fetch (the Workers runtime passes global `fetch`)
  *
  * Status: 200 (payload), 400 (bad permalink), 404 (no `.krs` at the ref),
- * 413 (the model encodes above {@link MAX_UNFURL_PAYLOAD}), 502 (upstream
+ * 413 (the model encodes past {@link fitsUnfurlPayload}), 502 (upstream
  * GitHub failure), 500 (unexpected). A directory/wildcard import degrades
  * gracefully (opens without those files), not an error.
  */
@@ -334,11 +335,12 @@ export async function resolveRepoPermalink(
       // rejected alternatives are recorded on Issue #2259.
       return {
         status: STATUS_PAYLOAD_TOO_LARGE,
-        message:
-          `Model too large for a permalink: ${owner}/${repo}@${ref} encodes to ` +
-          `${encodedPayload.length} characters, over the ${MAX_UNFURL_PAYLOAD} a ` +
-          `shareable URL can carry. Point the permalink at a narrower entry .krs, ` +
-          `or split the model.`,
+        // The route has no locale source yet, so the body is English (#3838).
+        message: describeUnfurlOverflow(
+          bindTranslate("en"),
+          `${owner}/${repo}@${ref}`,
+          encodedPayload.length,
+        ),
         contentType: PLAIN,
       };
     }

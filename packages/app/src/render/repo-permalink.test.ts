@@ -1,10 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { decodeShare, MAX_UNFURL_PAYLOAD } from "../utils/inline-share.js";
+import { translate } from "@karasu-tools/i18n";
+import { decodeShare, fitsUnfurlPayload } from "../utils/inline-share.js";
 import {
   parseRepoPermalink,
   resolveRepoPermalink,
   GitHubRawFileSystemProvider,
 } from "./repo-permalink.js";
+
+/** The longest payload `fitsUnfurlPayload` accepts, found from the predicate itself. */
+function unfurlCap(): number {
+  let fits = 0;
+  let overflows = 1 << 20;
+  while (overflows - fits > 1) {
+    const mid = Math.floor((fits + overflows) / 2);
+    if (fitsUnfurlPayload("x".repeat(mid))) fits = mid;
+    else overflows = mid;
+  }
+  return fits;
+}
+const MAX_UNFURL_PAYLOAD = unfurlCap();
 
 const SINGLE_KRS = `system Shop {
   service Web { label "Web" }
@@ -256,6 +270,15 @@ describe("resolveRepoPermalink — unfurl payload cap", () => {
     expect(reportedLength(res.message)).toBeGreaterThan(MAX_UNFURL_PAYLOAD);
     // Names the remedy, not just the failure.
     expect(res.message).toContain("narrower entry .krs");
+    // The body is the i18n catalog entry, not text built in app code (#3837).
+    // The route has no locale source yet, so it is the English entry (#3838).
+    expect(res.message).toBe(
+      translate("en", "permalink.tooLarge.message", {
+        source: "o/r@sha",
+        length: reportedLength(res.message),
+        limit: MAX_UNFURL_PAYLOAD,
+      }),
+    );
   });
 
   it("accepts right up to the cap and refuses one node past it", async () => {
