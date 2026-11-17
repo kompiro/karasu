@@ -1065,7 +1065,8 @@ function urlEnd(text: string, opener: string): number {
       if (c === ">" || c === "\n" || c === "\r") return i;
       continue;
     }
-    if (/\s/.test(c)) return i;
+    // ASCII whitespace only: Markdown keeps U+00A0 or U+3000 in a destination.
+    if (/[ \t\n\r\f\v]/.test(c)) return i;
     if (c === "(") depth++;
     else if (c === ")") {
       if (depth === 0) return i;
@@ -1201,7 +1202,7 @@ const HOST_START = /^(?:[a-z0-9_%@\u0080-\uffff-]|\[[0-9a-f:.]*\])/;
  * `//[theme//]`), a glob's star and `//{port//}` do not.
  */
 const NAMES_A_HOST =
-  /^[^\s/?#<]*?(?:[@%]|[^.\u3002\uff0e\uff61][.\u3002\uff0e\uff61][^.\u3002\uff0e\uff61\s/?#<])/;
+  /^[^ \t\n\r\f\v/?#<]*?(?:[@%]|[^.\u3002\uff0e\uff61][.\u3002\uff0e\uff61][^.\u3002\uff0e\uff61 \t\n\r\f\v/?#<])/;
 /**
  * The start of a raw HTML tag in a Low Markdown file: `<`, a tag name, then
  * whitespace or `/`. A tag with a URL attribute ({@link URL_ATTRIBUTE}, anywhere
