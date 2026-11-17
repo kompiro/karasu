@@ -11,6 +11,8 @@ import { extractView } from "./view-extract.js";
 import { withUnassignedSystem } from "./unassigned-system.js";
 import { Parser } from "../parser/parser.js";
 import { physicalTargetsOf } from "../spec/infra-index.js";
+import { layout } from "../renderer/layout.js";
+import { CHAR_WIDTH, estimateTextWidth } from "../renderer/rendering-constants.js";
 
 const MODEL = `
 system S {
@@ -47,6 +49,13 @@ describe("client storage readers (#3794)", () => {
       "karasu.ai.anthropic.apiKey (sessionStorage)",
     );
     expect(slice.childNodes.map((n) => n.id)).toContain("WebApp.ApiKey");
+  });
+
+  it("sizes the promoted card for the label it draws, not for its id", () => {
+    const label = "karasu.ai.anthropic.apiKey (sessionStorage)";
+    const node = layout(view(MODEL, ["S", "App", "Chat"])).nodes.get("WebApp.ApiKey");
+    expect(node?.label).toBe(label);
+    expect(node!.width).toBeGreaterThanOrEqual(estimateTextWidth(label, CHAR_WIDTH));
   });
 
   it("draws that label in the domain view", () => {
