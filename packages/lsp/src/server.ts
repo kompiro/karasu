@@ -24,6 +24,7 @@ import {
   collectAllIdentifiers,
   getNodeDescription,
   getWordAtPosition,
+  getQualifierAtPosition,
 } from "./position-resolver.js";
 import { buildDocumentSymbols } from "./document-symbols.js";
 import { NodeAtPositionRequest, PositionOfNodeRequest } from "./protocol.js";
@@ -160,9 +161,11 @@ connection.onDefinition((params) => {
   // isn't on an identifier.
   const file = Parser.parse(doc.getText()).value;
 
-  // Same file, then imports (named, wildcard, transitive), then a client
+  // A `<Client>.<Id>` reference goes to that client's storage; otherwise the
+  // same file, then imports (named, wildcard, transitive), then a client
   // storage id in this file.
-  return resolveDefinition(file, word, params.textDocument.uri);
+  const qualifier = getQualifierAtPosition(doc.getText(), params.position);
+  return resolveDefinition(file, word, params.textDocument.uri, qualifier);
 });
 
 // ─── Hover ────────────────────────────────────────────────────────────────────

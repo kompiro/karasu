@@ -1,3 +1,4 @@
+import { physicalTargetsOf, resolvePhysicalRef } from "@karasu-tools/core";
 import type { KrsFile, KrsNode, TeamNode } from "@karasu-tools/core";
 import type { Range } from "vscode-languageserver/node";
 import { toLspRange, type LspPosition } from "./lsp-position.js";
@@ -50,10 +51,12 @@ interface NamedEntity {
  * hand-rolled recursive walkers (`collectNodes`, `collectAllIdentifiers`,
  * `getNodeDescription`) that had already drifted from one another — see the
  * comments at each call site below for the specific drift each one
- * reproduces. `visitNamedEntities` itself must stay a literal merge of the
- * three prior traversals; it does not visit `clients` / `domains` /
- * `databases` / `queues` / `storages` / `boundaries` because none of the
- * three prior walkers did (out of scope for this refactor, see #2017).
+ * reproduces. `visitNamedEntities` began as a literal merge of the three
+ * prior traversals, which visited neither top-level `clients` / `domains` /
+ * `databases` / `queues` / `storages` nor `boundaries` (#2017). Since #3794 the
+ * top-level node roots are walked too, after `services`, so a node of a name
+ * always wins over a client storage id of the same name; `boundaries` are
+ * still not visited.
  *
  * `stopDescending` reproduces `getNodeDescription`'s original stop-at-first-
  * match search: the three now-removed `search*` helpers returned as soon as
@@ -118,14 +121,17 @@ function* visitNamedEntities(
   }
 
   for (const sys of krsFile.systems) yield* walkKrsNode(sys);
-  // A top-level client's storage ids too (#3794). Only the storages: the
-  // client node itself stays outside this walk, as it was before.
-  for (const client of krsFile.clients) {
-    for (const res of client.properties.resources) {
-      if (res.id !== undefined) yield { id: res.id, loc: res.loc, group: "client-storage" };
-    }
-  }
   for (const svc of krsFile.services) yield* walkKrsNode(svc);
+  // Top-level node roots (#3794), so a top-level database or client is found
+  // as a node, and a top-level client's storage ids are listed.
+  const topLevel: KrsNode[] = [
+    ...krsFile.clients,
+    ...krsFile.domains,
+    ...krsFile.databases,
+    ...krsFile.queues,
+    ...krsFile.storages,
+  ];
+  for (const root of topLevel) yield* walkKrsNode(root);
   for (const block of krsFile.deploys) {
     const blockEntity: NamedEntity = { id: block.id, loc: block.loc, group: "deploy-block" };
     yield blockEntity;
@@ -276,6 +282,40 @@ export function getNodeDescription(krsFile: KrsFile, nodeId: string): string | n
     if (entity.description != null) return entity.description;
   }
   return null;
+}
+
+/**
+ * Where the declaration of `<clientId>.<storageId>` is, when that dotted
+ * reference resolves to a client storage under the model's own rule (#3794):
+ * not when an infra block shares the client id, nor when two same-id clients
+ * both declare the storage.
+ */
+export function findRangeOfClientStorage(
+  krsFile: KrsFile,
+  clientId: string,
+  storageId: string,
+): Range | null {
+  const target = resolvePhysicalRef(physicalTargetsOf(krsFile), clientId, storageId);
+  return target.kind === "client" ? toLspRange(target.storage.declaration.loc) : null;
+}
+
+/**
+ * The parent segment of a dotted reference whose last segment is the word at
+ * `position`: `WebApp` for the cursor on `Cache` in `resource WebApp.Cache`, or
+ * the contents of a quoted parent (`"web-app".Cache`). Null when the word is not
+ * preceded by a dot.
+ */
+export function getQualifierAtPosition(text: string, position: LspPosition): string | null {
+  const line = text.split("\n")[position.line];
+  if (!line || !/\w/.test(line[position.character] ?? "")) return null;
+  let start = position.character;
+  while (start > 0 && /\w/.test(line[start - 1])) start--;
+  if (line[start - 1] !== ".") return null;
+  const before = line.slice(0, start - 1);
+  const quoted = /"([^"]*)"$/.exec(before);
+  if (quoted) return quoted[1];
+  const bare = /(\w+)$/.exec(before);
+  return bare ? bare[1] : null;
 }
 
 /**

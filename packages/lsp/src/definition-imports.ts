@@ -3,7 +3,7 @@ import * as path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { Location } from "vscode-languageserver/node";
 import { Parser, type ImportDeclaration, type KrsFile } from "@karasu-tools/core";
-import { findRangeOfNode } from "./position-resolver.js";
+import { findRangeOfClientStorage, findRangeOfNode } from "./position-resolver.js";
 
 /**
  * Read, parse, and search a single `.krs` file for `word`'s definition,
@@ -29,7 +29,10 @@ function searchKrsFile(
   }
 
   const fileUri = pathToFileURL(filePath).toString();
-  const range = findRangeOfNode(parsed.value, word, options);
+  const range =
+    options.storageOf !== undefined
+      ? findRangeOfClientStorage(parsed.value, options.storageOf, word)
+      : findRangeOfNode(parsed.value, word, options);
   if (range) return Location.create(fileUri, range);
 
   return findDefinitionInImports(parsed.value.nodeImports, word, fileUri, visited, options);
@@ -41,11 +44,26 @@ function searchKrsFile(
  * in this file (#3794). A storage id is listed so its declaration is
  * findable, but it never hides a node of the same id, here or imported.
  */
-export function resolveDefinition(file: KrsFile, word: string, uri: string): Location | null {
+export function resolveDefinition(
+  file: KrsFile,
+  word: string,
+  uri: string,
+  /** The parent of a dotted reference (`WebApp` in `WebApp.Cache`), when there is one. */
+  qualifier?: string | null,
+): Location | null {
+  const self = () => new Set<string>([fileURLToPath(uri)]);
+  if (qualifier) {
+    // `<Client>.<Id>` names that client's storage, not whatever else has the
+    // bare id (#3794): look it up here, then in imported files.
+    const here = findRangeOfClientStorage(file, qualifier, word);
+    if (here) return Location.create(uri, here);
+    const storageOf = { storageOf: qualifier };
+    const imported = findDefinitionInImports(file.nodeImports, word, uri, self(), storageOf);
+    if (imported) return imported;
+  }
   const nodesOnly = { nodesOnly: true };
   const node = findRangeOfNode(file, word, nodesOnly);
   if (node) return Location.create(uri, node);
-  const self = () => new Set<string>([fileURLToPath(uri)]);
   const imported = findDefinitionInImports(file.nodeImports, word, uri, self(), nodesOnly);
   if (imported) return imported;
   // No node anywhere: a storage id, in this file first.
@@ -54,8 +72,11 @@ export function resolveDefinition(file: KrsFile, word: string, uri: string): Loc
   return findDefinitionInImports(file.nodeImports, word, uri, self());
 }
 
-/** `nodesOnly` skips client storage ids (see {@link resolveDefinition}). */
-type LookupOptions = { nodesOnly?: boolean };
+/**
+ * `nodesOnly` skips client storage ids; `storageOf` looks only for that
+ * client's storage of the word (see {@link resolveDefinition}).
+ */
+type LookupOptions = { nodesOnly?: boolean; storageOf?: string };
 
 /**
  * Recursively search imported files for a node definition.
@@ -100,7 +121,9 @@ export function findDefinitionInImports(
     // bare entries (`["Foo"]`) and the leaf segment of multi-segment paths
     // (`["A", "B", "Foo"]`) — the user can only place a cursor on a single
     // identifier token, so we match against the final segment.
-    if (isNamed && !imp.ids.some((entry) => entry.path[entry.path.length - 1] === word)) continue;
+    // A storage lookup follows the import that brings its client.
+    const wanted = options.storageOf ?? word;
+    if (isNamed && !imp.ids.some((entry) => entry.path[entry.path.length - 1] === wanted)) continue;
 
     const importedUri = resolveImportUri(baseUri, imp.path);
     const importedFilePath = fileURLToPath(importedUri);
