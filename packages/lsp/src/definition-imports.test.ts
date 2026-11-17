@@ -152,4 +152,28 @@ describe("findDefinitionInImports — cross-file definition walk (AT-0037-4)", (
     const loc = resolveDefinition(file, "Outbox", pathToFileURL(entry).toString());
     expect(loc?.range.start.line).toBe(2);
   });
+
+  it("prefers a node in a later import over a storage id in an earlier one (#3794)", () => {
+    write("a.krs", 'system S {\n  client Web [web] {\n    resource indexedDB Outbox "o"\n  }\n}\n');
+    const b = write(
+      "b.krs",
+      "system S {\n  service App {\n    domain D {\n      usecase Outbox {}\n    }\n  }\n}\n",
+    );
+    const entry = write("index.krs", 'import "./a.krs"\nimport "./b.krs"\nsystem S {}\n');
+    const file = Parser.parse(readFileSync(entry, "utf-8")).value;
+    const loc = resolveDefinition(file, "Outbox", pathToFileURL(entry).toString());
+    expect(loc?.uri).toBe(pathToFileURL(b).toString());
+  });
+
+  it("still finds a storage id that only an imported file declares (#3794)", () => {
+    const a = write(
+      "a.krs",
+      'system S {\n  client Web [web] {\n    resource indexedDB Outbox "o"\n  }\n}\n',
+    );
+    const entry = write("index.krs", 'import "./a.krs"\nsystem S {}\n');
+    const file = Parser.parse(readFileSync(entry, "utf-8")).value;
+    const loc = resolveDefinition(file, "Outbox", pathToFileURL(entry).toString());
+    expect(loc?.uri).toBe(pathToFileURL(a).toString());
+    expect(loc?.range.start.line).toBe(2);
+  });
 });

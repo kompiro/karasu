@@ -173,6 +173,14 @@ system S {
     ]);
   });
 
+  it("keeps a misplaced resource followed by the client's own label a misplaced resource", () => {
+    const result = Parser.parse(
+      `system S {\n  client WebApp [web] {\n    resource Foo\n    label "Web"\n  }\n}\n`,
+    );
+    expect(result.diagnostics.map((d) => d.code)).not.toContain("client-resource-invalid-kind");
+    expect(result.value.systems[0].children[0].label).toBe("Web");
+  });
+
   it("round-trips the id through the formatter (TPL-1101)", () => {
     const src = `system S {\n  client WebApp [web] {\n    resource sessionStorage ApiKey "karasu.ai.anthropic.apiKey"\n    resource opfs "/meta/projects.json"\n  }\n}\n`;
     expect(format(src)).toBe(src);

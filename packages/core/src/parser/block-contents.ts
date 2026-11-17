@@ -249,6 +249,7 @@ export function parseBlockContentsWithProperties(
         ctx.peekAt(2).type === TokenType.StringLiteral ||
         ((ctx.peekAt(2).type === TokenType.Identifier ||
           KRS_KEYWORD_TOKEN_TYPES.has(ctx.peekAt(2).type)) &&
+          ctx.peekAt(2).loc.line === ctx.peekAt(1).loc.line &&
           ctx.peekAt(3).type === TokenType.StringLiteral))
     ) {
       properties.resources ??= [];

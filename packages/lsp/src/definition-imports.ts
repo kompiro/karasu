@@ -10,7 +10,12 @@ import { findRangeOfNode } from "./position-resolver.js";
  * recursing into its own imports (transitively) on a miss. Shared by both
  * the directory-import expansion and the single-file-import branch below.
  */
-function searchKrsFile(filePath: string, word: string, visited: Set<string>): Location | null {
+function searchKrsFile(
+  filePath: string,
+  word: string,
+  visited: Set<string>,
+  options: LookupOptions,
+): Location | null {
   // Skip this file on any read or parse failure, matching the per-branch
   // skip semantics the two original import branches had. `Parser.parse`
   // reports errors as diagnostics rather than throwing today, so the parse
@@ -24,10 +29,10 @@ function searchKrsFile(filePath: string, word: string, visited: Set<string>): Lo
   }
 
   const fileUri = pathToFileURL(filePath).toString();
-  const range = findRangeOfNode(parsed.value, word);
+  const range = findRangeOfNode(parsed.value, word, options);
   if (range) return Location.create(fileUri, range);
 
-  return findDefinitionInImports(parsed.value.nodeImports, word, fileUri, visited);
+  return findDefinitionInImports(parsed.value.nodeImports, word, fileUri, visited, options);
 }
 
 /**
@@ -37,14 +42,20 @@ function searchKrsFile(filePath: string, word: string, visited: Set<string>): Lo
  * findable, but it never hides a node of the same id, here or imported.
  */
 export function resolveDefinition(file: KrsFile, word: string, uri: string): Location | null {
-  const node = findRangeOfNode(file, word, { nodesOnly: true });
+  const nodesOnly = { nodesOnly: true };
+  const node = findRangeOfNode(file, word, nodesOnly);
   if (node) return Location.create(uri, node);
-  const visited = new Set<string>([fileURLToPath(uri)]);
-  const imported = findDefinitionInImports(file.nodeImports, word, uri, visited);
+  const self = () => new Set<string>([fileURLToPath(uri)]);
+  const imported = findDefinitionInImports(file.nodeImports, word, uri, self(), nodesOnly);
   if (imported) return imported;
+  // No node anywhere: a storage id, in this file first.
   const storage = findRangeOfNode(file, word);
-  return storage ? Location.create(uri, storage) : null;
+  if (storage) return Location.create(uri, storage);
+  return findDefinitionInImports(file.nodeImports, word, uri, self());
 }
+
+/** `nodesOnly` skips client storage ids (see {@link resolveDefinition}). */
+type LookupOptions = { nodesOnly?: boolean };
 
 /**
  * Recursively search imported files for a node definition.
@@ -55,6 +66,7 @@ export function findDefinitionInImports(
   word: string,
   baseUri: string,
   visited: Set<string>,
+  options: LookupOptions = {},
 ): Location | null {
   for (const imp of nodeImports) {
     if (imp.path === "") continue;
@@ -76,7 +88,7 @@ export function findDefinitionInImports(
       for (const filePath of entries) {
         if (visited.has(filePath)) continue;
         visited.add(filePath);
-        const result = searchKrsFile(filePath, word, visited);
+        const result = searchKrsFile(filePath, word, visited, options);
         if (result) return result;
       }
       continue;
@@ -95,7 +107,7 @@ export function findDefinitionInImports(
     if (visited.has(importedFilePath)) continue;
     visited.add(importedFilePath);
 
-    const result = searchKrsFile(importedFilePath, word, visited);
+    const result = searchKrsFile(importedFilePath, word, visited, options);
     if (result) return result;
   }
   return null;
