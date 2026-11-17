@@ -1076,14 +1076,18 @@ function urlEnd(text: string, opener: string): number {
   return text.length;
 }
 /**
- * What opened a URL starting at `index`: the last character before it that is not
- * whitespace, since a link destination may follow `(` after spaces or a line
- * break (`[x]( https://...)`).
+ * What opened a URL starting at `index`: the character right before it, or `(`
+ * when only whitespace stands between, since a link destination may follow `(`
+ * after spaces or a line break (`[x]( https://...)`). A `<` opens a URL only when
+ * it is right before it: in `x < https://kompiro.github.io>@evil.com`, GFM links
+ * the bare URL through `>@evil.com`.
  */
 function openerBefore(text: string, index: number): string {
+  const before = text[index - 1] ?? "";
+  if (!/\s/.test(before)) return before;
   let i = index - 1;
   while (i >= 0 && /\s/.test(text[i])) i--;
-  return text[i] ?? "";
+  return text[i] === "(" ? "(" : before;
 }
 /** What may trail a host when nothing follows it in the URL (`**`, `.`, `),`). */
 const TRAILING_AFTER_HOST = /^[.,:;!?*_~'"\])>]+$/;
