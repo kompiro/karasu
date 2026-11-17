@@ -238,8 +238,8 @@ export function parseBlockContentsWithProperties(
 
     // Client-only: `resource <storageKind> [<Id>] "<name>"` declares operation-tied
     // storage (#3794 added the id). Read as this form when the word after
-    // `resource` is a storage kind, or, for a misspelt kind, when a name follows
-    // it (directly or after an id), so the kind is still reported as such.
+    // `resource` is a storage kind, or, for a misspelt kind, when a name comes
+    // next or after an id, so the kind is still reported as such.
     // Anything else stays a regular resource declaration, rejected in a client.
     if (
       kind === "client" &&

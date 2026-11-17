@@ -53,7 +53,7 @@ export interface DeclaredInfraBlock {
  * asking about, and dropping the first declaration's leaves here would make a
  * legitimately reopened `database` look like it lost tables.
  */
-export function indexDeclaredInfra(roots: readonly KrsNode[]): Map<string, DeclaredInfraBlock> {
+function indexDeclaredInfra(roots: readonly KrsNode[]): Map<string, DeclaredInfraBlock> {
   const index = new Map<string, DeclaredInfraBlock>();
 
   const visit = (node: KrsNode): void => {

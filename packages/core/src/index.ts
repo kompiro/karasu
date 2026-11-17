@@ -137,6 +137,7 @@ export {
   type PhysicalRefTarget,
   type DeclaredClient,
   type DeclaredClientStorage,
+  type DeclaredInfraBlock,
 } from "./spec/infra-index.js";
 export type { ClientStorageEntry, ClientStorageTarget } from "./compile/client-storage-metadata.js";
 export type { OrgViewPath, OrgViewSlice } from "./view/org-view-extract.js";

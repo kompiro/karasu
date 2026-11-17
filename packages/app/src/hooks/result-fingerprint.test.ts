@@ -184,13 +184,13 @@ describe("computeViewResultFingerprint › nodeMetadataByPath (#2917)", () => {
     const after = targetsOf(
       `system S {\n  client C [web] {\n    resource opfs Projects "p"\n  }\n}\n`,
     );
-    const base = { svg: "<svg/>", warnings: [], diagnostics: [] };
-    expect(computeViewResultFingerprint({ ...base, physicalTargets: before })).not.toBe(
-      computeViewResultFingerprint({ ...base, physicalTargets: after }),
+    const inputs = { svg: "<svg/>", warnings: [], diagnostics: [] };
+    expect(computeViewResultFingerprint({ ...inputs, physicalTargets: before })).not.toBe(
+      computeViewResultFingerprint({ ...inputs, physicalTargets: after }),
     );
-    expect(computeViewResultFingerprint({ ...base, physicalTargets: after })).toBe(
+    expect(computeViewResultFingerprint({ ...inputs, physicalTargets: after })).toBe(
       computeViewResultFingerprint({
-        ...base,
+        ...inputs,
         physicalTargets: targetsOf(
           `system S {\n  client C [web] {\n    resource opfs Projects "p"\n  }\n}\n`,
         ),
