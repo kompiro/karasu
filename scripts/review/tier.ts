@@ -1089,10 +1089,10 @@ function openerBefore(text: string, index: number): string {
   while (i >= 0 && /\s/.test(text[i])) i--;
   return text[i] === "(" ? "(" : before;
 }
-/** What may trail a host when nothing follows it in the URL (`**`, `.`, `),`). */
-const TRAILING_AFTER_HOST = /^[.,:;!?*_~'"\])>]+$/;
-/** Trailing punctuation an autolink leaves out (GFM), and a closing quote or bracket. */
-const TRAILING_PUNCTUATION = /[.,:;!?*_~'"\])>]+$/;
+/** What may trail a host when nothing follows it in the URL (`**`, `.`, `),`, a code span's backtick). */
+const TRAILING_AFTER_HOST = /^[.,:;!?*_~'"`\])>]+$/;
+/** Trailing punctuation an autolink leaves out (GFM), and a closing quote, bracket or backtick. */
+const TRAILING_PUNCTUATION = /[.,:;!?*_~'"`\])>]+$/;
 /** A commit SHA as a path segment, alone or before a suffix (`.patch`, `~1`, `^`). */
 const SHA_SEGMENT = /^[0-9a-f]{7,}(?:[.~^]|$)/;
 /** The only fragment the app hosts take: an element anchor, which carries no content (#3786). */

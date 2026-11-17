@@ -2544,6 +2544,7 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     "[link](https://taka.kompiro.dev/TkrZQG)を参照",
     "[a](https://github.com/kompiro/karasu/issues/1)、[b](../adr/12-x.md)、#3787",
     "(see https://kompiro.github.io/karasu/), and more",
+    "`https://karasu.kompiro.dev/` and `https://karasu.kompiro.dev` and `https://taka.kompiro.dev/TkrZQG`",
     // A glob or a regex escape after `//` that names no host on the internet.
     '"docs/adr/graph/\\\\*\\\\*" and `$\\\\{port\\\\}` and `\\\\)`',
     "\\*\\*種類\\*\\* and `\\\\{` and `\\\\}`",
@@ -2679,6 +2680,7 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     ["[x](https://kompiro.github.io<@evil.com/)", "an unreadable URL"],
     ["[x]( https://kompiro.github.io<@evil.com/)", "an unreadable URL"],
     ["x < https://kompiro.github.io>@evil.com", "an unreadable URL"],
+    ["[x](https://kompiro.github.io`@evil.com/)", "an unreadable URL"],
     [
       '<div>\n<a x\' foo=a=" bar=">" href="https://kompiro.github.io)@evil.com/">x</a>\n</div>',
       "raw HTML",
