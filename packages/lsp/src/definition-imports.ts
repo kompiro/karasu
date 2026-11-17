@@ -126,9 +126,11 @@ export function findDefinitionInImports(
     // bare entries (`["Foo"]`) and the leaf segment of multi-segment paths
     // (`["A", "B", "Foo"]`) — the user can only place a cursor on a single
     // identifier token, so we match against the final segment.
-    // A dotted lookup follows the import that brings its parent.
-    const wanted = options.qualifiedBy ?? word;
-    if (isNamed && !imp.ids.some((entry) => entry.path[entry.path.length - 1] === wanted)) continue;
+    // A dotted lookup searches every imported file: a named import of a system
+    // brings the clients and infra blocks inside it, and findRangeOfDottedRef
+    // checks the parent itself (#3794).
+    const filtered = isNamed && options.qualifiedBy === undefined;
+    if (filtered && !imp.ids.some((entry) => entry.path[entry.path.length - 1] === word)) continue;
 
     const importedUri = resolveImportUri(baseUri, imp.path);
     const importedFilePath = fileURLToPath(importedUri);

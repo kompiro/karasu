@@ -141,4 +141,18 @@ describe("Go to Definition on a client storage in an imported file (#3794)", () 
     const loc = resolveDefinition(parse(src), "Uploads", pathToFileURL(entry).toString(), "Media");
     expect(loc?.uri ?? null).not.toBe(pathToFileURL(join(dir, "c.krs")).toString());
   });
+
+  it("follows a named import of the system that holds the client", () => {
+    const clients = join(dir, "clients.krs");
+    writeFileSync(
+      clients,
+      'system S {\n  client WebB [web] {\n    resource localStorage Cache "b"\n  }\n}\n',
+    );
+    const src = 'import { S } from "./clients.krs"\nsystem T {}\n';
+    const entry = join(dir, "index.krs");
+    writeFileSync(entry, src);
+    const loc = resolveDefinition(parse(src), "Cache", pathToFileURL(entry).toString(), "WebB");
+    expect(loc?.uri).toBe(pathToFileURL(clients).toString());
+    expect(loc?.range.start.line).toBe(2);
+  });
 });
