@@ -291,6 +291,11 @@ const SAMPLES: SamplesByCode = {
     code: "unresolved-resource-ref",
     params: { infraId: "OrderDB", subId: "orders", missing: "block" },
   },
+  "resource-target-ambiguous": {
+    severity: "warning",
+    code: "resource-target-ambiguous",
+    params: { ref: "WebApp.ApiKey", reason: "multiple-clients" },
+  },
   "unresolved-table-ref": {
     severity: "warning",
     code: "unresolved-table-ref",
@@ -532,6 +537,7 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "realizes-target-ambiguous": ["Api", "Shop.Api"],
   "import-target-ambiguous": ["Checkout.Payment", "Shop.Checkout.Payment"],
   "unresolved-resource-ref": ["OrderDB", "orders"],
+  "resource-target-ambiguous": ["WebApp.ApiKey", "ApiKey"],
   "unresolved-table-ref": ["Order", "OrderDB", "orders"],
   "duplicate-edge-id": ["#checkout"],
   "duplicate-edge-label": ["places an order"],

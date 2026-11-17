@@ -6,8 +6,11 @@ import type {
   LogicalNodeKind,
   CommonProperties,
   BoundaryBlock,
+  ClientResource,
+  ClientResourceKind,
 } from "../types/ast.js";
-import { INFRA_KIND_SET } from "../types/ast.js";
+import { INFRA_KIND_SET, CLIENT_RESOURCE_KINDS } from "../types/ast.js";
+import { KRS_KEYWORD_TOKEN_TYPES } from "../lexer/lexer.js";
 import { LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
 import { stitchKebabTail } from "./kebab-name.js";
 import { opensEdgeOnLaterLine } from "./node-path.js";
@@ -21,6 +24,8 @@ import {
   parseDeliversList,
   readStringValue,
   readTableRef,
+  readValueAfter,
+  reportMissingValue,
   rejectMisplacedProperty,
   type ParsedOperation,
 } from "./property-readers.js";
@@ -231,13 +236,16 @@ export function parseBlockContentsWithProperties(
       continue;
     }
 
-    // Client-only: `resource <storageKind> "<name>"` declares operation-tied storage.
-    // Distinguished from a regular resource declaration by the trailing string literal.
+    // Client-only: `resource <storageKind> [<Id>] "<name>"` declares operation-tied
+    // storage (#3794 added the id). Read as this form when the word after
+    // `resource` is a storage kind, or (for a misspelt kind, as before the id
+    // existed) when the token after it is the name's string literal. Anything
+    // else stays a regular resource declaration, rejected in a client.
     if (
       kind === "client" &&
       token.type === TokenType.Resource &&
       ctx.peekAt(1).type === TokenType.Identifier &&
-      ctx.peekAt(2).type === TokenType.StringLiteral
+      (isClientResourceKind(ctx.peekAt(1).value) || ctx.peekAt(2).type === TokenType.StringLiteral)
     ) {
       properties.resources ??= [];
       properties.resources.push(parseClientResource(ctx));
@@ -323,27 +331,75 @@ export function parseBlockContentsWithProperties(
   }
 }
 
-function parseClientResource(ctx: ParseContext): import("../types/ast.js").ClientResource {
+function isClientResourceKind(value: string): value is ClientResourceKind {
+  return (CLIENT_RESOURCE_KINDS as readonly string[]).includes(value);
+}
+
+/**
+ * `resource <storageKind> [<Id>] "<name>"`, the `resource` keyword not yet
+ * consumed. The id is optional (#3794) and may be quoted; the name is required and read with the
+ * shared reader, so a string on a later line that opens an edge
+ * (`"WebApp" -> A`) is left as that edge's source and the missing name is
+ * reported (ADR-3752, TPL-3752). A name on a later line that opens nothing is
+ * still the name, as it was before the id existed.
+ */
+function parseClientResource(ctx: ParseContext): ClientResource {
   const start = ctx.expect(TokenType.Resource);
   const kindToken = ctx.expect(TokenType.Identifier);
-  const nameToken = ctx.expect(TokenType.StringLiteral);
   const kindName = kindToken.value;
-  const isAllowed = (
-    ["localStorage", "sessionStorage", "indexedDB", "opfs", "file", "keychain"] as const
-  ).some((k) => k === kindName);
-  if (!isAllowed) {
+  let last: Token = kindToken;
+
+  let id: string | undefined;
+  const idToken = ctx.peek();
+  if (idToken.type === TokenType.Identifier && !opensEdgeOnLaterLine(ctx, last)) {
+    id = ctx.advance().value;
+    last = idToken;
+  } else if (
+    // A quoted id (`resource opfs "api-key" "…"`), the spelling the formatter
+    // prints for an id no bare word can hold (TPL-2707). Only when the name
+    // follows on the same line: a lone string is the name, as it always was.
+    idToken.type === TokenType.StringLiteral &&
+    ctx.peekAt(1).type === TokenType.StringLiteral &&
+    ctx.peekAt(1).loc.line === endLineOf(idToken) &&
+    !opensEdgeOnLaterLine(ctx, last)
+  ) {
+    id = ctx.advance().value;
+    last = idToken;
+  } else if (KRS_KEYWORD_TOKEN_TYPES.has(idToken.type) && idToken.loc.line === endLineOf(last)) {
+    // A word the lexer reads as a keyword (`table`, `storage`, …) cannot be an
+    // id. Consumed, so the name after it is still read.
+    ctx.error("expected-identifier", { got: String(idToken.type), value: idToken.value });
+    ctx.advance();
+    last = idToken;
+  }
+
+  const nameToken = readValueAfter(ctx, last, TokenType.StringLiteral);
+  if (!nameToken) {
+    reportMissingValue(ctx, start.loc, "expected-string-after", { property: "resource" });
+  } else {
+    last = nameToken;
+  }
+  const loc = ctx.range(start.loc, last.end ?? last.loc);
+
+  if (!isClientResourceKind(kindName)) {
     ctx.pushDiagnostic({
       severity: "error",
       code: "client-resource-invalid-kind",
-      params: { kind: kindName, name: nameToken.value },
-      loc: ctx.range(start.loc, nameToken.loc),
+      params: { kind: kindName, name: nameToken?.value ?? "" },
+      loc,
     });
   }
   return {
-    storageKind: kindName as import("../types/ast.js").ClientResourceKind,
-    name: nameToken.value,
-    loc: ctx.range(start.loc, nameToken.loc),
+    storageKind: kindName as ClientResourceKind,
+    ...(id !== undefined ? { id } : {}),
+    name: nameToken?.value ?? "",
+    loc,
   };
+}
+
+/** The line a token ends on (a string literal may span lines). */
+function endLineOf(token: Token): number {
+  return (token.end ?? token.loc).line;
 }
 
 function parseClientCapability(ctx: ParseContext): import("../types/ast.js").ClientCapability {

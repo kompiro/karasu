@@ -216,6 +216,14 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         }),
         details: [],
       };
+    case "client-resource-duplicate-id":
+      return {
+        message: t("warning.clientResourceDuplicateId.message", {
+          clientId: w.params.clientId,
+          id: w.params.id,
+        }),
+        details: [],
+      };
     case "client-capability-duplicate":
       return {
         message: t("warning.clientCapabilityDuplicate.message", {

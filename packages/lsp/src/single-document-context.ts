@@ -137,6 +137,7 @@ export const SINGLE_DOCUMENT_CONTEXT: Record<WarningKind, SingleDocumentSide> = 
     "Reports a delivers target that is not a client in the model it was handed.",
   ),
   "client-capability-duplicate": LOCAL("Compares a client's own capability lines."),
+  "client-resource-duplicate-id": LOCAL("Compares the ids of a client's own storage lines."),
   "tag-not-builtin": LOCAL("Checks a tag written on a node against the builtin list."),
   "tag-not-applicable": LOCAL("Checks a tag against the kind of the node it is written on."),
   "annotation-not-builtin": LOCAL("Checks an annotation against the builtin list."),

@@ -139,6 +139,15 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.importTargetAmbiguous.message", d.params);
     case "unresolved-resource-ref":
       return t("diagnostic.unresolvedResourceRef.message", d.params);
+    case "resource-target-ambiguous": {
+      const { ref, reason } = d.params;
+      const dot = ref.indexOf(".");
+      const parent = ref.slice(0, dot);
+      const child = ref.slice(dot + 1);
+      return reason === "infra-and-client"
+        ? t("diagnostic.resourceTargetAmbiguous.infraAndClient", { ref, parent })
+        : t("diagnostic.resourceTargetAmbiguous.multipleClients", { ref, parent, child });
+    }
     case "unresolved-table-ref":
       return t("diagnostic.unresolvedTableRef.message", d.params);
     case "duplicate-edge-id":

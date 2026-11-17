@@ -552,10 +552,6 @@ export const ja: Partial<Translations> = {
     `import "${path}" は kind または深さの異なる複数のノードに一致します: ${candidates
       .map((c) => `${c.path} (${c.kind})`)
       .join(", ")}。すべて import されます。1 つに絞るにはより長い path で修飾してください`,
-  "diagnostic.unresolvedResourceRef.message": ({ infraId, subId, missing }) =>
-    missing === "block"
-      ? `"resource ${infraId}.${subId}" が参照する "${infraId}" を宣言する database / queue / storage ブロックがありません`
-      : `"resource ${infraId}.${subId}" が参照する "${subId}" は "${infraId}" に宣言されていません`,
   "diagnostic.unresolvedTableRef.message": ({ entityId, infraId, subId, missing }) =>
     missing === "block"
       ? `entity "${entityId}" は "${infraId}.${subId}" に対応付けられていますが、"${infraId}" を宣言する database / queue / storage ブロックがありません`
