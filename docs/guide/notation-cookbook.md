@@ -375,6 +375,42 @@ saying one thing. Writing the label both positionally and inside the block is a
 belong here: protocol, cardinality and retry counts stay prose inside
 `description`, because karasu models structure, not runtime configuration.
 
+## 10. State a client keeps on the device — a client storage with an id
+
+**When** — a usecase reads or writes browser or device storage (an API key in
+`sessionStorage`, projects in OPFS, a theme in `localStorage`), and you want that
+access in the CRUD matrix and in `karasu coverage` like any table access.
+
+**Pattern** — declare the storage on the `client` with an id after its kind, and
+reference it from the usecase as `resource <ClientId>.<Id>`, the same dot-notation
+a table reference uses. Experimental (#3794).
+
+**`.krs`**
+
+```krs
+system Studio {
+  client WebApp [web] {
+    resource sessionStorage ApiKey "karasu.ai.anthropic.apiKey"
+    resource opfs Projects "/meta/projects.json"
+  }
+  service App {
+    delivers WebApp
+    domain AssistantChat {
+      usecase SaveApiKey {
+        resource WebApp.ApiKey { operations create, update }
+      }
+    }
+  }
+}
+```
+
+**Why** — the storage stays where it is: a client's device-local storage, not a
+shared `database` / `storage` block on the system view. The id only gives the
+reference somewhere to resolve, so a misspelt id is reported and the domain view
+labels the access `karasu.ai.anthropic.apiKey (sessionStorage)`. Do not tag such a
+reference `[external]` to silence a warning: that says the target lives outside
+the system, which a storage the client itself holds does not.
+
 ## See also
 
 - [`docs/spec/syntax.md`](../spec/syntax.md) — the precise `.krs` grammar (feed this first)

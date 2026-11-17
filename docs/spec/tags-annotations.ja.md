@@ -291,7 +291,7 @@ identifier セットは **オープン** — 任意の kebab-case 識別子を�
 
 | 概念 | 記述する場所 |
 |------|--------------|
-| 操作に紐づくストレージ（`localStorage`, `indexedDB`, `keychain`） | `resource <storageKind> "<name>"` |
+| 操作に紐づくストレージ（`localStorage`, `indexedDB`, `keychain`） | `resource <storageKind> [<Id>] "<name>"` |
 | HTTP セッション / 認証クレデンシャル | 別語彙。#834 で追跡 |
 | 実行時の認可（RBAC permission bundle、ライセンス / フィーチャーフラグ） | karasu はモデル化しない — [ADR-832](../adr/832-no-runtime-authz-modeling.md) 参照。`user.role` プロパティは actor-archetype ラベルであり authz primitive ではない — [ADR-1281](../adr/1281-user-role-keyword-clarification.md) 参照 |
 
@@ -346,7 +346,7 @@ register を分ける理由は、所属のセマンティクスがアーキタ�
 | `[async]` | `-->` で宣言されたエッジ | 破線 |
 | `[sync]` | `->` で宣言されたエッジ | 実線 |
 | `[cyclic]` | 循環依存検出時 | 赤（`#EF4444`）実線。差分のビュー（`karasu diff`、app の差分モード）では付与しない。差分は変わったものを描く面なので、そこでは `edge[cyclic]` のルールはどれにも当たらず、循環は警告でだけ知らせる |
-| `[write]` | usecase→resource の合成エッジで、対象 resource の `operations` に `create` / `update` / `delete` が含まれる場合 | `stroke-width: 2`、ラベル `"W"` |
+| `[write]` | usecase→resource の合成エッジで、対象 resource の `operations` に `create` / `update` / `delete` が含まれる場合。対象は昇格した dot 記法の resource で、infra の leaf か、`resource <ClientId>.<Id>` で参照した client の storage（experimental、#3794） | `stroke-width: 2`、ラベル `"W"` |
 | `[read]` | usecase→resource の合成エッジで read-only と分類される場合（write 動詞なし、または `operations` 省略） | `stroke-width: 1.5`、ラベル `"R"` |
 | `[inferred]` | `translate --from db` が **Soft FK**（`REFERENCES` / `FOREIGN KEY` 宣言の無い `<stem>_id` / `<stem>_code` 列）から導いた entity 関連、または `table` → `table` エッジ（#2722）。明示 FK 由来の関連は無タグ（確認済み） | 暖色寄りのグレー（dark `#A8A29E` / light `#78716C`）。エッジの既定色と同じ明るさで色味だけを変え、無タグ（確認済み）のエッジと見分けられるが、より重要には見えない（#3115）。**色のみ** — 線種は `[sync]` / `[async]` が所有する |
 | `[delivers]` | service の `delivers <ClientId>` プロパティから導いた service → client のエッジ（[syntax.ja.md](./syntax.ja.md)） | 紫（dark `#A78BFA` / light `#7C3AED`）の破線 |

@@ -747,7 +747,12 @@ footprint and makes the `coverage` numbers incomparable across domains.
    *why*, and note whether the domain would score normally if a notation gap were
    closed (state persisted inside another domain's JSON column, an outbound call
    whose address is a row, a boot-time scan of the code image — all unwritable
-   today, all reasons a well-modelled domain measures as thin).
+   today, all reasons a well-modelled domain measures as thin). State kept in
+   browser or device storage is **not** such a gap: give the `client`'s storage
+   line an id (`resource sessionStorage ApiKey "…"`) and reference it from the
+   usecase as `resource <ClientId>.<Id>` (experimental). `coverage` then counts
+   it, and its `clientStores` section lists, per client, the storages nobody
+   references and the ones with no id yet.
 7. **Re-measure after any enrichment.** `coverage` scores are *relative* across
    domains, so enriching one dimension (e.g. adding entity relations) raises the
    normalization baseline and can newly flag a domain that has none of that

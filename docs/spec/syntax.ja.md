@@ -162,6 +162,7 @@ client C [web] {
 - `database` / `queue` / `storage` はトップレベルまたは `system` の直下でのみ有効。`service` / `domain` / `usecase` の中にネストすると `infra-not-in-context` で拒否される。
 - `table` / `queue-item` / `bucket` は leaf ノード — プロパティとエッジは持てるが、ネストした宣言は持てない。
 - `usecase` は自身の `resource` を共有サブリソースにドット記法で紐づける — `resource <InfraId>.<SubResourceId>`（例: `resource OrderDB.OrderTable`）。resolver はこれらの参照を集約して system 図上の `service → database`（および `service → queue` / `service → storage`）エッジを導出し、usecase→resource エッジに `[read]` / `[write]` タグを合成することがある（[docs/spec/tags-annotations.ja.md](./tags-annotations.ja.md) の「システム自動付与タグ」節を参照）。
+- 同じ dot 記法で、`client` が id 付きで宣言した storage も指せる — `resource <ClientId>.<Id>`（experimental。[usecase から client の storage を参照する](#usecase-から-client-の-storage-を参照するexperimental)を参照）。infra への参照と同じく昇格し `[read]` / `[write]` が付くが、`service → client` のエッジは導出しない。
 - `[external]` はシステム境界の外にあるストア（マネージドなサードパーティ DB、外部イベントバス等）を表すために `database` / `queue` / `storage` に付けられる。
 - `database` ブロックがないまま `resource OrderTable` と書くことも許容される。`usecase` を書きながらボトムアップに resource を発見し、後で `database` ブロックにグループ化してドット記法の参照に切り替えればよい。その id が**どこにも解決しない**あいだ（ドット記法参照でもなく、同名の一意な `entity` にも解決しないあいだ）は `unassigned-resource` 警告が出て、この resource は**描画されるが、自身が属する usecase のドリルダウンビューの中だけ**である。domain ビューの兄弟ノードには昇格しない。兄弟への昇格は参照が解決されて初めて得られるものだからである。同名の `entity` を宣言すれば、`database` ブロックの有無にかかわらず usecase 側は無編集のまま昇格し、警告も消える（[`entity` 宣言](#entity-宣言--概念レベルのドメインエンティティ)を参照）。つまりボトムアップなスケッチにも視覚的フィードバックはあり、id が解決するまでのあいだ 1 階層深いところに出る。
 - infra ブロックの **キーワード** `table`（`database` の leaf、共有ノードの宣言）と、shape **タグ** `[table]`（usecase の `resource` の描画 shape）は別物ではなく対応関係にある。usecase は上記 dot 記法の `resource` で infra leaf を参照し、karasu は **参照先 infra sub-resource の kind から shape タグを推論**する — `table` → `[table]`/cylinder, `queue-item` → `[queue]`, `bucket` → `[storage]` — ので、参照は指し示すストアと同じ形で描画される。キーワードはノードの *kind* を宣言し、`[...]` タグは `resource` の *shape* だけを決める接尾辞（手書きも可）。同じ語が 2 つの位置に現れても衝突しない。詳しい使い分けは [tags-annotations.ja.md](./tags-annotations.ja.md) を参照。
@@ -328,7 +329,7 @@ system Shop {
 | `role` | `role "<ロール名>"` | user | actor archetype、または「この user が何をするか」の一行要約。**authz primitive ではない**（`requires role = ...` 述語も RBAC permission bundle も存在しない） — [ADR-832](../adr/832-no-runtime-authz-modeling.md) と [ADR-1281](../adr/1281-user-role-keyword-clarification.md) 参照 |
 | `delivers` | `delivers <ClientId>[, <ClientId>...]` | service | この service が配布する client（BFF / SSR パターン）。レンダラーは各エントリを service から参照先 `client` への破線エッジとして描画する |
 | `link` | `link "<URL>" "<ラベル>"` | 全種別 | 関連ドキュメントへのリンク（複数可）。ラベルは省略可 |
-| `resource` | `resource <storageKind> "<name>"` | client | client 上の操作と紐づくローカルストレージ。複数可。client resource storage kinds は下記参照 |
+| `resource` | `resource <storageKind> [<Id>] "<name>"` | client | client 上の操作と紐づくローカルストレージ。複数可。省略できる id は usecase の `resource <ClientId>.<Id>` の解決先になる（experimental）。client resource storage kinds は下記参照 |
 | `capability` | `capability <name>` または `capability <name> { label "..." description "..." }` | client | client が要求するデバイス / ブラウザの capability（camera、geolocation、notification など）。複数可。client capability は下記参照 |
 
 すべてのプロパティは省略可。`link` は同一ノード内に複数記述できる。
@@ -413,13 +414,13 @@ client <id> [<form-factor-tag>] {
   label "<表示名>"
   description "<説明>"
   resource <storageKind> "<name>"
-  resource <storageKind> "<name>"
+  resource <storageKind> <Id> "<name>"
 }
 ```
 
 #### `client` の `resource` storage kinds
 
-`resource <storageKind> "<name>"` は client 上の操作と紐づくローカルストレージ（`localStorage` key、IndexedDB データベース、OPFS ファイル等）を宣言する。複数の `resource` 行が許容され、client カードにインラインで描画される。
+`resource <storageKind> [<Id>] "<name>"` は client 上の操作と紐づくローカルストレージ（`localStorage` key、IndexedDB データベース、OPFS ファイル等）を宣言する。複数の `resource` 行が許容され、client カードにインラインで描画される。
 
 `<storageKind>` は以下の 6 つの予約値のいずれかでなければならない。それ以外の kind は `client-resource-invalid-kind` で拒否され、認証クレデンシャル・cookie・デバイス capability（より強いモデル化が必要）が黙ってストレージ一覧に紛れ込まないようにしている。
 
@@ -443,6 +444,44 @@ client WebApp [web] {
 ```
 
 **描画**: SVG カードは resource 1 行ずつではなく `×N` カウントチップ（package ベクターグリフ、`data-meta-glyph="package"`） のカウントバッジを 1 つだけ表示する（リスト増加でカードの高さが膨れないように）。kind と name の宣言順での完全リストは `NodeDetailPanel` の「Storage resources」セクションに出る。[AT-0069](../acceptance/0069-client-resource-badge-and-detail-panel.md) 参照。
+
+#### usecase から client の storage を参照する（experimental）
+
+> **Experimental**（#3794）: roadmap の「watch 対象の experimental notation」に載せ、[ADR-1820](../adr/1820-notation-promotion-gate.md) の昇格の前提条件で評価する。言語版は `2.0` のまま。
+
+storage の行は、storage kind と名前のあいだに **id** を持てる。usecase は、infra の leaf を指すのと同じ dot 記法 `resource <ClientId>.<Id>` でその storage を参照する。
+
+```krs
+system Studio {
+  client WebApp [web] {
+    resource sessionStorage ApiKey "karasu.ai.anthropic.apiKey"
+    resource opfs "/meta/projects.json"
+  }
+  service App {
+    delivers WebApp
+    domain AssistantChat {
+      usecase SaveApiKey {
+        resource WebApp.ApiKey { operations create, update }
+      }
+    }
+  }
+}
+```
+
+- id は省略できる。id の無い storage は今までと同じ意味で、参照できない。名前は省略できない。素の語で書けない id は引用符で書く（`resource localStorage "api-key" "…"`）。引用符の id は、名前が同じ行に続くときだけ id として読む。
+- 名前は共有の値の読み手で読む。後の行に書いた名前も名前として読むが、その行がエッジを始める（`"WebApp" -> Api`）なら名前として読まず、名前が無いことを報告する（ADR-3752）。id の位置のキーワード（`table`、`storage` など）は `expected-identifier`。
+- 解決は infra の leaf と同じく model 全体で行う。client は別の system・トップレベル・import 先のファイルにあってよい。`<Parent>` は infra ブロックか client を指し、どちらかは 1 つの resolver が決める。
+- scope の違う infra ブロックと client が親の id を共有するときは、client が解決先になる前と同じく **infra ブロック**に解決し、`resource-target-ambiguous` で衝突を示す。その client の storage は参照できない。
+- 同じ id の client ノード（KRS018 / KRS030）は merge しない。子の id を宣言するものが 2 つ以上あれば、参照は解決しない（`resource-target-ambiguous`）。1 つの client の中で storage の id が重なると `client-resource-duplicate-id`。最初のものが解決先になる。
+- 子が無いときは `unresolved-resource-ref` を `missing: "leaf"`・`parentKind: "client"` で出す。entity の `table WebApp.ApiKey` は client の storage に解決しない。
+- この参照から `service → client` のエッジは導出しない（配信する service は `delivers` が描く）。昇格した resource の label は `<name> (<storageKind>)`。CRUD matrix は id のある storage ごとに column を持ち、`karasu coverage` は client ごとに `clientStores` で報告する。
+- usecase の service が client を配信・担当しているかは検査しない。純粋な SPA には配信する service が無い。
+
+> **Related TPLs**:
+> - [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md) — `<Parent>.<Child>` の解決先は、すべての読む側が読む 1 つの列挙された集合である
+> - [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md) — 参照サイトは記法と解決規則を共有する
+> - [TPL-1625](../test-perspectives/TPL-1625-client-vocabulary-structure-not-implementation.md) — id はアクセスパス上の storage の枠を名指し、スキーマは名指さない
+> - [TPL-3752](../test-perspectives/TPL-3752-optional-trailing-token-stops-at-next-statement.md) — 名前の読み手は後の行のエッジで止まる
 
 #### `client` の `capability`
 
@@ -2017,7 +2056,7 @@ edge `A -> B` の片方の endpoint が解決できない（merged モデルに 
 
 `realizes` / `owns` / `handles` などの cross-reference にも同じ規則を適用する — source ノードは残り、relation のみ警告と共に消える。
 
-**物理**の dot 記法参照も同様である。usecase の `resource <Infra>.<Leaf>` と entity の `table <Infra>.<Leaf>` は、`database` / `queue` / `storage` ブロックと、そのブロックが宣言する leaf を指していなければならない。指していないときは usecase / entity 自体は残り、参照が報告される（`unresolved-resource-ref` / `unresolved-table-ref`。どちらが欠けているかをメッセージに含む）。例外は 2 つ — `[external]` タグ付きの resource / entity は意図的にモデル外を指すので対象外、そして `owns` / `contains` と同じく、import が未解決のドキュメントではそもそも判定しない（共有 `database` ブロックの正準の置き場は §S4.5 の import 先 infra ファイルであるため）。
+**物理**の dot 記法参照も同様である。usecase の `resource <Infra>.<Leaf>` と entity の `table <Infra>.<Leaf>` は、`database` / `queue` / `storage` ブロックと、そのブロックが宣言する leaf を指していなければならない。usecase の `resource` は代わりに `client` とその storage の id を指してもよい（#3794、experimental）。指していないときは usecase / entity 自体は残り、参照が報告される（`unresolved-resource-ref` / `unresolved-table-ref`。どちらが欠けているかをメッセージに含む）。例外は 2 つ — `[external]` タグ付きの resource / entity は意図的にモデル外を指すので対象外、そして `owns` / `contains` と同じく、import が未解決のドキュメントではそもそも判定しない（共有 `database` ブロックの正準の置き場は §S4.5 の import 先 infra ファイルであるため）。親の id がどの解決先を指すか（infra ブロックと client が共有する、同じ id の client の 2 つ以上が子を宣言する）もマージ後のモデルで決め、`resource-target-ambiguous` で報告する。
 
 `table` 対応付けを **持たない** entity はこれとは別の話で、ここでは報告しない。物理層より先に（あるいは物理層なしで）論理側をモデル化するのは支持された状態である。物理層が宣言どおりに表現されているかは *計測* の問題であり、診断ではなく `karasu coverage` が答える。
 
