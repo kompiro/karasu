@@ -46,8 +46,8 @@ infra block (`database` / `queue` / `storage`) が複数ファイルで宣言さ
 新しい infra-style ノード種別を追加する / 既存 infra の merge 規則を変更するときに確認する:
 
 - [ ] **同一性の判定**: 同一インスタンス（DAG 再到達）は黙って dedup、別インスタンス・同 id だけが union merge + `infra-redeclared-across-files` (info)、別 id はそれぞれ別ノードとして並ぶ
-- [ ] **body の構成要素が漏れなく union される**: リーフ（table / queue-item / bucket）と**エッジ**（`sessions -> users`）の両方。merge 関数は写す field を数え上げる形なので、後から増えた field が黙って漏れる — リーフだけ結合してエッジを落とすと、テーブルは揃っているのに関係だけ消えた block ができる（#2754）
-- [ ] **エッジの重複判定は spec と同じ identity** で行う: `docs/spec/syntax.md` § multi-file import semantics の「same `from`, `to`, kind, label」。`kind` を落とすと重複が消えるのではなく sync/async の区別が消える（#2755 レビュー）。判定は `import-resolver.ts` の `isSameEdge` 1 か所に集約されており、system reopen・infra body・named import の 3 経路すべてがこれを使う。経路ごとに比較式を書き直すと field の数え上げがずれる（#2780 で 2 経路が spec と食い違っていた）
+- [ ] **body の構成要素が漏れなく union される**: リーフ（table / queue-item / bucket）と**エッジ**（`sessions -> users`）の両方。merge 関数は写す field を数え上げる形なので、後から増えた field が黙って漏れる — リーフだけ結合してエッジを落とすと、テーブルは揃っているのに関係だけ消えた block ができる（#2754） [guard: `packages/core/src/fs/infra-merge.test.ts`]
+- [ ] **エッジの重複判定は spec と同じ identity** で行う: `docs/spec/syntax.md` § multi-file import semantics の「same `from`, `to`, kind, label」。`kind` を落とすと重複が消えるのではなく sync/async の区別が消える（#2755 レビュー）。判定は `fs/merge-identity.ts` の `isSameEdge` 1 か所に集約されており、system reopen・infra body・named import の 3 経路すべてがこれを使う。経路ごとに比較式を書き直すと field の数え上げがずれる（#2780 で 2 経路が spec と食い違っていた）
 - [ ] **情報が消える場所の扱い**: リーフの `(id, kind)` 衝突は先勝ち + `infra-leaf-redeclared-silently` (info) で surface し、本体プロパティ（label / description）の衝突は silent root-entry-wins（S3 と非対称、warning は出さない）
 - [ ] **診断の register と文言**: 事実先行（「複数ファイルで宣言されている」「merged」。「smell」「anti-pattern」等の流派用語を外す）で、LSP / App / CLI の表示パイプラインに `info` が通り `warning` より控えめに描画される
 
@@ -59,6 +59,7 @@ infra block (`database` / `queue` / `storage`) が複数ファイルで宣言さ
 
 ## 関連テスト
 
+- `packages/core/src/fs/infra-merge.test.ts`：infra block の全フィールドの merge 規則を `INFRA_MERGE_POLICY`（`fs/infra-merge.ts`）が `satisfies Record<…>` で持つ。鍵は `INFRA_BLOCK_KINDS` から導いた `InfraNode` の全ノード型のキーの和で、resolver の `mergeInfraBody` は `union` のフィールドを `Record<InfraUnionField, …>` 経由で処理する。フィールドを足すと方針表に分類を足すまで、`union` にしたフィールドは merge を書くまで型検査が落ちる。テストは `INFRA_BLOCK_KINDS` を鍵にした表（kind ごとの葉のキーワード。infra の kind を足すと行を足すまで型検査が落ちる）の全 kind について、top-level の reopen と system 内の reopen の 2 経路で、フィールドごとに、fixture が 2 つの宣言で違う値を持つことを確かめたうえで、`root-wins` は entry 側の値が残ること、`union` は両方の要素が揃うこと、`identity` は等しいことを assert し、共通のリーフで `infra-leaf-redeclared-silently`（info）がちょうど 1 件出て info より強い診断が無いことを assert する（「body の構成要素が漏れなく union される」のガード。守るのは infra block のフィールドの集合で、merge の経路ではない）。「情報が消える場所の扱い」には印を付けない。テストが回すのは `mergeInfraBody` を通る 2 経路で、merge の経路はコードが持つ閉じた集合ではない。path import（`materializeChain`）は、届いた先に同じ `(id, kind)` のノードがあると本体を merge しない。親が infra block なら `infra-leaf-redeclared-silently` を出し、親が system なら info も出さない（#3846）。どちらもこの表の外にある
 - `packages/core/src/fs/import-resolver.test.ts` の "S4.5: same-id infra reopen ..." 系ケース
 - 同ファイルの "keeps ... differ in kind or label (#2780)" 2 件（system reopen / named import 経路のエッジ identity）
 - `packages/i18n/src/render-diagnostic.test.ts` の `renderDiagnostic — i18n coverage for every DiagnosticCode`：`infra-redeclared-across-files` / `infra-leaf-redeclared-silently` を含む全コードの en / ja 文言が空でなく、kind と id（`database` / `OrderDB` など）を本文に出すことを固定する（診断の文言）

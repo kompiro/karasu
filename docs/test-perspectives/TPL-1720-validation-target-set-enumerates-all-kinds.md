@@ -82,3 +82,4 @@ valid-target set を構築・変更するとき、以下を確認する:
 
 - `packages/core/src/resolver/warnings.test.ts`（`unresolved-realizes` / `invalid-owns` の client positive ケース）
 - `packages/core/src/parser/parser.test.ts`（`owns-target-not-found` の client positive ケース）
+- `scripts/reference/gen-docs.test.ts`：`docs/spec/syntax.md` / `syntax.ja.md` の `owns` と `realizes` の対象 kind の表（`gen:reference:owns-target-kinds` / `realizes-target-kinds`）は `OWNS_TARGET_KINDS` / `REALIZES_TARGET_KIND_SET` から `scripts/reference/gen-docs.ts` が生成し、テストが生成結果と commit 済みの spec の一致を assert する。定数に kind を足すか外すと、spec を生成し直すまで CI（`test:scripts`）が落ちるので、spec と検証の集合は食い違えない。チェックリスト 1 項目目には印を付けない。spec がこの定数から作られるので、テストは集合が足りないことを見つけられない（ADR が許した kind を定数に足し忘れても、spec ごと抜けたまま通る）。`handles` のように別の対象集合を持つ relation も表に入っていない

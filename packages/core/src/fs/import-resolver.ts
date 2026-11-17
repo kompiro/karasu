@@ -1,18 +1,17 @@
 import type { FileSystemProvider, DirEntry } from "./types.js";
 import type {
   Diagnostic,
-  DiagnosticCode,
   KrsFile,
   SystemNode,
   KrsNode,
-  KrsEdge,
   ServiceNode,
   DeployBlock,
   OrganizationBlock,
   ImportDeclaration,
   ImportEntry,
+  InfraKind,
 } from "../types/ast.js";
-import { createEmptyKrsFile } from "../types/ast.js";
+import { INFRA_KIND_SET, createEmptyKrsFile } from "../types/ast.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 import {
@@ -41,78 +40,16 @@ import {
   resolveNodePathBySuffix,
 } from "../parser/node-path.js";
 
+import { MERGED_SPACE_REFERENCE_CODE_SET } from "./merged-space-codes.js";
+import { addStyleImport, copyForReopen, isSameEdge, topLevelHomes } from "./merge-identity.js";
+import { INFRA_UNION_FIELDS, type InfraUnionField } from "./infra-merge.js";
+
 /** One candidate chain of an imported file: the nodes, and their id path. */
 interface ImportChain {
   path: string[];
   chain: KrsNode[];
 }
 import type { StyleSheet } from "../types/style.js";
-
-/**
- * Diagnostics that are only decidable after the cross-file merge: reference
- * existence first (Issue #2032), and since #2221 the declaration-multiplicity
- * verdicts too (`duplicate-*`, `node-id-multiple-locations`). Their per-file
- * verdict is dropped during Pass 1 and re-derived against the merged model in
- * `resolve()`.
- *
- * Adding a code here carries a precondition: the rebuild only sees declarations
- * that reached `krsFile`. For a multiplicity verdict that means a collision
- * confined to a file only some of which is named-imported is dropped and not
- * re-derived — deliberately, since those declarations are not in the project's
- * model at all (the editor still reports them per file, the LSP parsing each
- * document on its own). A code whose verdict must survive for un-merged
- * declarations does not belong in this set.
- *
- * Still load-bearing after #2410, though for a narrower set of files: a file that
- * *has* imports now produces no verdict to drop, because the validators decline
- * to decide there. What this strip catches is the **import-less leaf** — a file
- * with no imports of its own whose `contains` / `owns` target is only satisfied
- * once the importing file's wildcard or `system` reopen adds the node. Its
- * per-file verdict is real and wrong, and only this strip removes it.
- */
-const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
-  "contains-target-not-found",
-  "owns-target-not-found",
-  // Ambiguity is decided against the same declared-node space as existence,
-  // so it is import-coupled for the same reason (#2088 / ADR-2410).
-  "owns-target-ambiguous",
-  "contains-target-ambiguous",
-  "realizes-target-ambiguous",
-  // Co-ownership became a merged-model verdict when ownerIndex moved to the
-  // rebuild pattern (#2548): two files each owning the same node is a fact no
-  // single file can see, and the entry file's per-file infos would otherwise
-  // double the rebuild's (same shape as duplicate-boundary-assignment below).
-  "duplicate-owner-assignment",
-  // The physical dot-notation refs (#2078). Shared infra is *canonically*
-  // declared in a dedicated file every slice imports (§S4.5), so a per-file
-  // verdict would warn on the recommended layout: every `resource ArticleDB.x`
-  // in `reader.krs` would look unresolved because the block lives in
-  // `infra.krs`. Suppressed per file, re-derived against the merged tree below.
-  "unresolved-resource-ref",
-  "unresolved-table-ref",
-  // `facet` declarations merge across files, so uniqueness is a property of the
-  // merged namespace. Suppressed per file and re-derived below — otherwise a
-  // duplicate split across two files would go unreported, and a duplicate inside
-  // one file would be reported twice (#2065 Part B).
-  "duplicate-facet-id",
-  // Multi-membership is a property of the merged declarations for the same
-  // reason, and fails in the more dangerous direction: two files each listing
-  // one boundary for the same node is a fact no single file can see, so a
-  // per-file verdict does not over-report — it reports nothing at all
-  // (#2221, TPL-2221).
-  "duplicate-boundary-assignment",
-  // Same reasoning, reachable since #2246: a reopened `system` (or infra block)
-  // carries its scoped `boundary` blocks across, so two files can now declare
-  // the same id in one scope. Neither file sees the collision alone.
-  "duplicate-boundary-id",
-  // Which ids are declared at more than one path is a merged-model fact for the
-  // same reason (#2596): `system Legacy { service Search }` in one file and
-  // `system Next { service Search }` in another collide in a way neither file
-  // can see, so the per-file verdict reported nothing at all while the index
-  // silently kept whichever file merged first. Re-derived below together with
-  // the index it explains.
-  "node-id-multiple-locations",
-]);
 
 export interface ResolvedProject {
   /** マージ済みの KrsFile（全ファイルの system / deploy を統合） */
@@ -121,25 +58,6 @@ export interface ResolvedProject {
   styleSheets: StyleSheet[];
   /** 解決中に発生した diagnostic */
   diagnostics: Diagnostic[];
-}
-
-/**
- * Whether two edges are the same edge for the cross-file union.
- *
- * The identity is the one `docs/spec/syntax.md` § multi-file import semantics
- * states — "Exact duplicates (same `from`, `to`, kind, label) are
- * deduplicated; otherwise both are kept". `kind` is load-bearing: dropping it
- * fuses `a -> b` and `a --> b` into whichever entry merged first, which is the
- * sync/async distinction disappearing rather than a duplicate being removed.
- *
- * Every edge merge goes through here (#2780). The system reopen, the infra
- * body union and the named-import merge each once spelled the comparison
- * inline, and they had drifted to three different identities — the shape
- * TPL-1385 warns about, where a merge enumerating fields disagrees with the
- * spec once a field is left out.
- */
-function isSameEdge(a: KrsEdge, b: KrsEdge): boolean {
-  return a.from === b.from && a.to === b.to && a.kind === b.kind && a.label === b.label;
 }
 
 /**
@@ -371,7 +289,7 @@ export class ImportResolver {
     // after Pass 2, so drop the per-file verdict here — a member/owned id
     // declared in another file would otherwise falsely warn (Issue #2032).
     this.diagnostics.push(
-      ...parseResult.diagnostics.filter((d) => !MERGED_SPACE_REFERENCE_CODES.has(d.code)),
+      ...parseResult.diagnostics.filter((d) => !MERGED_SPACE_REFERENCE_CODE_SET.has(d.code)),
     );
     fileMap.set(filePath, parseResult.value);
     this.recordDeclaringFile(parseResult.value, filePath);
@@ -640,44 +558,49 @@ export class ImportResolver {
     for (const styleImport of resolved.styleImports) addStyleImport(mergedFile, styleImport);
   }
 
-  private isInfraKind(kind: string): kind is "database" | "queue" | "storage" {
-    return kind === "database" || kind === "queue" || kind === "storage";
+  private isInfraKind(kind: string): kind is InfraKind {
+    return INFRA_KIND_SET.has(kind);
+  }
+
+  /** A block this merge may reopen without touching the declaration's own arrays. */
+  private ownCopy(system: SystemNode): SystemNode {
+    const copy = copyForReopen(system);
+    this.reconciler.inherit(copy, system);
+    this.inheritDeclaringFile(copy, system);
+    return copy;
   }
 
   /**
-   * Same-id infra reopen: merge `table` (or other leaf) children by id.
-   * The infra body is intentionally flat — declaring
-   * `database UserDB { table users }` in two files leaves one merged
-   * node with a single `users` child. Identity-identical re-arrival
-   * (DAG hit) dedups silently. A same-`(id, kind)` collision between
-   * **different instances** emits an `infra-leaf-redeclared-silently`
-   * info diagnostic so the dropped declaration's existence is at least
-   * surfaced — silent loss of information would be debug-hostile.
+   * Same-id infra reopen (S4.5): applies the `union` fields of
+   * `INFRA_MERGE_POLICY` (`infra-merge.ts`); the `Record` below does not
+   * typecheck while one of them has no merge. Leaves merge by `(id, kind)`, the
+   * same instance (a DAG re-arrival) dedups silently, and a collision between
+   * different instances emits an `infra-leaf-redeclared-silently` info.
    */
   private mergeInfraBody(target: KrsNode & { id: string; kind: string }, source: KrsNode): void {
     if (target === source) return;
-    this.mergeScopedBoundaries(target, source);
-    for (const child of source.children) {
-      if (target.children.includes(child)) continue;
-      const dup = target.children.find((c) => c.id === child.id && c.kind === child.kind);
-      if (dup) {
-        this.reportInfraLeafCollision(target, child);
-        continue;
-      }
-      target.children.push(child);
-    }
-    // A `database` body holds edges as well as leaves (`sessions -> users`),
-    // and the union owes them the same treatment it gives the leaves: merging
-    // the tables but dropping the relations between them leaves a block that
-    // looks complete and has quietly lost information (#2754).
-    //
-    // A true duplicate ({@link isSameEdge}) keeps the first entry's body
-    // properties, the same root-entry-wins reconcile the block's own `label` /
-    // `description` already use.
-    for (const edge of source.edges) {
-      if (target.edges.includes(edge)) continue;
-      if (!target.edges.some((e) => isSameEdge(e, edge))) target.edges.push(edge);
-    }
+    const unions: Record<InfraUnionField, () => void> = {
+      boundaries: () => this.mergeScopedBoundaries(target, source),
+      children: () => {
+        for (const child of source.children) {
+          if (target.children.includes(child)) continue;
+          const dup = target.children.find((c) => c.id === child.id && c.kind === child.kind);
+          if (dup) this.reportInfraLeafCollision(target, child);
+          else target.children.push(child);
+        }
+      },
+      // A `database` body holds edges as well as leaves (`sessions -> users`):
+      // merging the tables but dropping the relations between them leaves a
+      // block that looks complete and has quietly lost information (#2754). A
+      // true duplicate ({@link isSameEdge}) keeps the first entry's.
+      edges: () => {
+        for (const edge of source.edges) {
+          if (target.edges.includes(edge)) continue;
+          if (!target.edges.some((e) => isSameEdge(e, edge))) target.edges.push(edge);
+        }
+      },
+    };
+    for (const field of INFRA_UNION_FIELDS) unions[field]();
   }
 
   /**
@@ -896,7 +819,14 @@ export class ImportResolver {
       }
 
       if (system.id === id) {
-        mergedFile.systems.push(system);
+        // Look the id up first, as the wildcard path does (#3801): the importer
+        // may already hold this block, and pushing it again draws it twice. A
+        // different block with the same id reopens. What lands is a copy, so a
+        // later reopen in this file does not write into the imported file's
+        // cached block (the wildcard path still does: #3847).
+        const existing = mergedFile.systems.find((s) => s.id === system.id);
+        if (existing) this.mergeSystemIntoExisting(existing, system);
+        else mergedFile.systems.push(this.ownCopy(system));
         found = true;
       }
     }
@@ -984,7 +914,7 @@ export class ImportResolver {
         candidates.push({ path: chain.map((n) => n.id), chain });
         for (const child of node.children) walk(child, chain);
       };
-      for (const roots of this.topLevelHomes(importedFile).values()) {
+      for (const roots of topLevelHomes(importedFile).values()) {
         for (const root of roots) walk(root, []);
       }
       cached = candidates;
@@ -1100,7 +1030,7 @@ export class ImportResolver {
   private materializeChain(mergedFile: KrsFile, chain: KrsNode[]): void {
     const root = chain[0];
     const leaf = chain[chain.length - 1];
-    const home = this.topLevelHomes(mergedFile).get(root.kind);
+    const home = topLevelHomes(mergedFile).get(root.kind);
     if (home === undefined) return;
 
     let target = home.find((n) => n.id === root.id);
@@ -1139,24 +1069,6 @@ export class ImportResolver {
   }
 
   /**
-   * The top-level list each root kind lives in. One enumeration, read by the
-   * chain walk (which roots are candidates) and by materialization (where a
-   * root lands), so a future top-level kind cannot reach one and miss the
-   * other (TPL-1720).
-   */
-  private topLevelHomes(file: KrsFile): Map<string, KrsNode[]> {
-    return new Map<string, KrsNode[]>([
-      ["system", file.systems as KrsNode[]],
-      ["service", file.services as KrsNode[]],
-      ["client", file.clients as KrsNode[]],
-      ["domain", file.domains as KrsNode[]],
-      ["database", file.databases as KrsNode[]],
-      ["queue", file.queues as KrsNode[]],
-      ["storage", file.storages as KrsNode[]],
-    ]);
-  }
-
-  /**
    * Shallow stub of a chain node: identity and metadata, but no children or
    * edges, so a later import into the same root adds to it instead of
    * dragging in siblings the author did not name. The declaration it stands
@@ -1189,7 +1101,7 @@ export class ImportResolver {
       this.declaringFile.set(node, filePath);
       for (const child of node.children) walk(child);
     };
-    for (const roots of this.topLevelHomes(file).values()) {
+    for (const roots of topLevelHomes(file).values()) {
       for (const root of roots) walk(root);
     }
   }
@@ -1337,9 +1249,4 @@ export class ImportResolver {
 
     return parseResult.value;
   }
-}
-
-/** Appends a resolved style path unless the merged model already holds it. */
-function addStyleImport(mergedFile: KrsFile, styleImport: string): void {
-  if (!mergedFile.styleImports.includes(styleImport)) mergedFile.styleImports.push(styleImport);
 }

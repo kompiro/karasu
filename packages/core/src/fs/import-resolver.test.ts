@@ -3274,4 +3274,86 @@ facet pii {
       expect(mismatch!.loc!.start.line).toBe(7);
     });
   });
+
+  describe("a named system the importer already holds is not added twice (#3801)", () => {
+    const lib = `system Anchor {\n  service A\n}\n`;
+    it.each([
+      ["whole-file, then named", `import "lib.krs"\nimport { Anchor } from "lib.krs"\n`],
+      ["named, then whole-file", `import { Anchor } from "lib.krs"\nimport "lib.krs"\n`],
+      ["named twice", `import { Anchor } from "lib.krs"\nimport { Anchor } from "lib.krs"\n`],
+    ])("%s", async (_name, index) => {
+      await fs.writeFile("/project/index.krs", index);
+      await fs.writeFile("/project/lib.krs", lib);
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.krsFile.systems.map((s) => s.id)).toEqual(["Anchor"]);
+      expect(result.diagnostics.filter((d) => d.severity !== "info")).toEqual([]);
+    });
+
+    // The current, wrong state of #3846: the stub the path import left collides
+    // with the declaration it stands for. The fix for #3846 has to flip this.
+    it("a path import, then the named import of its system, collides with its own stub (#3846)", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { Shop.Api.Order } from "lib.krs"\nimport { Shop } from "lib.krs"\n`,
+      );
+      await fs.writeFile(
+        "/project/lib.krs",
+        `system Shop {\n  service Api {\n    domain Order {}\n    domain Catalog {}\n  }\n}\n`,
+      );
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.krsFile.systems.map((s) => s.id)).toEqual(["Shop"]);
+      expect(result.diagnostics.map((d) => [d.code, d.params])).toEqual([
+        ["duplicate-node-in-system", { nodeId: "Api", systemId: "Shop" }],
+      ]);
+      const api = result.krsFile.systems[0].children.find((c) => c.id === "Api");
+      expect(api?.children.map((c) => c.id)).toEqual(["Order"]);
+    });
+
+    // What a named import lands is a copy: reopening it in one file must not
+    // change what the imported file exports to another (CodeRabbit on #3801).
+    it("reopening a named system leaves the imported file's own block unchanged", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { Unrelated } from "a.krs"\nimport { S } from "shared.krs"\n`,
+      );
+      await fs.writeFile(
+        "/project/a.krs",
+        `import { S } from "shared.krs"\nimport { S } from "extra.krs"\nsystem Unrelated {\n  service U\n}\n`,
+      );
+      await fs.writeFile("/project/shared.krs", `system S {\n  service Base\n}\n`);
+      await fs.writeFile("/project/extra.krs", `system S {\n  service Extra\n}\n`);
+      const result = await resolver.resolve("/project/index.krs");
+      const s = result.krsFile.systems.find((n) => n.id === "S");
+      expect(s?.children.map((c) => c.id)).toEqual(["Base"]);
+    });
+
+    it("a same-id system from another file reopens, as through a whole-file import", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { Anchor } from "lib.krs"\nsystem Anchor {\n  service B\n}\n`,
+      );
+      await fs.writeFile("/project/lib.krs", lib);
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.krsFile.systems).toHaveLength(1);
+      expect(result.krsFile.systems[0].children.map((c) => c.id).sort()).toEqual(["A", "B"]);
+    });
+
+    it("the reopened system's label follows S3: the entry's wins, with a warning", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { Anchor } from "lib.krs"\nsystem Anchor {\n  label "FromIndex"\n  service B\n}\n`,
+      );
+      await fs.writeFile(
+        "/project/lib.krs",
+        `system Anchor {\n  label "FromLib"\n  service A\n}\n`,
+      );
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.krsFile.systems.map((s) => s.label)).toEqual(["FromIndex"]);
+      expect(
+        result.diagnostics
+          .filter((d) => d.code === "system-property-conflict")
+          .map((d) => d.params),
+      ).toEqual([expect.objectContaining({ chosen: "FromIndex", ignored: "FromLib" })]);
+    });
+  });
 });

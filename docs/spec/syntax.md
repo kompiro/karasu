@@ -1260,10 +1260,23 @@ deploy "production" {
 
 `realizes` corresponds to UML's Realization relationship. The arrow points from physical (concrete) to logical (abstract).
 
-A `realizes` target may be a `service`, a `domain`, or a **`client`** — a client (SPA / mobile app)
-is a deployable logical node, so a `war` / `assets` bundle that realizes it records the client's
-physical form, symmetrically to how an `oci` unit realizes a service (see also _Realizing shared infra_
-below for `database` / `queue` / `storage` targets). The target is written as a node reference path
+A `realizes` target may be any kind in the table below. A **`client`** is among them because a client
+(SPA / mobile app) is a deployable logical node, so a `war` / `assets` bundle that realizes it records the
+client's physical form, symmetrically to how an `oci` unit realizes a service (see _Realizing shared infra_
+below for `database` / `queue` / `storage` targets).
+
+<!-- gen:reference:realizes-target-kinds — DO NOT EDIT. Generated from `REALIZES_TARGET_KIND_SET` in packages/core/src/types/ast.ts (descriptions from reference-data.ts); run `pnpm gen:reference`. -->
+| Keyword | Meaning |
+|---------|---------|
+| `service` | An independent unit of business capability |
+| `domain` | A business-concern boundary (top-level, inside a system, or inside a service) |
+| `client` | User-delegated software the project itself ships (mobile / web / desktop / cli / device / extension / embed) |
+| `database` | Shared database declared at system level — infra that services depend on |
+| `queue` | Shared message queue declared at system level — infra that services depend on |
+| `storage` | Shared storage (object store, etc.) declared at system level — infra that services depend on |
+<!-- /gen:reference:realizes-target-kinds -->
+
+The target is written as a node reference path
 (see [§ Node reference path notation](#node-reference-path-notation)): a bare id or a qualifying
 suffix like `realizes Shop.Api`; a mixed-kind/depth multi-match draws `realizes-target-ambiguous`.
 
@@ -1503,8 +1516,21 @@ organization TechCorp {
 - Teams can be nested — placing child teams under a parent team expresses organizational hierarchy.
 - Team IDs must be unique within the same organization. Duplicates produce an error.
 - During parsing, an `ownerIndex` (`node full path → team id`, #2548) is built so that a logical-diagram node can look up its owner team; each `owns` reference is expanded through the suffix rule at build time.
-- `owns` accepts `service` / `domain` / `client` and the infra blocks (`database` / `queue` / `storage`) at any depth; an infra **leaf** (`table` / `queue-item` / `bucket`) and a `capability` are not ownership units and are reported by `invalid-owns`.
+- `owns` accepts the kinds in the table below, at any depth; an infra **leaf** (`table` / `queue-item` / `bucket`) and a `capability` are not ownership units and are reported by `invalid-owns`.
 - Ownership is **rendered on the owned node's card** in the system view as a team chip (a person-group vector glyph, `data-meta-glyph="team"`), on the logical kinds only (`service` / `domain` / `client`) — an owned infra block draws no chip, because the rectangular chip does not fit a cylinder / cloud corner (the same constraint the deploy button carries). Its ownership still reads on the system view under *Group by: team*, whose frames resolve by id, and in the org view. The chip shows the team's declared `label` (falling back to its id) so a card and a *Group by: team* frame name the same team the same way; clicking it navigates to the org view by team **id**.
+
+The kinds `owns` accepts:
+
+<!-- gen:reference:owns-target-kinds — DO NOT EDIT. Generated from `OWNS_TARGET_KINDS` in packages/core/src/types/ast.ts (descriptions from reference-data.ts); run `pnpm gen:reference`. -->
+| Keyword | Meaning |
+|---------|---------|
+| `service` | An independent unit of business capability |
+| `domain` | A business-concern boundary (top-level, inside a system, or inside a service) |
+| `client` | User-delegated software the project itself ships (mobile / web / desktop / cli / device / extension / embed) |
+| `database` | Shared database declared at system level — infra that services depend on |
+| `queue` | Shared message queue declared at system level — infra that services depend on |
+| `storage` | Shared storage (object store, etc.) declared at system level — infra that services depend on |
+<!-- /gen:reference:owns-target-kinds -->
 
 #### Ownership inheritance — the nearest owned ancestor
 
@@ -2106,7 +2132,7 @@ The importer absorbs:
 When the same `system` id appears in more than one file (the importer's own file and an imported file, or two imported files), the blocks are **merged into one** rather than treated as duplicates:
 
 - **System body properties** (`label` / `description` / tags): the declaration in the file **closer to the import-graph root** wins. The root is `ImportResolver.resolve(entryPath)`'s `entryPath` — in practice the file currently open in the App / VS Code extension, or the file passed to `karasu render`. The resolver walks the graph bottom-up; values from deeper imports fill in only where the closer file left them unset.
-  - "Closer" is the shortest import path from the root, whatever order the `import` lines come in. A value filled in from a deeper file keeps that file's distance, so a file one level down beats a value carried up from two levels down. At equal distance, the file merged first (the earlier `import`) wins. This holds for whole-file and directory imports; a named import that brings a block a second time does not reconcile its properties yet (#3720).
+  - "Closer" is the shortest import path from the root, whatever order the `import` lines come in. A value filled in from a deeper file keeps that file's distance, so a file one level down beats a value carried up from two levels down. At equal distance, the file merged first (the earlier `import`) wins. This holds for whole-file and directory imports, and for a named import of a whole `system` (`import { S }`); a path import into a block already there (`import { S.A }`) and a named import of a deploy unit do not reconcile the block's properties yet (#3720).
   - When two files declare conflicting non-empty values, the resolver picks the closer-to-root one and emits a `system-property-conflict` warning with the chosen and ignored values, located at the declaration that lost.
 - **Children**: merged by id with find-or-create. Two children with the same id in the same merged system produce a `duplicate-node-in-system` error (existing behavior). Two different ids merge cleanly.
 - **Edges**: union. Exact duplicates (same `from`, `to`, kind, label) are deduplicated; otherwise both are kept.

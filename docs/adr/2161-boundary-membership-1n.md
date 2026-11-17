@@ -14,7 +14,7 @@ assumptions:
   - "symbol: packages/core/src/parser/reference-validation.ts :: buildBoundaryMembership"
   - "symbol: packages/core/src/renderer/group-layout.ts :: resolvePlacementAxis"
   - "symbol: packages/core/src/renderer/group-collapse.ts :: collapseGroups"
-  - "grep: packages/core/src/fs/import-resolver.ts :: duplicate-boundary-assignment"
+  - "grep: packages/core/src/fs/merged-space-codes.ts :: duplicate-boundary-assignment"
   - "grep: packages/core/src/renderer/svg-renderer.ts :: boundary-membership-not-drawn"
   - "file: docs/acceptance/2161-boundary-multi-membership.md"
 ---

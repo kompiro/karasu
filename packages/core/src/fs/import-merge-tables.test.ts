@@ -152,14 +152,7 @@ const SHAPES: Record<string, { lib: string; files: Record<string, string> }> = {
  * Rows that fail on main, each with its Issue. A row listed here is asserted to
  * still fail, so the entry has to go when the fix lands.
  */
-const KNOWN_GAPS: Record<string, { issue: string; actual: string[] }> = {
-  // `resolveBareIdImport` pushes a named system without looking for the one
-  // the whole-file import already added.
-  "whole-file, then named import of the same file / systems": {
-    issue: "#3801",
-    actual: ["system#Anchor", "system#Anchor", "system#Shop"],
-  },
-};
+const KNOWN_GAPS: Record<string, { issue: string; actual: string[] }> = {};
 
 function dirOf(path: string): string {
   const slash = path.lastIndexOf("/");

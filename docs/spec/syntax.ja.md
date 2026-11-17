@@ -1166,9 +1166,21 @@ deploy "本番環境" {
 
 `realizes` はUMLのRealization（実現）関係。矢印は物理（具象）→ 論理（抽象）の向き。
 
-`realizes` の対象は `service` / `domain` に加えて **`client`** も指定できる。client（SPA・モバイルアプリ）は
-デプロイ対象となる論理ノードなので、それを realize する `war` / `assets` 等は、`oci` がサービスを realize するのと
-同じく client の物理形態を記録する（`database` / `queue` / `storage` を対象とする場合は後述の _共有 infra の realize_ を参照）。
+`realizes` の対象は下の表の kind。**`client`** が入るのは、client（SPA・モバイルアプリ）が
+デプロイ対象となる論理ノードで、それを realize する `war` / `assets` 等が、`oci` がサービスを realize するのと
+同じく client の物理形態を記録するからである（`database` / `queue` / `storage` を対象とする場合は後述の _共有 infra の realize_ を参照）。
+
+<!-- gen:reference:realizes-target-kinds — DO NOT EDIT. Generated from `REALIZES_TARGET_KIND_SET` in packages/core/src/types/ast.ts (descriptions from reference-data.ts); run `pnpm gen:reference`. -->
+| キーワード | 意味 |
+|------------|------|
+| `service` | 独立したビジネス機能の単位 |
+| `domain` | ビジネス上の関心事の境界（トップレベル / system 直下 / service 内） |
+| `client` | ユーザーの委譲で動く、自社が出荷するクライアントソフトウェア（mobile / web / desktop / cli / device / extension / embed） |
+| `database` | system 直下に置く共有データベース。service が依存する infra |
+| `queue` | system 直下に置く共有メッセージキュー。service が依存する infra |
+| `storage` | system 直下に置く共有ストレージ（オブジェクトストレージ等）。service が依存する infra |
+<!-- /gen:reference:realizes-target-kinds -->
+
 対象はノード参照 path（「ノード参照の path 記法」節）で書く: bare id でも `realizes Shop.Api` のような
 接尾辞修飾でもよい。kind・深さの混在する多重一致は `realizes-target-ambiguous` を引く。
 
@@ -1393,8 +1405,21 @@ organization TechCorp {
 - team は入れ子にでき、親 team の下に子 team を並べると組織階層を表現できる。
 - team ID は同一 organization 内で一意。重複するとエラーになる。
 - パース時に `ownerIndex`（`node full path → team id`、#2548）が構築され、論理図のノードから所有チームを逆引きできる。各 `owns` 参照は構築時に接尾辞規則で展開される。
-- `owns` の対象になれるのは `service` / `domain` / `client` と infra ブロック（`database` / `queue` / `storage`。深さは問わない）。infra の **leaf**（`table` / `queue-item` / `bucket`）と `capability` は所有の単位ではなく、`invalid-owns` で報告される。
+- `owns` の対象になれるのは下の表の kind（深さは問わない）。infra の **leaf**（`table` / `queue-item` / `bucket`）と `capability` は所有の単位ではなく、`invalid-owns` で報告される。
 - 所有関係はシステムビューの**所有されるノードのカード上**に team チップ（人型グループのベクターグリフ、`data-meta-glyph="team"`）として描画される。対象は論理 kind のみ（`service` / `domain` / `client`）— 所有された infra ブロックにチップは出ない（矩形のチップが円柱・雲の角に収まらないため。deploy ボタンと同じ制約）。その所有関係はシステムビューでは *Group by: team* のフレーム（id で解決する）に、また org view に現れる。チップの表示は team の `label`（無ければ id）で、*Group by: team* のフレームと同じ名乗りになる。クリック時の遷移先は team の **id** で解決する。
+
+`owns` の対象になれる kind:
+
+<!-- gen:reference:owns-target-kinds — DO NOT EDIT. Generated from `OWNS_TARGET_KINDS` in packages/core/src/types/ast.ts (descriptions from reference-data.ts); run `pnpm gen:reference`. -->
+| キーワード | 意味 |
+|------------|------|
+| `service` | 独立したビジネス機能の単位 |
+| `domain` | ビジネス上の関心事の境界（トップレベル / system 直下 / service 内） |
+| `client` | ユーザーの委譲で動く、自社が出荷するクライアントソフトウェア（mobile / web / desktop / cli / device / extension / embed） |
+| `database` | system 直下に置く共有データベース。service が依存する infra |
+| `queue` | system 直下に置く共有メッセージキュー。service が依存する infra |
+| `storage` | system 直下に置く共有ストレージ（オブジェクトストレージ等）。service が依存する infra |
+<!-- /gen:reference:owns-target-kinds -->
 
 #### 所有の継承 — 直近の owned 祖先
 
@@ -1979,7 +2004,7 @@ importer が吸収するもの:
 同じ id の `system` が複数ファイルに現れた場合（importer 自身のファイルと imported ファイル、あるいは複数の imported ファイル）、重複として扱わず **1 つに merge** する:
 
 - **system 本体プロパティ**（`label` / `description` / タグ）: **import グラフの root に近いファイル**で書かれた宣言が勝つ。root とは `ImportResolver.resolve(entryPath)` に渡された `entryPath` — 実用上は App / VS Code 拡張で開いているファイル、または `karasu render` に渡したファイル。resolver は import グラフを bottom-up に traverse し、root 側で未設定のフィールドだけを imported 側の値で埋める。
-  - 「近い」は root からの最短の import 経路で測り、`import` 行の順には依らない。深いファイルから埋めた値はそのファイルの距離を持ち続けるので、1 段下のファイルは 2 段下から運ばれた値に勝つ。距離が同じなら、先にマージしたファイル（先の `import`）が勝つ。これは whole-file import と directory import での規則で、同じブロックを 2 回目に持ち込む named import はまだプロパティを照合しない（#3720）。
+  - 「近い」は root からの最短の import 経路で測り、`import` 行の順には依らない。深いファイルから埋めた値はそのファイルの距離を持ち続けるので、1 段下のファイルは 2 段下から運ばれた値に勝つ。距離が同じなら、先にマージしたファイル（先の `import`）が勝つ。これは whole-file import・directory import と、`system` 全体の named import（`import { S }`）での規則で、すでにあるブロックへの path import（`import { S.A }`）と deploy unit の named import はまだブロックのプロパティを照合しない（#3720）。
   - 2 つのファイルが異なる non-empty 値で衝突した場合、root に近い側が採用され、`system-property-conflict` 警告が出る。警告は採用値と無視値を持ち、負けた側の宣言の位置を指す。
 - **children**: id ごとに find-or-create で union。同じ merged system 内で 2 つの children が同じ id を持つと `duplicate-node-in-system` エラー（既存挙動）。異なる id なら問題なく union される。
 - **edges**: union。完全に同一な edge（`from` / `to` / kind / label すべて一致）のみ dedup、それ以外は両方残る。
