@@ -86,21 +86,22 @@ function declared(file: KrsFile): Record<Face, Expected[]> {
     // and the anchor carries no path (#2933, docs/spec/permalink.md). When a
     // container's id is declared at two paths, the bundle draws the level of
     // the one the app resolves the anchor to, and the other's contents have
-    // no level. Decided there; not a loss this guard should report. The
-    // winner's contents stay expected: only the branches the anchor does not
-    // resolve to are left out.
-    const behindSharedAnchor = prefix.some((ancestor, i) => {
-      if (i === 0 || (pathsPerId.get(ancestor.id) ?? 0) < 2) return false;
-      const own = prefix.slice(0, i + 1).map((n) => n.id);
-      const winner = file.nodePathIndex.get(ancestor.id)?.join(".");
-      // The index records only some kinds (`INDEXED_KINDS` in
-      // parser/reference-validation.ts). An indexed kind with no winner is an
-      // index bug, so its branches stay expected; for any other kind the
-      // bundle gives the anchor to the first path it walks, which the index
-      // cannot name, so the branches stay exempt as before.
-      if (winner === undefined) return !INDEXED_KINDS.has(ancestor.kind);
-      return winner !== own.join(".") && winner !== own.slice(1).join(".");
-    });
+    // no level. Decided there; not a loss this guard should report. Only the
+    // direct children of a container that does not own its anchor are left
+    // out: the renderer still descends into it, so a grandchild that owns an
+    // anchor of its own is drawn. When the index names a winner, the winner's
+    // children stay expected. The index walks only some logical kinds
+    // (`INDEXED_KINDS` in parser/reference-validation.ts): an indexed kind with
+    // no winner is an index bug, so its children stay expected; for any other
+    // kind the bundle gives the anchor to the first path it walks, which this
+    // test does not reproduce, so the children of every such path are left out.
+    const parent = prefix[prefix.length - 1];
+    const behindSharedAnchor = (() => {
+      if (prefix.length < 2 || (pathsPerId.get(parent.id) ?? 0) < 2) return false;
+      const winner = file.nodePathIndex.get(parent.id)?.join(".");
+      if (winner === undefined) return !INDEXED_KINDS.has(parent.kind);
+      return winner !== prefix.map((n) => n.id).join(".");
+    })();
     if (!isRootCanvas && !behindSharedAnchor) {
       system.push({
         key: nodePathRefId(chain.map((n) => n.id)),
@@ -118,7 +119,7 @@ function declared(file: KrsFile): Record<Face, Expected[]> {
   };
 }
 
-/** The kinds `nodePathIndex` records (`INDEXED_KINDS` in parser/reference-validation.ts). */
+/** The logical kinds `nodePathIndex` walks (`INDEXED_KINDS` in parser/reference-validation.ts). */
 const INDEXED_KINDS = new Set(["service", "domain", "client"]);
 
 /** A team list and everything under it, teams and members alike. */

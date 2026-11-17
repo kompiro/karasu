@@ -65,7 +65,7 @@ karasu は論理 (`system`)・物理 (`deploy`)・組織 (`organization`) の三
   新しい宣言は追加した日から加わる。3 面すべてを import 先のファイルから埋める entry と、入れ子の team と member が corpus にあることも確かめる。
   例外は 2 つで、テストに理由を書いてある: `system` が 1 つのモデルではその `system` が root の canvas になること、
   同じ id のコンテナが 2 か所にあるとき bundle は anchor id ごとに 1 階層しか持たないこと（#2933）。
-  後者では anchor が解決する側（`nodePathIndex` の勝者）の配下は期待値に残し、もう一方の配下だけを外す。index が記録しない kind（usecase など）のコンテナは勝者を持たないので、どちらの配下も期待値から外す（bundle は先に辿る側を描くが、テストはその側を決めない）
+  後者では anchor が解決する側（`nodePathIndex` の勝者）の子は期待値に残し、もう一方の直下の子だけを外す（孫が自分の anchor を持てば描かれるので、外すのは直下だけ）。index が辿らない kind（usecase など）のコンテナは勝者を持たないので、どちらの直下の子も期待値から外す（bundle は先に辿る側を描くが、テストはその側を決めない）
 
 ## 派生元 spec
 

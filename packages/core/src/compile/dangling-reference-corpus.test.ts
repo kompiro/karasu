@@ -216,7 +216,7 @@ describe("a dangling reference drops the reference, not a node (TPL-2170)", () =
       mutation = null;
       const before = await render(entry);
       const drawnBefore = drawnNodes(before.svg);
-      // The panes were found: an empty map would make every comparison pass.
+      // The panes were found: an empty set would make every comparison pass.
       if (drawnBefore.size === 0) failures.push(`${entry}: no pane found in the bundle`);
       const inModel = mergedEdges(before.krsFile);
       const whole = (await wholeReach(entry)).files;
