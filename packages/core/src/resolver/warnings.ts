@@ -31,6 +31,7 @@ import {
   type EdgeEndpointIndex,
 } from "./edge-endpoint.js";
 import { buildEntityResolver } from "./resource-entity.js";
+import { physicalTargetsOf } from "../spec/infra-index.js";
 import { REFERENCE_DATA, LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
 import {
   TOOL_ANNOTATIONS,
@@ -606,11 +607,9 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
     const infraInScope = collectInfraInScope(nodes);
     const infraToServices = new Map<string, Set<string>>();
 
-    // Resolver over this scope's entities: a bare `resource Order` that resolves
-    // to `entity Order { table OrderDB.orders }` counts toward the fan-in on
-    // OrderDB just as a physical `resource OrderDB.orders` would (TPL-1720
-    // — keep the resource→store target set synchronized across every consumer).
-    const resolver = buildEntityResolver(nodes);
+    // A bare `resource Order` backed by `entity Order { table OrderDB.orders }` counts
+    // like `resource OrderDB.orders`; dotted targets come from the model index (TPL-1720).
+    const resolver = buildEntityResolver(nodes, physicalTargetsOf(file));
 
     function collectRefs(node: KrsNode, parentServiceId?: string): void {
       if (node.kind === "service") {
@@ -704,7 +703,7 @@ function detectCrossDomainStoreAccess(file: KrsFile): Warning[] {
   const warnings: Warning[] = [];
 
   function detectInScope(nodes: KrsNode[]): void {
-    const resolver = buildEntityResolver(nodes);
+    const resolver = buildEntityResolver(nodes, physicalTargetsOf(file));
 
     // Infra blocks in scope, `[external]` and role-tagged stores excluded
     // (shared with fan-in via collectInfraInScope). Excluded stores also contribute no
@@ -830,7 +829,8 @@ function detectCrossDomainStoreAccess(file: KrsFile): Warning[] {
  * `detectEntityAnchorCollisions`.
  */
 function detectUnassignedResources(file: KrsFile): Warning[] {
-  const resolver = buildEntityResolver([...file.systems, ...file.services, ...file.domains]);
+  const roots = [...file.systems, ...file.services, ...file.domains];
+  const resolver = buildEntityResolver(roots, physicalTargetsOf(file));
   const warnings: Warning[] = [];
 
   function walk(node: KrsNode): void {
