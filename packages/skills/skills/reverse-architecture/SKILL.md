@@ -749,7 +749,7 @@ footprint and makes the `coverage` numbers incomparable across domains.
    whose address is a row, a boot-time scan of the code image — all unwritable
    today, all reasons a well-modelled domain measures as thin). State kept in
    browser or device storage is **not** such a gap: give the `client`'s storage
-   line an id (`resource sessionStorage ApiKey "…"`) and reference it from the
+   line an id (`resource opfs Projects "…"`) and reference it from the
    usecase as `resource <ClientId>.<Id>` (experimental). `coverage` then counts
    it, and its `clientStores` section lists, per client, the storages nobody
    references and the ones with no id yet.

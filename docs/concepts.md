@@ -29,7 +29,22 @@ system
 - `service`: an independent unit of business functionality
 - `domain`: a business-concern boundary inside a service (close to DDD's Bounded Context)
 - `usecase`: a business operation inside a domain
-- `resource`: what a usecase operates on (tables, external APIs, files, etc.); also reserved on `client` for operation-tied local storage (`localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `file` / `keychain`). A client storage declared with an id is what a usecase's `resource <ClientId>.<Id>` names (experimental, #3794)
+- `resource`: what a usecase operates on (tables, external APIs, files, etc.); also reserved on `client` for operation-tied local storage (`localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `file` / `keychain`). A client storage declared with an id is what a usecase's `resource <ClientId>.<Id>` names (experimental, #3794):
+
+```krs
+system Studio {
+  client WebApp [web] {
+    resource opfs Projects "/meta/projects.json"
+  }
+  service App {
+    domain Workspace {
+      usecase SaveProject {
+        resource WebApp.Projects { operations update }
+      }
+    }
+  }
+}
+```
 
 `database` / `queue` / `storage` may also live directly under `system` as shared infrastructure that services depend on (see [ADR-316](adr/316-database-as-first-class-node.md)).
 

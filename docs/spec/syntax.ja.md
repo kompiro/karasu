@@ -454,14 +454,14 @@ storage の行は、storage kind と名前のあいだに **id** を持てる。
 ```krs
 system Studio {
   client WebApp [web] {
-    resource sessionStorage ApiKey "karasu.ai.anthropic.apiKey"
-    resource opfs "/meta/projects.json"
+    resource opfs Projects "/meta/projects.json"
+    resource localStorage "karasu-theme"
   }
   service App {
     delivers WebApp
-    domain AssistantChat {
-      usecase SaveApiKey {
-        resource WebApp.ApiKey { operations create, update }
+    domain Workspace {
+      usecase SaveProject {
+        resource WebApp.Projects { operations create, update }
       }
     }
   }
@@ -473,8 +473,8 @@ system Studio {
 - 解決は infra の leaf と同じく model 全体で行う。client は別の system・トップレベル・import 先のファイルにあってよい。`<Parent>` は infra ブロックか client を指し、どちらかは 1 つの resolver が決める。
 - scope の違う infra ブロックと client が親の id を共有するときは、client が解決先になる前と同じく **infra ブロック**に解決する。その client が id 付きの storage を宣言していれば `resource-target-ambiguous` で衝突を示し、その storage は参照できない。
 - 同じ id の client ノード（KRS018 / KRS030）は merge しない。子の id を宣言するものが 2 つ以上あれば、参照は解決しない（`resource-target-ambiguous`）。1 つの client の中で storage の id が重なると `client-resource-duplicate-id`。最初のものが解決先になる。
-- 子が無いときは `unresolved-resource-ref` を `missing: "leaf"`・`parentKind: "client"` で出す。entity の `table WebApp.ApiKey` は client の storage に解決しない。
-- この参照から `service → client` のエッジは導出しない（配信する service は `delivers` が描く）。昇格した resource の label は `<name> (<storageKind>)`。CRUD matrix は id のある storage ごとに column を持ち、`karasu coverage` は client ごとに `clientStores` で報告する。
+- 子が無いときは `unresolved-resource-ref` を `missing: "leaf"`・`parentKind: "client"` で出す。entity の `table WebApp.Projects` は client の storage に解決しない。
+- この参照から `service → client` のエッジは導出しない（配信する service は `delivers` が描く）。昇格した resource の label は `<name> (<storageKind>)`（`/meta/projects.json (opfs)`）。CRUD matrix は id のある storage ごとに column を持ち、`karasu coverage` は client ごとに `clientStores` で報告する。
 - usecase の service が client を配信・担当しているかは検査しない。純粋な SPA には配信する service が無い。
 
 > **Related TPLs**:

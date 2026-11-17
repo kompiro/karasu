@@ -75,9 +75,12 @@ function formatAsMarkdown(report: CoverageReport): string {
     lines.push("");
     lines.push("| client | storages | referenced | unreferenced | unidentified |");
     lines.push("| --- | ---: | ---: | --- | --- |");
+    // Storage names are free text (a path may hold `|`), so cells are escaped.
+    const cell = (text: string): string => text.replace(/\|/g, "\\|");
     for (const c of report.clientStores) {
+      const list = (xs: readonly string[]): string => xs.map(cell).join(", ") || "—";
       lines.push(
-        `| ${c.clientId} | ${c.identified.length} | ${c.referenced.length} | ${c.unreferenced.join(", ") || "—"} | ${c.unidentified.join(", ") || "—"} |`,
+        `| ${cell(c.clientId)} | ${c.identified.length} | ${c.referenced.length} | ${list(c.unreferenced)} | ${list(c.unidentified)} |`,
       );
     }
   }

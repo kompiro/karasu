@@ -366,9 +366,10 @@ system Shop {
 
 ## 10. client が端末に持つ状態 — id 付きの client の storage
 
-**When** — usecase がブラウザや端末の storage を読み書きする（`sessionStorage` の
-API キー、OPFS の project、`localStorage` のテーマ）ので、その操作をテーブルへの
-操作と同じく CRUD matrix と `karasu coverage` に載せたいとき。
+**When** — usecase がブラウザや端末の storage を読み書きする（OPFS の project、
+`localStorage` のテーマ、IndexedDB の outbox）ので、その操作をテーブルへの操作と
+同じく CRUD matrix と `karasu coverage` に載せたいとき。認証情報は `resource` に
+入れない（#834）。
 
 **パターン** — `client` に storage を宣言するときに kind の後へ id を付け、usecase
 からテーブルの参照と同じ dot 記法 `resource <ClientId>.<Id>` で参照する。
@@ -379,14 +380,14 @@ experimental（#3794）。
 ```krs
 system Studio {
   client WebApp [web] {
-    resource sessionStorage ApiKey "karasu.ai.anthropic.apiKey"
     resource opfs Projects "/meta/projects.json"
+    resource localStorage Theme "karasu-theme"
   }
   service App {
     delivers WebApp
-    domain AssistantChat {
-      usecase SaveApiKey {
-        resource WebApp.ApiKey { operations create, update }
+    domain Workspace {
+      usecase SaveProject {
+        resource WebApp.Projects { operations create, update }
       }
     }
   }
@@ -396,7 +397,7 @@ system Studio {
 **Why** — storage は今の置き場のまま、client の端末上の storage であり、system
 図の共有の `database` / `storage` ブロックではない。id は参照に解決先を与えるだけ
 なので、id の綴りを間違えると報告され、domain ビューはその操作を
-`karasu.ai.anthropic.apiKey (sessionStorage)` と描く。warning を消すためにこの参照へ
+`/meta/projects.json (opfs)` と描く。warning を消すためにこの参照へ
 `[external]` を付けない。`[external]` は「参照先が system の外にある」という意味で、
 client 自身が持つ storage には当たらない。
 

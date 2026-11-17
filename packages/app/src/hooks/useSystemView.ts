@@ -305,6 +305,7 @@ export function useSystemView(
         diagnostics,
         nodeMetadata: sysBase.nodeMetadata,
         nodeMetadataByPath: sysBase.nodeMetadataByPath,
+        physicalTargets: sysBase.physicalTargets,
       }),
       errorState: (svgToShow) => toState(svgToShow),
       okState: () => toState(svg),

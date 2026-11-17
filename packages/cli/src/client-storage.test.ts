@@ -80,4 +80,14 @@ describe("client storages in the CLI (#3794)", () => {
     expect(row).toContain("CU");
     expect(exitSpy).not.toHaveBeenCalled();
   });
+
+  it("coverage escapes a pipe in a storage name so the table keeps its columns", async () => {
+    await writeFile(
+      krsPath,
+      `system S {\n  client WebApp [web] {\n    resource opfs "/meta/a|b.json"\n  }\n}\n`,
+      "utf-8",
+    );
+    await coverage(krsPath, {});
+    expect(out()).toContain("| WebApp | 0 | 0 | — | /meta/a\\|b.json (opfs) |");
+  });
 });

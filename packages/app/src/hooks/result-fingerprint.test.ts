@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Diagnostic, NodeMetadata, Warning } from "@karasu-tools/core";
+import { Parser, physicalTargetsOf } from "@karasu-tools/core";
 import { computeViewResultFingerprint } from "./result-fingerprint.js";
 
 describe("computeViewResultFingerprint", () => {
@@ -175,5 +176,25 @@ describe("computeViewResultFingerprint › nodeMetadataByPath (#2917)", () => {
       nodeMetadataByPath: new Map([["Shop.Api", meta("x")]]),
     };
     expect(computeViewResultFingerprint(args)).toBe(computeViewResultFingerprint(args));
+  });
+
+  it("changes when only a client storage id is added (#3794)", () => {
+    const targetsOf = (src: string) => physicalTargetsOf(Parser.parse(src).value);
+    const before = targetsOf(`system S {\n  client C [web] {\n    resource opfs "p"\n  }\n}\n`);
+    const after = targetsOf(
+      `system S {\n  client C [web] {\n    resource opfs Projects "p"\n  }\n}\n`,
+    );
+    const base = { svg: "<svg/>", warnings: [], diagnostics: [] };
+    expect(computeViewResultFingerprint({ ...base, physicalTargets: before })).not.toBe(
+      computeViewResultFingerprint({ ...base, physicalTargets: after }),
+    );
+    expect(computeViewResultFingerprint({ ...base, physicalTargets: after })).toBe(
+      computeViewResultFingerprint({
+        ...base,
+        physicalTargets: targetsOf(
+          `system S {\n  client C [web] {\n    resource opfs Projects "p"\n  }\n}\n`,
+        ),
+      }),
+    );
   });
 });
