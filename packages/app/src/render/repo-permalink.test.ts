@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { translate } from "@karasu-tools/i18n";
 import { decodeShare, fitsUnfurlPayload } from "../utils/inline-share.js";
 import {
   parseRepoPermalink,
@@ -269,6 +270,15 @@ describe("resolveRepoPermalink — unfurl payload cap", () => {
     expect(reportedLength(res.message)).toBeGreaterThan(MAX_UNFURL_PAYLOAD);
     // Names the remedy, not just the failure.
     expect(res.message).toContain("narrower entry .krs");
+    // The body is the i18n catalog entry, not text built in app code (#3837).
+    // The route has no locale source yet, so it is the English entry (#3838).
+    expect(res.message).toBe(
+      translate("en", "permalink.tooLarge.message", {
+        source: "o/r@sha",
+        length: reportedLength(res.message),
+        limit: MAX_UNFURL_PAYLOAD,
+      }),
+    );
   });
 
   it("accepts right up to the cap and refuses one node past it", async () => {

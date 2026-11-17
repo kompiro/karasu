@@ -5,6 +5,7 @@ import {
   type FileSystemProvider,
   type DirEntry,
 } from "@karasu-tools/core";
+import { bindTranslate } from "@karasu-tools/i18n";
 import { describeUnfurlOverflow, encodeShare, fitsUnfurlPayload } from "../utils/inline-share.js";
 
 /**
@@ -327,11 +328,12 @@ export async function resolveRepoPermalink(
       // rejected alternatives are recorded on Issue #2259.
       return {
         status: STATUS_PAYLOAD_TOO_LARGE,
-        message:
-          `Model too large for a permalink: ${owner}/${repo}@${ref} ` +
-          `${describeUnfurlOverflow(encodedPayload.length)}. ` +
-          `Point the permalink at a narrower entry .krs, ` +
-          `or split the model.`,
+        // The route has no locale source yet, so the body is English (#3838).
+        message: describeUnfurlOverflow(
+          bindTranslate("en"),
+          `${owner}/${repo}@${ref}`,
+          encodedPayload.length,
+        ),
         contentType: PLAIN,
       };
     }

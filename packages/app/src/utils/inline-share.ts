@@ -1,5 +1,6 @@
 import { deflateSync, inflateSync, strToU8, strFromU8 } from "fflate";
 import type { SharePayload, ShareTarget, ShareTargetView } from "@karasu-tools/core";
+import type { TranslateFn } from "@karasu-tools/i18n";
 
 export type { SharePayload, ShareTarget };
 
@@ -155,12 +156,23 @@ export function fitsUnfurlPayload(encoded: string): boolean {
 }
 
 /**
- * Why a payload of `encodedLength` characters failed {@link fitsUnfurlPayload},
- * naming the limit, for a producer that refuses with a message (TPL-2259: the
- * refusal names the cause).
+ * The refusal for a model at `source` whose payload of `encodedLength`
+ * characters failed {@link fitsUnfurlPayload}, for a producer that refuses with
+ * a message (TPL-2259: the refusal names the cause and the remedy).
+ *
+ * The wording lives in `@karasu-tools/i18n` (`permalink.tooLarge.message`);
+ * this function only supplies the limit, which stays private to this module.
  */
-export function describeUnfurlOverflow(encodedLength: number): string {
-  return `encodes to ${encodedLength} characters, over the ${MAX_UNFURL_PAYLOAD} a shareable URL can carry`;
+export function describeUnfurlOverflow(
+  t: TranslateFn,
+  source: string,
+  encodedLength: number,
+): string {
+  return t("permalink.tooLarge.message", {
+    source,
+    length: encodedLength,
+    limit: MAX_UNFURL_PAYLOAD,
+  });
 }
 
 /** Path of the server-rendered share page (OGP unfurl). */

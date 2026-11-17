@@ -26,7 +26,7 @@
 
 - [x] AT-B: 413 のメッセージが **実際の encoded サイズ・上限値・対処**（narrower entry `.krs` / split the model）を名指しする。
 
-  > ✅ Automated — 同上（`Model too large for a permalink: o/r@sha` / `encodes to <n> characters` / `8000` / `narrower entry .krs` を検査）
+  > ✅ Automated — 同上（`Model too large for a permalink: o/r@sha` / `encodes to <n> characters` / `8000` / `narrower entry .krs` を検査し、本文が `@karasu-tools/i18n` の `permalink.tooLarge.message` の en と一致することも検査）。文面を組み立てる `describeUnfurlOverflow` は `packages/app/src/utils/inline-share.test.ts` › `describeUnfurlOverflow` が検査する
 
 - [x] AT-C: 受理と拒否が切り替わる点が **`MAX_UNFURL_PAYLOAD` そのもの**に一致する（早めに拒否していない）。上限ちょうどまでは 200 で、ノード 1 つ分超えると 413。
 

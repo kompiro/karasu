@@ -62,7 +62,7 @@ scope:
 
 ## 既知の対処パターン
 
-- **判定の共有**: `packages/app/src/utils/inline-share.ts` の `fitsUnfurlPayload(encoded)`。上限の定数 `MAX_UNFURL_PAYLOAD` は export せず、拒否の文面に上限値を出すときは `describeUnfurlOverflow(encodedLength)` を使う。比較は 1 か所にしかない。
+- **判定の共有**: `packages/app/src/utils/inline-share.ts` の `fitsUnfurlPayload(encoded)`。上限の定数 `MAX_UNFURL_PAYLOAD` は export せず、拒否の文面に上限値を出すときは `describeUnfurlOverflow(t, source, encodedLength)` を使う（文面は `@karasu-tools/i18n` の `permalink.tooLarge.message` にあり、この関数は private な上限値を渡すだけ）。比較は 1 か所にしかない。
 - **生成点の allowlist ドリフトガード**: `packages/app/src/utils/unfurl-budget.test.ts`。`packages/app/src` と `functions/` を走査して `/s?s=` を組み立てているファイルを列挙し、レビュー済みの一覧（producer / reflector の別と、それぞれがなぜ安全かの根拠つき）と一致しなければ落ちる。コメントは除去してから照合する（prose 中の言及を declaration と数えない — TPL-2185）。
 - **上限が振る舞いを決める境界のテスト**: 閾値を決め打ちせず、生成点が受理と拒否を切り替える点を二分探索し、その切り替えが上限そのものに一致することを検査する（`repo-permalink.test.ts` › `accepts right up to the cap and refuses one node past it`）。「早めに拒否している」バグも検出できる。
 
