@@ -294,7 +294,7 @@ const SAMPLES: SamplesByCode = {
   "resource-target-ambiguous": {
     severity: "warning",
     code: "resource-target-ambiguous",
-    params: { ref: "WebApp.ApiKey", reason: "multiple-clients" },
+    params: { ref: "WebApp.ApiKey", parent: "WebApp", child: "ApiKey", reason: "multiple-clients" },
   },
   "unresolved-table-ref": {
     severity: "warning",

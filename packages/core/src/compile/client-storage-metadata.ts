@@ -66,10 +66,15 @@ export function clientStorageMetadata(
 ): { resources?: ClientStorageEntry[]; clientStorage?: ClientStorageTarget } {
   if (node.kind === "client") {
     if (node.properties.resources.length === 0) return {};
+    // Only the first storage of an id is what a reference resolves to; a later
+    // duplicate (`client-resource-duplicate-id`) is used by nobody.
+    const seen = new Set<string>();
     return {
       resources: node.properties.resources.map((res) => {
+        const first = res.id !== undefined && !seen.has(res.id);
+        if (res.id !== undefined) seen.add(res.id);
         const usecases =
-          res.id !== undefined && ctx?.targets.clients.has(node.id)
+          first && res.id !== undefined && ctx?.targets.clients.has(node.id)
             ? ctx.usecasesByStorage.get(infraLeafKey(node.id, res.id))
             : undefined;
         return usecases ? { ...res, usecases: [...usecases] } : { ...res };

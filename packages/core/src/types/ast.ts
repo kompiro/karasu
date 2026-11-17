@@ -1056,11 +1056,10 @@ export interface DiagnosticParamsByCode {
   "resource-target-ambiguous": {
     /** The reference as written, `<Parent>.<Child>`. */
     ref: string;
-    /**
-     * `infra-and-client`: an infra block and a client share the parent id; the
-     * reference resolves to the infra block. `multiple-clients`: more than one
-     * client node of the parent id declares the child; it does not resolve.
-     */
+    parent: string;
+    child: string;
+    /** `infra-and-client`: an infra block and a client share the parent id (resolves to the
+     *  infra block). `multiple-clients`: two same-id clients declare the child (unresolved). */
     reason: "infra-and-client" | "multiple-clients";
   };
   "unresolved-table-ref": {

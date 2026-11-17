@@ -216,7 +216,7 @@
     { "files": ["packages/core/src/resolver/style-resolver.ts"], "rules": { "max-lines": ["error", { "max": 859 }] } },
     { "files": ["packages/core/src/resolver/warnings.ts"], "rules": { "max-lines": ["error", { "max": 1683 }] } },
     { "files": ["packages/core/src/translate/db.ts"], "rules": { "max-lines": ["error", { "max": 718 }] } },
-    { "files": ["packages/core/src/types/ast.ts"], "rules": { "max-lines": ["error", { "max": 1222 }] } },
+    { "files": ["packages/core/src/types/ast.ts"], "rules": { "max-lines": ["error", { "max": 1221 }] } },
     { "files": ["packages/i18n/src/en.ts"], "rules": { "max-lines": ["error", { "max": 629 }] } },
     { "files": ["packages/i18n/src/ja.ts"], "rules": { "max-lines": ["error", { "max": 628 }] } },
     { "files": ["packages/i18n/src/types.ts"], "rules": { "max-lines": ["error", { "max": 715 }] } }

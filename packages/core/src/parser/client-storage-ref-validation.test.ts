@@ -103,7 +103,10 @@ ${USECASE("WebApp.ApiKey")}
 }
 `);
     expect(diags.map((d) => [d.code, d.params])).toEqual([
-      ["resource-target-ambiguous", { ref: "WebApp.ApiKey", reason: "infra-and-client" }],
+      [
+        "resource-target-ambiguous",
+        { ref: "WebApp.ApiKey", parent: "WebApp", child: "ApiKey", reason: "infra-and-client" },
+      ],
     ]);
   });
 
@@ -126,6 +129,24 @@ ${USECASE("WebApp.ApiKey")}
     expect(diags[1].params).toMatchObject({ missing: "leaf", parentKind: "infra" });
   });
 
+  it("says nothing when the client sharing an infra block's id declares no storage id", () => {
+    expect(
+      refDiagnostics(`
+system A {
+  client Web [web] {
+    resource localStorage "prefs"
+  }
+}
+system B {
+  database Web {
+    table T
+  }
+${USECASE("Web.T")}
+}
+`),
+    ).toEqual([]);
+  });
+
   it("leaves a reference unresolved when two same-id client nodes both declare the child", () => {
     const diags = refDiagnostics(`
 system A {
@@ -141,7 +162,10 @@ ${USECASE("WebApp.ApiKey")}
 }
 `);
     expect(diags.map((d) => [d.code, d.params])).toEqual([
-      ["resource-target-ambiguous", { ref: "WebApp.ApiKey", reason: "multiple-clients" }],
+      [
+        "resource-target-ambiguous",
+        { ref: "WebApp.ApiKey", parent: "WebApp", child: "ApiKey", reason: "multiple-clients" },
+      ],
     ]);
   });
 
@@ -283,7 +307,7 @@ system Shop {
     );
     const resolved = await new ImportResolver(fs).resolve("/p/index.krs");
     expect(resolved.diagnostics.filter((d) => CODES.has(d.code)).map((d) => d.params)).toEqual([
-      { ref: "WebApp.Cart", reason: "infra-and-client" },
+      { ref: "WebApp.Cart", parent: "WebApp", child: "Cart", reason: "infra-and-client" },
     ]);
   });
 });

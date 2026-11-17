@@ -151,6 +151,26 @@ system B {
     ]);
   });
 
+  it("lists the usecases only on the first of two storages with one id", () => {
+    const src = `
+system S {
+  client WebApp [web] {
+    resource sessionStorage ApiKey "a"
+    resource localStorage ApiKey "b"
+  }
+  service App {
+    domain Chat { usecase Save { resource WebApp.ApiKey { operations create } } }
+  }
+}
+`;
+    const result = compile(src, { viewPath: ["S"] });
+    if (result.diagramType !== "system") throw new Error("expected a system result");
+    expect(result.nodeMetadata.get("WebApp")?.resources?.map((r) => r.usecases)).toEqual([
+      ["Save"],
+      undefined,
+    ]);
+  });
+
   it("names the client storage on a promoted resource's metadata", () => {
     const result = compile(MODEL, { viewPath: ["S", "App", "Chat"] });
     if (result.diagramType !== "system") throw new Error("expected a system result");

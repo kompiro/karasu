@@ -156,6 +156,13 @@ system S {
     expect(result.diagnostics.map((d) => d.code)).toEqual(["client-resource-invalid-kind"]);
   });
 
+  it("still reports a misspelt storage kind followed by an id and a name", () => {
+    const result = Parser.parse(
+      `system S {\n  client WebApp [web] {\n    resource cookie Session "s"\n  }\n}\n`,
+    );
+    expect(result.diagnostics.map((d) => d.code)).toEqual(["client-resource-invalid-kind"]);
+  });
+
   it("round-trips the id through the formatter (TPL-1101)", () => {
     const src = `system S {\n  client WebApp [web] {\n    resource sessionStorage ApiKey "karasu.ai.anthropic.apiKey"\n    resource opfs "/meta/projects.json"\n  }\n}\n`;
     expect(format(src)).toBe(src);

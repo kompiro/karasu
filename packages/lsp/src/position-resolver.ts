@@ -4,6 +4,8 @@ import { toLspRange, type LspPosition } from "./lsp-position.js";
 
 interface NodeEntry {
   id: string;
+  /** A client's storage id (#3794): findable, but never the node at a position. */
+  storage?: true;
   start: { line: number; column: number };
   end: { line: number; column: number };
 }
@@ -25,7 +27,14 @@ interface AstRange {
  * `systems` and `services` (KrsNode trees) — they share the identical
  * recursive shape and are visited identically.
  */
-type NamedEntityGroup = "krs" | "deploy-block" | "deploy" | "org" | "team" | "member";
+type NamedEntityGroup =
+  | "krs"
+  | "client-storage"
+  | "deploy-block"
+  | "deploy"
+  | "org"
+  | "team"
+  | "member";
 
 interface NamedEntity {
   id: string;
@@ -73,7 +82,7 @@ function* visitNamedEntities(
     // nodes, so they are listed here, the same way the leaves are reached.
     if (node.kind === "client") {
       for (const res of node.properties.resources) {
-        if (res.id !== undefined) yield { id: res.id, loc: res.loc, group: "krs" };
+        if (res.id !== undefined) yield { id: res.id, loc: res.loc, group: "client-storage" };
       }
     }
     for (const child of node.children) yield* walkKrsNode(child);
@@ -146,7 +155,12 @@ export function collectNodes(krsFile: KrsFile): NodeEntry[] {
     // only its teams/members — a pre-existing inconsistency, not a
     // regression introduced by this refactor.
     if (entity.group === "org") continue;
-    entries.push({ id: entity.id, start: entity.loc.start, end: entity.loc.end });
+    entries.push({
+      id: entity.id,
+      start: entity.loc.start,
+      end: entity.loc.end,
+      ...(entity.group === "client-storage" ? { storage: true as const } : {}),
+    });
   }
   return entries;
 }
@@ -164,6 +178,9 @@ export function findNodeAtPosition(krsFile: KrsFile, position: LspPosition): str
   let best: NodeEntry | null = null;
 
   for (const entry of entries) {
+    // A storage line sits inside its client, and the client is the node there:
+    // the cursor sync highlights nodes, and a storage id is not one.
+    if (entry.storage) continue;
     if (!containsPosition(entry, astLine, astCol)) continue;
     // Prefer the entry that starts latest (innermost node)
     if (
@@ -191,7 +208,9 @@ function containsPosition(entry: NodeEntry, astLine: number, astCol: number): bo
  */
 export function findRangeOfNode(krsFile: KrsFile, nodeId: string): Range | null {
   const entries = collectNodes(krsFile);
-  const entry = entries.find((e) => e.id === nodeId);
+  // A node of the id wins over a client storage of the same id (#3794).
+  const entry =
+    entries.find((e) => e.id === nodeId && !e.storage) ?? entries.find((e) => e.id === nodeId);
   if (!entry) return null;
 
   return toLspRange(entry);

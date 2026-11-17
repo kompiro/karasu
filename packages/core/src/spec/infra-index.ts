@@ -128,9 +128,10 @@ export interface PhysicalTargetIndex {
   /** Clients whose id no infra block shares, keyed by client id. */
   clients: Map<string, DeclaredClient>;
   /**
-   * Client ids an infra block also uses. Such a reference resolves to the infra
-   * block, as it did before clients were targets, and the client's storages are
-   * left out of every index (`resource-target-ambiguous` names the clash).
+   * Client ids an infra block also uses, when the client declares a storage with
+   * an id. Such a reference resolves to the infra block, as it did before
+   * clients were targets, and the client's storages are left out of every index
+   * (`resource-target-ambiguous` names the clash).
    */
   shadowedClients: Set<string>;
 }
@@ -189,11 +190,14 @@ function indexDeclaredClients(roots: readonly KrsNode[]): Map<string, DeclaredCl
 export function indexPhysicalTargets(roots: readonly KrsNode[]): PhysicalTargetIndex {
   const infra = indexDeclaredInfra(roots);
   const clients = indexDeclaredClients(roots);
+  // A client sharing an infra block's id is left out either way; it is only a
+  // clash worth reporting when the client has a storage a reference could mean.
   const shadowedClients = new Set<string>();
-  for (const id of clients.keys()) {
-    if (infra.has(id)) shadowedClients.add(id);
+  for (const [id, client] of clients) {
+    if (!infra.has(id)) continue;
+    if (client.storages.size > 0) shadowedClients.add(id);
+    clients.delete(id);
   }
-  for (const id of shadowedClients) clients.delete(id);
   return { infra, clients, shadowedClients };
 }
 

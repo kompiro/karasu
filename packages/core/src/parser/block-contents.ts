@@ -238,14 +238,17 @@ export function parseBlockContentsWithProperties(
 
     // Client-only: `resource <storageKind> [<Id>] "<name>"` declares operation-tied
     // storage (#3794 added the id). Read as this form when the word after
-    // `resource` is a storage kind, or (for a misspelt kind, as before the id
-    // existed) when the token after it is the name's string literal. Anything
-    // else stays a regular resource declaration, rejected in a client.
+    // `resource` is a storage kind, or, for a misspelt kind, when a name follows
+    // it (directly or after an id), so the kind is still reported as such.
+    // Anything else stays a regular resource declaration, rejected in a client.
     if (
       kind === "client" &&
       token.type === TokenType.Resource &&
       ctx.peekAt(1).type === TokenType.Identifier &&
-      (isClientResourceKind(ctx.peekAt(1).value) || ctx.peekAt(2).type === TokenType.StringLiteral)
+      (isClientResourceKind(ctx.peekAt(1).value) ||
+        ctx.peekAt(2).type === TokenType.StringLiteral ||
+        (ctx.peekAt(2).type === TokenType.Identifier &&
+          ctx.peekAt(3).type === TokenType.StringLiteral))
     ) {
       properties.resources ??= [];
       properties.resources.push(parseClientResource(ctx));

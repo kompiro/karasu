@@ -74,6 +74,8 @@ export function validatePhysicalRefs(file: KrsFile): Diagnostic[] {
             code: "resource-target-ambiguous",
             params: {
               ref: `${parent}.${child}`,
+              parent,
+              child,
               reason:
                 target.kind === "unresolved" && target.ambiguous
                   ? "multiple-clients"
