@@ -1209,8 +1209,8 @@ const NAMES_A_HOST =
   /^[^ \t\n\r\f\v/?#<]*?(?:[@%]|[^.\u3002\uff0e\uff61][.\u3002\uff0e\uff61][^.\u3002\uff0e\uff61 \t\n\r\f\v/?#<])/;
 /**
  * The start of a raw HTML tag in a Low Markdown file: `<`, a tag name, then
- * whitespace or `/`. A tag with a URL attribute ({@link URL_ATTRIBUTE}, anywhere
- * before the tag's end, which {@link tagText} finds past a quoted `>`) counts as an
+ * whitespace or `/`. A tag with a URL attribute ({@link URL_ATTRIBUTE_NAMES}, as the
+ * tokenizer reads it in {@link readTag}) counts as an
  * outside link on its own, because where a URL ends inside an attribute (quotes,
  * spaces, references) is not read (kompiro's decision of 2026-11-17, #3786).
  * Placeholders such as `<n>` and an SVG example such as `<g class="x">` open
@@ -1218,37 +1218,108 @@ const NAMES_A_HOST =
  */
 const HTML_TAG = /<[a-z][a-z0-9-]*(?=[\s/])/g;
 /**
- * An attribute that takes a URL. The HTML parser starts an attribute after
- * whitespace, `/` or a closing quote (`<a/href=`, `title="t"href=`).
+ * An attribute that takes a URL, found in a tag's text with no tokenizing: the
+ * second reading, so a mismatch in {@link readTag} cannot hide one.
  */
 const URL_ATTRIBUTE =
   /[\s/"'](?:href|src|srcset|cite|poster|longdesc|action|formaction|background|data|xlink:href)\s*=/;
 
+/** The names of attributes that take a URL, as {@link readTag} reports them. */
+const URL_ATTRIBUTE_NAMES: ReadonlySet<string> = new Set([
+  "href",
+  "src",
+  "srcset",
+  "cite",
+  "poster",
+  "longdesc",
+  "action",
+  "formaction",
+  "background",
+  "data",
+  "xlink:href",
+]);
+
 /**
- * The tag that starts at `start`, up to the `>` that ends it, read as the HTML
- * tokenizer does: a quote opens a value only right after `=` and optional
- * whitespace (`<a x'="'>" href=...>` has the name `x'` and the value `'>`).
+ * The tag that starts at `start`, read by the HTML tokenizer's attribute states
+ * (WHATWG 13.2.5.32 to 13.2.5.39): its text up to the `>` that ends it, and its
+ * attribute names. A quote opens a value only where a value starts, and an
+ * unquoted value runs to whitespace or `>` with any `=` or quote in it as text, so
+ * `<a x'="'>" href=...>` and `<a foo=a=" bar=">" href=...>` both have `href`.
  */
-function tagText(text: string, start: number): string {
-  let quote: string | null = null;
-  let afterEquals = false;
-  for (let i = start + 1; i < text.length; i++) {
+function readTag(text: string, start: number): { text: string; names: string[] } {
+  type State =
+    | "before"
+    | "name"
+    | "afterName"
+    | "beforeValue"
+    | "quoted"
+    | "unquoted"
+    | "afterQuoted";
+  const space = /[ \t\n\r\f]/;
+  const names: string[] = [];
+  let state: State = "before";
+  let name = "";
+  let quote = "";
+  let i = start + 1;
+  while (i < text.length && !/[ \t\n\r\f/>]/.test(text[i])) i++; // the tag name
+  for (; i < text.length; i++) {
     const c = text[i];
-    if (quote !== null) {
-      if (c === quote) quote = null;
-      continue;
-    }
-    if (c === ">") return text.slice(start, i + 1);
-    if (afterEquals && (c === '"' || c === "'")) {
-      quote = c;
-      afterEquals = false;
-    } else if (c === "=") {
-      afterEquals = true;
-    } else if (!/[ \t\n\r\f]/.test(c)) {
-      afterEquals = false;
+    const end = (): { text: string; names: string[] } => ({
+      text: text.slice(start, i + 1),
+      names,
+    });
+    switch (state) {
+      case "before":
+        if (c === ">") return end();
+        if (space.test(c) || c === "/") break;
+        state = "name";
+        name = c;
+        break;
+      case "name":
+        if (c === ">") {
+          names.push(name);
+          return end();
+        }
+        if (space.test(c) || c === "/" || c === "=") {
+          names.push(name);
+          state = c === "=" ? "beforeValue" : space.test(c) ? "afterName" : "before";
+        } else name += c;
+        break;
+      case "afterName":
+        if (c === ">") return end();
+        if (c === "/") state = "before";
+        else if (c === "=") state = "beforeValue";
+        else if (!space.test(c)) {
+          state = "name";
+          name = c;
+        }
+        break;
+      case "beforeValue":
+        if (c === ">") return end();
+        if (c === '"' || c === "'") {
+          state = "quoted";
+          quote = c;
+        } else if (!space.test(c)) state = "unquoted";
+        break;
+      case "quoted":
+        if (c === quote) state = "afterQuoted";
+        break;
+      case "unquoted":
+        if (c === ">") return end();
+        if (space.test(c)) state = "before";
+        break;
+      case "afterQuoted":
+        if (c === ">") return end();
+        state = "before";
+        if (!space.test(c) && c !== "/") {
+          state = "name";
+          name = c;
+        }
+        break;
     }
   }
-  return text.slice(start);
+  if (state === "name") names.push(name);
+  return { text: text.slice(start), names };
 }
 /** What splits words for the relative-path rule (D4). */
 const WORD_SPLIT = /[\s()<>"'`[\]]+/;
@@ -1285,13 +1356,13 @@ function collectLinks(text: string, dir: string): string[] {
   // The whole tag is the key, so editing an attribute (a host added after a line
   // break, say) is a new key and not the same tag again.
   for (const m of text.matchAll(HTML_TAG)) {
-    // Read with quotes and without: HTML opens a quote only at a value's start
-    // (`<a x'="'>" href=...>`), so one reading alone can end the tag too early.
-    const quoted = tagText(text, m.index);
+    // Read by the tokenizer's states and, as a second reading, as plain text up to
+    // the first `>`, so a mismatch in one cannot hide a URL attribute.
+    const tag = readTag(text, m.index);
     const end = text.indexOf(">", m.index);
     const blind = end === -1 ? text.slice(m.index) : text.slice(m.index, end + 1);
-    if (URL_ATTRIBUTE.test(quoted) || URL_ATTRIBUTE.test(blind)) {
-      keys.push(`html:${quoted}\u0000${blind}`);
+    if (tag.names.some((n) => URL_ATTRIBUTE_NAMES.has(n)) || URL_ATTRIBUTE.test(blind)) {
+      keys.push(`html:${tag.text}\u0000${blind}`);
     }
   }
   for (const word of text.split(WORD_SPLIT)) {

@@ -2679,6 +2679,15 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     ["[x](https://kompiro.github.io<@evil.com/)", "an unreadable URL"],
     ["[x]( https://kompiro.github.io<@evil.com/)", "an unreadable URL"],
     ["x < https://kompiro.github.io>@evil.com", "an unreadable URL"],
+    [
+      '<div>\n<a x\' foo=a=" bar=">" href="https://kompiro.github.io)@evil.com/">x</a>\n</div>',
+      "raw HTML",
+    ],
+    [
+      '<div>\n<img x\' foo=a=" bar=">" src="https://kompiro.github.io)@evil.com/x.png">\n</div>',
+      "raw HTML",
+    ],
+    ['<div>\n<a title=t"href="https://kompiro.github.io)@evil.com/">x</a>\n</div>', "raw HTML"],
     ["[x]: https://kompiro.github.io<@evil.com/\n\n[x]", "an unreadable URL"],
     ['[x]: https://kompiro.github.io<@evil.com/ "t"\n\n[x]', "an unreadable URL"],
     ['<div>\n<a/href="https://kompiro.github.io)@evil.com/">x</a>\n</div>', "raw HTML"],
