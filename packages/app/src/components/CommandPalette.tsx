@@ -115,12 +115,12 @@ export function CommandPalette() {
           className="max-h-[320px] overflow-y-auto py-1"
         >
           {filtered.length === 0 ? (
-            <li className="px-4 py-3 text-sm text-[color:var(--text-secondary)]">
+            <li role="none" className="px-4 py-3 text-sm text-[color:var(--text-secondary)]">
               No matching commands
             </li>
           ) : (
             filtered.map((command, index) => (
-              <li key={command.id}>
+              <li key={command.id} role="none">
                 <button
                   type="button"
                   id={`command-palette-option-${index}`}
