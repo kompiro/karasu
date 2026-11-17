@@ -64,6 +64,7 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
   ドメインを指していなければ、そのファイルは Medium になる。karasu のドメインは `github.com/kompiro/` 以下、
   `karasu.kompiro.dev`・`karasu-nest.kompiro.dev`・`kompiro.github.io`・`karasu.pages.dev`・`taka.kompiro.dev`、登録できない名前
   （`localhost`・`127.0.0.1`・`example.com` など）で、パス・query・fragment に条件がある。読めない URL も外として数える。
+  HTML の URL 属性（`href=`・`src=` など）を足すか書き換えると、行き先によらず外として数える。
   一覧の正本は分類器で、分類器は High のパスにあるので、Low の PR からは広げられない
 
 - **`rendering-change` ラベル**：check「Render equivalence」が merge base と HEAD で描画・診断・整形の出力に差を

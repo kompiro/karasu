@@ -1006,19 +1006,26 @@ const UNREADABLE_REFERENCE = "\u0000reference:";
  * D3: numeric references and the six named ones decoded, and the text lowercased.
  * Another named reference is kept as a marker that {@link collectLinks} counts as
  * an unreadable URL. Backslashes are read in {@link countLinks}.
+ *
+ * A reference is data, never markup: `&quot;`, `&#41;` or `&nbsp;` inside a URL
+ * stays part of it where Markdown and HTML render it. So a decoded quote, bracket
+ * or whitespace becomes {@link NEUTRAL}, which ends no URL (#3786, review of #3849).
  */
 function decodeReferences(text: string): string {
+  const decoded = (c: string): string => (/[\s"'()<>]/.test(c) ? NEUTRAL : c);
   return text
     .replace(CHARACTER_REFERENCE, (whole, hex: string, dec: string, name: string) => {
       if (name !== undefined) {
         const known = NAMED_REFERENCES[name.toLowerCase()];
-        return known ?? ` ${UNREADABLE_REFERENCE}${name.toLowerCase()} `;
+        return known !== undefined
+          ? decoded(known)
+          : ` ${UNREADABLE_REFERENCE}${name.toLowerCase()} `;
       }
       const code = hex !== undefined ? Number.parseInt(hex, 16) : Number.parseInt(dec, 10);
       // Not a code point: kept as a reference no one decodes, which counts as unreadable.
       return code > 0x10ffff
         ? ` ${UNREADABLE_REFERENCE}${whole.toLowerCase()} `
-        : String.fromCodePoint(code);
+        : decoded(String.fromCodePoint(code));
     })
     .toLowerCase();
 }
@@ -1031,43 +1038,52 @@ function decodeReferences(text: string): string {
  */
 const markdownEscapes = (text: string): string =>
   text
-    .replace(/\\([()<>])/g, ESCAPED_BRACKET)
+    .replace(/\\([()<>])/g, NEUTRAL)
     .replace(/\\([!-/:-@[-`{-~])/g, "$1")
     .replaceAll("\\", "%5c");
 /**
- * What an escaped `(`, `)`, `<` or `>` reads as: a character that ends no URL, so
+ * What an escaped `(`, `)`, `<` or `>`, and a decoded quote, bracket or whitespace,
+ * read as: a character that ends no URL and starts no host, so
  * `[x](https://kompiro.github.io\)@evil.com)` keeps going to `evil.com`.
  */
-const ESCAPED_BRACKET = "\u0001";
+const NEUTRAL = "\u0001";
 
 /**
- * Where a URL ends depends on what opened it (#3786). Inside a Markdown link
- * destination or a bare URL (GFM), whitespace, `<` and an unbalanced `)` end it,
- * and a quote does not (`[x](https://kompiro.github.io'@evil.com)` opens
- * evil.com). Inside a quoted HTML attribute, the quote and whitespace end it, and
- * `)` does not. After `<` and in an unquoted attribute, `>` and whitespace end it.
+ * Where a URL ends, by Markdown's rules only: raw HTML counts as outside on its
+ * own ({@link RAW_HTML}), so no attribute rules are needed (kompiro's decision of
+ * 2026-11-17, #3786). In a link destination (`(` before the URL), whitespace and
+ * an unbalanced `)` end it, and a quote or `<` does not
+ * (`[x](https://kompiro.github.io'@evil.com)` opens evil.com). A bare URL (GFM)
+ * also ends at `<`. After `<` (an autolink or `[x](<...>)`), only `>` or a line
+ * break ends it, and a space does not.
  */
 function urlEnd(text: string, opener: string): number {
-  const quote = opener === '"' || opener === "'" ? opener : null;
   let depth = 0;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
+    if (opener === "<") {
+      if (c === ">" || c === "\n" || c === "\r") return i;
+      continue;
+    }
     if (/\s/.test(c)) return i;
-    if (quote !== null) {
-      if (c === quote) return i;
-    } else if (opener === "<" || opener === "=") {
-      // After `<`, and in an unquoted HTML attribute (`href=https://...>`).
-      if (c === ">") return i;
-    } else if (c === "<") {
-      return i;
-    } else if (c === "(") {
-      depth++;
-    } else if (c === ")") {
+    if (c === "<" && opener !== "(") return i;
+    if (c === "(") depth++;
+    else if (c === ")") {
       if (depth === 0) return i;
       depth--;
     }
   }
   return text.length;
+}
+/**
+ * What opened a URL starting at `index`: the last character before it that is not
+ * whitespace, since a link destination may follow `(` after spaces or a line
+ * break (`[x]( https://...)`).
+ */
+function openerBefore(text: string, index: number): string {
+  let i = index - 1;
+  while (i >= 0 && /\s/.test(text[i])) i--;
+  return text[i] ?? "";
 }
 /** What may trail a host when nothing follows it in the URL (`**`, `.`, `),`). */
 const TRAILING_AFTER_HOST = /^[.,:;!?*_~'"\])>]+$/;
@@ -1187,6 +1203,15 @@ const HOST_START = /^(?:[a-z0-9_%@\u0080-\uffff-]|\[[0-9a-f:.]*\])/;
  */
 const NAMES_A_HOST =
   /^[^\s/?#<]*?(?:[@%]|[^.\u3002\uff0e\uff61][.\u3002\uff0e\uff61][^.\u3002\uff0e\uff61\s/?#<])/;
+/**
+ * Raw HTML in a Low Markdown file: an attribute that takes a URL, after
+ * whitespace as inside a tag (`<a href=`, `<img src=`). It counts as an outside
+ * link on its own, because where a URL ends inside an attribute (quotes, spaces,
+ * references) is not read (kompiro's decision of 2026-11-17, #3786). A tag with no
+ * such attribute opens nothing, and `?src=` in a query is not an attribute.
+ */
+const RAW_HTML =
+  /(?<=\s)(?:href|src|srcset|cite|poster|longdesc|action|formaction|background|xlink:href)\s*=/g;
 /** What splits words for the relative-path rule (D4). */
 const WORD_SPLIT = /[\s()<>"'`[\]]+/;
 
@@ -1202,7 +1227,7 @@ function collectLinks(text: string, dir: string): string[] {
       keys.push(`${m[0]}${rest.slice(0, 40).split(/\s/, 1)[0]}`);
       continue;
     }
-    const key = outsideAuthority(rest.slice(2), text[m.index - 1] ?? "");
+    const key = outsideAuthority(rest.slice(2), openerBefore(text, m.index));
     if (key !== null) keys.push(key);
   }
   for (const m of text.matchAll(OTHER_SCHEMES)) keys.push(m[0]);
@@ -1211,14 +1236,21 @@ function collectLinks(text: string, dir: string): string[] {
     if (/https?:\/$/.test(text.slice(Math.max(0, m.index - 7), m.index))) continue;
     const after = text.slice(m.index + 1);
     if (!HOST_START.test(after) && !NAMES_A_HOST.test(after)) continue;
-    const key = outsideAuthority(after, text[m.index - 2] ?? "");
+    const key = outsideAuthority(after, openerBefore(text, m.index - 1));
     if (key !== null) keys.push(key);
   }
   for (const m of text.matchAll(/(?<![a-z0-9./-])www\./g)) {
-    const key = outsideAuthority(text.slice(m.index), text[m.index - 1] ?? "");
+    const key = outsideAuthority(text.slice(m.index), openerBefore(text, m.index));
     if (key !== null) keys.push(key);
   }
   for (const m of text.matchAll(EMAIL)) keys.push(`mailto:${m[0]}`);
+  // With the attribute's value up to the tag's end, so editing the value (a host
+  // added after a line break, say) is a new key and not the same attribute again.
+  for (const m of text.matchAll(RAW_HTML)) {
+    const rest = text.slice(m.index);
+    const end = rest.indexOf(">");
+    keys.push(`html:${end === -1 ? rest : rest.slice(0, end)}`);
+  }
   for (const word of text.split(WORD_SPLIT)) {
     if (word.startsWith(UNREADABLE_REFERENCE)) {
       keys.push(word);
@@ -1241,19 +1273,14 @@ function collectLinks(text: string, dir: string): string[] {
  * D4: the forms in `text` counted by key, once per reading of its backslashes:
  * every backslash as `/` (D3), and Markdown's escapes. Each reading is compared
  * only with itself, so a link one reading sees cannot hide behind a copy only the
- * other saw before. Within a reading, the text as is and with line breaks and tabs
- * removed give the most either finds, so a link moved past a line it was joined to
- * changes no count.
+ * other saw before. No reading removes line breaks: a Markdown URL cannot span
+ * one, and an HTML attribute, which can, counts on its own ({@link RAW_HTML}).
  */
 function countLinks(text: string, dir: string): Map<string, number>[] {
   const decoded = decodeReferences(text);
   return [decoded.replaceAll("\\", "/"), markdownEscapes(decoded)].map((reading) => {
     const counts = new Map<string, number>();
-    for (const variant of [reading, reading.replace(/[\n\r\t]/g, "")]) {
-      const found = new Map<string, number>();
-      for (const key of collectLinks(variant, dir)) found.set(key, (found.get(key) ?? 0) + 1);
-      for (const [key, n] of found) counts.set(key, Math.max(counts.get(key) ?? 0, n));
-    }
+    for (const key of collectLinks(reading, dir)) counts.set(key, (counts.get(key) ?? 0) + 1);
     return counts;
   });
 }
@@ -1262,6 +1289,7 @@ function countLinks(text: string, dir: string): Map<string, number>[] {
 function describeLink(key: string): string {
   if (key.startsWith(UNREADABLE_REFERENCE)) return "an unreadable character reference";
   if (key.startsWith("path:")) return "a relative path outside the repository";
+  if (key.startsWith("html:")) return "raw HTML";
   if (/^(?:mailto|javascript|data|vbscript|file):$/.test(key)) return `a ${key} URL`;
   if (key.startsWith("mailto:")) return "an email address";
   const host = /^\/\/([a-z0-9.-]+)(?::[0-9]+)?(?:[/?#]|$)/.exec(key)?.[1]?.replace(/\.$/, "");

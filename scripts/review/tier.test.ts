@@ -2541,8 +2541,6 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     "[TPL](../test-perspectives/TPL-1-x.md)",
     // Where a URL ends depends on what opened it (#3849 review).
     "[link](https://taka.kompiro.dev/TkrZQG)を参照",
-    '<a href="https://karasu.kompiro.dev/">karasu</a>',
-    "<a href=https://karasu.kompiro.dev/>karasu</a>",
     "[a](https://github.com/kompiro/karasu/issues/1)、[b](../adr/12-x.md)、#3787",
     "(see https://kompiro.github.io/karasu/), and more",
     // A glob or a regex escape after `//` that names no host on the internet.
@@ -2620,7 +2618,13 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     ["[x]: https://evil.com", "evil.com"],
     ["[https://karasu.kompiro.dev](https://evil.com)", "evil.com"],
     ["![](https://evil.com/x.png)", "evil.com"],
-    ['<a href="https://evil.com">x</a>', "evil.com"],
+    // Raw HTML counts on its own (kompiro's decision of 2026-11-17).
+    ['<a href="https://evil.com">x</a>', "raw HTML"],
+    ['<a href="https://karasu.kompiro.dev/">karasu</a>', "raw HTML"],
+    ["<a href=https://karasu.kompiro.dev/>karasu</a>", "raw HTML"],
+    ['<a href="https://kompiro.github.io&quot;@evil.com/">x</a>', "raw HTML"],
+    ['<a href=" https://kompiro.github.io)@evil.com/">x</a>', "raw HTML"],
+    ['<a href="https://kompiro.github.io @evil.com/">x</a>', "raw HTML"],
     ["write to someone@evil.com", "an email address"],
     ["[x](mailto:someone)", "a mailto: URL"],
     ["[x](javascript:alert(1))", "a javascript: URL"],
@@ -2658,12 +2662,22 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     // A quote does not end a Markdown link destination; `)` does not end a quoted attribute.
     ["[x](https://kompiro.github.io'@evil.com/)", "an unreadable URL"],
     ["[x](https://kompiro.github.io\\)@evil.com/)", "an unreadable URL"],
-    ['<a href="https://kompiro.github.io).evil.com">x</a>', "an unreadable URL"],
+    ['<a href="https://kompiro.github.io).evil.com">x</a>', "raw HTML"],
     ["[x](https://kompiro.github.io(x).evil.com)", "an unreadable URL"],
     ["[x](https://github.com/kompiro/x'/../../attacker/repo)", "github.com"],
     ["[x](https://karasu.kompiro.dev/'?s=x)", "karasu.kompiro.dev"],
     ["[x](//(x'@evil.com)", "an unreadable URL"],
-    ["<a href=https://kompiro.github.io).evil.com>x</a>", "an unreadable URL"],
+    ["<a href=https://kompiro.github.io).evil.com>x</a>", "raw HTML"],
+    // A reference is data, never a terminator; `<` does not end a link destination.
+    ["[x](https://kompiro.github.io&#41;@evil.com/)", "an unreadable URL"],
+    ["[x](https://example.com&#41;@evil.com/)", "an unreadable URL"],
+    ["[x](https://kompiro.github.io&nbsp;@evil.com/)", "an unreadable URL"],
+    ["[x](https://kompiro.github.io<@evil.com/)", "an unreadable URL"],
+    ["[x]( https://kompiro.github.io<@evil.com/)", "an unreadable URL"],
+    ["[x](\n//kompiro.github.io<@evil.com/)", "an unreadable URL"],
+    ["[x](https://kompiro.github.io&lt;@evil.com/)", "an unreadable URL"],
+    ["[x](<https://kompiro.github.io @evil.com/>)", "an unreadable URL"],
+    ["<https://kompiro.github.io&#62;@evil.com/>", "an unreadable URL"],
     ["[x](//*.evil.com)", "an unreadable URL"],
     ["[x](//.evil.com)", ".evil.com"],
     ["[x](<//(x.evil.com>)", "an unreadable URL"],
@@ -2678,13 +2692,11 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     expect(outside(text, "docs/adr/12-x.md")).toContain(host);
   });
 
-  it("joins a URL split by a line break, a CR or a tab, as a URL parser drops them", () => {
-    expect(outside('<a href="https://karasu.kompiro.dev\n.evil.com">x</a>')).toContain(
-      "karasu.kompiro.dev.evil.com",
-    );
-    expect(outside('<a href="java\nscript:alert(1)">x</a>')).toContain("a javascript: URL");
-    expect(outside('<a href="https://ev\r\n\r\nil.com">x</a>')).not.toEqual([]);
-    expect(outside('<a href="https://karasu.kompiro.dev\t.evil.com">')).not.toEqual([]);
+  it("counts an HTML attribute whose URL a line break, a CR or a tab splits", () => {
+    expect(outside('<a href="https://karasu.kompiro.dev\n.evil.com">x</a>')).toContain("raw HTML");
+    expect(outside('<a href="java\nscript:alert(1)">x</a>')).toContain("raw HTML");
+    expect(outside('<a\nhref="https://ev\r\n\r\nil.com">x</a>')).toContain("raw HTML");
+    expect(outside('<a\thref="https://karasu.kompiro.dev\t.evil.com">')).toContain("raw HTML");
   });
 
   it("does not count a link the file already had: a rewritten line or one moved in the file", () => {
@@ -2707,14 +2719,16 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     // `https:\/\/evil.com/` in a code span: Markdown's escapes read it as a URL,
     // every-backslash-as-/ reads `https:////`. The new tag is the other way round.
     const before = "# t\n\nUpstream: `https:\\/\\/evil.com/`";
-    const after = `${before}\n<a href="/\\evil.com/">click</a>`;
+    const after = `${before}\n[click](/\\evil.com/)`;
     expect(outsideLinks(edit(before, after))).toContain("evil.com");
   });
 
-  it("counts a URL completed on a later line, starting on a line the change keeps", () => {
+  it("counts an edit inside an HTML attribute the file already had", () => {
     const before = '<a href="https://karasu.kompiro.dev\n">x</a>';
     const after = '<a href="https://karasu.kompiro.dev\n.evil.com">x</a>';
-    expect(outsideLinks(edit(before, after))).toContain("karasu.kompiro.dev.evil.com");
+    expect(outsideLinks(edit(before, after))).toEqual(["raw HTML"]);
+    // Text around the tag can change: the tag itself is the same.
+    expect(outsideLinks(edit(`a\n${before}`, `b\n${before}`))).toEqual([]);
   });
 
   it("counts a link moved in from another file", () => {
