@@ -116,6 +116,27 @@ system B {
     expect(view(src, ["A"]).resourceLabelMap.has("WebApp.ApiKey")).toBe(false);
   });
 
+  it("puts the referencing usecases on the client's metadata", () => {
+    const result = compile(MODEL, { viewPath: ["S"] });
+    if (result.diagramType !== "system") throw new Error("expected a system result");
+    const client = result.nodeMetadata.get("WebApp");
+    expect(client?.resources?.map((r) => [r.id, r.usecases])).toEqual([
+      ["ApiKey", ["SaveApiKey", "ReadKey"]],
+      ["Theme", ["SetTheme"]],
+    ]);
+  });
+
+  it("names the client storage on a promoted resource's metadata", () => {
+    const result = compile(MODEL, { viewPath: ["S", "App", "Chat"] });
+    if (result.diagramType !== "system") throw new Error("expected a system result");
+    expect(result.nodeMetadata.get("WebApp.ApiKey")?.clientStorage).toEqual({
+      clientId: "WebApp",
+      storageId: "ApiKey",
+      storageKind: "sessionStorage",
+      name: "karasu.ai.anthropic.apiKey",
+    });
+  });
+
   it("reports no shared-store fan-in or cross-domain store access on a client storage", () => {
     const kinds = compile(MODEL).warnings.map((w) => w.kind);
     expect(kinds).not.toContain("shared-infra-fan-in");

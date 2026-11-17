@@ -9,7 +9,6 @@ import type {
   LogicalNodeKind,
   DeployNodeKind,
   LinkEntry,
-  ClientResource as ClientResourceImpl,
   ClientCapability as ClientCapabilityImpl,
 } from "../types/ast.js";
 import type { ResolvedStyles } from "../types/style.js";
@@ -25,6 +24,7 @@ import type { AnnotationBadgeLabels } from "../builtins/default-style.js";
 import type { ViewPath } from "../view/view-slice.js";
 import type { EmptyStateLabels } from "../renderer/empty-state-labels.js";
 import type { PhysicalTargetIndex } from "../spec/infra-index.js";
+import type { ClientStorageEntry, ClientStorageTarget } from "./client-storage-metadata.js";
 
 export interface NodeMetadata {
   kind: LogicalNodeKind | DeployNodeKind;
@@ -63,8 +63,13 @@ export interface NodeMetadata {
    */
   draft?: DraftState;
   hasChildren: boolean;
-  /** Client-only: operation-tied storage resources, in declaration order. */
-  resources?: ClientResourceImpl[];
+  /**
+   * Client-only: operation-tied storage resources, in declaration order, each
+   * with the usecases that reference it by id (#3794).
+   */
+  resources?: ClientStorageEntry[];
+  /** Resource-only: the client storage a `resource <ClientId>.<Id>` names (#3794). */
+  clientStorage?: ClientStorageTarget;
   /** Client-only: device / browser capabilities, in declaration order. */
   capabilities?: ClientCapabilityImpl[];
   /**

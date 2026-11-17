@@ -64,6 +64,7 @@ import type { DeployViewSlice } from "../view/deploy-view-extract.js";
 import { summarizeDescription } from "../renderer/description-summary.js";
 import type { EmptyStateLabels } from "../renderer/empty-state-labels.js";
 import { physicalTargetsOf } from "../spec/infra-index.js";
+import * as storageMeta from "./client-storage-metadata.js";
 
 export type {
   NodeMetadata,
@@ -290,6 +291,7 @@ function _compileFromPreparedInput(
     teamLabels,
     krsFile.nodePathIndex,
     krsFile.nodePathRanking,
+    storageMeta.buildClientStorageContext(krsFile, physicalTargets),
   );
   return {
     diagramType: "system",
@@ -432,6 +434,7 @@ function buildNodeMetadata(
   teamLabels?: ReadonlyMap<string, string>,
   nodePathIndex?: Map<string, string[]>,
   nodePathRanking?: ReadonlyMap<string, readonly (readonly string[])[]>,
+  clientStorage?: storageMeta.ClientStorageContext,
 ): { byId: Map<string, NodeMetadata>; byPath: Map<string, NodeMetadata> } {
   const byPath = new Map<string, NodeMetadata>();
 
@@ -466,10 +469,7 @@ function buildNodeMetadata(
       migrationIntent: getMigrationIntent(node.annotationParams),
       draft: getDraftState(node.annotations, node.annotationParams),
       hasChildren: node.children.length > 0,
-      resources:
-        node.kind === "client" && node.properties.resources.length > 0
-          ? [...node.properties.resources]
-          : undefined,
+      ...storageMeta.clientStorageMetadata(node, clientStorage),
       capabilities:
         node.kind === "client" && node.properties.capabilities.length > 0
           ? [...node.properties.capabilities]

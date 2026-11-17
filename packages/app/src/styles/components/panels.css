@@ -628,6 +628,7 @@
 
 .node-detail-resource-item {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 2px 0;
 }
@@ -638,6 +639,24 @@
 }
 
 .node-detail-resource-name {
+  color: var(--text-primary);
+}
+
+/* The id a usecase references the storage by, and those usecases (#3794). */
+.node-detail-resource-id {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.node-detail-resource-usecases {
+  flex-basis: 100%;
+  padding-left: 104px;
+  color: var(--text-muted);
+  font-family: inherit;
+}
+
+.node-detail-client-storage {
+  font-size: 12px;
   color: var(--text-primary);
 }
 

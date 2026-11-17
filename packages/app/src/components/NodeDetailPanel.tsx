@@ -155,12 +155,30 @@ export function NodeDetailPanel({
           <div className="node-detail-section-title">{t("nodeDetail.resources.title")}</div>
           <ul className="node-detail-resource-list">
             {metadata.resources.map((r) => (
-              <li key={`${r.storageKind}-${r.name}`} className="node-detail-resource-item">
+              <li
+                key={`${r.storageKind}-${r.id ?? ""}-${r.name}`}
+                className="node-detail-resource-item"
+              >
                 <span className="node-detail-resource-kind">{r.storageKind}</span>
+                {r.id !== undefined && <span className="node-detail-resource-id">{r.id}</span>}
                 <span className="node-detail-resource-name">{r.name}</span>
+                {r.usecases && r.usecases.length > 0 && (
+                  <span className="node-detail-resource-usecases">
+                    {t("nodeDetail.resources.usedBy", { usecases: r.usecases.join(", ") })}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {metadata.clientStorage && (
+        <div className="node-detail-section">
+          <div className="node-detail-section-title">{t("nodeDetail.clientStorage.title")}</div>
+          <div className="node-detail-client-storage">
+            {t("nodeDetail.clientStorage.value", metadata.clientStorage)}
+          </div>
         </div>
       )}
 

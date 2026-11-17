@@ -9,6 +9,7 @@ import {
   type DisplayMode,
   type DiagramTheme,
   type SystemNode,
+  type PhysicalTargetIndex,
   type NodeDiffMeta,
   type CategoryId,
   type FacetOverviewEntry,
@@ -48,6 +49,8 @@ interface SystemViewState {
    */
   facetOverview: FacetOverviewEntry[];
   systems: SystemNode[];
+  /** Model-wide `<Parent>.<Child>` targets, for the CRUD matrix (#3794). */
+  physicalTargets?: PhysicalTargetIndex;
   nodeFileIndex: Map<string, string>;
   /**
    * Per-node diff metadata when diff mode is active. `undefined` outside
@@ -290,6 +293,7 @@ export function useSystemView(
       facets: sysBase.facets,
       facetOverview: sysBase.facetOverview,
       systems: sysBase.systems,
+      physicalTargets: sysBase.physicalTargets,
       nodeFileIndex: sysBase.nodeFileIndex,
       nodeDiff,
       nodeDiffByPath,
