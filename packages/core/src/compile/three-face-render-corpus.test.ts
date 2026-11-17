@@ -1,7 +1,8 @@
 // The three parallel views of one model each draw everything the merged model
 // declares for them (TPL-2169): the system face every logical node, the deploy
-// face every deploy node, the org face every team. Measured over every shipped
-// example through `buildAllViewsSvgProject`, the bundle `karasu render` writes,
+// face every deploy node, the org face every team and member, nested ones
+// included. Measured over every shipped example through
+// `buildAllViewsSvgProject`, the bundle `karasu render` writes,
 // so imports are resolved as they are for a user and a new example joins the
 // day it is added. The expectation is derived from the merged model, so a new
 // declaration joins without touching this file.
@@ -92,8 +93,12 @@ function declared(file: KrsFile): Record<Face, Expected[]> {
       if (i === 0 || (pathsPerId.get(ancestor.id) ?? 0) < 2) return false;
       const own = prefix.slice(0, i + 1).map((n) => n.id);
       const winner = file.nodePathIndex.get(ancestor.id)?.join(".");
-      // No recorded winner means the exemption has nothing to go by: expect it.
-      if (winner === undefined) return false;
+      // The index records only some kinds (`INDEXED_KINDS` in
+      // parser/reference-validation.ts). An indexed kind with no winner is an
+      // index bug, so its branches stay expected; for any other kind the
+      // bundle gives the anchor to the first path it walks, which the index
+      // cannot name, so the branches stay exempt as before.
+      if (winner === undefined) return !INDEXED_KINDS.has(ancestor.kind);
       return winner !== own.join(".") && winner !== own.slice(1).join(".");
     });
     if (!isRootCanvas && !behindSharedAnchor) {
@@ -112,6 +117,9 @@ function declared(file: KrsFile): Record<Face, Expected[]> {
     org: file.organizations.flatMap((org) => orgNodes(org.teams).map((node) => ({ key: node.id }))),
   };
 }
+
+/** The kinds `nodePathIndex` records (`INDEXED_KINDS` in parser/reference-validation.ts). */
+const INDEXED_KINDS = new Set(["service", "domain", "client"]);
 
 /** A team list and everything under it, teams and members alike. */
 function orgNodes(nodes: readonly OrgNode[]): OrgNode[] {
@@ -176,9 +184,9 @@ describe("every shipped example draws all of its model on each of the three face
     expect(found).toBe(true);
   });
 
-  // Nested teams and members are part of the org face only if some entry has
-  // them: a team inside a team, and a member.
-  it("holds an entry with a nested team and a member", async () => {
+  // Nested teams and members are part of the org face only if the corpus has
+  // them: a team inside a team, and a member, in any entries.
+  it("holds a nested team and a member", async () => {
     const kinds = new Set<string>();
     for (const entry of entries) {
       const { krsFile } = await new ImportResolver(fs).resolve(entry);
@@ -197,7 +205,7 @@ describe("every shipped example draws all of its model on each of the three face
     for (const face of Object.keys(FACES) as Face[]) {
       const markup = pane(svg, face);
       for (const key of expected[face])
-        if (!draws(face, markup, key)) undrawn.push(`${face}:${key}`);
+        if (!draws(face, markup, key)) undrawn.push(`${face}:${key.key}`);
     }
     expect(undrawn).toEqual([]);
   });

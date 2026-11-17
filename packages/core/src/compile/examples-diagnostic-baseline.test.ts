@@ -44,9 +44,9 @@ const TUTORIAL_STEP =
 /** A slice of a multi-file example, opened on its own instead of through its entry. */
 const SLICE =
   "slice of a multi-file example opened on its own; its entry imports what the slice references";
-/** A feature sample about something else, whose `resource` lines name a store it does not declare. */
+/** A feature sample whose `resource` lines name stores it does not declare. */
 const FOCUSED_SAMPLE =
-  "feature sample about another construct: its usecase `resource` lines name stores the sample does not declare, which is not its subject";
+  "feature sample whose usecase `resource` lines name stores it does not declare: declaring the stores is not what it shows";
 /** The sample exists to show this diagnostic. */
 const TEACHES = "the sample exists to show this diagnostic";
 

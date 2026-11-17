@@ -62,10 +62,10 @@ karasu は論理 (`system`)・物理 (`deploy`)・組織 (`organization`) の三
 - `packages/core/src/compile/three-face-render-corpus.test.ts` — 4 項目目のガード。全 example を
   `buildAllViewsSvgProject`（`karasu render` が書く bundle）で描き、merge 結果が宣言する論理ノード・deploy node・team と member（入れ子の team を含む）
   がそれぞれ system / deploy / org の pane に描かれることを確かめる。期待値は merge 結果から導くので、新しい example と
-  新しい宣言は追加した日から加わる。3 面すべてを import 先のファイルから埋める entry と、入れ子の team と member を持つ entry が corpus にあることも確かめる。
+  新しい宣言は追加した日から加わる。3 面すべてを import 先のファイルから埋める entry と、入れ子の team と member が corpus にあることも確かめる。
   例外は 2 つで、テストに理由を書いてある: `system` が 1 つのモデルではその `system` が root の canvas になること、
   同じ id のコンテナが 2 か所にあるとき bundle は anchor id ごとに 1 階層しか持たないこと（#2933）。
-  後者では anchor が解決する側（`nodePathIndex` の勝者）の配下は期待値に残し、もう一方の配下だけを外す
+  後者では anchor が解決する側（`nodePathIndex` の勝者。index が記録しない kind では bundle が先に辿る側）の配下は期待値に残し、もう一方の配下だけを外す
 
 ## 派生元 spec
 
