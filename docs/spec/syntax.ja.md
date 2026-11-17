@@ -471,7 +471,7 @@ system Studio {
 - id は省略できる。id の無い storage は今までと同じ意味で、参照できない。名前は省略できない。素の語で書けない id は引用符で書く（`resource localStorage "api-key" "…"`）。引用符の id は、名前が同じ行に続くときだけ id として読む。
 - 名前は共有の値の読み手で読む。後の行に書いた名前も名前として読むが、その行がエッジを始める（`"WebApp" -> Api`）なら名前として読まず、名前が無いことを報告する（ADR-3752）。id の位置のキーワード（`table`、`storage` など）は `expected-identifier`。
 - 解決は infra の leaf と同じく model 全体で行う。client は別の system・トップレベル・import 先のファイルにあってよい。`<Parent>` は infra ブロックか client を指し、どちらかは 1 つの resolver が決める。
-- scope の違う infra ブロックと client が親の id を共有するときは、client が解決先になる前と同じく **infra ブロック**を指す（ブロックに無い leaf は `unresolved-resource-ref` のまま）。その client が id 付きの storage を宣言していれば `resource-target-ambiguous` で衝突を示し、その storage は参照できない。次の例では `Media.Uploads` は bucket を指し、storage の id を宣言していない client は何も報告されない。
+- scope の違う infra ブロックと client が親の id を共有するときは、client が解決先になる前と同じく **infra ブロック**を指す（ブロックに無い leaf は `unresolved-resource-ref` のまま）。その client が id 付きの storage を宣言していれば `resource-target-ambiguous` で衝突を示し、その storage は参照できない。次の例では `Media.Uploads` は bucket を指し、storage の id を宣言していない client について衝突の診断は出ない。
 
   ```krs
   client Media [web] {

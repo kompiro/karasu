@@ -118,7 +118,8 @@ connection.onRequest(PositionOfNodeRequest, ({ uri, nodeId }) => {
   const parsed = getParsedDocument(uri);
   if (!parsed) return { range: null };
 
-  return { range: findRangeOfNode(parsed.file, nodeId) };
+  // A preview click names a node, never a client storage id (#3794).
+  return { range: findRangeOfNode(parsed.file, nodeId, { nodesOnly: true }) };
 });
 
 // ─── Completion ───────────────────────────────────────────────────────────────

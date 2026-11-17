@@ -598,7 +598,7 @@ function collectInfraInScope(nodes: KrsNode[]): InfraInScope {
  */
 function detectSharedInfraFanIn(file: KrsFile): Warning[] {
   const warnings: Warning[] = [];
-
+  const targets = physicalTargetsOf(file); // one model-wide index for every scope
   // Each system is an organizational boundary; cross-system sharing of a store
   // is intentional and not surfaced. Top-level services form their own scope.
   function detectInScope(nodes: KrsNode[]): void {
@@ -609,7 +609,7 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
 
     // A bare `resource Order` backed by `entity Order { table OrderDB.orders }` counts
     // like `resource OrderDB.orders`; dotted targets come from the model index (TPL-1720).
-    const resolver = buildEntityResolver(nodes, physicalTargetsOf(file));
+    const resolver = buildEntityResolver(nodes, targets);
 
     function collectRefs(node: KrsNode, parentServiceId?: string): void {
       if (node.kind === "service") {
@@ -701,9 +701,9 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
  */
 function detectCrossDomainStoreAccess(file: KrsFile): Warning[] {
   const warnings: Warning[] = [];
-
+  const targets = physicalTargetsOf(file); // one model-wide index for every scope
   function detectInScope(nodes: KrsNode[]): void {
-    const resolver = buildEntityResolver(nodes, physicalTargetsOf(file));
+    const resolver = buildEntityResolver(nodes, targets);
 
     // Infra blocks in scope, `[external]` and role-tagged stores excluded
     // (shared with fan-in via collectInfraInScope). Excluded stores also contribute no
