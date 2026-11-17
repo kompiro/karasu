@@ -8,6 +8,7 @@ import type {
 } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
 import {
+  clientStorageKey,
   clientStorageLabel,
   indexPhysicalTargets,
   infraLeafKey,
@@ -412,7 +413,7 @@ function collectClientStores(
   const walk = (node: KrsNode): void => {
     if (node.kind === "resource") {
       const storage = resolver.resolve(node as ResourceNode).clientStorage;
-      if (storage) referenced.add(infraLeafKey(storage.clientId, storage.storageId));
+      if (storage) referenced.add(clientStorageKey(storage.clientId, storage.storageId));
     }
     for (const child of node.children) walk(child);
   };
@@ -425,8 +426,10 @@ function collectClientStores(
     out.push({
       clientId: client.clientId,
       identified,
-      referenced: identified.filter((id) => referenced.has(infraLeafKey(client.clientId, id))),
-      unreferenced: identified.filter((id) => !referenced.has(infraLeafKey(client.clientId, id))),
+      referenced: identified.filter((id) => referenced.has(clientStorageKey(client.clientId, id))),
+      unreferenced: identified.filter(
+        (id) => !referenced.has(clientStorageKey(client.clientId, id)),
+      ),
       unidentified: client.unidentified.map((res) => clientStorageLabel(res)),
     });
   }

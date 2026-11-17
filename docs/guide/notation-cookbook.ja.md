@@ -368,8 +368,7 @@ system Shop {
 
 **When** — usecase がブラウザや端末の storage を読み書きする（OPFS の project、
 `localStorage` のテーマ、IndexedDB の outbox）ので、その操作をテーブルへの操作と
-同じく CRUD matrix と `karasu coverage` に載せたいとき。認証情報は `resource` に
-入れない（#834）。
+同じく CRUD matrix と `karasu coverage` に載せたいとき。
 
 **パターン** — `client` に storage を宣言するときに kind の後へ id を付け、usecase
 からテーブルの参照と同じ dot 記法 `resource <ClientId>.<Id>` で参照する。

@@ -40,7 +40,7 @@ export const physicalRefsEn: PhysicalRefTranslations = {
         ? `"resource ${infraId}.${subId}" references "${subId}", but client "${infraId}" declares no storage resource with that id`
         : `"resource ${infraId}.${subId}" references "${subId}", which "${infraId}" does not declare`,
   "diagnostic.resourceTargetAmbiguous.infraAndClient": ({ ref, parent }) =>
-    `"resource ${ref}": "${parent}" is both an infra block and a client. The reference resolves to the infra block, and the client's storage resources cannot be referenced; rename one of them`,
+    `"resource ${ref}": "${parent}" is both an infra block and a client. Only the infra block's leaves can be referenced, not the client's storage resources; rename one of them`,
   "diagnostic.resourceTargetAmbiguous.multipleClients": ({ ref, parent, child }) =>
     `"resource ${ref}": more than one client "${parent}" declares a storage resource "${child}", so the reference does not resolve; give one of them another id`,
   "warning.clientResourceDuplicateId.message": ({ clientId, id }) =>
@@ -59,7 +59,7 @@ export const physicalRefsJa: PhysicalRefTranslations = {
         ? `"resource ${infraId}.${subId}" が参照する "${subId}" を id に持つ storage resource は client "${infraId}" にありません`
         : `"resource ${infraId}.${subId}" が参照する "${subId}" は "${infraId}" に宣言されていません`,
   "diagnostic.resourceTargetAmbiguous.infraAndClient": ({ ref, parent }) =>
-    `"resource ${ref}": "${parent}" は infra ブロックと client の両方の id です。参照は infra ブロックに解決し、client の storage resource は参照できません。どちらかの id を変えてください`,
+    `"resource ${ref}": "${parent}" は infra ブロックと client の両方の id です。参照できるのは infra ブロックの leaf だけで、client の storage resource は参照できません。どちらかの id を変えてください`,
   "diagnostic.resourceTargetAmbiguous.multipleClients": ({ ref, parent, child }) =>
     `"resource ${ref}": storage resource "${child}" を宣言する client "${parent}" が複数あるため、参照は解決しません。どちらかの id を変えてください`,
   "warning.clientResourceDuplicateId.message": ({ clientId, id }) =>

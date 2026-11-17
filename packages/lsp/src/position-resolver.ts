@@ -118,6 +118,13 @@ function* visitNamedEntities(
   }
 
   for (const sys of krsFile.systems) yield* walkKrsNode(sys);
+  // A top-level client's storage ids too (#3794). Only the storages: the
+  // client node itself stays outside this walk, as it was before.
+  for (const client of krsFile.clients) {
+    for (const res of client.properties.resources) {
+      if (res.id !== undefined) yield { id: res.id, loc: res.loc, group: "client-storage" };
+    }
+  }
   for (const svc of krsFile.services) yield* walkKrsNode(svc);
   for (const block of krsFile.deploys) {
     const blockEntity: NamedEntity = { id: block.id, loc: block.loc, group: "deploy-block" };

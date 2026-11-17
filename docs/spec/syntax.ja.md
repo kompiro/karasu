@@ -471,7 +471,7 @@ system Studio {
 - id は省略できる。id の無い storage は今までと同じ意味で、参照できない。名前は省略できない。素の語で書けない id は引用符で書く（`resource localStorage "api-key" "…"`）。引用符の id は、名前が同じ行に続くときだけ id として読む。
 - 名前は共有の値の読み手で読む。後の行に書いた名前も名前として読むが、その行がエッジを始める（`"WebApp" -> Api`）なら名前として読まず、名前が無いことを報告する（ADR-3752）。id の位置のキーワード（`table`、`storage` など）は `expected-identifier`。
 - 解決は infra の leaf と同じく model 全体で行う。client は別の system・トップレベル・import 先のファイルにあってよい。`<Parent>` は infra ブロックか client を指し、どちらかは 1 つの resolver が決める。
-- scope の違う infra ブロックと client が親の id を共有するときは、client が解決先になる前と同じく **infra ブロック**に解決する。その client が id 付きの storage を宣言していれば `resource-target-ambiguous` で衝突を示し、その storage は参照できない。
+- scope の違う infra ブロックと client が親の id を共有するときは、client が解決先になる前と同じく **infra ブロック**を指す（ブロックに無い leaf は `unresolved-resource-ref` のまま）。その client が id 付きの storage を宣言していれば `resource-target-ambiguous` で衝突を示し、その storage は参照できない。
 - 同じ id の client ノード（KRS018 / KRS030）は merge しない。子の id を宣言するものが 2 つ以上あれば、参照は解決しない（`resource-target-ambiguous`）。1 つの client の中で storage の id が重なると `client-resource-duplicate-id`。最初のものが解決先になる。
 - 子が無いときは `unresolved-resource-ref` を `missing: "leaf"`・`parentKind: "client"` で出す。entity の `table WebApp.Projects` は client の storage に解決しない。
 - この参照から `service → client` のエッジは導出しない（配信する service は `delivers` が描く）。昇格した resource の label は `<name> (<storageKind>)`（`/meta/projects.json (opfs)`）。CRUD matrix は id のある storage ごとに column を持ち、`karasu coverage` は client ごとに `clientStores` で報告する。

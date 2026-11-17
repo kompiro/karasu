@@ -379,8 +379,7 @@ belong here: protocol, cardinality and retry counts stay prose inside
 
 **When** — a usecase reads or writes browser or device storage (projects in
 OPFS, a theme in `localStorage`, an outbox in IndexedDB), and you want that access
-in the CRUD matrix and in `karasu coverage` like any table access. Credentials
-stay out of `resource` (#834).
+in the CRUD matrix and in `karasu coverage` like any table access.
 
 **Pattern** — declare the storage on the `client` with an id after its kind, and
 reference it from the usecase as `resource <ClientId>.<Id>`, the same dot-notation

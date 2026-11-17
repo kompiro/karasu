@@ -152,4 +152,22 @@ system S {
     const { systems, targets } = model(`system S {\n  client WebApp [web]\n}\n`);
     expect(extractCoverage(systems, {}, targets).clientStores).toEqual([]);
   });
+
+  it("does not mistake one client storage for another whose dotted key is the same", () => {
+    const src = `
+system S {
+  client A [web] { resource opfs "B.C" "x" }
+  client "A.B" [web] { resource opfs C "y" }
+  service App {
+    domain D { usecase U { resource "A.B".C { operations read } } }
+  }
+}
+`;
+    const { systems, targets } = model(src);
+    const report = extractCoverage(systems, {}, targets);
+    expect(report.clientStores.map((c) => [c.clientId, c.referenced])).toEqual([
+      ["A", []],
+      ["A.B", ["C"]],
+    ]);
+  });
 });

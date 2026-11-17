@@ -60,4 +60,14 @@ system S {
 `).value;
     expect(findRangeOfNode(clash, "Outbox")?.start.line).toBe(6);
   });
+
+  it("reaches the storage ids of a top-level client too", () => {
+    const top = Parser.parse(`\
+client WebApp [web] {
+  resource opfs Projects "/meta/projects.json"
+}
+`).value;
+    expect(collectAllIdentifiers(top)).toContain("Projects");
+    expect(findRangeOfNode(top, "Projects")?.start.line).toBe(1);
+  });
 });

@@ -1,6 +1,6 @@
 import type { KrsNode, ResourceNode, ClientResource, ClientResourceKind } from "../types/ast.js";
 import {
-  infraLeafKey,
+  clientStorageKey,
   physicalTargetRoots,
   resolvePhysicalRef,
   type PhysicalTargetIndex,
@@ -42,7 +42,7 @@ export function buildClientStorageContext(
         if (child.kind !== "resource") continue;
         const storage = resolver.resolve(child as ResourceNode).clientStorage;
         if (!storage) continue;
-        const key = infraLeafKey(storage.clientId, storage.storageId);
+        const key = clientStorageKey(storage.clientId, storage.storageId);
         const list = usecasesByStorage.get(key) ?? [];
         const label = node.label ?? node.id;
         if (!list.includes(label)) list.push(label);
@@ -75,7 +75,7 @@ export function clientStorageMetadata(
         if (res.id !== undefined) seen.add(res.id);
         const usecases =
           first && res.id !== undefined && ctx?.targets.clients.has(node.id)
-            ? ctx.usecasesByStorage.get(infraLeafKey(node.id, res.id))
+            ? ctx.usecasesByStorage.get(clientStorageKey(node.id, res.id))
             : undefined;
         return usecases ? { ...res, usecases: [...usecases] } : { ...res };
       }),

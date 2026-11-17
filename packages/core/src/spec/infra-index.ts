@@ -265,6 +265,16 @@ export function resolvePhysicalRef(
   return { kind: "unresolved", missing: "block" };
 }
 
+/**
+ * A collision-free key for a client storage, for maps the readers keep to
+ * themselves. Quoted ids may hold `.`, so `infraLeafKey` would give client `A`
+ * storage `B.C` and client `A.B` storage `C` one key. Keys that must match a
+ * resource node's id (labels, matrix columns) stay `infraLeafKey`, like infra.
+ */
+export function clientStorageKey(clientId: string, storageId: string): string {
+  return JSON.stringify([clientId, storageId]);
+}
+
 /** The canvas / matrix label of a client storage: `<name> (<storageKind>)`. */
 export function clientStorageLabel(
   storage: Pick<DeclaredClientStorage, "name" | "storageKind">,
