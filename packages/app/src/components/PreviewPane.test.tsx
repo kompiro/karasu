@@ -971,7 +971,9 @@ describe("PreviewPane", () => {
           diagramKey='["system",null,["Payment"]]'
         />,
       );
-      expect(zoomLayer().style.transform).toBe("translate(0px, 0px) scale(1)");
+      // jsdom 31 serializes `translate(0px, 0px)` in its short form `translate(0px)`. Accept
+      // both, so the assertion checks the reset and not the CSS serializer.
+      expect(zoomLayer().style.transform).toMatch(/^translate\(0px(, 0px)?\) scale\(1\)$/);
     });
 
     it("removes the wheel listener on unmount", () => {
