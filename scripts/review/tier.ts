@@ -1050,12 +1050,12 @@ const NEUTRAL = "\u0001";
 
 /**
  * Where a URL ends, by Markdown's rules only: raw HTML counts as outside on its
- * own ({@link RAW_HTML}), so no attribute rules are needed (kompiro's decision of
- * 2026-11-17, #3786). In a link destination (`(` before the URL), whitespace and
- * an unbalanced `)` end it, and a quote or `<` does not
- * (`[x](https://kompiro.github.io'@evil.com)` opens evil.com). A bare URL (GFM)
- * also ends at `<`. After `<` (an autolink or `[x](<...>)`), only `>` or a line
- * break ends it, and a space does not.
+ * own ({@link HTML_TAG}), so no attribute rules are needed (kompiro's decision of
+ * 2026-11-17, #3786). Whitespace and an unbalanced `)` end it, and a quote or `<`
+ * does not (`[x](https://kompiro.github.io'@evil.com)` opens evil.com, and a
+ * reference definition keeps `<` as `%3C`). Reading a bare URL past the `<` an
+ * autolink stops at only makes it longer. After `<` (an autolink or
+ * `[x](<...>)`), only `>` or a line break ends it, and a space does not.
  */
 function urlEnd(text: string, opener: string): number {
   let depth = 0;
@@ -1066,7 +1066,6 @@ function urlEnd(text: string, opener: string): number {
       continue;
     }
     if (/\s/.test(c)) return i;
-    if (c === "<" && opener !== "(") return i;
     if (c === "(") depth++;
     else if (c === ")") {
       if (depth === 0) return i;
@@ -1204,14 +1203,37 @@ const HOST_START = /^(?:[a-z0-9_%@\u0080-\uffff-]|\[[0-9a-f:.]*\])/;
 const NAMES_A_HOST =
   /^[^\s/?#<]*?(?:[@%]|[^.\u3002\uff0e\uff61][.\u3002\uff0e\uff61][^.\u3002\uff0e\uff61\s/?#<])/;
 /**
- * Raw HTML in a Low Markdown file: an attribute that takes a URL, after
- * whitespace as inside a tag (`<a href=`, `<img src=`). It counts as an outside
- * link on its own, because where a URL ends inside an attribute (quotes, spaces,
- * references) is not read (kompiro's decision of 2026-11-17, #3786). A tag with no
- * such attribute opens nothing, and `?src=` in a query is not an attribute.
+ * The start of a raw HTML tag in a Low Markdown file: `<`, a tag name, then
+ * whitespace or `/`. A tag with a URL attribute ({@link URL_ATTRIBUTE}, anywhere
+ * before the tag's end, which {@link tagText} finds past a quoted `>`) counts as an
+ * outside link on its own, because where a URL ends inside an attribute (quotes,
+ * spaces, references) is not read (kompiro's decision of 2026-11-17, #3786).
+ * Placeholders such as `<n>` and an SVG example such as `<g class="x">` open
+ * nothing, and `<https://...>` is an autolink.
  */
-const RAW_HTML =
-  /(?<=\s)(?:href|src|srcset|cite|poster|longdesc|action|formaction|background|xlink:href)\s*=/g;
+const HTML_TAG = /<[a-z][a-z0-9-]*(?=[\s/])/g;
+/**
+ * An attribute that takes a URL. The HTML parser starts an attribute after
+ * whitespace, `/` or a closing quote (`<a/href=`, `title="t"href=`).
+ */
+const URL_ATTRIBUTE =
+  /[\s/"'](?:href|src|srcset|cite|poster|longdesc|action|formaction|background|data|xlink:href)\s*=/;
+
+/** The tag that starts at `start`, up to the `>` that ends it outside quotes. */
+function tagText(text: string, start: number): string {
+  let quote: string | null = null;
+  for (let i = start + 1; i < text.length; i++) {
+    const c = text[i];
+    if (quote !== null) {
+      if (c === quote) quote = null;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+    } else if (c === ">") {
+      return text.slice(start, i + 1);
+    }
+  }
+  return text.slice(start);
+}
 /** What splits words for the relative-path rule (D4). */
 const WORD_SPLIT = /[\s()<>"'`[\]]+/;
 
@@ -1244,12 +1266,11 @@ function collectLinks(text: string, dir: string): string[] {
     if (key !== null) keys.push(key);
   }
   for (const m of text.matchAll(EMAIL)) keys.push(`mailto:${m[0]}`);
-  // With the attribute's value up to the tag's end, so editing the value (a host
-  // added after a line break, say) is a new key and not the same attribute again.
-  for (const m of text.matchAll(RAW_HTML)) {
-    const rest = text.slice(m.index);
-    const end = rest.indexOf(">");
-    keys.push(`html:${end === -1 ? rest : rest.slice(0, end)}`);
+  // The whole tag is the key, so editing an attribute (a host added after a line
+  // break, say) is a new key and not the same tag again.
+  for (const m of text.matchAll(HTML_TAG)) {
+    const tag = tagText(text, m.index);
+    if (URL_ATTRIBUTE.test(tag)) keys.push(`html:${tag}`);
   }
   for (const word of text.split(WORD_SPLIT)) {
     if (word.startsWith(UNREADABLE_REFERENCE)) {
@@ -1274,7 +1295,7 @@ function collectLinks(text: string, dir: string): string[] {
  * every backslash as `/` (D3), and Markdown's escapes. Each reading is compared
  * only with itself, so a link one reading sees cannot hide behind a copy only the
  * other saw before. No reading removes line breaks: a Markdown URL cannot span
- * one, and an HTML attribute, which can, counts on its own ({@link RAW_HTML}).
+ * one, and an HTML attribute, which can, counts on its own ({@link HTML_TAG}).
  */
 function countLinks(text: string, dir: string): Map<string, number>[] {
   const decoded = decodeReferences(text);

@@ -2539,6 +2539,7 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     "_https://github.com/kompiro/karasu_",
     "[ADR](../adr/12-x.md) and [TPL](TPL-2-y.md) and `/docs/adr/12-x.md`",
     "[TPL](../test-perspectives/TPL-1-x.md)",
+    '`<g class="crossing-marks">` and `<tspan class="x">` in an SVG example',
     // Where a URL ends depends on what opened it (#3849 review).
     "[link](https://taka.kompiro.dev/TkrZQG)を参照",
     "[a](https://github.com/kompiro/karasu/issues/1)、[b](../adr/12-x.md)、#3787",
@@ -2674,6 +2675,12 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     ["[x](https://kompiro.github.io&nbsp;@evil.com/)", "an unreadable URL"],
     ["[x](https://kompiro.github.io<@evil.com/)", "an unreadable URL"],
     ["[x]( https://kompiro.github.io<@evil.com/)", "an unreadable URL"],
+    ["[x]: https://kompiro.github.io<@evil.com/\n\n[x]", "an unreadable URL"],
+    ['[x]: https://kompiro.github.io<@evil.com/ "t"\n\n[x]', "an unreadable URL"],
+    ['<div>\n<a/href="https://kompiro.github.io)@evil.com/">x</a>\n</div>', "raw HTML"],
+    ['<div>\n<a title="t"href="https://kompiro.github.io)@evil.com/">x</a>\n</div>', "raw HTML"],
+    ['<div>\n<img/src="https://kompiro.github.io)@evil.com/x.png">\n</div>', "raw HTML"],
+    ['<div>\n<a/href="https://kompiro.github.io\n@evil.com/">x</a>\n</div>', "raw HTML"],
     ["[x](\n//kompiro.github.io<@evil.com/)", "an unreadable URL"],
     ["[x](https://kompiro.github.io&lt;@evil.com/)", "an unreadable URL"],
     ["[x](<https://kompiro.github.io @evil.com/>)", "an unreadable URL"],
@@ -2727,6 +2734,13 @@ describe("outsideLinks: links outside karasu's domains (#3786)", () => {
     const before = '<a href="https://karasu.kompiro.dev\n">x</a>';
     const after = '<a href="https://karasu.kompiro.dev\n.evil.com">x</a>';
     expect(outsideLinks(edit(before, after))).toEqual(["raw HTML"]);
+    // A `>` inside a quoted value does not end the tag, so the key still sees href.
+    const quoted = '<a title=">" href="https://karasu.kompiro.dev/">x</a>';
+    expect(
+      outsideLinks(
+        edit(quoted, quoted.replace("karasu.kompiro.dev/", "karasu.kompiro.dev@evil.com/")),
+      ),
+    ).toContain("raw HTML");
     // Text around the tag can change: the tag itself is the same.
     expect(outsideLinks(edit(`a\n${before}`, `b\n${before}`))).toEqual([]);
   });
