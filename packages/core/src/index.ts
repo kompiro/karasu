@@ -126,7 +126,18 @@ export {
   type InfraCoverage,
   type LeafRelation,
   type TablelessEntity,
+  type ClientStoreCoverage,
 } from "./view/coverage-extract.js";
+export {
+  indexPhysicalTargets,
+  physicalTargetsOf,
+  resolvePhysicalRef,
+  clientStorageLabel,
+  type PhysicalTargetIndex,
+  type PhysicalRefTarget,
+  type DeclaredClient,
+  type DeclaredClientStorage,
+} from "./spec/infra-index.js";
 export type { OrgViewPath, OrgViewSlice } from "./view/org-view-extract.js";
 export { extractOrgView } from "./view/org-view-extract.js";
 export type {

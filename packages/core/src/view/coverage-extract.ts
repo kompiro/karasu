@@ -7,7 +7,12 @@ import type {
   EdgeKind,
 } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
-import { indexDeclaredInfra, infraLeafKey } from "../spec/infra-index.js";
+import {
+  clientStorageLabel,
+  indexPhysicalTargets,
+  infraLeafKey,
+  type PhysicalTargetIndex,
+} from "../spec/infra-index.js";
 import { buildEntityResolver } from "../resolver/resource-entity.js";
 import { containerCanvasEdges } from "./anchored-edges.js";
 import { projectStoreRelations } from "./entity-relations.js";
@@ -140,6 +145,26 @@ export interface PhysicalCoverage {
   tablelessEntities: TablelessEntity[];
 }
 
+/**
+ * How much of one client's declared storage the usecases reach (#3794).
+ * Separate from `physical`: a client is a logical node, and its device-local
+ * storage is neither a shared data store nor a system of record.
+ */
+export interface ClientStoreCoverage {
+  clientId: string;
+  /** Storage ids the client declares (one per id). */
+  identified: string[];
+  /** Ids some usecase `resource <ClientId>.<Id>` resolves to. */
+  referenced: string[];
+  /** Ids no usecase references. */
+  unreferenced: string[];
+  /**
+   * Storages declared without an id, as `<name> (<storageKind>)`. Nothing can
+   * reference them; giving one an id is how a usecase starts to.
+   */
+  unidentified: string[];
+}
+
 export interface CoverageReport {
   domains: DomainCoverage[];
   /** score threshold applied for the `thin` flag */
@@ -156,6 +181,11 @@ export interface CoverageReport {
    * `unresolved-resource-ref` / `unresolved-table-ref` instead.
    */
   physical: PhysicalCoverage;
+  /**
+   * Client storages per client that declares any (#3794), independent of
+   * whether the model declares infra. Empty when no client declares storage.
+   */
+  clientStores: ClientStoreCoverage[];
 }
 
 export interface CoverageOptions {
@@ -242,12 +272,15 @@ function collectDomains(systems: readonly SystemNode[]): DomainAccumulator[] {
  * OrderDB.orders }` is the *canonical* form (ADR-1870), so reading only the
  * dotted form would report a fully-modeled table as untouched.
  */
-function collectPhysical(systems: readonly SystemNode[]): PhysicalCoverage {
+function collectPhysical(
+  systems: readonly SystemNode[],
+  targets: PhysicalTargetIndex,
+): PhysicalCoverage {
   const roots = systems as readonly KrsNode[];
-  const declared = indexDeclaredInfra(roots);
+  const declared = targets.infra;
   if (declared.size === 0) return { infra: [], tablelessEntities: [] };
 
-  const resolver = buildEntityResolver([...systems]);
+  const resolver = buildEntityResolver([...systems], targets);
   const mapped = new Set<string>();
   const referenced = new Set<string>();
   const tablelessEntities: TablelessEntity[] = [];
@@ -369,6 +402,37 @@ function diffStoreRelations(
   return diff;
 }
 
+/** Which identified storage of each client some usecase reaches (#3794). */
+function collectClientStores(
+  systems: readonly SystemNode[],
+  targets: PhysicalTargetIndex,
+): ClientStoreCoverage[] {
+  const resolver = buildEntityResolver([...systems], targets);
+  const referenced = new Set<string>();
+  const walk = (node: KrsNode): void => {
+    if (node.kind === "resource") {
+      const storage = resolver.resolve(node as ResourceNode).clientStorage;
+      if (storage) referenced.add(infraLeafKey(storage.clientId, storage.storageId));
+    }
+    for (const child of node.children) walk(child);
+  };
+  for (const sys of systems) walk(sys);
+
+  const out: ClientStoreCoverage[] = [];
+  for (const client of targets.clients.values()) {
+    if (client.storages.size === 0 && client.unidentified.length === 0) continue;
+    const identified = [...client.storages.keys()];
+    out.push({
+      clientId: client.clientId,
+      identified,
+      referenced: identified.filter((id) => referenced.has(infraLeafKey(client.clientId, id))),
+      unreferenced: identified.filter((id) => !referenced.has(infraLeafKey(client.clientId, id))),
+      unidentified: client.unidentified.map((res) => clientStorageLabel(res)),
+    });
+  }
+  return out;
+}
+
 function median(values: number[]): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -383,6 +447,12 @@ function median(values: number[]): number {
 export function extractCoverage(
   systems: readonly SystemNode[],
   options: CoverageOptions = {},
+  /**
+   * Model-wide `<Parent>.<Child>` targets (#3794): pass the compile result's
+   * `physicalTargets` so top-level clients reach the report. Defaults to an
+   * index of `systems`.
+   */
+  targets: PhysicalTargetIndex = indexPhysicalTargets(systems),
 ): CoverageReport {
   const accumulators = collectDomains(systems);
 
@@ -422,5 +492,10 @@ export function extractCoverage(
     thin: d.score < threshold,
   }));
 
-  return { domains, threshold, physical: collectPhysical(systems) };
+  return {
+    domains,
+    threshold,
+    physical: collectPhysical(systems, targets),
+    clientStores: collectClientStores(systems, targets),
+  };
 }

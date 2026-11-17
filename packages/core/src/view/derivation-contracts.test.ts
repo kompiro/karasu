@@ -661,6 +661,8 @@ const NOT_A_DERIVATION: Record<string, string> = {
   extractView: "dispatches to the derivations above; each derived family has its own row",
   resolveContainerChain: "resolves a view path to nodes",
   emptySlice: "the empty slice",
+  physicalTargetsOf:
+    "re-exported index of what a `<Parent>.<Child>` can name (#3794); builds no node or edge",
 };
 
 const HERE = dirname(fileURLToPath(import.meta.url));

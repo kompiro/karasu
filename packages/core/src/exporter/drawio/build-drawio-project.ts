@@ -13,6 +13,7 @@ import { collectModelWarnings } from "../../resolver/model-warnings.js";
 import { getBuiltinStyleSheet } from "../../builtins/default-style.js";
 import { exportDrawio, type DrawioNodeMeta, type DrawioPage } from "./drawio-exporter.js";
 import { layoutOrganization } from "./org-layout.js";
+import { physicalTargetsOf } from "../../spec/infra-index.js";
 
 /**
  * Walk the logical node tree and collect tags/annotations for every node,
@@ -126,7 +127,14 @@ function buildSystemPages(krsFile: KrsFile): DrawioPage[] {
   collectLogicalLabels(krsFile.systems, labelById);
 
   const emit = (viewPath: string[]): void => {
-    const slice = extractView(krsFile.systems, viewPath, krsFile.domains);
+    const slice = extractView(
+      krsFile.systems,
+      viewPath,
+      krsFile.domains,
+      [],
+      undefined,
+      physicalTargetsOf(krsFile),
+    );
     const layoutResult = layout(slice, { ownerIndex: krsFile.ownerIndex });
     if (layoutResult.nodes.size === 0 && layoutResult.containers.length === 0) return;
     const id = viewPath.length === 0 ? "system" : `system:${viewPath.join(".")}`;

@@ -3,6 +3,12 @@ import { INFRA_KIND_SET } from "../types/ast.js";
 import { isWriteOperation } from "../spec/operations.js";
 import type { EntityResolver } from "../resolver/resource-entity.js";
 import { edgeKey } from "./edge-key.js";
+import {
+  clientStorageLabel,
+  indexPhysicalTargets,
+  infraLeafKey,
+  type PhysicalTargetIndex,
+} from "../spec/infra-index.js";
 
 /**
  * At domain level: collect resource nodes with dot-notation refs from each usecase child,
@@ -119,18 +125,26 @@ export function applyInferredTags(
 
 /**
  * Build a map from dot-notation resource IDs (e.g. "OrderDB.OrderTable") to the
- * label of the referenced infra sub-resource (e.g. "注文テーブル").
- * Covers database/queue/storage nodes and their children across all systems.
+ * label of what the reference names: an infra sub-resource's label (e.g.
+ * "注文テーブル"), or a client storage's `<name> (<storageKind>)` (#3794).
+ * Read from the model-wide target index, so top-level clients and infra reach
+ * it too. A client storage two same-id clients declare names no one storage,
+ * so it gets no label.
  */
-export function buildResourceLabelMap(systems: KrsNode[]): Map<string, string> {
+export function buildResourceLabelMap(
+  systems: KrsNode[],
+  targets: PhysicalTargetIndex = indexPhysicalTargets(systems),
+): Map<string, string> {
   const map = new Map<string, string>();
-  for (const system of systems) {
-    for (const node of system.children) {
-      if (!INFRA_KIND_SET.has(node.kind)) continue;
-      for (const sub of node.children) {
-        const key = `${node.id}.${sub.id}`;
-        map.set(key, sub.label ?? sub.id);
-      }
+  for (const block of targets.infra.values()) {
+    for (const leafId of block.leafIds) {
+      map.set(infraLeafKey(block.infraId, leafId), block.leafLabels.get(leafId) ?? leafId);
+    }
+  }
+  for (const client of targets.clients.values()) {
+    for (const [storageId, candidates] of client.storages) {
+      if (candidates.length !== 1) continue;
+      map.set(infraLeafKey(client.clientId, storageId), clientStorageLabel(candidates[0]));
     }
   }
   return map;

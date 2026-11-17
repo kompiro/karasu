@@ -67,6 +67,20 @@ function formatAsMarkdown(report: CoverageReport): string {
       }._`,
     );
   }
+
+  // Client storages (#3794), independent of the infra above: shown whenever a
+  // client declares storage. "unidentified" storages have no id, so nothing
+  // can reference them yet.
+  if (report.clientStores.length > 0) {
+    lines.push("");
+    lines.push("| client | storages | referenced | unreferenced | unidentified |");
+    lines.push("| --- | ---: | ---: | --- | --- |");
+    for (const c of report.clientStores) {
+      lines.push(
+        `| ${c.clientId} | ${c.identified.length} | ${c.referenced.length} | ${c.unreferenced.join(", ") || "—"} | ${c.unidentified.join(", ") || "—"} |`,
+      );
+    }
+  }
   return lines.join("\n") + "\n";
 }
 
@@ -93,7 +107,7 @@ export async function coverage(filePath: string, options: CoverageCliOptions): P
   const result = await compileSystemViewOrExit(fs, absolutePath, displayPath, "coverage");
   if (!result) return;
 
-  const report = extractCoverage(result.systems, { threshold });
+  const report = extractCoverage(result.systems, { threshold }, result.physicalTargets);
   const output =
     format === "json" ? JSON.stringify(report, null, 2) + "\n" : formatAsMarkdown(report);
 

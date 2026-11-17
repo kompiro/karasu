@@ -1,11 +1,16 @@
-import type { KrsNode, SystemNode, ResourceNode } from "../types/ast.js";
+import type { KrsNode, SystemNode, ResourceNode, ClientResourceKind } from "../types/ast.js";
 import { type InfraKind } from "../types/ast.js";
 import {
   isWriteOperation,
   isRecognizedResourceOperation,
   type ResourceOperation,
 } from "../spec/operations.js";
-import { indexDeclaredInfra, infraLeafKey } from "../spec/infra-index.js";
+import {
+  clientStorageLabel,
+  indexPhysicalTargets,
+  infraLeafKey,
+  type PhysicalTargetIndex,
+} from "../spec/infra-index.js";
 
 export type { InfraKind };
 
@@ -25,6 +30,13 @@ export interface CrudMatrixColumn {
   label: string;
   infraKind: InfraKind | undefined;
   external: boolean;
+  /**
+   * The client whose storage this column is (#3794). Set, with `storageKind`,
+   * only when one declaration answers the column's `<ClientId>.<Id>` key;
+   * `infraKind` is then undefined.
+   */
+  clientId?: string;
+  storageKind?: ClientResourceKind;
 }
 
 export interface CrudMatrixCell {
@@ -96,29 +108,44 @@ function collectUsecases(systems: readonly SystemNode[]): UsecaseRecord[] {
   return out;
 }
 
-interface InfraColumnSeed {
+interface ColumnSeed {
   resourceId: string;
   label: string;
-  infraKind: InfraKind;
+  infraKind?: InfraKind;
+  clientId?: string;
+  storageKind?: ClientResourceKind;
 }
 
 /**
- * One matrix column per declared infra leaf, flattened to `<infra>.<leaf>` keys.
+ * One matrix column per declared infra leaf and per client storage with an id
+ * (#3794), flattened to `<parent>.<child>` keys.
  *
- * Derived from the shared `indexDeclaredInfra` walk rather than a local one:
- * the reference check and the coverage report answer questions about the same
- * "what physical things exist" set, and three hand-written copies of that walk
- * is how they end up disagreeing (TPL-1720).
+ * Derived from the shared target index rather than a local walk: the reference
+ * check and the coverage report answer questions about the same "what can a
+ * reference name" set, and hand-written copies of that walk is how they end up
+ * disagreeing (TPL-1720). A key two same-id clients both declare is still one
+ * column (references reach it by that key), with no client or kind of its own.
  */
-function buildInfraIndex(systems: readonly SystemNode[]): Map<string, InfraColumnSeed> {
-  const map = new Map<string, InfraColumnSeed>();
-  for (const block of indexDeclaredInfra(systems).values()) {
+function buildColumnSeeds(targets: PhysicalTargetIndex): Map<string, ColumnSeed> {
+  const map = new Map<string, ColumnSeed>();
+  for (const block of targets.infra.values()) {
     for (const leafId of block.leafIds) {
       const id = infraLeafKey(block.infraId, leafId);
       map.set(id, {
         resourceId: id,
         label: block.leafLabels.get(leafId) ?? leafId,
         infraKind: block.kind,
+      });
+    }
+  }
+  for (const client of targets.clients.values()) {
+    for (const [storageId, candidates] of client.storages) {
+      const id = infraLeafKey(client.clientId, storageId);
+      const only = candidates.length === 1 ? candidates[0] : undefined;
+      map.set(id, {
+        resourceId: id,
+        label: only ? clientStorageLabel(only) : id,
+        ...(only ? { clientId: only.clientId, storageKind: only.storageKind } : {}),
       });
     }
   }
@@ -152,12 +179,19 @@ function classifyVerbs(operations: readonly ResourceOperation[] | undefined): Ve
 export function extractCrudMatrix(
   systems: readonly SystemNode[],
   options: CrudMatrixOptions = {},
+  /**
+   * Model-wide `<Parent>.<Child>` targets (#3794): pass the compile result's
+   * `physicalTargets` so top-level clients reach the matrix. Defaults to an
+   * index of `systems`.
+   */
+  targets: PhysicalTargetIndex = indexPhysicalTargets(systems),
 ): CrudMatrix {
   const records = collectUsecases(systems);
-  const infraIndex = buildInfraIndex(systems);
+  const infraIndex = buildColumnSeeds(targets);
 
-  // Determine column set: all infra sub-resources, plus any usecase-referenced
-  // resources that do not resolve to infra (e.g. inline external resources).
+  // Determine column set: all infra sub-resources and identified client
+  // storages, plus any usecase-referenced resources that resolve to neither
+  // (e.g. inline external resources).
   const columnMap = new Map<string, CrudMatrixColumn>();
   for (const seed of infraIndex.values()) {
     columnMap.set(seed.resourceId, {
@@ -165,6 +199,8 @@ export function extractCrudMatrix(
       label: seed.label,
       infraKind: seed.infraKind,
       external: false,
+      ...(seed.clientId !== undefined ? { clientId: seed.clientId } : {}),
+      ...(seed.storageKind !== undefined ? { storageKind: seed.storageKind } : {}),
     });
   }
   for (const rec of records) {

@@ -4,7 +4,7 @@ import type { Warning } from "../types/warnings.js";
 import type { DisplayMode } from "./layout-types.js";
 import { VIEW_TYPES, type ViewType } from "./bundle-views.js";
 import { extractEntityView } from "../view/entity-relations.js";
-import { createViewExtractor } from "../view/view-extract.js";
+import { createViewExtractor, physicalTargetsOf } from "../view/view-extract.js";
 import type { ViewPath } from "../view/view-slice.js";
 import { withUnassignedSystem, withoutUnassignedSegment } from "../view/unassigned-system.js";
 import { nodePathRefId } from "../parser/node-path.js";
@@ -176,7 +176,7 @@ export function buildDrillDownSvg(
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
   // One extractor per build: the model is fixed for the whole walk (#2759).
-  const extract = createViewExtractor(effectiveSystems);
+  const extract = createViewExtractor(effectiveSystems, [], [], physicalTargetsOf(krsFile));
   const rootSlice = extract([]);
   if (rootSlice.childNodes.length === 0) {
     return {
@@ -706,7 +706,7 @@ export function buildAllViewsSvg(
   // id and resolve the same way in the SPA (#2933).
   const ownsAnchor = systemAnchorOwner(krsFile.nodePathIndex);
   // One extractor per build: the model is fixed for the whole walk (#2759).
-  const extract = createViewExtractor(effectiveSystems);
+  const extract = createViewExtractor(effectiveSystems, [], [], physicalTargetsOf(krsFile));
   const systemRootSlice = extract([]);
   if (systemRootSlice.childNodes.length > 0) {
     const styles = resolveStyles(

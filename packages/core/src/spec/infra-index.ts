@@ -263,3 +263,8 @@ export function clientStorageLabel(
 ): string {
   return `${storage.name} (${storage.storageKind})`;
 }
+
+/** {@link indexPhysicalTargets} over every root of `file`. */
+export function physicalTargetsOf(file: KrsFile): PhysicalTargetIndex {
+  return indexPhysicalTargets(physicalTargetRoots(file));
+}
