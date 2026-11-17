@@ -118,6 +118,12 @@ system S {
 database Db {
   table Orders
 }
+queue Events {
+  queue Placed
+}
+storage WebApp {
+  bucket Media
+}
 system S {
   client WebApp [web] { resource sessionStorage ApiKey "k" }
 }
@@ -126,6 +132,9 @@ system S {
     // Only the real systems: the top-level database reaches the map through the index.
     const slice = extractView(file.systems, ["S"], [], [], undefined, physicalTargetsOf(file));
     expect(slice.resourceInferredTagsMap.get("Db.Orders")).toBe("table");
+    expect(slice.resourceInferredTagsMap.get("Events.Placed")).toBe("queue");
+    // The infra leaf keeps its tag when a client shares the block's id.
+    expect(slice.resourceInferredTagsMap.get("WebApp.Media")).toBe("storage");
     expect(slice.resourceInferredTagsMap.has("WebApp.ApiKey")).toBe(false);
   });
 

@@ -206,8 +206,13 @@ function containsPosition(entry: NodeEntry, astLine: number, astCol: number): bo
  * Given a node ID, find its source range in the AST.
  * Returns an LSP Range (0-based), or null if not found.
  */
-export function findRangeOfNode(krsFile: KrsFile, nodeId: string): Range | null {
-  const entries = collectNodes(krsFile);
+export function findRangeOfNode(
+  krsFile: KrsFile,
+  nodeId: string,
+  /** Skip client storage ids, so a caller can look for a node elsewhere first (#3794). */
+  options: { nodesOnly?: boolean } = {},
+): Range | null {
+  const entries = collectNodes(krsFile).filter((e) => !(options.nodesOnly && e.storage));
   // A node of the id wins over a client storage of the same id (#3794).
   const entry =
     entries.find((e) => e.id === nodeId && !e.storage) ?? entries.find((e) => e.id === nodeId);

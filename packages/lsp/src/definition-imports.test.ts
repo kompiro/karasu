@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Parser } from "@karasu-tools/core";
-import { findDefinitionInImports } from "./definition-imports.js";
+import { findDefinitionInImports, resolveDefinition } from "./definition-imports.js";
 
 // Unit fence for the cross-file Go to Definition walk (AT-0037-4 beyond the
 // named-import happy path covered by the VS Code E2E suite). Fixtures are
@@ -126,5 +126,30 @@ describe("findDefinitionInImports — cross-file definition walk (AT-0037-4)", (
     const location = walkFrom(main, "RealThing");
     expect(location).not.toBeNull();
     expect(location!.uri).toBe(pathToFileURL(real).toString());
+  });
+
+  it("prefers a node in an imported file over a client storage id of the same name (#3794)", () => {
+    const other = write(
+      "other.krs",
+      "system S {\n  service App {\n    domain D {\n      usecase Outbox {}\n    }\n  }\n}\n",
+    );
+    const entry = write(
+      "index.krs",
+      'import "./other.krs"\nsystem S {\n  client Web [web] {\n    resource indexedDB Outbox "o"\n  }\n}\n',
+    );
+    const file = Parser.parse(readFileSync(entry, "utf-8")).value;
+    const loc = resolveDefinition(file, "Outbox", pathToFileURL(entry).toString());
+    expect(loc?.uri).toBe(pathToFileURL(other).toString());
+    expect(loc?.range.start.line).toBe(3);
+  });
+
+  it("falls back to the client storage id when no node has the name (#3794)", () => {
+    const entry = write(
+      "index.krs",
+      'system S {\n  client Web [web] {\n    resource indexedDB Outbox "o"\n  }\n}\n',
+    );
+    const file = Parser.parse(readFileSync(entry, "utf-8")).value;
+    const loc = resolveDefinition(file, "Outbox", pathToFileURL(entry).toString());
+    expect(loc?.range.start.line).toBe(2);
   });
 });

@@ -8,6 +8,7 @@ import { Parser } from "./parser.js";
 import { ImportResolver } from "../fs/import-resolver.js";
 import { InMemoryFileSystemProvider } from "../fs/in-memory-provider.js";
 import type { Diagnostic } from "../types/ast.js";
+import { physicalTargetsOf } from "../spec/infra-index.js";
 
 const CODES = new Set([
   "unresolved-resource-ref",
@@ -145,6 +146,23 @@ ${USECASE("Web.T")}
 }
 `),
     ).toEqual([]);
+  });
+
+  it("keeps a client that shares an infra id out of the targets, shadowed only with a storage id", () => {
+    const targets = physicalTargetsOf(
+      Parser.parse(`
+system A {
+  client Web [web] { resource localStorage "prefs" }
+  client App [web] { resource localStorage Key "k" }
+}
+system B {
+  database Web { table T }
+  database App { table T }
+}
+`).value,
+    );
+    expect([...targets.clients.keys()]).toEqual([]);
+    expect([...targets.shadowedClients]).toEqual(["App"]);
   });
 
   it("leaves a reference unresolved when two same-id client nodes both declare the child", () => {

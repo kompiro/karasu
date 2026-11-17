@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { Location } from "vscode-languageserver/node";
-import { Parser, type ImportDeclaration } from "@karasu-tools/core";
+import { Parser, type ImportDeclaration, type KrsFile } from "@karasu-tools/core";
 import { findRangeOfNode } from "./position-resolver.js";
 
 /**
@@ -28,6 +28,22 @@ function searchKrsFile(filePath: string, word: string, visited: Set<string>): Lo
   if (range) return Location.create(fileUri, range);
 
   return findDefinitionInImports(parsed.value.nodeImports, word, fileUri, visited);
+}
+
+/**
+ * Where `word` is defined, as Go to Definition answers it: a node in this
+ * file, then a node in an imported file, and only then a client storage id
+ * in this file (#3794). A storage id is listed so its declaration is
+ * findable, but it never hides a node of the same id, here or imported.
+ */
+export function resolveDefinition(file: KrsFile, word: string, uri: string): Location | null {
+  const node = findRangeOfNode(file, word, { nodesOnly: true });
+  if (node) return Location.create(uri, node);
+  const visited = new Set<string>([fileURLToPath(uri)]);
+  const imported = findDefinitionInImports(file.nodeImports, word, uri, visited);
+  if (imported) return imported;
+  const storage = findRangeOfNode(file, word);
+  return storage ? Location.create(uri, storage) : null;
 }
 
 /**
