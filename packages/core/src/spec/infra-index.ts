@@ -41,6 +41,8 @@ export interface DeclaredInfraBlock {
   leaves: Set<string>;
   /** Leaf label fallback, keyed by leaf id (`label ?? id`). */
   leafLabels: Map<string, string>;
+  /** Leaf kind (`table` / `queue-item` / `bucket`), keyed by leaf id. */
+  leafKinds: Map<string, string>;
 }
 
 /**
@@ -64,6 +66,7 @@ export function indexDeclaredInfra(roots: readonly KrsNode[]): Map<string, Decla
           leafIds: [],
           leaves: new Set(),
           leafLabels: new Map(),
+          leafKinds: new Map(),
         };
         index.set(node.id, entry);
       }
@@ -72,6 +75,7 @@ export function indexDeclaredInfra(roots: readonly KrsNode[]): Map<string, Decla
         entry.leaves.add(sub.id);
         entry.leafIds.push(sub.id);
         entry.leafLabels.set(sub.id, sub.label ?? sub.id);
+        entry.leafKinds.set(sub.id, sub.kind);
       }
       // Infra blocks do not nest, so there is nothing further down this branch.
       return;

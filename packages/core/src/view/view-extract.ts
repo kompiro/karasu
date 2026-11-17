@@ -413,7 +413,7 @@ function buildSharedContext(
   physicalTargets: PhysicalTargetIndex = indexPhysicalTargets([...systems, ...orphans]),
 ): SharedViewExtractContext {
   const resourceLabelMap = buildResourceLabelMap(systems, physicalTargets);
-  const resourceInferredTagsMap = buildResourceInferredTagsMap(systems);
+  const resourceInferredTagsMap = buildResourceInferredTagsMap(systems, physicalTargets);
   // Resolver over the whole model: a bare `resource <id>` in one domain may
   // resolve to an `entity` declared in another domain / service, so this is
   // built once from every root, not per-container.

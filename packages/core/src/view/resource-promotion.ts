@@ -1,5 +1,4 @@
 import type { KrsNode, KrsEdge, ResourceNode } from "../types/ast.js";
-import { INFRA_KIND_SET } from "../types/ast.js";
 import { isWriteOperation } from "../spec/operations.js";
 import type { EntityResolver } from "../resolver/resource-entity.js";
 import { edgeKey } from "./edge-key.js";
@@ -69,16 +68,18 @@ const KIND_TO_INFERRED_TAG: Partial<Record<string, string>> = {
 /**
  * Build a map from dot-notation resource IDs (e.g. "OrderDB.OrderTable") to the
  * inferred style tag (e.g. "table") derived from the referenced sub-resource kind.
+ * Read from the model-wide target index, like the label map (#3794). A client
+ * storage infers no shape tag.
  */
-export function buildResourceInferredTagsMap(systems: KrsNode[]): Map<string, string> {
+export function buildResourceInferredTagsMap(
+  systems: KrsNode[],
+  targets: PhysicalTargetIndex = indexPhysicalTargets(systems),
+): Map<string, string> {
   const map = new Map<string, string>();
-  for (const system of systems) {
-    for (const node of system.children) {
-      if (!INFRA_KIND_SET.has(node.kind)) continue;
-      for (const sub of node.children) {
-        const tag = KIND_TO_INFERRED_TAG[sub.kind];
-        if (tag) map.set(`${node.id}.${sub.id}`, tag);
-      }
+  for (const block of targets.infra.values()) {
+    for (const [leafId, kind] of block.leafKinds) {
+      const tag = KIND_TO_INFERRED_TAG[kind];
+      if (tag) map.set(infraLeafKey(block.infraId, leafId), tag);
     }
   }
   return map;

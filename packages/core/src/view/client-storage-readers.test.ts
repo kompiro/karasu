@@ -113,6 +113,22 @@ system S {
     );
   });
 
+  it("reads the shape tag of a top-level infra leaf from the same index, and infers none for a client storage", () => {
+    const src = `
+database Db {
+  table Orders
+}
+system S {
+  client WebApp [web] { resource sessionStorage ApiKey "k" }
+}
+`;
+    const file = Parser.parse(src).value;
+    // Only the real systems: the top-level database reaches the map through the index.
+    const slice = extractView(file.systems, ["S"], [], [], undefined, physicalTargetsOf(file));
+    expect(slice.resourceInferredTagsMap.get("Db.Orders")).toBe("table");
+    expect(slice.resourceInferredTagsMap.has("WebApp.ApiKey")).toBe(false);
+  });
+
   it("gives no label to a storage two same-id clients declare", () => {
     const src = `
 system A {
