@@ -1220,17 +1220,28 @@ const HTML_TAG = /<[a-z][a-z0-9-]*(?=[\s/])/g;
 const URL_ATTRIBUTE =
   /[\s/"'](?:href|src|srcset|cite|poster|longdesc|action|formaction|background|data|xlink:href)\s*=/;
 
-/** The tag that starts at `start`, up to the `>` that ends it outside quotes. */
+/**
+ * The tag that starts at `start`, up to the `>` that ends it, read as the HTML
+ * tokenizer does: a quote opens a value only right after `=` and optional
+ * whitespace (`<a x'="'>" href=...>` has the name `x'` and the value `'>`).
+ */
 function tagText(text: string, start: number): string {
   let quote: string | null = null;
+  let afterEquals = false;
   for (let i = start + 1; i < text.length; i++) {
     const c = text[i];
     if (quote !== null) {
       if (c === quote) quote = null;
-    } else if (c === '"' || c === "'") {
+      continue;
+    }
+    if (c === ">") return text.slice(start, i + 1);
+    if (afterEquals && (c === '"' || c === "'")) {
       quote = c;
-    } else if (c === ">") {
-      return text.slice(start, i + 1);
+      afterEquals = false;
+    } else if (c === "=") {
+      afterEquals = true;
+    } else if (!/[ \t\n\r\f]/.test(c)) {
+      afterEquals = false;
     }
   }
   return text.slice(start);
@@ -1270,8 +1281,14 @@ function collectLinks(text: string, dir: string): string[] {
   // The whole tag is the key, so editing an attribute (a host added after a line
   // break, say) is a new key and not the same tag again.
   for (const m of text.matchAll(HTML_TAG)) {
-    const tag = tagText(text, m.index);
-    if (URL_ATTRIBUTE.test(tag)) keys.push(`html:${tag}`);
+    // Read with quotes and without: HTML opens a quote only at a value's start
+    // (`<a x'="'>" href=...>`), so one reading alone can end the tag too early.
+    const quoted = tagText(text, m.index);
+    const end = text.indexOf(">", m.index);
+    const blind = end === -1 ? text.slice(m.index) : text.slice(m.index, end + 1);
+    if (URL_ATTRIBUTE.test(quoted) || URL_ATTRIBUTE.test(blind)) {
+      keys.push(`html:${quoted}\u0000${blind}`);
+    }
   }
   for (const word of text.split(WORD_SPLIT)) {
     if (word.startsWith(UNREADABLE_REFERENCE)) {
