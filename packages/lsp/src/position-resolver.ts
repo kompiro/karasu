@@ -68,6 +68,14 @@ function* visitNamedEntities(
     // Original `searchKrsNode` returned at a matching node without recursing
     // into its children; reproduce by not descending here.
     if (stopDescending?.(entity)) return;
+    // A client's storage ids are what `resource <ClientId>.<Id>` names, the
+    // way an infra block's leaves are (#3794). They are properties, not child
+    // nodes, so they are listed here, the same way the leaves are reached.
+    if (node.kind === "client") {
+      for (const res of node.properties.resources) {
+        if (res.id !== undefined) yield { id: res.id, loc: res.loc, group: "krs" };
+      }
+    }
     for (const child of node.children) yield* walkKrsNode(child);
   }
 
