@@ -495,7 +495,25 @@ system Studio {
 - The id is optional. A storage without one keeps its old meaning and cannot be referenced. The name stays required. An id no bare word can hold is written quoted (`resource localStorage "api-key" "…"`); a quoted id counts only when the name follows on the same line.
 - The name is read with the shared value reader: a name written on a later line is still the name, unless that line starts an edge (`"WebApp" -> Api`), which reports the missing name instead (ADR-3752). A keyword in the id position (`table`, `storage`, …) is `expected-identifier`.
 - Resolution is model-wide, like an infra leaf: the client may sit in another system, at the top level, or in an imported file. `<Parent>` names an infra block or a client; one resolver decides which.
-- When an infra block and a client (in different scopes) share the parent id, the reference names the **infra block**, as it did before clients were targets (a leaf the block lacks is still `unresolved-resource-ref`). If that client declares a storage with an id, `resource-target-ambiguous` names the clash; its storages are then not referenceable.
+- When an infra block and a client (in different scopes) share the parent id, the reference names the **infra block**, as it did before clients were targets (a leaf the block lacks is still `unresolved-resource-ref`). If that client declares a storage with an id, `resource-target-ambiguous` names the clash; its storages are then not referenceable. Here `Media.Uploads` names the bucket, and the client, which declares no storage id, raises nothing:
+
+  ```krs
+  client Media [web] {
+    resource localStorage "volume"
+  }
+  system Studio {
+    storage Media {
+      bucket Uploads
+    }
+    service App {
+      domain Library {
+        usecase Upload {
+          resource Media.Uploads { operations create }
+        }
+      }
+    }
+  }
+  ```
 - Same-id client nodes (KRS018 / KRS030) are not merged. If more than one declares the child id, the reference does not resolve (`resource-target-ambiguous`). Two storages of one client with the same id give `client-resource-duplicate-id`; the first wins.
 - A missing child is `unresolved-resource-ref` with `missing: "leaf"` and `parentKind: "client"`. An entity's `table WebApp.Projects` never resolves to a client storage.
 - No `service → client` edge is derived from such a reference (a delivering service is drawn by `delivers`). The promoted resource is labelled `<name> (<storageKind>)` (`/meta/projects.json (opfs)`), the CRUD matrix gets a column per identified storage, and `karasu coverage` reports them per client under `clientStores`.
