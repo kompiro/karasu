@@ -65,6 +65,19 @@ test.describe("AT-3794 client storage reference", () => {
     );
     await expect(items.nth(1).locator(".node-detail-resource-id")).toHaveText("Theme");
     await expect(items.nth(1).locator(".node-detail-resource-usecases")).toHaveCount(0);
+
+    // The id, the name (however it wraps) and the "used by" line share one
+    // column right of the kind, so a wrapped name never runs under the kind.
+    const left = (selector: string) =>
+      items
+        .nth(0)
+        .locator(selector)
+        .evaluate((el) => el.getBoundingClientRect().left);
+    const column = await left(".node-detail-resource-body");
+    expect(await left(".node-detail-resource-kind")).toBeLessThan(column);
+    expect(await left(".node-detail-resource-id")).toBeCloseTo(column, 0);
+    expect(await left(".node-detail-resource-name")).toBeGreaterThanOrEqual(column - 0.5);
+    expect(await left(".node-detail-resource-usecases")).toBeCloseTo(column, 0);
   });
 
   test("the CRUD tab has a column per identified client storage (AT-C)", async ({ page, opfs }) => {

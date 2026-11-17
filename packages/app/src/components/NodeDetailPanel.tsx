@@ -160,13 +160,15 @@ export function NodeDetailPanel({
                 className="node-detail-resource-item"
               >
                 <span className="node-detail-resource-kind">{r.storageKind}</span>
-                {r.id !== undefined && <span className="node-detail-resource-id">{r.id}</span>}
-                <span className="node-detail-resource-name">{r.name}</span>
-                {r.usecases && r.usecases.length > 0 && (
-                  <span className="node-detail-resource-usecases">
-                    {t("nodeDetail.resources.usedBy", { usecases: r.usecases.join(", ") })}
-                  </span>
-                )}
+                <span className="node-detail-resource-body">
+                  {r.id !== undefined && <span className="node-detail-resource-id">{r.id}</span>}
+                  <span className="node-detail-resource-name">{r.name}</span>
+                  {r.usecases && r.usecases.length > 0 && (
+                    <span className="node-detail-resource-usecases">
+                      {t("nodeDetail.resources.usedBy", { usecases: r.usecases.join(", ") })}
+                    </span>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
