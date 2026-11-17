@@ -73,13 +73,6 @@ export interface DeployViewSlice {
 }
 
 /**
- * Extracts a DeployViewSlice from deploy blocks + system nodes.
- * Groups deploy units by their `realizes` value and derives ghost edges
- * from system-level edges between the realized services.
- *
- * @param selectedId - id of the deploy block to render; falls back to the first block if not found
- */
-/**
  * {@link extractDeployView} over a parsed or merged file: its deploy blocks, its
  * systems with top-level nodes wrapped (so `realizes` reaches them), and the
  * model-wide `<Parent>.<Child>` target index (#3794).
@@ -93,6 +86,13 @@ export function extractModelDeployView(krsFile: KrsFile, selectedId?: string): D
   );
 }
 
+/**
+ * Extracts a DeployViewSlice from deploy blocks + system nodes.
+ * Groups deploy units by their `realizes` value and derives ghost edges
+ * from system-level edges between the realized services.
+ *
+ * @param selectedId - id of the deploy block to render; falls back to the first block if not found
+ */
 export function extractDeployView(
   deploys: DeployBlock[],
   systems: SystemNode[],

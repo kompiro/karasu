@@ -3,7 +3,7 @@ import * as path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { Location } from "vscode-languageserver/node";
 import { Parser, type ImportDeclaration, type KrsFile } from "@karasu-tools/core";
-import { findRangeOfClientStorage, findRangeOfNode } from "./position-resolver.js";
+import { findRangeOfDottedRef, findRangeOfNode } from "./position-resolver.js";
 
 /**
  * Read, parse, and search a single `.krs` file for `word`'s definition,
@@ -30,8 +30,8 @@ function searchKrsFile(
 
   const fileUri = pathToFileURL(filePath).toString();
   const range =
-    options.storageOf !== undefined
-      ? findRangeOfClientStorage(parsed.value, options.storageOf, word)
+    options.qualifiedBy !== undefined
+      ? (findRangeOfDottedRef(parsed.value, options.qualifiedBy, word)?.range ?? null)
       : findRangeOfNode(parsed.value, word, options);
   if (range) return Location.create(fileUri, range);
 
@@ -53,12 +53,17 @@ export function resolveDefinition(
 ): Location | null {
   const self = () => new Set<string>([fileURLToPath(uri)]);
   if (qualifier) {
-    // `<Client>.<Id>` names that client's storage, not whatever else has the
-    // bare id (#3794): look it up here, then in imported files.
-    const here = findRangeOfClientStorage(file, qualifier, word);
-    if (here) return Location.create(uri, here);
-    const storageOf = { storageOf: qualifier };
-    const imported = findDefinitionInImports(file.nodeImports, word, uri, self(), storageOf);
+    // `<Parent>.<Child>` names what the model resolves it to (#3794): that
+    // client's storage or that infra block's leaf, not whatever else has the
+    // bare id. Here first; an infra parent here ends the search, since an
+    // imported client of the same id is the one it hides. Then imported files,
+    // then the bare word (a parent the model does not know).
+    const here = findRangeOfDottedRef(file, qualifier, word);
+    if (here?.range) return Location.create(uri, here.range);
+    // The infra block here lacks the leaf, so the reference names nothing.
+    if (here) return null;
+    const qualifiedBy = { qualifiedBy: qualifier };
+    const imported = findDefinitionInImports(file.nodeImports, word, uri, self(), qualifiedBy);
     if (imported) return imported;
   }
   const nodesOnly = { nodesOnly: true };
@@ -73,10 +78,10 @@ export function resolveDefinition(
 }
 
 /**
- * `nodesOnly` skips client storage ids; `storageOf` looks only for that
- * client's storage of the word (see {@link resolveDefinition}).
+ * `nodesOnly` skips client storage ids; `qualifiedBy` looks only for what
+ * `<qualifiedBy>.<word>` names (see {@link resolveDefinition}).
  */
-type LookupOptions = { nodesOnly?: boolean; storageOf?: string };
+type LookupOptions = { nodesOnly?: boolean; qualifiedBy?: string };
 
 /**
  * Recursively search imported files for a node definition.
@@ -121,8 +126,8 @@ export function findDefinitionInImports(
     // bare entries (`["Foo"]`) and the leaf segment of multi-segment paths
     // (`["A", "B", "Foo"]`) — the user can only place a cursor on a single
     // identifier token, so we match against the final segment.
-    // A storage lookup follows the import that brings its client.
-    const wanted = options.storageOf ?? word;
+    // A dotted lookup follows the import that brings its parent.
+    const wanted = options.qualifiedBy ?? word;
     if (isNamed && !imp.ids.some((entry) => entry.path[entry.path.length - 1] === wanted)) continue;
 
     const importedUri = resolveImportUri(baseUri, imp.path);

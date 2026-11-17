@@ -638,6 +638,8 @@
 
 .node-detail-resource-kind {
   color: var(--text-muted);
+  /* A misspelt kind longer than the column wraps instead of overlapping the id. */
+  overflow-wrap: anywhere;
 }
 
 .node-detail-resource-body {

@@ -284,19 +284,54 @@ export function getNodeDescription(krsFile: KrsFile, nodeId: string): string | n
   return null;
 }
 
+/** What a dotted `<parent>.<child>` names in one file, for Go to Definition. */
+export type DottedRefLookup =
+  /** The declaration: the client storage's line or the infra leaf. */
+  | { range: Range }
+  /** The parent is an infra block here without that leaf: it names nothing else. */
+  | { range: null; parentIsInfraHere: true }
+  /** Nothing in this file; the parent may live in an imported file. */
+  | null;
+
+const INFRA_KINDS = new Set(["database", "queue", "storage"]);
+
 /**
- * Where the declaration of `<clientId>.<storageId>` is, when that dotted
- * reference resolves to a client storage under the model's own rule (#3794):
- * not when an infra block shares the client id, nor when two same-id clients
- * both declare the storage.
+ * Resolve `<parent>.<child>` the way the model does (#3794): an infra block wins
+ * a shared id, a client storage is found by its client, and two same-id clients
+ * declaring the child name nothing. Returns where it is declared in this file.
  */
-export function findRangeOfClientStorage(
+export function findRangeOfDottedRef(
   krsFile: KrsFile,
-  clientId: string,
-  storageId: string,
-): Range | null {
-  const target = resolvePhysicalRef(physicalTargetsOf(krsFile), clientId, storageId);
-  return target.kind === "client" ? toLspRange(target.storage.declaration.loc) : null;
+  parent: string,
+  child: string,
+): DottedRefLookup {
+  const target = resolvePhysicalRef(physicalTargetsOf(krsFile), parent, child);
+  if (target.kind === "client") return { range: toLspRange(target.storage.declaration.loc) };
+  if (target.kind === "unresolved") {
+    return target.parentKind === "infra" ? { range: null, parentIsInfraHere: true } : null;
+  }
+  const leaf = findInfraLeaf(krsFile, parent, child);
+  return leaf ? { range: toLspRange(leaf.loc) } : null;
+}
+
+/** The leaf `child` of an infra block `parent` (a reopened block may hold it in any copy). */
+function findInfraLeaf(krsFile: KrsFile, parent: string, child: string): KrsNode | undefined {
+  const visit = (node: KrsNode): KrsNode | undefined => {
+    if (INFRA_KINDS.has(node.kind)) {
+      return node.id === parent ? node.children.find((leaf) => leaf.id === child) : undefined;
+    }
+    for (const c of node.children) {
+      const found = visit(c);
+      if (found) return found;
+    }
+    return undefined;
+  };
+  const roots = [...krsFile.systems, ...krsFile.databases, ...krsFile.queues, ...krsFile.storages];
+  for (const root of roots) {
+    const found = visit(root);
+    if (found) return found;
+  }
+  return undefined;
 }
 
 /**

@@ -69,6 +69,18 @@ system S {
     expect(resolveDefinition(parse(src), "Uploads", URI, "Media")?.range.start.line).toBe(5);
   });
 
+  it("goes to the leaf of the infra block the reference names, not a same-name leaf elsewhere", () => {
+    const src = `\
+database DB1 {
+  table users
+}
+database DB2 {
+  table users
+}
+`;
+    expect(resolveDefinition(parse(src), "users", URI, "DB2")?.range.start.line).toBe(4);
+  });
+
   it("prefers a top-level node over a client storage id of the same name", () => {
     const src = `\
 database Cache {
@@ -116,5 +128,17 @@ describe("Go to Definition on a client storage in an imported file (#3794)", () 
     const loc = resolveDefinition(file, "Cache", pathToFileURL(entry).toString(), "WebB");
     expect(loc?.uri).toBe(pathToFileURL(clients).toString());
     expect(loc?.range.start.line).toBe(5);
+  });
+
+  it("does not reach an imported client that an infra block here hides", () => {
+    writeFileSync(
+      join(dir, "c.krs"),
+      'client Media [web] {\n  resource localStorage Uploads "u"\n}\n',
+    );
+    const src = 'import "./c.krs"\nsystem S {\n  storage Media {\n    bucket Other\n  }\n}\n';
+    const entry = join(dir, "index.krs");
+    writeFileSync(entry, src);
+    const loc = resolveDefinition(parse(src), "Uploads", pathToFileURL(entry).toString(), "Media");
+    expect(loc?.uri ?? null).not.toBe(pathToFileURL(join(dir, "c.krs")).toString());
   });
 });
