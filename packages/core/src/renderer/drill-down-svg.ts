@@ -9,7 +9,7 @@ import type { ViewPath } from "../view/view-slice.js";
 import { withUnassignedSystem, withoutUnassignedSegment } from "../view/unassigned-system.js";
 import { nodePathRefId } from "../parser/node-path.js";
 import { extractOrgView } from "../view/org-view-extract.js";
-import { extractDeployView } from "../view/deploy-view-extract.js";
+import { extractModelDeployView } from "../view/deploy-view-extract.js";
 import { render, sanitizeId, anchorId, legendScopeForLogicalSlice } from "./svg-renderer.js";
 import { cardLinkKey } from "./node-card.js";
 import {
@@ -595,7 +595,7 @@ function collectDeployLevel(
 
   // Orphan-wrap so `realizes` targets pointing at top-level (unassigned)
   // services/domains resolve to their declared labels.
-  const deployView = extractDeployView(deployBlocks, withUnassignedSystem(krsFile));
+  const deployView = extractModelDeployView(krsFile);
   if (deployView.containers.length === 0 && deployView.unclassifiedUnits.length === 0) return null;
 
   // The units this level draws, as the per-view compile resolves them: the

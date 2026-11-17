@@ -624,6 +624,8 @@ const NOT_A_DERIVATION: Record<string, string> = {
   formatMatrixAsMarkdown: "serializes the CRUD matrix",
   formatMatrixAsCsv: "serializes the CRUD matrix",
   // deploy-view-extract.ts
+  extractModelDeployView:
+    "calls extractDeployView with a file's deploys, wrapped systems and model-wide target index (#3794)",
   extractDeployView:
     "synthesizes ghost edges: re-endpoints `system.edges` and deriveInfraEdges' output onto " +
     "deploy containers, keeps `label` and `kind`, drops tags and annotations, and dedupes by " +

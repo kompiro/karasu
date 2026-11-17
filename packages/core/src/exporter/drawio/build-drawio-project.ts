@@ -4,7 +4,7 @@ import type { Diagnostic } from "../../types/ast.js";
 import type { Warning } from "../../types/warnings.js";
 import type { KrsFile, KrsNode, OrganizationBlock, TeamNode } from "../../types/ast.js";
 import { extractView } from "../../view/view-extract.js";
-import { extractDeployView } from "../../view/deploy-view-extract.js";
+import { extractModelDeployView } from "../../view/deploy-view-extract.js";
 import { bareIdView, nodePathRefId } from "../../parser/node-path.js";
 import { withUnassignedSystem } from "../../view/unassigned-system.js";
 import { layout } from "../../renderer/layout.js";
@@ -179,7 +179,7 @@ function buildDeployPage(krsFile: KrsFile): DrawioPage | null {
   // services/domains resolve to their declared labels, and so the metadata
   // map below picks up the orphans' tags/annotations.
   const effectiveSystems = withUnassignedSystem(krsFile);
-  const slice = extractDeployView(krsFile.deploys, effectiveSystems);
+  const slice = extractModelDeployView(krsFile);
   const layoutResult = layoutDeploy(slice);
   // The exporter looks metadata up by the container's id, which is not always
   // the realized node's id — it is quoted when a segment carries the path

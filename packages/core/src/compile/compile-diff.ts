@@ -35,7 +35,7 @@ import { extractView } from "../view/view-extract.js";
 import type { ViewPath } from "../view/view-slice.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
-import { extractDeployView } from "../view/deploy-view-extract.js";
+import { extractModelDeployView } from "../view/deploy-view-extract.js";
 import { ImportResolver, type ResolvedProject } from "../fs/import-resolver.js";
 import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/default-style.js";
 import { withDisplayModeSheet } from "../builtins/display-mode-sheets.js";
@@ -643,16 +643,8 @@ export async function compileDeployDiff(
 
   // Orphan-wrap so `realizes` targets that point at top-level (unassigned)
   // services/domains resolve to their declared labels (see extractDeployView).
-  const beforeSlice = extractDeployView(
-    beforeResolved.krsFile.deploys,
-    withUnassignedSystem(beforeResolved.krsFile),
-    selectedDeployId,
-  );
-  const afterSlice = extractDeployView(
-    afterResolved.krsFile.deploys,
-    withUnassignedSystem(afterResolved.krsFile),
-    selectedDeployId,
-  );
+  const beforeSlice = extractModelDeployView(beforeResolved.krsFile, selectedDeployId);
+  const afterSlice = extractModelDeployView(afterResolved.krsFile, selectedDeployId);
 
   const diffed = diffDeployViewSlices(beforeSlice, afterSlice);
 

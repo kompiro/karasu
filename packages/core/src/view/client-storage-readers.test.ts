@@ -12,6 +12,7 @@ import { withUnassignedSystem } from "./unassigned-system.js";
 import { Parser } from "../parser/parser.js";
 import { physicalTargetsOf } from "../spec/infra-index.js";
 import { layout } from "../renderer/layout.js";
+import { extractModelDeployView } from "./deploy-view-extract.js";
 import { CHAR_WIDTH, estimateTextWidth } from "../renderer/rendering-constants.js";
 
 const MODEL = `
@@ -189,6 +190,37 @@ system S {
       storageKind: "sessionStorage",
       name: "karasu.ai.anthropic.apiKey",
     });
+  });
+
+  it("derives the deploy view's ghost edges with the model-wide index, none to a client storage", () => {
+    const src = `
+client WebApp [web] {
+  resource sessionStorage ApiKey "k"
+}
+system S {
+  database Db {
+    table Orders
+  }
+  service App {
+    domain Chat {
+      usecase Save { resource WebApp.ApiKey { operations create } }
+      usecase Order { resource Db.Orders { operations create } }
+    }
+  }
+}
+deploy prod {
+  oci api {
+    realizes App
+  }
+  store db {
+    realizes Db
+  }
+}
+`;
+    const slice = extractModelDeployView(Parser.parse(src).value);
+    const pairs = slice.ghostEdges.map((e) => `${e.from}->${e.to}`);
+    expect(pairs).toContain("App->Db");
+    expect(pairs.some((p) => p.endsWith("->WebApp"))).toBe(false);
   });
 
   it("reports no shared-store fan-in or cross-domain store access on a client storage", () => {

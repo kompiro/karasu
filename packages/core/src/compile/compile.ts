@@ -50,7 +50,7 @@ import { extractView } from "../view/view-extract.js";
 import type { ViewPath, ViewSlice } from "../view/view-slice.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
-import { extractDeployView } from "../view/deploy-view-extract.js";
+import { extractModelDeployView } from "../view/deploy-view-extract.js";
 import {
   extractTeamDependencies,
   type TeamDependencyReport,
@@ -165,11 +165,7 @@ function _compileFromPreparedInput(
   // top-level (unassigned) services/domains resolve to their declared labels
   // instead of degrading to the bare id.
   const effectiveSystems = withUnassignedSystem(krsFile);
-  const deploySliceForStyle = extractDeployView(
-    krsFile.deploys,
-    effectiveSystems,
-    selectedDeployId,
-  );
+  const deploySliceForStyle = extractModelDeployView(krsFile, selectedDeployId);
   const deployUnits = [
     ...deploySliceForStyle.containers.flatMap((c) => c.units),
     ...deploySliceForStyle.unclassifiedUnits,
