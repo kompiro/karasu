@@ -83,15 +83,6 @@ describe("parseRecord / renderRecord", () => {
     expect(b).toMatch(/\n\n<\/details>\n\n<!-- \/local-review -->/);
   });
 
-  it("keeps a finding that quotes the fold's tags from closing it (#3875)", () => {
-    const f = [finding({ finding: "`</details>` then <summary> and </DETAILS >" })];
-    const b = body(f);
-    expect(b.match(/<\/details>/g)).toHaveLength(1);
-    expect(b.match(/<summary>/g)).toHaveLength(1);
-    const parsed = parseRecord(b);
-    expect("record" in parsed && parsed.record.findings).toEqual(f);
-  });
-
   it("reads a record written before the fold (#3875)", () => {
     const old = [
       `<!-- local-review:v1 base=${BASE} head=${HEAD} -->`,

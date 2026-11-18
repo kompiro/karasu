@@ -78,19 +78,9 @@ const isCodeRabbitRow = (f: Finding): boolean => /^coderabbit$/i.test(f.reviewer
 export const isDesignRow = (f: Finding): boolean => /^design$/i.test(f.reviewer.trim());
 
 /** Splits a markdown table row on pipes that are not escaped. */
-/**
- * The tags that open and close the fold. A finding that quotes one would end the
- * `<details>` early on GitHub, so a cell writes its `<` as `&lt;` and reading
- * turns it back (Issue #3875).
- */
-const FOLD_TAG = /<(\/?(?:details|summary)\b)/gi;
-const ESCAPED_FOLD_TAG = /&lt;(\/?(?:details|summary)\b)/gi;
-
 function cells(row: string): string[] {
   const inner = row.trim().replace(/^\|/, "").replace(/\|$/, "");
-  return inner
-    .split(/(?<!\\)\|/)
-    .map((c) => c.trim().replace(/\\\|/g, "|").replace(ESCAPED_FOLD_TAG, "<$1"));
+  return inner.split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, "|"));
 }
 
 export function parseRecord(body: string): ParseResult {
@@ -257,8 +247,7 @@ export function verifyRecord(
   return errors;
 }
 
-const escapeCell = (s: string) =>
-  s.replace(/\|/g, "\\|").replace(/\n/g, " ").replace(FOLD_TAG, "&lt;$1");
+const escapeCell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
 
 const SUMMARY_KINDS = ["fixed", "declined", "deferred", "no deviation", "open"] as const;
 
