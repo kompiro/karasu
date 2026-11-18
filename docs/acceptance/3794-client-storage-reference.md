@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-11-17
 - **関連 Issue**: [#3794](https://github.com/kompiro/karasu/issues/3794)
+- **設計 (ADR)**: [ADR-3794](../adr/3794-client-local-store-reference.md)
 - **Related TPLs**: [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md), [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md), [TPL-1625](../test-perspectives/TPL-1625-client-vocabulary-structure-not-implementation.md), [TPL-3752](../test-perspectives/TPL-3752-optional-trailing-token-stops-at-next-statement.md)
 - **対象ファイル**: `packages/core/src/parser/block-contents.ts`, `packages/core/src/spec/infra-index.ts`, `packages/core/src/parser/physical-ref-validation.ts`, `packages/core/src/resolver/resource-entity.ts`, `packages/core/src/view/resource-promotion.ts`, `packages/core/src/view/crud-matrix-extract.ts`, `packages/core/src/view/coverage-extract.ts`, `packages/core/src/compile/client-storage-metadata.ts`, `packages/core/src/renderer/layout-measure.ts`, `packages/app/src/components/NodeDetailPanel.tsx`, `packages/lsp/src/position-resolver.ts`, `packages/cli/src/coverage.ts`
 
