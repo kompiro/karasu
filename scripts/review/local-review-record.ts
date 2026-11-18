@@ -249,39 +249,37 @@ export function verifyRecord(
 
 const escapeCell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
 
-/**
- * The line a reader sees with the record folded: how many findings, and how many
- * of them were declined or deferred, since those are the rows a reviewer opens
- * the record for.
- */
-/** The disposition as the rendered table holds it, so the summary counts what parseRecord reads. */
-const dispositionAsRendered = (f: Finding): string => f.disposition.replace(/\n/g, " ").trim();
+const SUMMARY_KINDS = ["fixed", "declined", "deferred", "no deviation", "open"] as const;
 
+/**
+ * How the folded summary counts a row, by the same rules {@link verifyRecord}
+ * applies: `no deviation` answers a design row only, and a row with no answer the
+ * check accepts is `open`. The disposition is read as the table holds it
+ * (newlines become spaces), so the count matches what {@link parseRecord} reads.
+ */
+function summaryKind(f: Finding): (typeof SUMMARY_KINDS)[number] {
+  const d = f.disposition.replace(/\n/g, " ").trim();
+  if (FIXED.test(d)) return "fixed";
+  if (DECLINED.test(d)) return "declined";
+  if (ISSUE.test(d)) return "deferred";
+  if (isDesignRow(f) && NO_DEVIATION.test(d)) return "no deviation";
+  return "open";
+}
+
+/**
+ * The line a reader sees with the record folded: the number of findings and how
+ * each was answered. `open` rows show here too, so a High record (which the check
+ * does not verify) cannot hide an unanswered finding behind the fold.
+ */
 export function recordSummary(r: LocalReviewRecord): string {
   if (r.waived !== undefined) return "Waived";
   const n = r.findings.length;
   if (n === 0) return "No findings";
-  const kinds: [string, RegExp][] = [
-    ["fixed", FIXED],
-    ["declined", DECLINED],
-    ["deferred", ISSUE],
-    ["no deviation", NO_DEVIATION],
-  ];
-  const parts = kinds
-    .map(
-      ([name, re]) =>
-        [name, r.findings.filter((f) => re.test(dispositionAsRendered(f))).length] as const,
-    )
+  const kinds = r.findings.map(summaryKind);
+  const parts = SUMMARY_KINDS.map((k) => [k, kinds.filter((x) => x === k).length] as const)
     .filter(([, count]) => count > 0)
-    .map(([name, count]) => `${count} ${name}`);
-  // A row with no recognised disposition still shows while folded, so a High
-  // record (which the check does not verify) cannot hide it.
-  const open = r.findings.filter((f) => {
-    const d = dispositionAsRendered(f);
-    return !kinds.some(([, re]) => re.test(d));
-  }).length;
-  if (open > 0) parts.push(`${open} open`);
-  return `${n} finding${n === 1 ? "" : "s"}${parts.length > 0 ? `: ${parts.join(", ")}` : ""}`;
+    .map(([k, count]) => `${count} ${k}`);
+  return `${n} finding${n === 1 ? "" : "s"}: ${parts.join(", ")}`;
 }
 
 /**

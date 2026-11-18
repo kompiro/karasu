@@ -119,6 +119,10 @@ describe("parseRecord / renderRecord", () => {
         ],
       }),
     ).toBe("3 findings: 1 deferred, 1 no deviation, 1 open");
+    // `no deviation` answers a design row only, as verifyRecord reads it.
+    expect(recordSummary({ ...r, findings: [finding({ disposition: "no deviation" })] })).toBe(
+      "1 finding: 1 open",
+    );
   });
 
   it("upserts: replaces an existing record and appends when there is none", () => {
