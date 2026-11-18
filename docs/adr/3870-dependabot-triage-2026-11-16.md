@@ -1,6 +1,6 @@
 ---
 id: ADR-3870
-title: Dependabot トリアージ 2026-11-16：15 件を採用し jsdom 31 は差し替え PR で入れ、同じ base の lock を続けてマージして壊した main を直す
+title: Dependabot トリアージ 2026-11-16：16 件を採用し jsdom 31 は差し替え PR で入れ、同じ base の lock を続けてマージして壊した main を直す
 status: accepted
 date: 2026-11-18
 topic: build
@@ -23,7 +23,7 @@ assumptions:
   - "grep: pnpm-workspace.yaml :: undici@8: \\^8\\."
 ---
 
-# ADR-3870: Dependabot トリアージ 2026-11-16：15 件を採用し jsdom 31 は差し替え PR で入れ、同じ base の lock を続けてマージして壊した main を直す
+# ADR-3870: Dependabot トリアージ 2026-11-16：16 件を採用し jsdom 31 は差し替え PR で入れ、同じ base の lock を続けてマージして壊した main を直す
 
 - **日付**: 2026-11-18
 - **ステータス**: 決定済み
@@ -32,6 +32,7 @@ assumptions:
   - 対象 Dependabot PR: [#3850](https://github.com/kompiro/karasu/pull/3850) 〜 [#3865](https://github.com/kompiro/karasu/pull/3865)（16 件）と、security update の [#3821](https://github.com/kompiro/karasu/pull/3821)
   - jsdom の差し替え PR: [#3874](https://github.com/kompiro/karasu/pull/3874)、main の lock の修正: [#3871](https://github.com/kompiro/karasu/pull/3871)
   - 前回トリアージ: [ADR-3751](./3751-dependabot-triage-2026-11-09.md)
+  - `@types/vscode` を close した前例: ADR-3751・[ADR-3069](./3069-dependabot-triage-2026-10-05.md)
   - VS Code floor の方針: [ADR-2562](./2562-dependabot-triage-2026-08-17.md)、[ADR-2782](./2782-vscode-floor-capped-by-extester.md)、追随方針の見直し: [#3070](https://github.com/kompiro/karasu/issues/3070)
   - jsdom を待った前例: [ADR-2983](./2983-dependabot-triage-2026-09-29.md)
   - SDK の assumptions: [ADR-2671](./2671-dependabot-triage-2026-08-31.md)（`^1.`）
@@ -40,14 +41,14 @@ assumptions:
 
 ## 決定
 
-**15 件を採用し、#3852（`@types/vscode` 1.145.0）を却下して close した。** 採用のうち 14 件は bot PR をそのままマージし、
+**週次の 15 件と security update の #3821 の計 16 件を採用し、#3852（`@types/vscode` 1.145.0）を却下して close した。** 週次のうち 14 件は bot PR をそのままマージし、
 #3865（`jsdom` 31.0.0）は差し替え PR #3874 で入れた。#3874 では、kompiro の判断で、レビューで見つけた 2 件（`undici` の override が
-jsdom の `undici ^8` を 7 系に押し下げていたこと、#3178 のテストが pan を確かめていなかったこと）も一緒に直した。security update の #3821 も判定は採用で、#3856 のマージで反映して
+jsdom の `undici ^8` を 7 系に押し下げていたこと、#3178 のテストが pan を確かめていなかったこと）も一緒に直した。#3821 は #3856 のマージで反映して
 bot PR は close した。#3852・#3865・#3821 のどれにも `@dependabot ignore` は設定していない。
 
 | PR    | 依存                   | from → to          | 種別      | 対象                       | リスク | 判断 | 反映                                   |
 | ----- | ---------------------- | ------------------ | --------- | -------------------------- | ------ | ---- | -------------------------------------- |
-| #3850 | `pnpm/action-setup`    | 6.1.0 → 6.1.1      | patch     | GitHub Actions（22 本）    | low    | 採用 | そのままマージ                         |
+| #3850 | `pnpm/action-setup`    | 6.1.0 → 6.1.1      | patch     | GitHub Actions（21 本）    | low    | 採用 | そのままマージ                         |
 | #3854 | `@anthropic-ai/sdk`    | 1.4.0 → 1.7.0      | minor     | app（runtime）             | low    | 採用 | そのままマージ                         |
 | #3860 | `lucide-react`         | 1.67.0 → 1.70.0    | minor     | app（runtime）             | low    | 採用 | そのままマージ                         |
 | #3861 | `commander`            | 15.0.0 → 15.1.0    | minor     | cli（runtime）             | low    | 採用 | そのままマージ                         |
@@ -84,7 +85,7 @@ bot PR は close した。#3852・#3865・#3821 のどれにも `@dependabot ign
   `scripts/ci/vscode-version-policy.test.ts` が `engines.vscode`（`^1.140.0`）と `@types/vscode`（`^1.145.0`）のずれを止めた
 - #3865（`jsdom` 30.1.3 → 31.0.0、major）: Check。`packages/app` の 148 ファイル中 1 ファイル 1 件が落ちた。
   ルートの `test:coverage` は最初の失敗で止まるので、app より後の package（cli / lsp / nest / vscode / docs-site）の
-  テストと、Check の後続の step（build、`build:viewer`、`test:pack` など）はこの PR では走っていない
+  テストと、Check の後続の step（build、`build:viewer`、`test:pack` など）はこの PR では走っていない。
   `PreviewPane.test.tsx` が `style.transform` を文字列 `"translate(0px, 0px) scale(1)"` と比べており、jsdom 31 の新しい
   CSS 実装が `translate(0px) scale(1)` と短く直列化する
 
@@ -153,8 +154,8 @@ maintainer（`fb55` / `43081j` / `rreverser` / `wooorm` / `inikulin`）で、Git
 ### #3865 `jsdom` 30.1.3 → 31.0.0（差し替え PR で採用）
 
 供給側の懸念は無い。`jsdom/jsdom` の `publish.yml`（`refs/tags/v31.0.0`）からの provenance 付きで、`engines.node` は
-30.1.3 と同じ（`^22.22.2 || ^24.15.0 || >=26.0.0`）。依存は `css-tree` / `@asamuzakjp/*` / `@csstools/*` など 11 名が
-消え、`bcp-47` / `bcp-47-match`（既存）と `parse5-parser-stream`（上記）が入る。
+30.1.3 と同じ（`^22.22.2 || ^24.15.0 || >=26.0.0`）。jsdom の依存から `css-tree` / `@asamuzakjp/*` / `@csstools/*` などが外れ、lock からは
+`@asamuzakjp/*`・`@csstools/*`・`@bramus/specificity`・`bidi-js`・`require-from-string` の 11 名が消え（`css-tree` は unifont が使うので残る）、`bcp-47` / `bcp-47-match`（既存）と `parse5-parser-stream`（上記）が入る。
 
 31.0.0 の breaking change は 3 つ:
 
@@ -216,7 +217,7 @@ alert #107 の突き合わせ（`.claude/rules/dependabot.md`「Security alert �
 
 ### #3850 `pnpm/action-setup` 6.1.0 → 6.1.1
 
-22 本の workflow の `uses:` と `.github/workflows/actions.lock` の pin を書き換える。v6.1.0…v6.1.1 は 5 commit で、
+21 本の workflow の `uses:` と `.github/workflows/actions.lock` の pin を書き換える。v6.1.0…v6.1.1 は 5 commit で、
 pnpm 11 の bootstrap を 11.25.0 → 11.28.10 に更新、cache の保存先が無いときに保存をスキップ、テストと README。
 `v6.1.1` は署名検証済みの annotated tag で、指す commit `73e46992` は `actions.lock` の pin と一致する。bootstrap の
 `pnpm@11.28.10` の integrity は registry と一致し、GitHub Actions OIDC + provenance で公開されている（10-30）。karasu の
@@ -276,6 +277,7 @@ E2E が green。
 修正（search 入力の contrast、CSP 下で search が読み込まれない問題、query string 付きの sidebar link など）と、内部の YAML
 parser の置き換え（`js-yaml` → `yaml`、install サイズ削減）。transitive に `@astrojs/mdx` 8.1.3、`i18next` 26.7.2、
 `satteri` 0.11.7 などが動く。上記のとおり docs-site のビルドを手元で確かめた。rebase で transitive の版が繰り上がった（後述「結果」）。
+
 ## 結果
 
 全 PR が `pnpm-lock.yaml` を触るので 1 本ずつマージした。マージの前提は、その PR の head で required check が green、
@@ -307,8 +309,9 @@ Review tier の最新の run が success、GitHub の mergeable が `MERGEABLE` 
 #3871 で、残す側と完全に同じ内容の重複 block だけを消して直した（66 行）。直した lock で frozen install が通り、
 `pnpm install --lockfile-only` で解決し直しても lock が動かないこと（pnpm が自分で書く形と一致すること）を確かめた。
 
-**次のトリアージから、lock を触る bot PR は、PR の merge-base が今の `origin/main` と同じときだけマージする。** 違えば、
-mergeable が `MERGEABLE` でも `@dependabot rebase` を頼む。バッチを入れ終えたら、main で
+**次のトリアージから、lock を触る bot PR は、PR の merge-base が今の `origin/main` と同じときだけマージする。** 手元の
+`origin/main` は fetch しないと動かないので、比べる直前に毎回 `git fetch origin main` する（GitHub でマージしても手元の ref は
+古いままで、古い base と比べると同じ base の PR が通ってしまう）。違えば、mergeable が `MERGEABLE` でも `@dependabot rebase` を頼む。バッチを入れ終えたら、main で
 `pnpm install --frozen-lockfile --lockfile-only` が通ることを確かめる。前回（ADR-3751）は 9 本を rebase なしで続けて
 マージして壊れなかったが、それは同じ snapshot を足す PR が重ならなかっただけである。
 
@@ -370,8 +373,9 @@ transitive、vite、rolldown）まで公開 7 日未満として古い版に戻�
 
 ### #3874 で parse5 を 1 版にそろえる
 
-**却下**。jsdom 31.0.0 は自分では `parse5` 8.1.0 を使い、`parse5-parser-stream` 経由で 8.1.1 も読み込む。そろえると
-他の依存元の `parse5` も動き、差分が jsdom の外に出る。2 つは patch 違いで害は無い。
+**却下**。bot PR #3865 の lock では jsdom 31.0.0 が自分では `parse5` 8.1.0 を、`parse5-parser-stream` 経由で 8.1.1 を
+読み込んでいた。#3874 の lock では jsdom 側は 8.1.1 にそろい、8.1.0 を使うのは `@vscode/vsce` だけになった。
+そろえると vsce の `parse5` も動き、差分が jsdom の外に出る。2 つは patch 違いで害は無い。
 
 ### jsdom 31 を upstream の修正まで保留する
 
