@@ -105,6 +105,10 @@ describe("parseRecord / renderRecord", () => {
     expect(recordSummary({ ...r, findings: [] })).toBe("No findings");
     expect(recordSummary({ ...r, findings: [], waived: "hand-made PR" })).toBe("Waived");
     expect(recordSummary({ ...r, findings: [finding({})] })).toBe("1 finding: 1 fixed");
+    // The table turns a newline into a space, so the summary does too.
+    expect(recordSummary({ ...r, findings: [finding({ disposition: "fixed in\nabcdef0" })] })).toBe(
+      "1 finding: 1 fixed",
+    );
     expect(
       recordSummary({
         ...r,

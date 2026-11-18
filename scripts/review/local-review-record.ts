@@ -254,6 +254,9 @@ const escapeCell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
  * of them were declined or deferred, since those are the rows a reviewer opens
  * the record for.
  */
+/** The disposition as the rendered table holds it, so the summary counts what parseRecord reads. */
+const dispositionAsRendered = (f: Finding): string => f.disposition.replace(/\n/g, " ").trim();
+
 export function recordSummary(r: LocalReviewRecord): string {
   if (r.waived !== undefined) return "Waived";
   const n = r.findings.length;
@@ -267,14 +270,14 @@ export function recordSummary(r: LocalReviewRecord): string {
   const parts = kinds
     .map(
       ([name, re]) =>
-        [name, r.findings.filter((f) => re.test(f.disposition.trim())).length] as const,
+        [name, r.findings.filter((f) => re.test(dispositionAsRendered(f))).length] as const,
     )
     .filter(([, count]) => count > 0)
     .map(([name, count]) => `${count} ${name}`);
   // A row with no recognised disposition still shows while folded, so a High
   // record (which the check does not verify) cannot hide it.
   const open = r.findings.filter((f) => {
-    const d = f.disposition.trim();
+    const d = dispositionAsRendered(f);
     return !kinds.some(([, re]) => re.test(d));
   }).length;
   if (open > 0) parts.push(`${open} open`);

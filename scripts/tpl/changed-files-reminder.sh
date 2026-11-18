@@ -84,7 +84,7 @@ elif grep -qx 'No active TPL names a changed file.' "$errors"; then
   ctx="No TPL names a file PR $repo#$number changes (\`$rerun\`). \
 Cross-cutting TPLs are not recalled by file: check \`pnpm tpl:related <topic>\` for the topics this \
 change touches, and cite the ones that apply under \`## TPL impact\`, inside the section's \
-\`<details>\` block."
+\`<details>\` block with the cited ids on its summary line."
 else
   exit 0
 fi
