@@ -57,6 +57,7 @@ system Hato {
       infraId: "HatoDB",
       subId: "goal_proposals",
       missing: "leaf",
+      parentKind: "infra",
     });
   });
 

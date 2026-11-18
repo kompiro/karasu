@@ -1,6 +1,6 @@
 import type { KrsNode, KrsEdge, ResourceNode } from "../types/ast.js";
 import { INFRA_KIND_SET, unionEdgeFacets } from "../types/ast.js";
-import { buildEntityResolver, type EntityResolver } from "../resolver/resource-entity.js";
+import type { EntityResolver } from "../resolver/resource-entity.js";
 import { collectAnchoredPeerEdges, drawnEdgeKey, nodeId } from "./anchored-edges.js";
 import type { DomainEdgeDetail, SystemFrameEdges } from "./view-slice.js";
 import { edgeKey, edgeKindKey } from "./edge-key.js";
@@ -195,12 +195,11 @@ export function deriveImplicitServiceEdges(
  */
 export function deriveInfraEdges(
   children: KrsNode[],
-  // The resolver that maps a bare `resource <id>` to its entity's store. Callers
-  // with a model-wide resolver already built (`extractView`) pass it so resource→
-  // entity resolution matches the usecase-view promotion exactly (one namespace,
-  // not one scope per call). Defaults to a resolver over `children` for callers
-  // that don't have one (e.g. the deploy view, whose `children` is model-wide).
-  resolver: EntityResolver = buildEntityResolver(children),
+  // The model-wide resolver that maps a `resource` to its store: a bare id to its
+  // entity's table, a dotted ref through the model-wide target index (#3794).
+  // Required, so no caller builds one over its own `children` (one namespace,
+  // not one scope per call; TPL-1720).
+  resolver: EntityResolver,
 ): KrsEdge[] {
   const infraIds = new Set(children.filter((n) => INFRA_KIND_SET.has(n.kind)).map((n) => n.id));
   if (infraIds.size === 0) return [];

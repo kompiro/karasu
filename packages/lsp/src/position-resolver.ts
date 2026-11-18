@@ -1,9 +1,12 @@
+import { physicalTargetsOf, resolvePhysicalRef } from "@karasu-tools/core";
 import type { KrsFile, KrsNode, TeamNode } from "@karasu-tools/core";
 import type { Range } from "vscode-languageserver/node";
 import { toLspRange, type LspPosition } from "./lsp-position.js";
 
 interface NodeEntry {
   id: string;
+  /** A client's storage id (#3794): findable, but never the node at a position. */
+  storage?: true;
   start: { line: number; column: number };
   end: { line: number; column: number };
 }
@@ -25,7 +28,14 @@ interface AstRange {
  * `systems` and `services` (KrsNode trees) — they share the identical
  * recursive shape and are visited identically.
  */
-type NamedEntityGroup = "krs" | "deploy-block" | "deploy" | "org" | "team" | "member";
+type NamedEntityGroup =
+  | "krs"
+  | "client-storage"
+  | "deploy-block"
+  | "deploy"
+  | "org"
+  | "team"
+  | "member";
 
 interface NamedEntity {
   id: string;
@@ -41,10 +51,12 @@ interface NamedEntity {
  * hand-rolled recursive walkers (`collectNodes`, `collectAllIdentifiers`,
  * `getNodeDescription`) that had already drifted from one another — see the
  * comments at each call site below for the specific drift each one
- * reproduces. `visitNamedEntities` itself must stay a literal merge of the
- * three prior traversals; it does not visit `clients` / `domains` /
- * `databases` / `queues` / `storages` / `boundaries` because none of the
- * three prior walkers did (out of scope for this refactor, see #2017).
+ * reproduces. `visitNamedEntities` began as a literal merge of the three
+ * prior traversals, which visited neither top-level `clients` / `domains` /
+ * `databases` / `queues` / `storages` nor `boundaries` (#2017). Since #3794 the
+ * top-level node roots are walked too, after `services`, so a node of a name
+ * always wins over a client storage id of the same name; `boundaries` are
+ * still not visited.
  *
  * `stopDescending` reproduces `getNodeDescription`'s original stop-at-first-
  * match search: the three now-removed `search*` helpers returned as soon as
@@ -68,6 +80,14 @@ function* visitNamedEntities(
     // Original `searchKrsNode` returned at a matching node without recursing
     // into its children; reproduce by not descending here.
     if (stopDescending?.(entity)) return;
+    // A client's storage ids are what `resource <ClientId>.<Id>` names, the
+    // way an infra block's leaves are (#3794). They are properties, not child
+    // nodes, so they are listed here, the same way the leaves are reached.
+    if (node.kind === "client") {
+      for (const res of node.properties.resources) {
+        if (res.id !== undefined) yield { id: res.id, loc: res.loc, group: "client-storage" };
+      }
+    }
     for (const child of node.children) yield* walkKrsNode(child);
   }
 
@@ -102,6 +122,16 @@ function* visitNamedEntities(
 
   for (const sys of krsFile.systems) yield* walkKrsNode(sys);
   for (const svc of krsFile.services) yield* walkKrsNode(svc);
+  // Top-level node roots (#3794), so a top-level database or client is found
+  // as a node, and a top-level client's storage ids are listed.
+  const topLevel: KrsNode[] = [
+    ...krsFile.clients,
+    ...krsFile.domains,
+    ...krsFile.databases,
+    ...krsFile.queues,
+    ...krsFile.storages,
+  ];
+  for (const root of topLevel) yield* walkKrsNode(root);
   for (const block of krsFile.deploys) {
     const blockEntity: NamedEntity = { id: block.id, loc: block.loc, group: "deploy-block" };
     yield blockEntity;
@@ -138,7 +168,12 @@ export function collectNodes(krsFile: KrsFile): NodeEntry[] {
     // only its teams/members — a pre-existing inconsistency, not a
     // regression introduced by this refactor.
     if (entity.group === "org") continue;
-    entries.push({ id: entity.id, start: entity.loc.start, end: entity.loc.end });
+    entries.push({
+      id: entity.id,
+      start: entity.loc.start,
+      end: entity.loc.end,
+      ...(entity.group === "client-storage" ? { storage: true as const } : {}),
+    });
   }
   return entries;
 }
@@ -156,6 +191,9 @@ export function findNodeAtPosition(krsFile: KrsFile, position: LspPosition): str
   let best: NodeEntry | null = null;
 
   for (const entry of entries) {
+    // A storage line sits inside its client, and the client is the node there:
+    // the cursor sync highlights nodes, and a storage id is not one.
+    if (entry.storage) continue;
     if (!containsPosition(entry, astLine, astCol)) continue;
     // Prefer the entry that starts latest (innermost node)
     if (
@@ -181,9 +219,16 @@ function containsPosition(entry: NodeEntry, astLine: number, astCol: number): bo
  * Given a node ID, find its source range in the AST.
  * Returns an LSP Range (0-based), or null if not found.
  */
-export function findRangeOfNode(krsFile: KrsFile, nodeId: string): Range | null {
-  const entries = collectNodes(krsFile);
-  const entry = entries.find((e) => e.id === nodeId);
+export function findRangeOfNode(
+  krsFile: KrsFile,
+  nodeId: string,
+  /** Skip client storage ids, so a caller can look for a node elsewhere first (#3794). */
+  options: { nodesOnly?: boolean } = {},
+): Range | null {
+  const entries = collectNodes(krsFile).filter((e) => !(options.nodesOnly && e.storage));
+  // A node of the id wins over a client storage of the same id (#3794).
+  const entry =
+    entries.find((e) => e.id === nodeId && !e.storage) ?? entries.find((e) => e.id === nodeId);
   if (!entry) return null;
 
   return toLspRange(entry);
@@ -237,6 +282,75 @@ export function getNodeDescription(krsFile: KrsFile, nodeId: string): string | n
     if (entity.description != null) return entity.description;
   }
   return null;
+}
+
+/** What a dotted `<parent>.<child>` names in one file, for Go to Definition. */
+export type DottedRefLookup =
+  /** The declaration: the client storage's line or the infra leaf. */
+  | { range: Range }
+  /** The parent is an infra block here without that leaf: it names nothing else. */
+  | { range: null; parentIsInfraHere: true }
+  /** Nothing in this file; the parent may live in an imported file. */
+  | null;
+
+const INFRA_KINDS = new Set(["database", "queue", "storage"]);
+
+/**
+ * Resolve `<parent>.<child>` the way the model does (#3794): an infra block wins
+ * a shared id, a client storage is found by its client, and two same-id clients
+ * declaring the child name nothing. Returns where it is declared in this file.
+ */
+export function findRangeOfDottedRef(
+  krsFile: KrsFile,
+  parent: string,
+  child: string,
+): DottedRefLookup {
+  const target = resolvePhysicalRef(physicalTargetsOf(krsFile), parent, child);
+  if (target.kind === "client") return { range: toLspRange(target.storage.declaration.loc) };
+  if (target.kind === "unresolved") {
+    return target.parentKind === "infra" ? { range: null, parentIsInfraHere: true } : null;
+  }
+  const leaf = findInfraLeaf(krsFile, parent, child);
+  return leaf ? { range: toLspRange(leaf.loc) } : null;
+}
+
+/** The leaf `child` of an infra block `parent` (a reopened block may hold it in any copy). */
+function findInfraLeaf(krsFile: KrsFile, parent: string, child: string): KrsNode | undefined {
+  const visit = (node: KrsNode): KrsNode | undefined => {
+    if (INFRA_KINDS.has(node.kind)) {
+      return node.id === parent ? node.children.find((leaf) => leaf.id === child) : undefined;
+    }
+    for (const c of node.children) {
+      const found = visit(c);
+      if (found) return found;
+    }
+    return undefined;
+  };
+  const roots = [...krsFile.systems, ...krsFile.databases, ...krsFile.queues, ...krsFile.storages];
+  for (const root of roots) {
+    const found = visit(root);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/**
+ * The parent segment of a dotted reference whose last segment is the word at
+ * `position`: `WebApp` for the cursor on `Cache` in `resource WebApp.Cache`, or
+ * the contents of a quoted parent (`"web-app".Cache`). Null when the word is not
+ * preceded by a dot.
+ */
+export function getQualifierAtPosition(text: string, position: LspPosition): string | null {
+  const line = text.split("\n")[position.line];
+  if (!line || !/\w/.test(line[position.character] ?? "")) return null;
+  let start = position.character;
+  while (start > 0 && /\w/.test(line[start - 1])) start--;
+  if (line[start - 1] !== ".") return null;
+  const before = line.slice(0, start - 1);
+  const quoted = /"([^"]*)"$/.exec(before);
+  if (quoted) return quoted[1];
+  const bare = /(\w+)$/.exec(before);
+  return bare ? bare[1] : null;
 }
 
 /**

@@ -120,7 +120,7 @@ code), ask what is missing, then write it.
 | Ownership | Which team owns which service | `organization` / `team` with `owns` |
 | Domains | The bounded contexts inside each service (how the team splits the work, not one per directory) | `domain` |
 | Usecases | What each domain does for its users or for other domains | `usecase` |
-| Resources and entities | What each usecase reads and writes, with which operations; the business entities a domain keeps | `resource` with `operations`, `entity` |
+| Resources and entities | What each usecase reads and writes, with which operations; the business entities a domain keeps; state a client keeps on the device (browser storage, local files) | `resource` with `operations`, `entity`; a client's `resource <storageKind> <Id> "<name>"` referenced as `resource <ClientId>.<Id>` (experimental, cookbook #10) |
 | Physical | How each service runs and where the data lives | `deploy` units with `realizes`, `database` / `queue` / `storage` |
 
 The user can stop at any layer. A model with services and no domains is a

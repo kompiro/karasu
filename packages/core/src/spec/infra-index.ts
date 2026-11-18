@@ -16,8 +16,20 @@
  * canonical form) and as a top-level bucket on `KrsFile` — and callers differ on
  * which roots they hold, so this takes a plain node array and walks whatever it
  * is given.
+ *
+ * Since #3794 a `<Parent>.<Child>` may also name a storage a `client` declares
+ * with an id. {@link indexPhysicalTargets} indexes both kinds of target over the
+ * whole model and {@link resolvePhysicalRef} is the one place that decides which
+ * one a reference names, so no reader adds a third check of its own.
  */
-import type { KrsNode, InfraKind } from "../types/ast.js";
+import type {
+  KrsNode,
+  KrsFile,
+  InfraKind,
+  ClientNode,
+  ClientResource,
+  ClientResourceKind,
+} from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
 
 export interface DeclaredInfraBlock {
@@ -29,6 +41,8 @@ export interface DeclaredInfraBlock {
   leaves: Set<string>;
   /** Leaf label fallback, keyed by leaf id (`label ?? id`). */
   leafLabels: Map<string, string>;
+  /** Leaf kind (`table` / `queue-item` / `bucket`), keyed by leaf id. */
+  leafKinds: Map<string, string>;
 }
 
 /**
@@ -39,7 +53,7 @@ export interface DeclaredInfraBlock {
  * asking about, and dropping the first declaration's leaves here would make a
  * legitimately reopened `database` look like it lost tables.
  */
-export function indexDeclaredInfra(roots: readonly KrsNode[]): Map<string, DeclaredInfraBlock> {
+function indexDeclaredInfra(roots: readonly KrsNode[]): Map<string, DeclaredInfraBlock> {
   const index = new Map<string, DeclaredInfraBlock>();
 
   const visit = (node: KrsNode): void => {
@@ -52,6 +66,7 @@ export function indexDeclaredInfra(roots: readonly KrsNode[]): Map<string, Decla
           leafIds: [],
           leaves: new Set(),
           leafLabels: new Map(),
+          leafKinds: new Map(),
         };
         index.set(node.id, entry);
       }
@@ -60,6 +75,7 @@ export function indexDeclaredInfra(roots: readonly KrsNode[]): Map<string, Decla
         entry.leaves.add(sub.id);
         entry.leafIds.push(sub.id);
         entry.leafLabels.set(sub.id, sub.label ?? sub.id);
+        entry.leafKinds.set(sub.id, sub.kind);
       }
       // Infra blocks do not nest, so there is nothing further down this branch.
       return;
@@ -74,4 +90,199 @@ export function indexDeclaredInfra(roots: readonly KrsNode[]): Map<string, Decla
 /** Fully-qualified leaf key (`<infraId>.<leafId>`) — the table-granular identity. */
 export function infraLeafKey(infraId: string, leafId: string): string {
   return `${infraId}.${leafId}`;
+}
+
+/**
+ * One storage a `client` declares with an id (`resource <storageKind> <Id> "<name>"`),
+ * the target a usecase's `resource <ClientId>.<Id>` resolves to (#3794).
+ */
+export interface DeclaredClientStorage {
+  clientId: string;
+  storageId: string;
+  storageKind: ClientResourceKind;
+  name: string;
+  /** The declaration itself: its identity is what makes two copies of one import the same storage. */
+  declaration: ClientResource;
+}
+
+/** Every declaration of one client id the model holds, as storage targets. */
+export interface DeclaredClient {
+  clientId: string;
+  /**
+   * Storage declarations by storage id. More than one entry means two client
+   * nodes of this id (KRS018 / KRS030) each declare it, so a reference to it is
+   * ambiguous. A duplicate inside one client node is not a second entry: the
+   * first declaration wins and the rest are `client-resource-duplicate-id`.
+   */
+  storages: Map<string, DeclaredClientStorage[]>;
+  /** Storages declared without an id, which nothing can reference (coverage reports them). */
+  unidentified: ClientResource[];
+}
+
+/**
+ * Where `<Parent>.<Child>` targets live: the infra blocks and the clients'
+ * storages, built once over the whole model (TPL-1720, TPL-2088).
+ */
+export interface PhysicalTargetIndex {
+  infra: Map<string, DeclaredInfraBlock>;
+  /** Clients whose id no infra block shares, keyed by client id. */
+  clients: Map<string, DeclaredClient>;
+  /**
+   * Client ids an infra block also uses, when the client declares a storage with
+   * an id. Such a reference resolves to the infra block, as it did before
+   * clients were targets, and the client's storages are left out of every index
+   * (`resource-target-ambiguous` names the clash).
+   */
+  shadowedClients: Set<string>;
+}
+
+/** Index every declared storage of every client reachable from `roots`. */
+function indexDeclaredClients(roots: readonly KrsNode[]): Map<string, DeclaredClient> {
+  const index = new Map<string, DeclaredClient>();
+  // One client declaration reached through several import routes arrives as
+  // copies that share their `properties`, so the storage objects are the same.
+  const seen = new Set<ClientResource>();
+
+  const visit = (node: KrsNode): void => {
+    if (node.kind === "client") {
+      const client = node as ClientNode;
+      let entry = index.get(client.id);
+      if (!entry) {
+        entry = { clientId: client.id, storages: new Map(), unidentified: [] };
+        index.set(client.id, entry);
+      }
+      const idsInThisNode = new Set<string>();
+      for (const res of client.properties.resources ?? []) {
+        if (seen.has(res)) continue;
+        seen.add(res);
+        if (res.id === undefined) {
+          entry.unidentified.push(res);
+          continue;
+        }
+        if (idsInThisNode.has(res.id)) continue;
+        idsInThisNode.add(res.id);
+        const storage: DeclaredClientStorage = {
+          clientId: client.id,
+          storageId: res.id,
+          storageKind: res.storageKind,
+          name: res.name,
+          declaration: res,
+        };
+        const list = entry.storages.get(res.id);
+        if (list) list.push(storage);
+        else entry.storages.set(res.id, [storage]);
+      }
+      return;
+    }
+    for (const child of node.children) visit(child);
+  };
+
+  for (const root of roots) visit(root);
+  return index;
+}
+
+/**
+ * Index the targets of `<Parent>.<Child>` reachable from `roots`. Pass every
+ * root of the model (systems, top-level services / clients / domains / infra
+ * blocks): a client's storages are referenced from any domain, the way infra
+ * leaves are.
+ */
+export function indexPhysicalTargets(roots: readonly KrsNode[]): PhysicalTargetIndex {
+  const infra = indexDeclaredInfra(roots);
+  const clients = indexDeclaredClients(roots);
+  // A client sharing an infra block's id is left out either way; it is only a
+  // clash worth reporting when the client has a storage a reference could mean.
+  const shadowedClients = new Set<string>();
+  for (const [id, client] of clients) {
+    if (!infra.has(id)) continue;
+    if (client.storages.size > 0) shadowedClients.add(id);
+    clients.delete(id);
+  }
+  return { infra, clients, shadowedClients };
+}
+
+/** Every root of a parsed or merged file, in the order validation walks them. */
+export function physicalTargetRoots(file: KrsFile): KrsNode[] {
+  return [
+    ...file.systems,
+    ...file.services,
+    ...file.clients,
+    ...file.domains,
+    ...file.databases,
+    ...file.queues,
+    ...file.storages,
+  ];
+}
+
+/** What `<Parent>.<Child>` names. */
+export type PhysicalRefTarget =
+  | {
+      kind: "infra";
+      infraId: string;
+      leafId: string;
+      /** A client also has this id; its storages are not targets (`resource-target-ambiguous`). */
+      shadowsClient: boolean;
+    }
+  | { kind: "client"; storage: DeclaredClientStorage }
+  | {
+      kind: "unresolved";
+      /** No infra block or client has the parent id, or the parent has no such child. */
+      missing: "block" | "leaf";
+      /** Which kind of parent lacks the child; set when `missing` is `"leaf"`. */
+      parentKind?: "infra" | "client";
+      /** Set when the parent is an infra block a client also uses. */
+      shadowsClient?: boolean;
+      /** Set when more than one client node of the parent id declares the child. */
+      ambiguous?: boolean;
+    };
+
+/**
+ * Decide what `<Parent>.<Child>` names. The one place that answers "is this an
+ * infra leaf, a client's storage, or nothing", read by validation, labels,
+ * derived edges, the matrix, coverage and the LSP (TPL-1720).
+ */
+export function resolvePhysicalRef(
+  index: PhysicalTargetIndex,
+  parent: string,
+  child: string,
+): PhysicalRefTarget {
+  const block = index.infra.get(parent);
+  if (block) {
+    const shadowsClient = index.shadowedClients.has(parent);
+    if (block.leaves.has(child))
+      return { kind: "infra", infraId: parent, leafId: child, shadowsClient };
+    return { kind: "unresolved", missing: "leaf", parentKind: "infra", shadowsClient };
+  }
+  const client = index.clients.get(parent);
+  if (client) {
+    const candidates = client.storages.get(child);
+    if (!candidates) return { kind: "unresolved", missing: "leaf", parentKind: "client" };
+    if (candidates.length > 1) {
+      return { kind: "unresolved", missing: "leaf", parentKind: "client", ambiguous: true };
+    }
+    return { kind: "client", storage: candidates[0] };
+  }
+  return { kind: "unresolved", missing: "block" };
+}
+
+/**
+ * A collision-free key for a client storage, for maps the readers keep to
+ * themselves. Quoted ids may hold `.`, so `infraLeafKey` would give client `A`
+ * storage `B.C` and client `A.B` storage `C` one key. Keys that must match a
+ * resource node's id (labels, matrix columns) stay `infraLeafKey`, like infra.
+ */
+export function clientStorageKey(clientId: string, storageId: string): string {
+  return JSON.stringify([clientId, storageId]);
+}
+
+/** The canvas / matrix label of a client storage: `<name> (<storageKind>)`. */
+export function clientStorageLabel(
+  storage: Pick<DeclaredClientStorage, "name" | "storageKind">,
+): string {
+  return `${storage.name} (${storage.storageKind})`;
+}
+
+/** {@link indexPhysicalTargets} over every root of `file`. */
+export function physicalTargetsOf(file: KrsFile): PhysicalTargetIndex {
+  return indexPhysicalTargets(physicalTargetRoots(file));
 }

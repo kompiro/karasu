@@ -123,9 +123,11 @@ id でノードを指す構文を新設・変更するとき:
   `realizes` / `handles` / `resource` / entity 関連 / edge endpoint / `import`）
 - `docs/spec/diagnostics.md` / `.ja.md` — `*-target-not-found` / `*-target-ambiguous`
 - `docs/concepts.ja.md` / `docs/concepts.md` — 「`owns` による組織と論理/物理の対応付け」節
+- `docs/spec/syntax.md` / `.ja.md` — §Referencing a client storage from a usecase (experimental)（usecase の `resource <ClientId>.<Id>` は infra の leaf と同じ dot 記法・同じ model 全体の解決・同じ label の優先順。#3794）
 
 ## 関連テスト
 
+- `packages/core/src/parser/client-storage-ref-validation.test.ts` — `resource <ClientId>.<Id>` が system をまたぎ、トップレベルと import 先の client にも解決すること（#3794）
 - `packages/core/src/parser/node-path.test.ts` — 字句（`readNodeIdPathTail`）と
   接尾辞規則（`nodePathMatchesSuffix`）の table-driven テスト + 既存 4 サイトの
   回復挙動の pin（slice A, #2547）

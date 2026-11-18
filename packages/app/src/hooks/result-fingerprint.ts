@@ -1,4 +1,4 @@
-import type { Diagnostic, NodeMetadata, Warning } from "@karasu-tools/core";
+import type { Diagnostic, NodeMetadata, PhysicalTargetIndex, Warning } from "@karasu-tools/core";
 
 /**
  * Compute a compact fingerprint over the user-visible parts of a compile
@@ -48,6 +48,13 @@ export function computeViewResultFingerprint(args: {
    * detail panel publishing.
    */
   nodeMetadataByPath?: ReadonlyMap<string, NodeMetadata>;
+  /**
+   * Optional. The model-wide `<Parent>.<Child>` targets the CRUD matrix reads
+   * (#3794). Adding a client storage id while a view that does not show the
+   * client is open changes neither the SVG nor the metadata, so it is folded
+   * in for the matrix to see it.
+   */
+  physicalTargets?: PhysicalTargetIndex;
 }): string {
   // U+001F (Unit Separator) cannot appear in JSON-encoded strings —
   // JSON.stringify escapes control characters — and karasu's SVG output
@@ -59,5 +66,23 @@ export function computeViewResultFingerprint(args: {
   const byPathSegment = args.nodeMetadataByPath
     ? JSON.stringify(Array.from(args.nodeMetadataByPath.entries()))
     : "";
-  return `${args.svg}${SEP}${JSON.stringify(args.warnings)}${SEP}${JSON.stringify(args.diagnostics)}${SEP}${metadataSegment}${SEP}${byPathSegment}`;
+  const targetsSegment = args.physicalTargets ? physicalTargetsSignature(args.physicalTargets) : "";
+  return `${args.svg}${SEP}${JSON.stringify(args.warnings)}${SEP}${JSON.stringify(args.diagnostics)}${SEP}${metadataSegment}${SEP}${byPathSegment}${SEP}${targetsSegment}`;
+}
+
+/** What the matrix shows of the target index: keys, kinds and labels, without source positions. */
+function physicalTargetsSignature(targets: PhysicalTargetIndex): string {
+  const infra = Array.from(targets.infra.values(), (b) => [
+    b.infraId,
+    b.kind,
+    Array.from(b.leafLabels.entries()),
+  ]);
+  const clients = Array.from(targets.clients.values(), (c) => [
+    c.clientId,
+    Array.from(c.storages.entries(), ([id, list]) => [
+      id,
+      list.map((s) => [s.storageKind, s.name]),
+    ]),
+  ]);
+  return JSON.stringify([infra, clients, Array.from(targets.shadowedClients)]);
 }

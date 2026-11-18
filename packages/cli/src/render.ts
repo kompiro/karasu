@@ -89,7 +89,7 @@ export async function render(filePath: string, options: RenderOptions): Promise<
     } else {
       const result = await compileProject(absolutePath, fs, { diagramType: "system" });
       if (result.diagramType === "system") {
-        const matrix = extractCrudMatrix(result.systems);
+        const matrix = extractCrudMatrix(result.systems, {}, result.physicalTargets);
         const matrixSvg = renderMatrixAsSvg(matrix);
         const outDir = dirname(resolve(options.output));
         const stem = basename(options.output, extname(options.output));

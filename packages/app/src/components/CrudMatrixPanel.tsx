@@ -7,10 +7,17 @@ import {
   type SystemNode,
   type CrudMatrixOptions,
   type InfraKind,
+  type PhysicalTargetIndex,
 } from "@karasu-tools/core";
 
 interface CrudMatrixPanelProps {
   systems: readonly SystemNode[];
+  /**
+   * The compile result's model-wide `<Parent>.<Child>` targets, so a top-level
+   * client's storages get their columns (#3794). Absent, the matrix indexes
+   * `systems`.
+   */
+  physicalTargets?: PhysicalTargetIndex;
 }
 
 const INFRA_OPTIONS: readonly InfraKind[] = ["database", "queue", "storage"];
@@ -20,7 +27,7 @@ const INFRA_OPTIONS: readonly InfraKind[] = ["database", "queue", "storage"];
  * filters. Designed as a standalone surface — full AppShell / toolbar
  * integration is tracked separately.
  */
-export function CrudMatrixPanel({ systems }: CrudMatrixPanelProps): ReactElement {
+export function CrudMatrixPanel({ systems, physicalTargets }: CrudMatrixPanelProps): ReactElement {
   const [serviceFilter, setServiceFilter] = useState<string>("");
   const [infraFilter, setInfraFilter] = useState<string>("");
 
@@ -30,8 +37,8 @@ export function CrudMatrixPanel({ systems }: CrudMatrixPanelProps): ReactElement
     const opts: CrudMatrixOptions = {};
     if (serviceFilter) opts.serviceFilter = [serviceFilter];
     if (infraFilter) opts.infraFilter = [infraFilter as InfraKind];
-    return extractCrudMatrix(systems, opts);
-  }, [systems, serviceFilter, infraFilter]);
+    return extractCrudMatrix(systems, opts, physicalTargets);
+  }, [systems, physicalTargets, serviceFilter, infraFilter]);
 
   return (
     <div className="crud-matrix-panel">
