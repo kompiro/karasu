@@ -69,8 +69,12 @@ function lint(cwd: string, targets: string[]): OxlintReport {
   try {
     return JSON.parse(run.stdout) as OxlintReport;
   } catch {
-    // A rejected config or a crash leaves no JSON; show oxlint's own words.
-    throw new Error(`oxlint exited ${run.status} without a JSON report:\n${run.stderr}`);
+    // A rejected config or a crash leaves no JSON; show oxlint's own words,
+    // which it writes to stdout as well as stderr.
+    throw new Error(
+      `oxlint exited ${run.status} without a JSON report:\n` +
+        `stdout:\n${run.stdout}\nstderr:\n${run.stderr}`,
+    );
   }
 }
 
@@ -100,9 +104,11 @@ describe("no file imports the shell-string child_process API (TPL-168)", () => {
   });
 
   it("finds none in the files the repo tracks", () => {
-    const tracked = execFileSync("git", ["ls-files"], { cwd: ROOT, encoding: "utf8" })
-      .split("\n")
-      .filter((f) => SOURCE.test(f));
+    // `-z` prints each path raw and NUL-terminated; without it, core.quotePath
+    // quotes a non-ASCII or special name, which then fails SOURCE and drops out.
+    const tracked = execFileSync("git", ["ls-files", "-z"], { cwd: ROOT, encoding: "utf8" })
+      .split("\0")
+      .filter((f) => f !== "" && SOURCE.test(f));
     // The tracked paths are the input, not a directory walk, and every one of
     // them must have been read: a run that skipped files would also report
     // nothing.
