@@ -1342,6 +1342,43 @@ system S {
   });
 });
 
+describe("client-resource-duplicate-id warning (#3794)", () => {
+  const warn = (krs: string) =>
+    analyze(Parser.parse(krs).value, [getBuiltinStyleSheet()]).filter(
+      (w) => w.kind === "client-resource-duplicate-id",
+    );
+
+  it("warns on the second storage of one client with the same id", () => {
+    const dups = warn(`
+system S {
+  client WebApp [web] {
+    resource sessionStorage ApiKey "a"
+    resource localStorage ApiKey "b"
+    resource opfs "c"
+    resource opfs "c"
+  }
+}
+`);
+    expect(dups.map((w) => w.params)).toEqual([{ clientId: "WebApp", id: "ApiKey" }]);
+    expect(dups[0].loc?.start.line).toBe(5);
+  });
+
+  it("does not compare storages of two same-id client nodes", () => {
+    expect(
+      warn(`
+system A {
+  client WebApp [web] {
+    resource sessionStorage ApiKey "a"
+  }
+}
+client WebApp [web] {
+  resource localStorage ApiKey "b"
+}
+`),
+    ).toEqual([]);
+  });
+});
+
 // `.krs language v2.0` rejects a near-miss of a builtin annotation (#2677). The
 // check moved from this resolver to the parser, because a rejected annotation
 // must stay out of the model; these cases pin the distance rule the spec fixes.
@@ -3322,6 +3359,7 @@ describe("warningSeverity — exhaustive register map", () => {
     "cyclic-dependency": "warning",
     "delivers-target-not-client": "warning",
     "client-capability-duplicate": "warning",
+    "client-resource-duplicate-id": "warning",
     "legend-ref-unresolved": "warning",
     "style-column-ignored-non-system-view": "warning",
     "style-invalid-enum-value": "warning",

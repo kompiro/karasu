@@ -6,6 +6,7 @@ import type {
   TeamNode,
   OrganizationBlock,
   SystemNode,
+  PhysicalTargetIndex,
   NodeMetadata,
   DeployBlockInfo,
   DeployBlock,
@@ -87,6 +88,7 @@ export interface SystemViewBundle {
   nodeMetadataByPath: Map<string, NodeMetadata>;
   hasDeployDiagram: boolean;
   resolvedSystems: SystemNode[];
+  physicalTargets?: PhysicalTargetIndex;
   nodeFileIndex: Map<string, string>;
   /** Per-node diff metadata when diff mode is active. */
   nodeDiff?: Map<string, NodeDiffMeta>;
@@ -238,6 +240,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     hasBoundaries,
     recompile: recompileSystem,
     systems: resolvedSystems,
+    physicalTargets,
     nodeFileIndex,
     collapsedCategories,
     toggleCategory,
@@ -397,6 +400,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       nodeMetadataByPath: systemNodeMetadataByPath,
       hasDeployDiagram,
       resolvedSystems,
+      physicalTargets,
       nodeFileIndex,
       nodeDiff: systemNodeDiff,
       nodeDiffByPath: systemNodeDiffByPath,

@@ -182,6 +182,25 @@ client MobileApp [mobile] {
 
 `resource` は client が読み書きするストレージ、`capability` は OS / browser が許可を与える機能、という別概念です。SVG カードはそれぞれ package / lock グリフの `×N` のカウントバッジで表示し、完全リストは詳細パネルに出ます。
 
+**storage を、それを使う usecase と結びつける（experimental）。** storage の kind の後に id を付けると、usecase は database のテーブルを指すのと同じ dot 記法でその storage を参照できます。
+
+```krs
+system Shop {
+  client MobileApp [mobile] {
+    resource indexedDB Outbox "outbox"
+  }
+  service OrderService {
+    domain Order {
+      usecase QueueOrder {
+        resource MobileApp.Outbox { operations create }
+      }
+    }
+  }
+}
+```
+
+参照は domain ビューで `outbox (indexedDB)` と描かれ、CRUD matrix に column が出て、`karasu coverage` にも数えられます。id の綴りを間違えると報告されます。この参照から `OrderService → MobileApp` のエッジは導出しません。以前の warning を消すためにこうした参照に `[external]` を付けていたなら、storage に id を付けたあとで外してください。`[external]` は「参照先が system の外にある」という意味です。
+
 > cookie / session / 生クレデンシャルのストレージ、および脅威モデリングそのものは意図的に対象外です（karasu は基礎事実をモデル化するが、セキュリティ規律の shape は語彙に固定しない — [ADR-834](../adr/834-security-modeling-stance.md)）。
 
 ---

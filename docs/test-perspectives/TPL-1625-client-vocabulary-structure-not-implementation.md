@@ -75,3 +75,5 @@ scope:
 ## 派生元 spec
 
 - `docs/concepts.md` —「Structure, not implementation — the `client` sub-language as the test case」節（structure / implementation の線と client の各機能の位置づけ）
+- `docs/spec/syntax.md` / `.ja.md` — §Referencing a client storage from a usecase (experimental)（storage の id はアクセスパス上の storage の枠を名指すだけで、中身やスキーマは語彙に入れない。#3794）
+

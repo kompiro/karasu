@@ -67,6 +67,7 @@ export const DIAGNOSTIC_SEVERITY = {
   "positional-label-removed": "error",
   "contains-target-not-found": "warning",
   "unresolved-resource-ref": "warning",
+  "resource-target-ambiguous": "warning",
   "unresolved-table-ref": "warning",
   "duplicate-team-id": "error",
   "node-id-multiple-locations": "warning",

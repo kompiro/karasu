@@ -52,7 +52,7 @@ export async function matrix(filePath: string, options: MatrixCliOptions): Promi
     writesOnly: options.writesOnly,
     omitEmpty: options.omitEmpty,
   };
-  const m = extractCrudMatrix(result.systems, extractOptions);
+  const m = extractCrudMatrix(result.systems, extractOptions, result.physicalTargets);
   const showTotals = !options.noTotals;
 
   let output: string;

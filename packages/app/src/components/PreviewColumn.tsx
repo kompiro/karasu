@@ -264,7 +264,10 @@ export function PreviewColumn() {
           selectedDeployBlockId={selectedDeployBlockId}
           onDeployBlockChange={onDeployBlockChange}
         />
-        <CrudMatrixPanel systems={systemView.systems} />
+        <CrudMatrixPanel
+          systems={systemView.systems}
+          physicalTargets={systemView.physicalTargets}
+        />
       </div>
     );
   }

@@ -41,7 +41,7 @@ const FIXTURES = {
   handles: `system S {\n  service A {\n    domain D {}\n  }\n  service B {\n    handles D\n  }\n  B -> A "calls"\n}\n`,
   delivers: `system S {\n  client C [web] {}\n  service Web {\n    delivers C\n  }\n}\n`,
   operations: `system S {\n  service A {\n    domain D {\n      usecase U {\n        resource DB.T {\n          operations read, list:read\n        }\n      }\n    }\n  }\n  database DB {\n    table T {}\n  }\n}\n`,
-  resources: `system S {\n  client C [web] {\n    resource localStorage "prefs"\n    resource indexedDB "outbox"\n  }\n}\n`,
+  resources: `system S {\n  client C [web] {\n    resource localStorage "prefs"\n    resource indexedDB Outbox "outbox"\n  }\n}\n`,
   capabilities: `system S {\n  client C [web] {\n    capability camera\n    capability p2p-2\n    capability geolocation {\n      label "Delivery tracking"\n      description "Continuous tracking during delivery"\n    }\n    capability bluetooth {\n      description "Pairs with the scanner"\n    }\n  }\n}\n`,
 } satisfies Record<PropertyKeys<KrsNode>, string>;
 

@@ -31,6 +31,7 @@ interface UsePreviewContextValueArgs {
     | "nodeDiff"
     | "nodeDiffByPath"
     | "resolvedSystems"
+    | "physicalTargets"
     | "toggleCategory"
     | "toggleGroup"
     | "toggleExpand"
@@ -196,6 +197,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         nodeDiff: system.nodeDiff,
         nodeDiffByPath: system.nodeDiffByPath,
         systems: system.resolvedSystems,
+        physicalTargets: system.physicalTargets,
       },
       deployView: {
         svg: deploy.svg,
@@ -269,6 +271,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       system.nodeDiff,
       system.nodeDiffByPath,
       system.resolvedSystems,
+      system.physicalTargets,
       deploy.svg,
       deploy.diagnostics,
       deploy.warnings,
