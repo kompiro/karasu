@@ -18,6 +18,7 @@ known_consumers:
   - declaration-id
   - link-url
   - deploy-property-value
+  - client-resource-name
 discovered_from:
   - issue: "#3752"
   - root_cause_file: "packages/core/src/parser/edge-parser.ts:parseEdge"
@@ -94,7 +95,7 @@ TPL-2542 の「区切りの後で次の行を消費しない」は、カンマ�
 ## チェックリスト
 
 - [ ] 任意で続く id・文字列リテラルを読む reader は、`opensEdgeOnLaterLine` が真のときに読まずに残しているか（`grep -nE 'peek\(\)\.type === TokenType\.(StringLiteral|Identifier)|isIdOrString\(ctx\.peek\(\)\)|match\(TokenType\.StringLiteral\)' packages/core/src/parser/*.ts` で任意の要素を読む箇所を挙げる） [judgment]
-- [ ] 必須の値を読む reader は `readValueAfter` で読み、値が無いときは `reportMissingValue` で構文の先頭から報告しているか。`ctx.expect(TokenType.(StringLiteral|Identifier))` で値を読む箇所（`grep -nE 'ctx\.expect\(TokenType\.(StringLiteral|Identifier)\)' packages/core/src/parser/*.ts`）は、edge を書けない場所（`import` の path、deploy・deploy unit の id、legend の entry）か、edge を持たない block（capability の名前、client の `resource` の名前）にあるものだけか [judgment]
+- [ ] 必須の値を読む reader は `readValueAfter` で読み、値が無いときは `reportMissingValue` で構文の先頭から報告しているか。`ctx.expect(TokenType.(StringLiteral|Identifier))` で値を読む箇所（`grep -nE 'ctx\.expect\(TokenType\.(StringLiteral|Identifier)\)' packages/core/src/parser/*.ts`）は、edge を書けない場所（`import` の path、deploy・deploy unit の id、legend の entry）か、edge を持たない block（capability の名前）にあるものだけか。client の block は明示した source の edge を受け付けるので、client の `resource` の名前は `readValueAfter` で読む（`resource opfs` の次の行の `"WebApp" -> A` を名前にしない。#3794） [judgment]
 - [ ] 必須の値が無いとき、読まずに残した token を値にしていないか。target の無い edge と URL の無い link はモデルに残らないか
 - [ ] `opensEdgeOnLaterLine` に渡す token は、直前に読んだ token（`ctx.previous()` など）か。判定を reader の中に書き写していないか
 - [ ] テストは、次の行に引用符付きの source の edge を置いたとき、system 直下では 2 本の edge になり、node の block の中では書いた通りの edge（source がその node でなければ `edge-source-mismatch`）になることを確かめているか
@@ -105,7 +106,7 @@ TPL-2542 の「区切りの後で次の行を消費しない」は、カンマ�
 - **必須の値は共有の reader で読む**: `property-readers.ts` の `readValueAfter(ctx, after, ...types)` が
   値の token か `undefined` を返し、`reportMissingValue(ctx, start, code, params)` が構文の先頭から
   直前に読んだ token までに診断を出す。`readStringValue`・`parseDescriptionValue`・`parseLink`・
-  `parseIdOrString` と、宣言の id・`contains`・`owns`・deploy の値がこれを使う。`parseEdge` は target が
+  `parseIdOrString` と、宣言の id・`contains`・`owns`・deploy の値・client の `resource` の名前（`parseClientResource`、#3794）がこれを使う。`parseEdge` は target が
   無いとき edge を読み切って `undefined` を返し、`ctx.tryParseEdge` は `{ edge: undefined }` で
   「edge を読んだが target が無い」を伝える（#3767）
 - **共有のヘルパーで止める**: `node-path.ts` の `opensEdgeOnLaterLine(cursor, after)`。
@@ -128,6 +129,9 @@ TPL-2542 の「区切りの後で次の行を消費しない」は、カンマ�
   次の行の `"x y" -> b` を置いたとき値にならず、診断が構文の先頭に 1 件出ること。target の無い edge と
   URL の無い link がモデルに残らないこと。変わらないもの（同じ行の値、次の行の値で矢印が続かない形、
   同じ行の `-> b "x" -> c`・`link "u" "Docs" -> b`・`usecase u {} -> v`）
+- `packages/core/src/parser/client-resource-id.test.ts` — client の `resource opfs` の次の行の
+  `"WebApp" -> Api` と `WebApp -> Api` が名前にも id にもならず、edge が書いた通りに読まれること。
+  変わらないもの（次の行に書いた名前、次の行のキーワード）（#3794）
 - `packages/core/src/parser/node-path.test.ts` — `readNodeIdPathTail` の「leaves an edge source on
   the next line unconsumed」と「reads a segment whose following arrow is on a later line」
 - `packages/core/src/index.test.ts` — `ARROW_PAIR` の 2 つの宣言順で、`->` を含む端点の edge が

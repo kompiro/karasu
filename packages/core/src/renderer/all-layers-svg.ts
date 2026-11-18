@@ -20,6 +20,7 @@ import { StyleParser, unplacedStyleDiagnostics } from "../parser/style-parser.js
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 import { type DiagramTheme, resolvePalette } from "./palette.js";
 import "../renderer/shapes.js"; // ensure built-in shapes are registered
+import { physicalTargetsOf } from "../spec/infra-index.js";
 
 function buildOrgPlaceholderSvg(labels?: EmptyStateLabels, theme?: DiagramTheme): string {
   const text = escapeXml(labels?.orgPlaceholder ?? DEFAULT_EMPTY_STATE_LABELS.orgPlaceholder);
@@ -287,7 +288,7 @@ export function buildAllLayersSvg(
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
   // One extractor per build: the model is fixed for the whole walk (#2759).
-  const extract = createViewExtractor(effectiveSystems);
+  const extract = createViewExtractor(effectiveSystems, [], [], physicalTargetsOf(krsFile));
   const rootSlice = extract([]);
   if (rootSlice.childNodes.length === 0) {
     return {

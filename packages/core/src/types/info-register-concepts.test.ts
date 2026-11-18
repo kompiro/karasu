@@ -74,6 +74,7 @@ const WARNING_KINDS = Object.keys({
   "cyclic-dependency": true,
   "delivers-target-not-client": true,
   "client-capability-duplicate": true,
+  "client-resource-duplicate-id": true,
   "tag-not-builtin": true,
   "tag-not-applicable": true,
   "annotation-not-builtin": true,

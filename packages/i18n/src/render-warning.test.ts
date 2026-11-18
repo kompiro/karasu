@@ -114,6 +114,10 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "delivers-target-not-client",
     params: { serviceId: "BFF", targetId: "OrderService" },
   },
+  "client-resource-duplicate-id": {
+    kind: "client-resource-duplicate-id",
+    params: { clientId: "WebApp", id: "ApiKey" },
+  },
   "client-capability-duplicate": {
     kind: "client-capability-duplicate",
     params: { clientId: "WebApp", name: "camera" },
@@ -208,6 +212,7 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "edge-target-ambiguous": ["Checkout.Payment", "Shop.Payment", "Shop.Checkout.Payment"],
   "cyclic-dependency": ["A", "B"],
   "delivers-target-not-client": ["BFF", "OrderService"],
+  "client-resource-duplicate-id": ["WebApp", "ApiKey"],
   "client-capability-duplicate": ["WebApp", "camera"],
   "tag-not-builtin": ["SessionStore", "[cache]"],
   "tag-not-applicable": ["Api", "[index]", "database", "service"],

@@ -146,7 +146,7 @@ gate の生きた適用状態。ここに載る構文は **後方互換を約束
 
 | notation | 追加 | 現状 | promotion trigger（判断材料） |
 | --- | --- | --- | --- |
-| （現在登録なし） | — | — | — |
+| client の storage の id と `resource <ClientId>.<Id>` の解決（`resource <storageKind> [<Id>] "<name>"`） | [#3794](https://github.com/kompiro/karasu/issues/3794)（2026-11） | experimental。言語版は 2.0 のまま | karasu-nest corpus で usecase から client の storage を参照する利用が溜まる／記法の混乱や bug の Issue が出る／この記法に触れるリリースの直前。昇格するときは後方互換な追加として v2.1 に載せる（ADR-2124） |
 
 #### watch 対象の notation gap（構文未満の欠落）
 

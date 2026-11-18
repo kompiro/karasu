@@ -3,6 +3,7 @@ import { annotationParamKind } from "../parser/parser-keywords.js";
 import { Lexer } from "../lexer/lexer.js";
 import { TokenType, type SourceRange, type Token } from "../types/tokens.js";
 import { quoteId } from "./quote-id.js";
+import { clientResourceLine } from "./client-resource-line.js";
 import { quoteString, emitDescription } from "./quote-string.js";
 import type {
   KrsFile,
@@ -638,9 +639,7 @@ class Printer {
     // `formatter-property-coverage.test.ts` now fails on any property key
     // without a fixture that round-trips (TPL-1101).
     if (node.kind === "client") {
-      for (const resource of node.properties.resources) {
-        lines.push(`${indent}resource ${resource.storageKind} ${quoteString(resource.name)}`);
-      }
+      lines.push(...node.properties.resources.map((r) => clientResourceLine(r, indent)));
       for (const capability of node.properties.capabilities) {
         lines.push(...this.renderCapability(capability, indent));
       }

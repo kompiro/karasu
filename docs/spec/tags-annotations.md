@@ -290,7 +290,7 @@ The identifier set is **open** — any kebab-case identifier is accepted, no war
 
 | Concept | Where it lives |
 |---------|----------------|
-| Operation-tied storage (`localStorage`, `indexedDB`, `keychain`) | `resource <storageKind> "<name>"` |
+| Operation-tied storage (`localStorage`, `indexedDB`, `keychain`) | `resource <storageKind> [<Id>] "<name>"` |
 | HTTP session / authentication credentials | Separate vocabulary, tracked under #834 |
 | Runtime authorization (RBAC permission bundles, license / feature flag gates) | Not modelled in karasu — see [ADR-832](../adr/832-no-runtime-authz-modeling.md). The `user.role` property is an actor-archetype label, not an authz primitive — see [ADR-1281](../adr/1281-user-role-keyword-clarification.md) |
 
@@ -345,7 +345,7 @@ They can be referenced and overridden via tag selectors in `.krs.style`.
 | `[async]` | An edge declared with `-->` | Dashed |
 | `[sync]` | An edge declared with `->` | Solid |
 | `[cyclic]` | Detected as part of a cyclic dependency | Red (`#EF4444`) solid. Not assigned in diff views (`karasu diff`, the app's diff mode), which draw what changed: there an `edge[cyclic]` rule matches nothing, and the cycle is reported as a warning only |
-| `[write]` | A synthesized usecase→resource edge whose target resource declares any of `create` / `update` / `delete` in its `operations` | `stroke-width: 2`, label `"W"` |
+| `[write]` | A synthesized usecase→resource edge whose target resource declares any of `create` / `update` / `delete` in its `operations`. The target may also be a client storage referenced as `resource <ClientId>.<Id>` (experimental, #3794) | `stroke-width: 2`, label `"W"` |
 | `[read]` | A synthesized usecase→resource edge classified as read-only (no write verbs, or `operations` omitted) | `stroke-width: 1.5`, label `"R"` |
 | `[inferred]` | An entity relation, or a `table` → `table` edge (#2722), that `translate --from db` derived from a **Soft FK** (a `<stem>_id` / `<stem>_code` column with no declared `REFERENCES` / `FOREIGN KEY`). Relations from an explicit FK are left untagged (confirmed) | Warm grey (`#A8A29E` dark / `#78716C` light): the default edge colour's lightness in another hue, so it reads apart from an untagged (confirmed) edge without looking more important (#3115). **Colour only** — line style stays owned by `[sync]` / `[async]`, so an inferred async relation still reads as dashed |
 | `[delivers]` | A service → client edge derived from the service's `delivers <ClientId>` property ([syntax.md](./syntax.md)) | Violet (`#A78BFA` dark / `#7C3AED` light) dashed |

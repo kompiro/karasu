@@ -4,7 +4,7 @@ import type { Diagnostic } from "../../types/ast.js";
 import type { Warning } from "../../types/warnings.js";
 import type { KrsFile, KrsNode, OrganizationBlock, TeamNode } from "../../types/ast.js";
 import { extractView } from "../../view/view-extract.js";
-import { extractDeployView } from "../../view/deploy-view-extract.js";
+import { extractModelDeployView } from "../../view/deploy-view-extract.js";
 import { bareIdView, nodePathRefId } from "../../parser/node-path.js";
 import { withUnassignedSystem } from "../../view/unassigned-system.js";
 import { layout } from "../../renderer/layout.js";
@@ -13,6 +13,7 @@ import { collectModelWarnings } from "../../resolver/model-warnings.js";
 import { getBuiltinStyleSheet } from "../../builtins/default-style.js";
 import { exportDrawio, type DrawioNodeMeta, type DrawioPage } from "./drawio-exporter.js";
 import { layoutOrganization } from "./org-layout.js";
+import { physicalTargetsOf } from "../../spec/infra-index.js";
 
 /**
  * Walk the logical node tree and collect tags/annotations for every node,
@@ -126,7 +127,14 @@ function buildSystemPages(krsFile: KrsFile): DrawioPage[] {
   collectLogicalLabels(krsFile.systems, labelById);
 
   const emit = (viewPath: string[]): void => {
-    const slice = extractView(krsFile.systems, viewPath, krsFile.domains);
+    const slice = extractView(
+      krsFile.systems,
+      viewPath,
+      krsFile.domains,
+      [],
+      undefined,
+      physicalTargetsOf(krsFile),
+    );
     const layoutResult = layout(slice, { ownerIndex: krsFile.ownerIndex });
     if (layoutResult.nodes.size === 0 && layoutResult.containers.length === 0) return;
     const id = viewPath.length === 0 ? "system" : `system:${viewPath.join(".")}`;
@@ -171,7 +179,7 @@ function buildDeployPage(krsFile: KrsFile): DrawioPage | null {
   // services/domains resolve to their declared labels, and so the metadata
   // map below picks up the orphans' tags/annotations.
   const effectiveSystems = withUnassignedSystem(krsFile);
-  const slice = extractDeployView(krsFile.deploys, effectiveSystems);
+  const slice = extractModelDeployView(krsFile);
   const layoutResult = layoutDeploy(slice);
   // The exporter looks metadata up by the container's id, which is not always
   // the realized node's id — it is quoted when a segment carries the path

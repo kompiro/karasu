@@ -4,12 +4,12 @@ import type { Warning } from "../types/warnings.js";
 import type { DisplayMode } from "./layout-types.js";
 import { VIEW_TYPES, type ViewType } from "./bundle-views.js";
 import { extractEntityView } from "../view/entity-relations.js";
-import { createViewExtractor } from "../view/view-extract.js";
+import { createViewExtractor, physicalTargetsOf } from "../view/view-extract.js";
 import type { ViewPath } from "../view/view-slice.js";
 import { withUnassignedSystem, withoutUnassignedSegment } from "../view/unassigned-system.js";
 import { nodePathRefId } from "../parser/node-path.js";
 import { extractOrgView } from "../view/org-view-extract.js";
-import { extractDeployView } from "../view/deploy-view-extract.js";
+import { extractModelDeployView } from "../view/deploy-view-extract.js";
 import { render, sanitizeId, anchorId, legendScopeForLogicalSlice } from "./svg-renderer.js";
 import { cardLinkKey } from "./node-card.js";
 import {
@@ -176,7 +176,7 @@ export function buildDrillDownSvg(
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
   // One extractor per build: the model is fixed for the whole walk (#2759).
-  const extract = createViewExtractor(effectiveSystems);
+  const extract = createViewExtractor(effectiveSystems, [], [], physicalTargetsOf(krsFile));
   const rootSlice = extract([]);
   if (rootSlice.childNodes.length === 0) {
     return {
@@ -595,7 +595,7 @@ function collectDeployLevel(
 
   // Orphan-wrap so `realizes` targets pointing at top-level (unassigned)
   // services/domains resolve to their declared labels.
-  const deployView = extractDeployView(deployBlocks, withUnassignedSystem(krsFile));
+  const deployView = extractModelDeployView(krsFile);
   if (deployView.containers.length === 0 && deployView.unclassifiedUnits.length === 0) return null;
 
   // The units this level draws, as the per-view compile resolves them: the
@@ -706,7 +706,7 @@ export function buildAllViewsSvg(
   // id and resolve the same way in the SPA (#2933).
   const ownsAnchor = systemAnchorOwner(krsFile.nodePathIndex);
   // One extractor per build: the model is fixed for the whole walk (#2759).
-  const extract = createViewExtractor(effectiveSystems);
+  const extract = createViewExtractor(effectiveSystems, [], [], physicalTargetsOf(krsFile));
   const systemRootSlice = extract([]);
   if (systemRootSlice.childNodes.length > 0) {
     const styles = resolveStyles(

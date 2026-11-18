@@ -2,15 +2,20 @@ import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { Location } from "vscode-languageserver/node";
-import { Parser, type ImportDeclaration } from "@karasu-tools/core";
-import { findRangeOfNode } from "./position-resolver.js";
+import { Parser, type ImportDeclaration, type KrsFile } from "@karasu-tools/core";
+import { findRangeOfDottedRef, findRangeOfNode } from "./position-resolver.js";
 
 /**
  * Read, parse, and search a single `.krs` file for `word`'s definition,
  * recursing into its own imports (transitively) on a miss. Shared by both
  * the directory-import expansion and the single-file-import branch below.
  */
-function searchKrsFile(filePath: string, word: string, visited: Set<string>): Location | null {
+function searchKrsFile(
+  filePath: string,
+  word: string,
+  visited: Set<string>,
+  options: LookupOptions,
+): Location | null {
   // Skip this file on any read or parse failure, matching the per-branch
   // skip semantics the two original import branches had. `Parser.parse`
   // reports errors as diagnostics rather than throwing today, so the parse
@@ -24,11 +29,59 @@ function searchKrsFile(filePath: string, word: string, visited: Set<string>): Lo
   }
 
   const fileUri = pathToFileURL(filePath).toString();
-  const range = findRangeOfNode(parsed.value, word);
+  const range =
+    options.qualifiedBy !== undefined
+      ? (findRangeOfDottedRef(parsed.value, options.qualifiedBy, word)?.range ?? null)
+      : findRangeOfNode(parsed.value, word, options);
   if (range) return Location.create(fileUri, range);
 
-  return findDefinitionInImports(parsed.value.nodeImports, word, fileUri, visited);
+  return findDefinitionInImports(parsed.value.nodeImports, word, fileUri, visited, options);
 }
+
+/**
+ * Where `word` is defined, as Go to Definition answers it: a node in this
+ * file, then a node in an imported file, and only then a client storage id
+ * in this file (#3794). A storage id is listed so its declaration is
+ * findable, but it never hides a node of the same id, here or imported.
+ */
+export function resolveDefinition(
+  file: KrsFile,
+  word: string,
+  uri: string,
+  /** The parent of a dotted reference (`WebApp` in `WebApp.Cache`), when there is one. */
+  qualifier?: string | null,
+): Location | null {
+  const self = () => new Set<string>([fileURLToPath(uri)]);
+  if (qualifier) {
+    // `<Parent>.<Child>` names what the model resolves it to (#3794): that
+    // client's storage or that infra block's leaf, not whatever else has the
+    // bare id. Here first; an infra parent here ends the search, since an
+    // imported client of the same id is the one it hides. Then imported files,
+    // then the bare word (a parent the model does not know).
+    const here = findRangeOfDottedRef(file, qualifier, word);
+    if (here?.range) return Location.create(uri, here.range);
+    // The infra block here lacks the leaf, so the reference names nothing.
+    if (here) return null;
+    const qualifiedBy = { qualifiedBy: qualifier };
+    const imported = findDefinitionInImports(file.nodeImports, word, uri, self(), qualifiedBy);
+    if (imported) return imported;
+  }
+  const nodesOnly = { nodesOnly: true };
+  const node = findRangeOfNode(file, word, nodesOnly);
+  if (node) return Location.create(uri, node);
+  const imported = findDefinitionInImports(file.nodeImports, word, uri, self(), nodesOnly);
+  if (imported) return imported;
+  // No node anywhere: a storage id, in this file first.
+  const storage = findRangeOfNode(file, word);
+  if (storage) return Location.create(uri, storage);
+  return findDefinitionInImports(file.nodeImports, word, uri, self());
+}
+
+/**
+ * `nodesOnly` skips client storage ids; `qualifiedBy` looks only for what
+ * `<qualifiedBy>.<word>` names (see {@link resolveDefinition}).
+ */
+type LookupOptions = { nodesOnly?: boolean; qualifiedBy?: string };
 
 /**
  * Recursively search imported files for a node definition.
@@ -39,6 +92,7 @@ export function findDefinitionInImports(
   word: string,
   baseUri: string,
   visited: Set<string>,
+  options: LookupOptions = {},
 ): Location | null {
   for (const imp of nodeImports) {
     if (imp.path === "") continue;
@@ -60,7 +114,7 @@ export function findDefinitionInImports(
       for (const filePath of entries) {
         if (visited.has(filePath)) continue;
         visited.add(filePath);
-        const result = searchKrsFile(filePath, word, visited);
+        const result = searchKrsFile(filePath, word, visited, options);
         if (result) return result;
       }
       continue;
@@ -72,14 +126,18 @@ export function findDefinitionInImports(
     // bare entries (`["Foo"]`) and the leaf segment of multi-segment paths
     // (`["A", "B", "Foo"]`) — the user can only place a cursor on a single
     // identifier token, so we match against the final segment.
-    if (isNamed && !imp.ids.some((entry) => entry.path[entry.path.length - 1] === word)) continue;
+    // A dotted lookup searches every imported file: a named import of a system
+    // brings the clients and infra blocks inside it, and findRangeOfDottedRef
+    // checks the parent itself (#3794).
+    const filtered = isNamed && options.qualifiedBy === undefined;
+    if (filtered && !imp.ids.some((entry) => entry.path[entry.path.length - 1] === word)) continue;
 
     const importedUri = resolveImportUri(baseUri, imp.path);
     const importedFilePath = fileURLToPath(importedUri);
     if (visited.has(importedFilePath)) continue;
     visited.add(importedFilePath);
 
-    const result = searchKrsFile(importedFilePath, word, visited);
+    const result = searchKrsFile(importedFilePath, word, visited, options);
     if (result) return result;
   }
   return null;

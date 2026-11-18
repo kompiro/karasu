@@ -77,8 +77,10 @@ valid-target set を構築・変更するとき、以下を確認する:
 
 - `docs/spec/syntax.md` / `docs/spec/syntax.ja.md` — §Writing physical diagrams（`realizes` の対象 kind）, §team node（`owns` の対象 kind）, §`entity` declaration（bare `resource` の解決先に `entity` を追加。resource→store の target set を `deriveInfraEdges` / `detectSharedInfraFanIn` / `detectUnassignedResources` で同期する）
 - 関連決定: [ADR-1720](../adr/1720-client-realize-owns-target.md)（client を realizes / owns の valid-target に追加）
+- `docs/spec/syntax.md` / `docs/spec/syntax.ja.md` — §Referencing a client storage from a usecase (experimental)（`<Parent>.<Child>` の解決先に client の storage を追加。infra の leaf と合わせて `indexPhysicalTargets` の 1 つの index と `resolvePhysicalRef` の 1 つの関数にし、検証・label・matrix・coverage・LSP がその結果だけを読む。#3794）
 
 ## 関連テスト
 
+- `packages/core/src/view/client-storage-readers.test.ts` — client に解決した参照を、派生エッジ・fan-in・cross-domain store access が infra と扱わないこと（infra ブロックと client が同じ id の場合を含む。#3794）
 - `packages/core/src/resolver/warnings.test.ts`（`unresolved-realizes` / `invalid-owns` の client positive ケース）
 - `packages/core/src/parser/parser.test.ts`（`owns-target-not-found` の client positive ケース）
