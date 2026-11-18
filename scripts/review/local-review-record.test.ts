@@ -70,14 +70,19 @@ describe("parseRecord / renderRecord", () => {
 
   it("folds the record under the heading and keeps it readable (#3875)", () => {
     const b = body([finding({}), finding({ sev: "Minor", disposition: "declined: out of scope" })]);
-    const heading = b.indexOf("## Local review");
-    const open = b.indexOf("<details><summary>2 findings: 1 fixed, 1 declined</summary>");
-    const close = b.indexOf("</details>");
-    expect(heading).toBeGreaterThanOrEqual(0);
-    expect(open).toBeGreaterThan(heading);
-    expect(b.indexOf("Reviewers:")).toBeGreaterThan(open);
-    expect(b.indexOf("Verification:")).toBeLessThan(close);
-    expect(close).toBeLessThan(b.indexOf("<!-- /local-review -->"));
+    // Each part is present (indexOf would give -1) and comes after the one before.
+    const parts = [
+      "## Local review",
+      "<details><summary>2 findings: 1 fixed, 1 declined</summary>",
+      "Reviewers:",
+      "| # | Reviewer |",
+      "Verification:",
+      "</details>",
+      "<!-- /local-review -->",
+    ];
+    const at = parts.map((part) => b.indexOf(part));
+    expect(at.filter((i) => i < 0)).toEqual([]);
+    expect(at).toEqual([...at].sort((x, y) => x - y));
     // GitHub renders a table inside <details> only with a blank line before it.
     expect(b).toMatch(/<\/summary>\n\n/);
     expect(b).toMatch(/\n\n<\/details>\n\n<!-- \/local-review -->/);

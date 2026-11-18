@@ -256,6 +256,9 @@ const SUMMARY_KINDS = ["fixed", "declined", "deferred", "no deviation", "open"] 
  * applies: `no deviation` answers a design row only, and a row with no answer the
  * check accepts is `open`. The disposition is read as the table holds it
  * (newlines become spaces), so the count matches what {@link parseRecord} reads.
+ * It counts the disposition as written and checks nothing else: a `fixed in <sha>`
+ * whose commit is not in the head still counts as fixed, and Design's advisory
+ * `coderabbit` rows are counted too. Those checks stay in {@link verifyRecord}.
  */
 function summaryKind(f: Finding): (typeof SUMMARY_KINDS)[number] {
   const d = f.disposition.replace(/\n/g, " ").trim();
