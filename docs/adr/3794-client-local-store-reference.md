@@ -38,7 +38,7 @@ assumptions:
   - Issue: [#3794](https://github.com/kompiro/karasu/issues/3794)
   - PR: [#3843](https://github.com/kompiro/karasu/pull/3843)（Design Doc）, [#3869](https://github.com/kompiro/karasu/pull/3869)（実装）
   - 関連 ADR: [ADR-823](./823-client-mcp-modeling.md)（`client` と `resource <storageKind> "<name>"` の導入）, [ADR-316](./316-database-as-first-class-node.md)（infra を system 直下に限る）, [ADR-2165](./2165-logical-containment-rules.md)（`client` は子ノードを持たない）, [ADR-1046](./1046-resource-crud-operations.md)（`operations`）, [ADR-1062](./1062-crud-matrix-view.md)（CRUD matrix）, [ADR-1870](./1870-domain-entity-modeling.md)（entity による leaf の所有）, [ADR-1895](./1895-reverse-architecture-harness.md)（coverage）, [ADR-1820](./1820-notation-promotion-gate.md)（experimental の昇格の前提条件）, [ADR-2124](./2124-version-vocabulary.md)（言語版の bump 規則）, [ADR-3752](./3752-optional-string-stops-at-next-edge.md)（後の行のエッジで止まる読み手）
-  - 関連 TPL: [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md), [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md), [TPL-1625](../test-perspectives/TPL-1625-client-vocabulary-structure-not-implementation.md), [TPL-3752](../test-perspectives/TPL-3752-optional-trailing-token-stops-at-next-statement.md), [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md), [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md), [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md), [TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md)
+  - 関連 TPL: [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md), [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md), [TPL-1625](../test-perspectives/TPL-1625-client-vocabulary-structure-not-implementation.md), [TPL-3752](../test-perspectives/TPL-3752-optional-trailing-token-stops-at-next-statement.md), [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md), [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md), [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md), [TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md), [TPL-2707](../test-perspectives/TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md)
   - AT: [3794-client-storage-reference](../acceptance/3794-client-storage-reference.md)
 
 ## 背景
@@ -61,15 +61,16 @@ client の storage の行に省略できる id を与え（`resource <storageKin
 - **引用符付きの id**（kompiro が #3869 で決定）: 素の語で書けない id は引用符で書ける（`resource localStorage "api-key" "…"`）。名前が同じ行に続くときだけ id として読み、1 つの文字列は今までどおり名前として読む。dot 記法の参照はすでに引用符付きの子を受け付けており、formatter が任意の id を書き戻せるようにするため（TPL-2707）。Design Doc は id を素の語に限っていた
 - **client の storage の形として読む条件**: client の中の `resource` で、次の token が 6 つの storage kind のどれかであるとき、または名前の文字列が直後か、kind と同じ行の id（またはキーワード）の後に続くとき。綴りを間違えた kind に id が続く行（`resource cookie Session "s"`）も、通常の resource（KRS010）ではなく `client-resource-invalid-kind` として報告する（kompiro が #3869 で決定）
 - **解決**: index は全 root（トップレベルの client、どの system の中の client も、import した木も）から作る。`buildEntityResolver` は呼び出し元ごとに違う root で作られるので、client の storage を自分の root から探さず、この index を受け取る。warning の検出器と deploy view も model 全体の index を渡す（deploy view は `extractModelDeployView`）。`deriveInfraEdges` は resolver を必須の引数にし、呼び出し元が自分の children から作らないようにした
-- **infra ブロックと client が同じ id**（scope が違う場合）: 参照は今までどおり infra ブロックを指す。その client が id 付きの storage を宣言していれば `resource-target-ambiguous`（KRS115、`infra-and-client`）で衝突を示し、その storage は参照できない
+- **infra ブロックと client が同じ id**（scope が違う場合）: 参照は今までどおり infra ブロックを指す。その client が id 付きの storage を宣言していれば `resource-target-ambiguous`（KRS115、`infra-and-client`）で衝突を示し、その storage は参照できない。KRS115 は KRS048 と同じく parser 側の診断で、`MERGED_SPACE_REFERENCE_CODES` に入れてマージ後のモデルで決める（衝突する infra ブロックや 2 つ目の client は別のファイルにありうる）
 - **同じ id の client ノード**（KRS018 / KRS030）は merge しない。子の id を宣言するものが 2 つ以上あれば解決しない（`resource-target-ambiguous`、`multiple-clients`）。同じ宣言を複数の import の経路で拾ったものは 1 つに数える
 - **1 つの client の中の id の重複**: `client-resource-duplicate-id`（KRS116、resolver の warning、LSP の単一ドキュメント文脈では `LOCAL`）。最初のものが解決先になる
-- **未解決**: 子が無ければ `unresolved-resource-ref` を `missing: "leaf"`・`parentKind: "client"` で出す。entity の `table WebApp.X` は client の storage に解決しない
+- **未解決**: 子が無ければ `unresolved-resource-ref` を `missing: "leaf"`・`parentKind: "client"` で出す。params の `infraId` は client の親でも名前を変えない（`unresolved-table-ref` と揃え、JSON の出力を変えない）。entity の `table WebApp.X` は client の storage に解決しない
+- **`[external]`**: 参照の側の `[external]` は今までの意味のまま（検証は `[external]` の参照を見ない）。KRS048 よけに `[external]` を付けていた参照は、storage に id を付けた後に外すよう guide に書いた
 - **派生エッジ**: client の storage への参照から `service → client` のエッジは導出しない。配信する service は `delivers` が描く
 - **描画**: 昇格した resource の label は `<name> (<storageKind>)`。shape tag は推論しない。カードの幅は、id ではなく描く label で測る（kompiro が #3869 で決定。長い label がカードからはみ出していた。label が id より長い infra の leaf のカードも広くなる）
-- **CRUD matrix**: id のある storage ごとに column を持ち、`clientId` と `storageKind` を付ける。column の key は `<ClientId>.<Id>`（infra の leaf と同じ形）。infra の種類で絞るフィルタは今までどおり client の column を落とす
+- **CRUD matrix**: id のある storage ごとに column を持ち、`clientId` と `storageKind` を付ける。column の key は `<ClientId>.<Id>`（infra の leaf と同じ形）。同じ id の client 2 つが同じ key を宣言しても column は 1 つで、宣言が 1 つに決まらないので `clientId` と `storageKind` は付けない。infra の種類で絞るフィルタは今までどおり client の column を落とす
 - **coverage**: 最上位に `clientStores` を足す（`physical` の中には入れない）。client ごとに、id のある storage、参照された storage、参照されていない storage、id の無い storage を出す。infra の有無と独立に出す
-- **app**: detail panel は client の storage ごとに id と、それを参照する usecase を出す。昇格した resource は、どの client のどの storage かを出す。CRUD matrix panel と view の fingerprint は model 全体の index を読む（TPL-1032）
+- **app**: detail panel は client の storage ごとに id と、それを参照する usecase を出す。client カードの tooltip にも id を出す。昇格した resource は、どの client のどの storage かを出す。CRUD matrix panel と view の fingerprint は model 全体の index を読む（TPL-1032）
 - **LSP**: storage の id を補完と定義へのジャンプの対象に足す。`<Parent>.<Child>` の子にカーソルがあれば、モデルと同じ規則でその client の storage か infra ブロックの leaf に飛ぶ（同じファイルでも import 先でも）。トップレベルの node も walk し、同じ名前なら node が storage の id より先に見つかる。カーソル同期とプレビューのクリックは storage の id を返さない（kompiro が #3869 で決定・依頼）
 - **usecase と client の関係は検査しない**（kompiro が #3843 で決定。Q1）。純粋な SPA は `delivers` する service を持たないので、`delivers` / `handles` を前提にすると正しいモデルを警告してしまう
 - **experimental**（kompiro が #3843 で決定。Q4）: `docs/roadmap.md` の watch 対象の experimental notation に登録し、ADR-1820 の前提条件で昇格を判断する。昇格するときは後方互換な追加として v2.1 に載せる（ADR-2124）
@@ -89,6 +90,7 @@ client の storage の行に省略できる id を与え（`resource <storageKin
 - KRS048 の params に `parentKind` が増えた（`missing: "leaf"` のときだけ）。KRS115 と KRS116 が増えた
 - `extractCrudMatrix` / `extractCoverage` / `extractView` / `createViewExtractor` は model 全体の index を省略できる引数で受け取り、compile の結果が `physicalTargets` を持つ。CLI の `matrix` / `coverage` / `render --include-matrix` はそれを渡す。`karasu coverage` は client の storage の表（JSON では `clientStores`）を出す
 - 長い label を持つ昇格した resource のカードが広くなる
+- canvas の label の map が model 全体の index を読むので、トップレベルの infra ブロックに解決した参照も、id ではなく infra の label で描かれる
 - 行数の予算のため、client の型・physical の参照の検証・client の warning・compile の結果の型・physical の参照のメッセージを別ファイルに分けた
 
 ## 却下した案
