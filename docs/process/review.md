@@ -239,6 +239,9 @@ node scripts/review/local-review-record.ts render --findings <findings.json> --i
 gh pr edit <n> --body-file <本文ファイル>
 ```
 
+`render` は見出しの下を `<details>` に畳み、summary に指摘の件数と対応の内訳を書く（#3875）。PR 本文の
+`## TPL impact` も同じく `<details>` に畳み、summary に引用した TPL の ID を書く。
+
 `<findings.json>` は `{reviewer, sev, where, finding, disposition}` の配列で、対応は `fixed in <sha>`・
 `declined: <理由>`・`→ #<Issue>` のどれかで書く。レビュアーは `engineering`（/engineering:code-review）、`cli`
 （CodeRabbit CLI）、`coderabbit`（PR での CodeRabbit のレビュー）、`design`（Design Doc との照合）と書く。対応の

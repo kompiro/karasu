@@ -72,7 +72,8 @@ if [ -n "$list" ]; then
 $list
 
 Read the ones that touch this change and cite them under \`## TPL impact\` in the PR body, saying how \
-the change meets them (a test, a checked item). Nothing needs to be written for the ones that do not \
+the change meets them (a test, a checked item), inside the section's \`<details>\` block with the cited \
+ids on its summary line. Nothing needs to be written for the ones that do not \
 apply. If you cite a TPL that is not listed here, add the file it should have named to its \
 \`## 関連テスト\` (or \`scope.paths\`) in this PR. Editing the body does not push, so it costs no \
 review round."
@@ -82,7 +83,8 @@ review round."
 elif grep -qx 'No active TPL names a changed file.' "$errors"; then
   ctx="No TPL names a file PR $repo#$number changes (\`$rerun\`). \
 Cross-cutting TPLs are not recalled by file: check \`pnpm tpl:related <topic>\` for the topics this \
-change touches, and cite the ones that apply under \`## TPL impact\`."
+change touches, and cite the ones that apply under \`## TPL impact\`, inside the section's \
+\`<details>\` block."
 else
   exit 0
 fi

@@ -249,12 +249,44 @@ export function verifyRecord(
 
 const escapeCell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
 
-/** The record block, ready to put in a PR body. */
+/**
+ * The line a reader sees with the record folded: how many findings, and how many
+ * of them were declined or deferred, since those are the rows a reviewer opens
+ * the record for.
+ */
+export function recordSummary(r: LocalReviewRecord): string {
+  if (r.waived !== undefined) return "Waived";
+  const n = r.findings.length;
+  if (n === 0) return "No findings";
+  const kinds: [string, RegExp][] = [
+    ["fixed", FIXED],
+    ["declined", DECLINED],
+    ["deferred", ISSUE],
+    ["no deviation", NO_DEVIATION],
+  ];
+  const parts = kinds
+    .map(
+      ([name, re]) =>
+        [name, r.findings.filter((f) => re.test(f.disposition.trim())).length] as const,
+    )
+    .filter(([, count]) => count > 0)
+    .map(([name, count]) => `${count} ${name}`);
+  return `${n} finding${n === 1 ? "" : "s"}${parts.length > 0 ? `: ${parts.join(", ")}` : ""}`;
+}
+
+/**
+ * The record block, ready to put in a PR body. Everything under the heading is
+ * folded into `<details>` (Issue #3875) so a long table does not push the rest of
+ * the body down; {@link parseRecord} reads lines, so the fold does not change
+ * what it sees.
+ */
 export function renderRecord(r: LocalReviewRecord): string {
   const lines = [
     `<!-- local-review:v1 base=${r.base} head=${r.head} -->`,
     "",
     "## Local review",
+    "",
+    `<details><summary>${recordSummary(r)}</summary>`,
     "",
     `Reviewers: ${r.reviewers}`,
   ];
@@ -272,7 +304,7 @@ export function renderRecord(r: LocalReviewRecord): string {
     }
   }
   if (r.verification !== undefined) lines.push("", `Verification: ${r.verification}`);
-  lines.push(CLOSE);
+  lines.push("", "</details>", CLOSE);
   return lines.join("\n");
 }
 
