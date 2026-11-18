@@ -162,8 +162,9 @@ Examples for Disposition:
   "Updated TPL-1032.discovered_from with #M"
   "N/A — pure refactor"
 
-Keep the heading visible and fold the rest: the summary line gives the gist
-(the TPL ids cited, or "N/A — pure refactor"), and the citations go inside.
+Keep the heading visible and fold the rest: the summary line reads
+"Cited: <TPL ids>" (e.g. "Cited: TPL-1223, TPL-1207") or "N/A", and the
+Disposition goes inside.
 Keep the blank lines around the body, or GitHub does not render its markdown.
 -->
 

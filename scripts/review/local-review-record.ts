@@ -271,6 +271,13 @@ export function recordSummary(r: LocalReviewRecord): string {
     )
     .filter(([, count]) => count > 0)
     .map(([name, count]) => `${count} ${name}`);
+  // A row with no recognised disposition still shows while folded, so a High
+  // record (which the check does not verify) cannot hide it.
+  const open = r.findings.filter((f) => {
+    const d = f.disposition.trim();
+    return !kinds.some(([, re]) => re.test(d));
+  }).length;
+  if (open > 0) parts.push(`${open} open`);
   return `${n} finding${n === 1 ? "" : "s"}${parts.length > 0 ? `: ${parts.join(", ")}` : ""}`;
 }
 
@@ -304,7 +311,9 @@ export function renderRecord(r: LocalReviewRecord): string {
     }
   }
   if (r.verification !== undefined) lines.push("", `Verification: ${r.verification}`);
-  lines.push("", "</details>", CLOSE);
+  // The blank line ends the HTML block `</details>` opens; without it, a heading
+  // right after the closing marker would render as text.
+  lines.push("", "</details>", "", CLOSE);
   return lines.join("\n");
 }
 

@@ -80,7 +80,7 @@ describe("parseRecord / renderRecord", () => {
     expect(close).toBeLessThan(b.indexOf("<!-- /local-review -->"));
     // GitHub renders a table inside <details> only with a blank line before it.
     expect(b).toMatch(/<\/summary>\n\n/);
-    expect(b).toMatch(/\n\n<\/details>\n/);
+    expect(b).toMatch(/\n\n<\/details>\n\n<!-- \/local-review -->/);
   });
 
   it("reads a record written before the fold (#3875)", () => {
@@ -114,7 +114,7 @@ describe("parseRecord / renderRecord", () => {
           finding({ disposition: "" }),
         ],
       }),
-    ).toBe("3 findings: 1 deferred, 1 no deviation");
+    ).toBe("3 findings: 1 deferred, 1 no deviation, 1 open");
   });
 
   it("upserts: replaces an existing record and appends when there is none", () => {
