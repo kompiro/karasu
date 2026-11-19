@@ -39,9 +39,9 @@ overlay や portal を持つ UI surface（modal dialog・slide-in panel・contex
 
 新しい overlay/portal surface を足す、または既存 surface の `z-index` を触るとき:
 
-- [ ] その surface の `z-index` を、リポジトリの z-index スケール（`packages/app/src/styles/tokens.css :root` の `--z-*` トークン）から選んだか。ベタ書きのマジックナンバーを新規に置いていないか
+- [ ] その surface の `z-index` を、リポジトリの z-index スケール（`packages/app/src/styles/tokens.css :root` の `--z-*` トークン）から選んだか。ベタ書きのマジックナンバーを新規に置いていないか [guard: `packages/e2e/fixtures/z-index-scan.ts`, `packages/e2e/tests/z-index-scale.spec.ts`]
 - [ ] スケールに当てはまる層が無い場合、新しいトークンを追加し、コメントで「何の上・何の下に居るべきか」を明記したか
-- [ ] 外部ライブラリの portal primitive を導入したとき、そのライブラリ既定の `z-index` を repo の overlay スケールに合わせて上書きしたか（既定値をそのまま採用していないか）
+- [ ] 外部ライブラリの portal primitive を導入したとき、そのライブラリ既定の `z-index` を repo の overlay スケールに合わせて上書きしたか（既定値をそのまま採用していないか） [guard: `packages/e2e/fixtures/z-index-scan.ts`, `packages/e2e/tests/z-index-scale.spec.ts`]
 - [ ] 重なり順を、computed stacking が見える層（E2E / `elementFromPoint`）で検証したか。単体テストの className assert だけで済ませていないか
 
 ## 既知の対処パターン
@@ -55,4 +55,19 @@ overlay や portal を持つ UI surface（modal dialog・slide-in panel・contex
 
 <!-- absent-path-next-line: retired spec, named as history (#1585) -->
 - _（retired）_ かつて `packages/e2e/tests/at-1468-command-palette-z-index.spec.ts` が、References パネルを開いた状態でコマンドパレットを開き両者が重なる座標でパレットが手前に来ることを `elementFromPoint` で検証していた。References が in-document の slide-in overlay から別ウィンドウ pop-out へ移行した（#1585）ことで、この特定の surface ペア（command-palette vs References パネル）は同一 stacking context に共存しなくなり、当該テストは削除された
+- `packages/e2e/fixtures/z-index-scan.ts` — E2E の全テストで、`network.ts` の auto fixture が
+  ページに probe を入れる。要素が足されたときと、属性が変わった要素の部分木を調べ、
+  `auto` 以外の computed z-index を持つ要素があれば、テストが通ったあとで落とす。値が `0` / `1` か、
+  cascade で勝った宣言がトークンを読んでいるときだけ通す（要素に各トークンの番兵値を一時的に置き、
+  computed z-index がそれに従うかで確かめる）。値だけでは見ないので、トークンと同じ値のマジックナンバー
+  （`z-index: 1000`）や shadcn 既定の `z-50`（`--z-handle` と同じ 50）、トークンの rule に勝つ literal も落ちる。例外は Radix の `[data-radix-popper-content-wrapper]` で、
+  中身の z-index を inline に写すので、中身がトークンから同じ値を得ていれば通す。Monaco の内部と
+  SVG は対象外。E2E が開かない状態の surface と、reload や遷移の前の document で開いた surface は見えない
+- `packages/e2e/tests/z-index-scale.spec.ts` — `tokens.css` の `--z-*` トークンごとに、その層の
+  surface（ハンドル・ノード詳細パネル・focus canvas・ファイルツリーのコンテキストメニュー・
+  コマンドパレット・ドロップダウン・tooltip）を開き、probe がそのトークン由来の要素を見たことを
+  確かめる。表はトークン名で引くので、トークンを足すと場面を足すまで落ちる
+- `packages/app/src/styles/z-index-scale.test.ts` — `--z-*` トークンにはコメントが付き、低い層から
+  高い層の順に並ぶことを確かめる。コメントが「何の上・何の下か」を書いているかは見ないので、
+  項目 2 の印には使わない
 - この観点は依然 active — dialog / dropdown / tooltip / context-menu など同一 stacking context に共存し続ける overlay/portal surface に適用される。新たに重なり順の回帰を fence する場合は、現存する overlay ペアに対して同様に computed stacking（`document.elementFromPoint`）で検証する

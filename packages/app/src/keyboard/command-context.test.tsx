@@ -59,3 +59,50 @@ describe("CommandRegistry.getCommands", () => {
     expect(sink.registry.getCommands()).toEqual([]);
   });
 });
+
+describe("CommandRegistry.register keybinding collisions (TPL-1419)", () => {
+  function captureRegistry() {
+    const sink = {} as { registry: ReturnType<typeof useCommandRegistry> };
+    render(
+      <CommandProvider>
+        <RegistryProbe sink={sink} />
+      </CommandProvider>,
+    );
+    return sink.registry;
+  }
+
+  it("refuses a second live command bound to the same chord", () => {
+    const registry = captureRegistry();
+    registry.register({ id: "test.a", title: "A", keybinding: "mod+b", run: () => {} });
+    expect(() =>
+      registry.register({ id: "test.b", title: "B", keybinding: "mod+b", run: () => {} }),
+    ).toThrow('Keybinding "mod+b" of command "test.b" is already held by "test.a"');
+  });
+
+  it("accepts the chord again once its holder unregisters", () => {
+    const registry = captureRegistry();
+    const unregister = registry.register({
+      id: "test.a",
+      title: "A",
+      keybinding: "mod+b",
+      run: () => {},
+    });
+    unregister();
+    registry.register({ id: "test.b", title: "B", keybinding: "mod+b", run: () => {} });
+    expect(registry.resolveChord("mod+b")?.id).toBe("test.b");
+  });
+
+  it("treats re-registering the same id as a replacement", () => {
+    const registry = captureRegistry();
+    registry.register({ id: "test.a", title: "A", keybinding: "mod+b", run: () => {} });
+    registry.register({ id: "test.a", title: "A2", keybinding: "mod+b", run: () => {} });
+    expect(registry.getCommands().map((c) => c.title)).toEqual(["A2"]);
+  });
+
+  it("lets palette-only commands coexist", () => {
+    const registry = captureRegistry();
+    registry.register({ id: "test.a", title: "A", run: () => {} });
+    registry.register({ id: "test.b", title: "B", run: () => {} });
+    expect(registry.getCommands()).toHaveLength(2);
+  });
+});
