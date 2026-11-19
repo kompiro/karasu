@@ -53,8 +53,8 @@ from this body (docs/process/review.md "ローカルレビューの記録"): wha
 the disposition of each finding (fixed in <sha> / declined: <reason> /
 → #<issue>). Write it with
   node scripts/review/local-review-record.ts render --findings <file.json> --into <body file>
-which replaces this section's record or appends one. On High it is optional,
-but Claude's PRs keep it.
+which replaces this section's record or appends one, folded into <details>
+under the heading. On High it is optional, but Claude's PRs keep it.
 -->
 
 ## For Reviewers
@@ -161,9 +161,18 @@ Examples for Disposition:
   "Designed against TPL-1207; round-trip contract test in `bar.test.ts`"
   "Updated TPL-1032.discovered_from with #M"
   "N/A — pure refactor"
+
+Keep the heading visible and fold the rest: the summary line reads
+"Cited: <TPL ids>" (e.g. "Cited: TPL-1223, TPL-1207") or "N/A", and the
+Disposition goes inside.
+Keep the blank lines around the body, or GitHub does not render its markdown.
 -->
 
+<details><summary>Cited: </summary>
+
 > Disposition:
+
+</details>
 
 ## Related Docs
 

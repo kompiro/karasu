@@ -249,12 +249,55 @@ export function verifyRecord(
 
 const escapeCell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
 
-/** The record block, ready to put in a PR body. */
+const SUMMARY_KINDS = ["fixed", "declined", "deferred", "no deviation", "open"] as const;
+
+/**
+ * How the folded summary counts a row, by the same rules {@link verifyRecord}
+ * applies: `no deviation` answers a design row only, and a row with no answer the
+ * check accepts is `open`. The disposition is read as the table holds it
+ * (newlines become spaces), so the count matches what {@link parseRecord} reads.
+ * It counts the disposition as written and checks nothing else: a `fixed in <sha>`
+ * whose commit is not in the head still counts as fixed, and Design's advisory
+ * `coderabbit` rows are counted too. Those checks stay in {@link verifyRecord}.
+ */
+function summaryKind(f: Finding): (typeof SUMMARY_KINDS)[number] {
+  const d = f.disposition.replace(/\n/g, " ").trim();
+  if (FIXED.test(d)) return "fixed";
+  if (DECLINED.test(d)) return "declined";
+  if (ISSUE.test(d)) return "deferred";
+  if (isDesignRow(f) && NO_DEVIATION.test(d)) return "no deviation";
+  return "open";
+}
+
+/**
+ * The line a reader sees with the record folded: the number of findings and how
+ * each was answered. `open` rows show here too, so a High record (which the check
+ * does not verify) cannot hide an unanswered finding behind the fold.
+ */
+export function recordSummary(r: LocalReviewRecord): string {
+  if (r.waived !== undefined) return "Waived";
+  const n = r.findings.length;
+  if (n === 0) return "No findings";
+  const kinds = r.findings.map(summaryKind);
+  const parts = SUMMARY_KINDS.map((k) => [k, kinds.filter((x) => x === k).length] as const)
+    .filter(([, count]) => count > 0)
+    .map(([k, count]) => `${count} ${k}`);
+  return `${n} finding${n === 1 ? "" : "s"}: ${parts.join(", ")}`;
+}
+
+/**
+ * The record block, ready to put in a PR body. Everything under the heading is
+ * folded into `<details>` (Issue #3875) so a long table does not push the rest of
+ * the body down; {@link parseRecord} reads lines, so the fold does not change
+ * what it sees.
+ */
 export function renderRecord(r: LocalReviewRecord): string {
   const lines = [
     `<!-- local-review:v1 base=${r.base} head=${r.head} -->`,
     "",
     "## Local review",
+    "",
+    `<details><summary>${recordSummary(r)}</summary>`,
     "",
     `Reviewers: ${r.reviewers}`,
   ];
@@ -272,7 +315,9 @@ export function renderRecord(r: LocalReviewRecord): string {
     }
   }
   if (r.verification !== undefined) lines.push("", `Verification: ${r.verification}`);
-  lines.push(CLOSE);
+  // The blank line ends the HTML block `</details>` opens; without it, a heading
+  // right after the closing marker would render as text.
+  lines.push("", "</details>", "", CLOSE);
   return lines.join("\n");
 }
 

@@ -3,6 +3,7 @@ import {
   type Finding,
   type GitFacts,
   parseRecord,
+  recordSummary,
   renderRecord,
   severityOf,
   upsertRecord,
@@ -65,6 +66,68 @@ describe("parseRecord / renderRecord", () => {
     expect(
       parseRecord(`<!-- local-review:v1 base=${BASE} head=${HEAD} -->\nReviewers: x`),
     ).toHaveProperty("error");
+  });
+
+  it("folds the record under the heading and keeps it readable (#3875)", () => {
+    const b = body([finding({}), finding({ sev: "Minor", disposition: "declined: out of scope" })]);
+    // Each part is present (indexOf would give -1) and comes after the one before.
+    const parts = [
+      "## Local review",
+      "<details><summary>2 findings: 1 fixed, 1 declined</summary>",
+      "Reviewers:",
+      "| # | Reviewer |",
+      "Verification:",
+      "</details>",
+      "<!-- /local-review -->",
+    ];
+    const at = parts.map((part) => b.indexOf(part));
+    expect(at.filter((i) => i < 0)).toEqual([]);
+    expect(at).toEqual([...at].sort((x, y) => x - y));
+    // GitHub renders a table inside <details> only with a blank line before it.
+    expect(b).toMatch(/<\/summary>\n\n/);
+    expect(b).toMatch(/\n\n<\/details>\n\n<!-- \/local-review -->/);
+  });
+
+  it("reads a record written before the fold (#3875)", () => {
+    const old = [
+      `<!-- local-review:v1 base=${BASE} head=${HEAD} -->`,
+      "",
+      "## Local review",
+      "",
+      "Reviewers: r",
+      "",
+      "| # | Reviewer | Sev | Where | Finding | Disposition |",
+      "| --- | --- | --- | --- | --- | --- |",
+      "| 1 | engineering | Minor | a.ts | x | declined: y |",
+      "<!-- /local-review -->",
+    ].join("\n");
+    const parsed = parseRecord(old);
+    expect("record" in parsed && parsed.record.findings).toHaveLength(1);
+  });
+
+  it("summarises the folded record by disposition", () => {
+    const r = { base: BASE, head: HEAD, reviewers: "r" };
+    expect(recordSummary({ ...r, findings: [] })).toBe("No findings");
+    expect(recordSummary({ ...r, findings: [], waived: "hand-made PR" })).toBe("Waived");
+    expect(recordSummary({ ...r, findings: [finding({})] })).toBe("1 finding: 1 fixed");
+    // The table turns a newline into a space, so the summary does too.
+    expect(recordSummary({ ...r, findings: [finding({ disposition: "fixed in\nabcdef0" })] })).toBe(
+      "1 finding: 1 fixed",
+    );
+    expect(
+      recordSummary({
+        ...r,
+        findings: [
+          finding({ disposition: "→ #3360" }),
+          finding({ reviewer: "design", disposition: "no deviation" }),
+          finding({ disposition: "" }),
+        ],
+      }),
+    ).toBe("3 findings: 1 deferred, 1 no deviation, 1 open");
+    // `no deviation` answers a design row only, as verifyRecord reads it.
+    expect(recordSummary({ ...r, findings: [finding({ disposition: "no deviation" })] })).toBe(
+      "1 finding: 1 open",
+    );
   });
 
   it("upserts: replaces an existing record and appends when there is none", () => {
