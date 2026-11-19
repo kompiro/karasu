@@ -65,7 +65,7 @@ cross-reference を持つ宣言の検証 / resolver 経路を実装 / 変更す�
   どこにも無い id に書き換え、`unresolved-edge-endpoint` がその id を名指すことと、変異前に描かれていた全ノードが
   まだ描かれていることを確かめる。また各 import 行を 1 本ずつ落とし、entry が丸ごと読み込むファイル（whole-file と
   ディレクトリ import を辿る）で宣言された全ノードが merge 結果と描画に残ることを確かめる。新しい example・エッジ・
-  import は追加した日から加わる。corpus が形を持つこと（変異したエッジが 500 本を超えること、import を落とすと
+  import は追加した日から加わる。corpus が形を持つこと（端点の書き換えが 500 回を超えること、import を落とすと
   参照が宙に浮く example があること）もテストが確かめる。named import で読み込んだ top-level service は、それを
   名指すエッジの `system` に置かれる（`resolveBareIdImport` の規則 2）。そのエッジを書き換えると service は
   top-level に移るので、そうして移った service とその配下に限り、root の segment を外した path（配下は
