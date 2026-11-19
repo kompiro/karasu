@@ -8,9 +8,9 @@
 // is read; one whose specifier is not a plain string is reported, because the
 // guard cannot tell what it loads.
 
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { isBuiltin } from "node:module";
-import { dirname, relative, resolve, sep } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { type ParserPlugin, parse } from "@babel/parser";
 
 /** One import a file writes. `specifier` is null when it is computed at run time. */
@@ -85,10 +85,24 @@ export interface ImportPolicy {
 }
 
 /**
+ * The files under `dir` (repo paths, POSIX), as wrangler finds the functions:
+ * a symbolic link to a file is listed under its own path, a linked directory
+ * is walked, and a directory whose name looks like a source (`v1.js/`) is not
+ * listed itself.
+ */
+export function listFiles(root: string, dir: string): string[] {
+  return readdirSync(resolve(root, dir), { recursive: true, withFileTypes: true })
+    .map((entry) => join(entry.parentPath, entry.name))
+    .filter(isFile)
+    .map((path) => toRepoPath(root, path));
+}
+
+/**
  * Checks each file (repo paths, POSIX) and the modules it imports directly:
  * both must be on the boundary, a package or built-in must be in the policy,
- * and every specifier must be a string that resolves. Returns one line per
- * problem, and the repo files the functions import.
+ * and every specifier must be a string that resolves. A symbolic link is
+ * judged by the file it points to, since that is what gets bundled. Returns
+ * one line per problem, and the repo files the functions import.
  */
 export function checkImports(options: {
   root: string;
@@ -100,8 +114,14 @@ export function checkImports(options: {
   const { root, files, read, policy, onBoundary } = options;
   const problems: string[] = [];
   const imported = new Set<string>();
+  // Real paths on both sides, so a root reached through a link still contains its files.
+  const realRoot = realpathSync(root);
+  const offBoundary = (path: string) => path.startsWith("../") || !onBoundary(path);
   for (const file of files) {
-    if (!onBoundary(file)) problems.push(`${file}: off the boundary`);
+    const onDisk = resolve(root, file);
+    const real = existsSync(onDisk) ? toRepoPath(realRoot, realpathSync(onDisk)) : file;
+    if (offBoundary(file)) problems.push(`${file}: off the boundary`);
+    else if (offBoundary(real)) problems.push(`${file}: links to ${real}, off the boundary`);
     const result = readImports(file, read(file));
     if ("error" in result) {
       problems.push(`${file}: does not parse: ${result.error}`);
@@ -129,16 +149,17 @@ export function checkImports(options: {
           problems.push(`${at}: "${specifier}" does not resolve`);
           continue;
         }
-        // The classifier's globs are POSIX; `relative` uses a backslash on Windows.
-        const path = relative(root, target).split(sep).join("/");
+        const path = toRepoPath(realRoot, realpathSync(target));
         imported.add(path);
-        if (path.startsWith("../") || !onBoundary(path))
-          problems.push(`${at}: ${path} is off the boundary`);
+        if (offBoundary(path)) problems.push(`${at}: ${path} is off the boundary`);
       }
     }
   }
   return { problems, imported: [...imported] };
 }
+
+// The classifier's globs are POSIX; `relative` uses a backslash on Windows.
+const toRepoPath = (root: string, path: string) => relative(root, path).split(sep).join("/");
 
 /** `@scope/name/sub` → `@scope/name`, `name/sub` → `name`. */
 const packageName = (specifier: string) => {
@@ -147,7 +168,7 @@ const packageName = (specifier: string) => {
 };
 
 // esbuild's default `resolveExtensions`, in its order: wrangler bundles the
-// functions with it, so an extensionless specifier loads the file it picks.
+// functions with it, so a specifier loads the file it picks.
 const SOURCE_EXTENSIONS = [".tsx", ".ts", ".jsx", ".js", ".css", ".json"];
 // A written `.js` names the `.ts` it is compiled from, as esbuild reads it.
 const COMPILED_FROM: Record<string, string[]> = {
@@ -159,9 +180,14 @@ const COMPILED_FROM: Record<string, string[]> = {
 
 const isFile = (path: string) => existsSync(path) && statSync(path).isFile();
 
-/** The file a relative specifier loads, as the bundler resolves it, or null. */
+/**
+ * The file a relative specifier loads, or null, in esbuild's order: the path
+ * as written, then with each extension appended (`b.js` → `b.js.ts`), then
+ * with a written `.js` rewritten (`b.js` → `b.ts`), then the directory's index.
+ */
 function resolveFile(path: string): string | null {
   if (isFile(path)) return path;
+  for (const e of SOURCE_EXTENSIONS) if (isFile(path + e)) return path + e;
   const ext = Object.keys(COMPILED_FROM).find((e) => path.endsWith(e));
   if (ext) {
     for (const from of COMPILED_FROM[ext]) {
@@ -169,9 +195,7 @@ function resolveFile(path: string): string | null {
       if (isFile(candidate)) return candidate;
     }
   }
-  for (const base of [path, `${path}/index`]) {
-    for (const e of SOURCE_EXTENSIONS) if (isFile(base + e)) return base + e;
-  }
+  for (const e of SOURCE_EXTENSIONS) if (isFile(`${path}/index${e}`)) return `${path}/index${e}`;
   return null;
 }
 

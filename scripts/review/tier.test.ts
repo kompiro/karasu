@@ -1,8 +1,8 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { resolve, sep } from "node:path";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
-import { checkImports } from "./function-imports.ts";
+import { checkImports, listFiles } from "./function-imports.ts";
 import { type GitFacts, parseRecord } from "./local-review-record.ts";
 import { isTestFile } from "./test-changes.ts";
 import {
@@ -362,14 +362,9 @@ describe("classifyChange", () => {
   it("keeps every module a Pages Function imports directly on the security boundary", () => {
     const sec = (path: string) =>
       classifyChange({ files: [modified(path)], author: "kompiro" }).securityReview;
-    const files = readdirSync(resolve(REPO_ROOT, "functions"), {
-      recursive: true,
-      encoding: "utf-8",
-    })
-      .map((name) => `functions/${name.split(sep).join("/")}`)
-      .filter(
-        (path) => /\.[cm]?[jt]sx?$/.test(path) && !/\.d\.[cm]?ts$/.test(path) && !isTestFile(path),
-      );
+    const files = listFiles(REPO_ROOT, "functions").filter(
+      (path) => /\.[cm]?[jt]sx?$/.test(path) && !/\.d\.[cm]?ts$/.test(path) && !isTestFile(path),
+    );
 
     const { problems, imported } = checkImports({
       root: REPO_ROOT,

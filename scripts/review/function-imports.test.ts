@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { checkImports, type ImportPolicy, readImports } from "./function-imports.ts";
+import { checkImports, type ImportPolicy, listFiles, readImports } from "./function-imports.ts";
 
 // A repo with a boundary (`functions/`, `lib/`) and a module off it (`other/`).
 const ROOT = mkdtempSync(join(tmpdir(), "function-imports-"));
@@ -17,19 +17,42 @@ for (const file of [
   "lib/z.ts",
   "lib/z.tsx",
   "lib/a.test.ts",
+  "lib/h.ts",
+  "lib/h.js.ts",
+  "lib/k.ts",
+  "lib/k.js/index.ts",
   "other/x.ts",
+  "listed/f.ts",
+  "listed/v1.js/index.ts",
 ]) {
   mkdirSync(dirname(join(ROOT, file)), { recursive: true });
   writeFileSync(join(ROOT, file), "export const x = 1;\n");
 }
-afterAll(() => rmSync(ROOT, { recursive: true, force: true }));
+// Links whose own path is on the boundary and whose target is not.
+for (const [link, target] of [
+  ["lib/linked.ts", "../other/x.ts"],
+  ["lib/linked-dir", "../other"],
+  ["functions/linked.ts", "../other/x.ts"],
+  ["listed/linked.ts", "../other/x.ts"],
+  ["listed/linked-dir", "../other"],
+]) {
+  mkdirSync(dirname(join(ROOT, link)), { recursive: true });
+  symlinkSync(target, join(ROOT, link));
+}
+// The repo reached through a link, as /tmp is on macOS.
+const LINKED_ROOT = `${ROOT}-link`;
+symlinkSync(ROOT, LINKED_ROOT);
+afterAll(() => {
+  rmSync(LINKED_ROOT, { force: true });
+  rmSync(ROOT, { recursive: true, force: true });
+});
 
 const POLICY: ImportPolicy = { packages: new Set(["@resvg/resvg-wasm"]), builtins: new Set() };
 
 /** The problems the guard reports for one function holding `source`. */
-const check = (source: string, file = "functions/f.ts", policy = POLICY) =>
+const check = (source: string, file = "functions/f.ts", policy = POLICY, root = ROOT) =>
   checkImports({
-    root: ROOT,
+    root,
     files: [file],
     read: () => source,
     policy,
@@ -123,6 +146,20 @@ describe("checkImports: what it must catch", () => {
     ]);
   });
 
+  // CodeRabbit on a1ff9c99: a link is judged by the file wrangler bundles.
+  it.each([
+    ['import { x } from "../lib/linked.js";'],
+    ['import { x } from "../lib/linked-dir/x.js";'],
+  ])("fails on an import through a link that leaves the boundary: %s", (source) => {
+    expect(check(source).problems).toEqual(["functions/f.ts:1: other/x.ts is off the boundary"]);
+  });
+
+  it("fails on a function that links to a file off the boundary", () => {
+    expect(check("export const x = 1;", "functions/linked.ts").problems).toEqual([
+      "functions/linked.ts: links to other/x.ts, off the boundary",
+    ]);
+  });
+
   it("fails on a function off the boundary", () => {
     expect(check("export const x = 1;", "other/f.ts").problems).toEqual([
       "other/f.ts: off the boundary",
@@ -158,6 +195,10 @@ describe("checkImports: what it must not fail on", () => {
     // esbuild tries `.tsx` before `.ts`: the guard checks the file it bundles.
     ['import { x } from "../lib/z";', "lib/z.tsx"],
     ['import { x } from "../lib/plain.js";', "lib/plain.js"],
+    // CodeRabbit on a1ff9c99: esbuild appends an extension before it rewrites
+    // `.js`, and rewrites before it reads a directory's index.
+    ['import { x } from "../lib/h.js";', "lib/h.js.ts"],
+    ['import { x } from "../lib/k.js";', "lib/k.ts"],
   ])("resolves %s", (source, target) => {
     expect(check(source)).toEqual({ problems: [], imported: [target] });
   });
@@ -218,9 +259,27 @@ describe("checkImports: what it must not fail on", () => {
     expect(check(source).problems).toEqual([]);
   });
 
+  it("resolves against a root reached through a link", () => {
+    expect(
+      check('import { x } from "../lib/a.js";', "functions/f.ts", POLICY, LINKED_ROOT),
+    ).toEqual({ problems: [], imported: ["lib/a.ts"] });
+  });
+
   it("reads JSX in a .tsx function", () => {
     const source = 'import { x } from "../lib/a.js";\nexport const el = <div>{x}</div>;\n';
     expect(check(source, "functions/f.tsx")).toEqual({ problems: [], imported: ["lib/a.ts"] });
+  });
+});
+
+// CodeRabbit on a1ff9c99: a directory named like a source is not read as one.
+describe("listFiles", () => {
+  it("lists files and links to files, walks linked directories, and skips directories", () => {
+    expect(listFiles(ROOT, "listed").sort()).toEqual([
+      "listed/f.ts",
+      "listed/linked-dir/x.ts",
+      "listed/linked.ts",
+      "listed/v1.js/index.ts",
+    ]);
   });
 });
 
