@@ -82,7 +82,7 @@ interface GhostBandRun {
 /**
  * Place the service view's cross-service ghost domains in the band around the
  * main container (#2823), framed per owning service.
- * @returns whether the width budget cut a band row.
+ * @returns whether the width budget cut a band row or a frame's columns.
  */
 function placeGhostDomains(
   viewSlice: ViewSlice,
@@ -114,7 +114,7 @@ function placeGhostDomains(
  * `DomainId.EntityId` (not the bare id) because entity ids are only
  * warning-level unique — the matching `ghostEntityEdges` endpoints use the
  * same qualified key for foreign endpoints.
- * @returns whether the width budget cut a band row.
+ * @returns whether the width budget cut a band row or a frame's columns.
  */
 function placeGhostEntities(
   viewSlice: ViewSlice,
@@ -144,7 +144,7 @@ function placeGhostEntities(
  * Place the ghost band of whichever view this is — ghost domains on a service
  * view, ghost entities on an entity view (#2823). Both run; neither
  * short-circuits the other.
- * @returns whether the width budget cut a band row.
+ * @returns whether the width budget cut a band row or a frame's columns.
  */
 export function placeGhostBands(
   viewSlice: ViewSlice,

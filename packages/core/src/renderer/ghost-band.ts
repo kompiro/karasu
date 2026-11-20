@@ -11,8 +11,9 @@
  *   the sub-label the title now says. A lone ghost stays a sub-labelled card —
  *   the case ADR-460 rejected wrapping ("a frame around a single domain").
  * - **Wrap**: each side wraps into rows at `max(width budget, focus frame
- *   width)`. A row cut by the budget is reported, so the width-budget search
- *   (ADR-2593) tries a wider one.
+ *   width)`, and a frame takes no more grid columns than that width holds. A
+ *   row or a column cut by it is reported, so the width-budget search
+ *   (ADR-2593) tries a wider budget.
  * - **Order**: frames, and cards inside a frame, follow the mean centre x of
  *   their local partners; discovery order breaks ties.
  *
@@ -78,7 +79,7 @@ interface GhostTally {
 
 /**
  * Place the band and grow the outermost frame around it.
- * @returns whether the width budget cut a band row.
+ * @returns whether the width budget cut a band row or a frame's columns.
  */
 export function placeGhostBand(
   input: BandInput,
