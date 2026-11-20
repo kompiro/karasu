@@ -7,6 +7,7 @@ import type { KrsNode } from "../types/ast.js";
 import type { ViewSlice, GhostSystem } from "../view/view-slice.js";
 import type { LayoutNode, ContainerRect } from "./layout-types.js";
 import { nodePathKey, nodePathRefId } from "../parser/node-path.js";
+import { gridColumnCount } from "./layer-layout-logics.js";
 import {
   CONTAINER_PADDING,
   CONTAINER_LABEL_HEIGHT,
@@ -67,109 +68,293 @@ export function placeGhostUsers(
   }
 }
 
-/**
- * Place a row of muted ghost nodes below the main container, then grow the
- * outermost container to include them. Shared by {@link placeGhostDomains} and
- * {@link placeGhostEntities}: each item carries the layout `key` to store under
- * (bare id for domains, qualified `DomainId.EntityId` for entities) and the
- * `subLabel` (owning service / domain) to show muted. `ghost: true` drives the
- * muting in svg-renderer; no renderer change is needed.
- */
-function placeGhostRow(
-  items: { node: KrsNode; key: string; subLabel: string }[],
-  layoutNodes: Map<string, LayoutNode>,
-  containers: ContainerRect[],
-  ctx: MeasureContext,
-  gap: number,
-): void {
-  if (items.length === 0 || containers.length === 0) return;
-  const { NODE_GAP } = getLayoutConstants(ctx.displayMode);
-
-  const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
-  const ghostY = mainContainer.y + mainContainer.height + gap;
-  let ghostX = mainContainer.x + CONTAINER_PADDING;
-
-  for (const { node, key, subLabel } of items) {
-    const dims = measureNode(node, undefined, ctx);
-    layoutNodes.set(
-      key,
-      makeLayoutNode(node, key, {
-        label: node.label ?? node.id,
-        annotations: ctx.effectiveAnnotations(node),
-        subLabel,
-        x: ghostX,
-        y: ghostY,
-        width: dims.width,
-        height: dims.height,
-        ghost: true,
-      }),
-    );
-    ghostX += dims.width + NODE_GAP;
-  }
-
-  // Expand outermost container to include the ghost row (both height and width)
-  const placed = items
-    .map(({ key }) => layoutNodes.get(key))
-    .filter((n): n is LayoutNode => n !== undefined);
-  if (placed.length > 0) {
-    const maxGhostY = Math.max(...placed.map((n) => n.y + n.height)) + GHOST_MARGIN;
-    const maxGhostX = Math.max(...placed.map((n) => n.x + n.width)) + GHOST_MARGIN;
-    const outermost = containers[0];
-    if (maxGhostY > outermost.y + outermost.height) {
-      outermost.height = maxGhostY - outermost.y;
-    }
-    if (maxGhostX > outermost.x + outermost.width) {
-      outermost.width = maxGhostX - outermost.x;
-    }
-  }
-}
-
 const GHOST_ROW_GAP = 60;
 
 /** Horizontal gap between a ghost system frame and its neighbor / the main container. */
 const GHOST_SYSTEM_GAP = 80;
+
+// ---------------------------------------------------------------------------
+// SPIKE (#2823, design PR #3842 slice A): ghost band.
+//
+// Ghosts go above the focus frame when they have more incoming relations
+// (the foreign side references this one), below otherwise. Per
+// (foreign group × side), two or more ghosts share one muted frame titled
+// with the group label; a lone ghost stays a sub-labelled card. Frames and
+// cards are ordered by their local partners' mean centre x and wrapped at
+// max(width budget, focus frame width).
+// ---------------------------------------------------------------------------
+
+interface BandItem {
+  node: KrsNode;
+  key: string;
+  groupLabel: string;
+}
+
+type Side = "above" | "below";
+
+interface BandBox {
+  width: number;
+  height: number;
+  order: number;
+  partnerX: number;
+  /** Move every card (and the frame) of this box to its final top-left. */
+  place: (x: number, y: number) => void;
+}
+
+const BAND_GAP = 40;
+
+/** Place ghost band items; returns whether the width budget cut a band row. */
+function placeGhostBand(
+  items: BandItem[],
+  edges: readonly { from: string; to: string }[],
+  remap: (id: string) => string,
+  layoutNodes: Map<string, LayoutNode>,
+  containers: ContainerRect[],
+  ctx: MeasureContext,
+  widthBudget: number,
+): boolean {
+  if (items.length === 0 || containers.length === 0) return false;
+  const { NODE_GAP } = getLayoutConstants(ctx.displayMode);
+  const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
+  // Every frame enclosing the focus except the outermost one, which is grown
+  // around the band afterwards (design: "which ancestor encloses the band").
+  const inner = containers.slice(1).length > 0 ? containers.slice(1) : [mainContainer];
+  const innerTop = Math.min(...inner.map((c) => c.y));
+  const innerBottom = Math.max(...inner.map((c) => c.y + c.height));
+  const centreX = mainContainer.x + mainContainer.width / 2;
+
+  // Direction counts and partner x per ghost.
+  const keys = new Set(items.map((i) => i.key));
+  const incoming = new Map<string, number>();
+  const outgoing = new Map<string, number>();
+  const partnerXs = new Map<string, number[]>();
+  for (const e of edges) {
+    const from = remap(e.from);
+    const to = remap(e.to);
+    const ghost = keys.has(from) ? from : keys.has(to) ? to : undefined;
+    if (!ghost) continue;
+    const partner = ghost === from ? to : from;
+    const counts = ghost === from ? incoming : outgoing;
+    counts.set(ghost, (counts.get(ghost) ?? 0) + 1);
+    const p = layoutNodes.get(partner);
+    if (p) {
+      const xs = partnerXs.get(ghost) ?? [];
+      xs.push(p.x + p.width / 2);
+      partnerXs.set(ghost, xs);
+    }
+  }
+  const mean = (xs: number[]) =>
+    xs.length === 0 ? centreX : xs.reduce((a, b) => a + b, 0) / xs.length;
+  const sideOf = (key: string): Side =>
+    (incoming.get(key) ?? 0) > (outgoing.get(key) ?? 0) ? "above" : "below";
+
+  // Group by (side, groupLabel), keeping discovery order.
+  const groups = new Map<
+    string,
+    { side: Side; label: string; members: BandItem[]; order: number }
+  >();
+  items.forEach((item, order) => {
+    const side = sideOf(item.key);
+    const gk = `${side}\u0000${item.groupLabel}`;
+    let g = groups.get(gk);
+    if (!g) {
+      g = { side, label: item.groupLabel, members: [], order };
+      groups.set(gk, g);
+    }
+    g.members.push(item);
+  });
+
+  const boxes: Record<Side, BandBox[]> = { above: [], below: [] };
+  for (const g of groups.values()) {
+    const cards = g.members.map((m, order) => {
+      const dims = measureNode(m.node, undefined, ctx);
+      return { m, order, dims, px: mean(partnerXs.get(m.key) ?? []) };
+    });
+    cards.sort((a, b) => a.px - b.px || a.order - b.order);
+    const boxPartnerX = mean(g.members.flatMap((m) => partnerXs.get(m.key) ?? []));
+
+    if (cards.length === 1) {
+      const [{ m, dims }] = cards;
+      boxes[g.side].push({
+        width: dims.width,
+        height: dims.height,
+        order: g.order,
+        partnerX: boxPartnerX,
+        place: (x, y) => {
+          layoutNodes.set(
+            m.key,
+            makeLayoutNode(m.node, m.key, {
+              label: m.node.label ?? m.node.id,
+              annotations: ctx.effectiveAnnotations(m.node),
+              subLabel: g.label,
+              x,
+              y,
+              width: dims.width,
+              height: dims.height,
+              ghost: true,
+            }),
+          );
+        },
+      });
+      continue;
+    }
+
+    // Grid inside the frame.
+    const cols = gridColumnCount(cards.length);
+    const colW = Math.max(...cards.map((c) => c.dims.width));
+    const rows: (typeof cards)[] = [];
+    for (let i = 0; i < cards.length; i += cols) rows.push(cards.slice(i, i + cols));
+    const rowH = rows.map((r) => Math.max(...r.map((c) => c.dims.height)));
+    const contentW =
+      Math.min(cols, cards.length) * colW + (Math.min(cols, cards.length) - 1) * NODE_GAP;
+    const contentH = rowH.reduce((a, b) => a + b, 0) + (rows.length - 1) * (NODE_GAP / 2);
+    const width = contentW + CONTAINER_PADDING * 2;
+    const height =
+      CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING / 2 + contentH + CONTAINER_PADDING / 2;
+    boxes[g.side].push({
+      width,
+      height,
+      order: g.order,
+      partnerX: boxPartnerX,
+      place: (x, y) => {
+        containers.push({
+          id: `ghost-band:${g.side}:${g.label}`,
+          label: g.label,
+          x,
+          y,
+          width,
+          height,
+          ghost: true,
+        });
+        let cy = y + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING / 2;
+        rows.forEach((row, ri) => {
+          row.forEach((c, ci) => {
+            layoutNodes.set(
+              c.m.key,
+              makeLayoutNode(c.m.node, c.m.key, {
+                label: c.m.node.label ?? c.m.node.id,
+                annotations: ctx.effectiveAnnotations(c.m.node),
+                x: x + CONTAINER_PADDING + ci * (colW + NODE_GAP) + (colW - c.dims.width) / 2,
+                y: cy,
+                width: c.dims.width,
+                height: c.dims.height,
+                ghost: true,
+              }),
+            );
+          });
+          cy += rowH[ri] + NODE_GAP / 2;
+        });
+      },
+    });
+  }
+
+  // Wrap each side into rows at max(budget, focus width), centred on the focus.
+  const limit = Math.max(widthBudget, mainContainer.width);
+  let widthBound = false;
+  const placedRects: { x: number; y: number; width: number; height: number }[] = [];
+  for (const side of ["above", "below"] as const) {
+    const list = boxes[side].sort((a, b) => a.partnerX - b.partnerX || a.order - b.order);
+    if (list.length === 0) continue;
+    const rows: BandBox[][] = [[]];
+    let rowW = 0;
+    for (const b of list) {
+      const cur = rows[rows.length - 1];
+      const next = cur.length === 0 ? b.width : rowW + BAND_GAP + b.width;
+      if (cur.length > 0 && next > limit) {
+        widthBound = true;
+        rows.push([b]);
+        rowW = b.width;
+      } else {
+        cur.push(b);
+        rowW = next;
+      }
+    }
+    // Row 0 touches the focus side; above rows stack upward, bottom-aligned.
+    let edgeY = side === "below" ? innerBottom + GHOST_ROW_GAP : innerTop - GHOST_ROW_GAP;
+    for (const row of rows) {
+      const w = row.reduce((a, b) => a + b.width, 0) + (row.length - 1) * BAND_GAP;
+      const h = Math.max(...row.map((b) => b.height));
+      let x = centreX - w / 2;
+      for (const b of row) {
+        const y = side === "below" ? edgeY : edgeY - b.height;
+        b.place(x, y);
+        placedRects.push({ x, y, width: b.width, height: b.height });
+        x += b.width + BAND_GAP;
+      }
+      edgeY = side === "below" ? edgeY + h + BAND_GAP : edgeY - h - BAND_GAP;
+    }
+  }
+
+  // Grow the outermost frame around the band on all four sides.
+  if (placedRects.length > 0) {
+    const outermost = containers[0];
+    const minX = Math.min(...placedRects.map((r) => r.x)) - GHOST_MARGIN;
+    const maxX = Math.max(...placedRects.map((r) => r.x + r.width)) + GHOST_MARGIN;
+    const minY = Math.min(...placedRects.map((r) => r.y)) - GHOST_MARGIN - CONTAINER_LABEL_HEIGHT;
+    const maxY = Math.max(...placedRects.map((r) => r.y + r.height)) + GHOST_MARGIN;
+    if (minX < outermost.x) {
+      outermost.width += outermost.x - minX;
+      outermost.x = minX;
+    }
+    if (minY < outermost.y) {
+      outermost.height += outermost.y - minY;
+      outermost.y = minY;
+    }
+    if (maxX > outermost.x + outermost.width) outermost.width = maxX - outermost.x;
+    if (maxY > outermost.y + outermost.height) outermost.height = maxY - outermost.y;
+  }
+  return widthBound;
+}
 
 export function placeGhostDomains(
   viewSlice: ViewSlice,
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
   ctx: MeasureContext,
-): void {
-  placeGhostRow(
+  remap: (id: string) => string,
+  widthBudget: number,
+): boolean {
+  return placeGhostBand(
     viewSlice.ghostDomains.map((gd) => ({
       node: gd.node,
       key: gd.node.id,
-      subLabel: gd.parentServiceLabel,
+      groupLabel: gd.parentServiceLabel,
     })),
+    viewSlice.ghostDomainEdges,
+    remap,
     layoutNodes,
     containers,
     ctx,
-    GHOST_ROW_GAP,
+    widthBudget,
   );
 }
 
 /**
- * Place cross-domain ghost entities below the entity view's main container.
- * Keyed by the qualified `DomainId.EntityId` (not the bare id) because entity
- * ids are only warning-level unique — the matching `ghostEntityEdges` endpoints
- * use the same qualified key for foreign endpoints.
+ * Place cross-domain ghost entities in the band around the entity view's main
+ * container. Keyed by the qualified `DomainId.EntityId` (not the bare id)
+ * because entity ids are only warning-level unique — the matching
+ * `ghostEntityEdges` endpoints use the same qualified key for foreign endpoints.
  */
 export function placeGhostEntities(
   viewSlice: ViewSlice,
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
   ctx: MeasureContext,
-): void {
-  placeGhostRow(
+  remap: (id: string) => string,
+  widthBudget: number,
+): boolean {
+  return placeGhostBand(
     viewSlice.ghostEntities.map((ge) => ({
       node: ge.node,
       key: ge.key,
-      subLabel: ge.parentDomainLabel,
+      groupLabel: ge.parentDomainLabel,
     })),
+    viewSlice.ghostEntityEdges,
+    remap,
     layoutNodes,
     containers,
     ctx,
-    GHOST_ROW_GAP,
+    widthBudget,
   );
 }
 

@@ -1,3 +1,5 @@
+// SPIKE #2823: over the 600-line cap by the band call; the real slice moves code out.
+// oxlint-disable max-lines
 import type { KrsNode } from "../types/ast.js";
 import { displayGroupId } from "../types/ast.js";
 import { foldFacetMembership } from "./facet-overlay.js";
@@ -469,8 +471,19 @@ function layoutInner(
 
   // Place ghost nodes
   placeGhostUsers(viewSlice, layoutNodes, containers, measureCtx);
-  placeGhostDomains(viewSlice, layoutNodes, containers, measureCtx);
-  placeGhostEntities(viewSlice, layoutNodes, containers, measureCtx);
+  // SPIKE #2823: the ghost band reports whether the budget cut one of its rows.
+  const ghostBandArgs = [
+    viewSlice,
+    layoutNodes,
+    containers,
+    measureCtx,
+    remapGhostEndpoint,
+    widthBudget,
+  ] as const;
+  const bandBound = [
+    placeGhostDomains(...ghostBandArgs),
+    placeGhostEntities(...ghostBandArgs),
+  ].includes(true);
   placeCallerGhostSystems(viewSlice, layoutNodes, containers, ownerOf, measureCtx);
   placeOutgoingGhostSystems(viewSlice, layoutNodes, containers, ownerOf, measureCtx);
 
@@ -581,7 +594,7 @@ function layoutInner(
       containers,
       width: totalWidth,
       height: totalHeight,
-      widthBound: placed.widthBound,
+      widthBound: placed.widthBound || bandBound,
       foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
       foldedFacetMembership: foldFacetMembership(
         viewSlice.childNodes,
