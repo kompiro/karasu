@@ -356,20 +356,20 @@ describe("classifyChange", () => {
   // off the boundary, fails here. What those modules import in turn is not
   // checked (`bare-route.ts` reads the `routes.ts` constant table).
   //
-  // Each function is read from its syntax tree (`function-imports.ts`), so a
-  // specifier computed at run time and a Node built-in are seen, and fail
-  // unless allowed below.
-  it("keeps every module a Pages Function imports directly on the security boundary", () => {
+  // esbuild, with wrangler's options, resolves what each function imports
+  // (`function-imports.ts`), so the guard checks the file the bundle loads;
+  // the syntax tree adds a specifier computed at run time. Both, and a Node
+  // built-in, fail unless allowed below.
+  it("keeps every module a Pages Function imports directly on the security boundary", async () => {
     const sec = (path: string) =>
       classifyChange({ files: [modified(path)], author: "kompiro" }).securityReview;
     const files = listFiles(REPO_ROOT, "functions").filter(
       (path) => /\.[cm]?[jt]sx?$/.test(path) && !/\.d\.[cm]?ts$/.test(path) && !isTestFile(path),
     );
 
-    const { problems, imported } = checkImports({
+    const { problems, imported } = await checkImports({
       root: REPO_ROOT,
       files,
-      read: (path) => readFileSync(resolve(REPO_ROOT, path), "utf-8"),
       policy: {
         // Any other package, a workspace package included (its modules are
         // not checked here), fails until it is added.

@@ -1,22 +1,33 @@
-// What a Cloudflare Pages Function imports, read from its syntax tree, and the
-// checks the review-tier guard runs on it (#3799). Used by `tier.test.ts`;
-// kept apart so that test holds only the policy and the expected result.
+// What a Cloudflare Pages Function imports, and the checks the review-tier
+// guard runs on it (#3799). Used by `tier.test.ts`; kept apart so that test
+// holds only the policy and the expected result.
 //
-// The tree comes from @babel/parser, so a comment or a string is never read as
-// an import, and a call named `from` is just a call. Each `import`, `export …
-// from`, `import()`, `require()`, `import x = require()` and `import("…")` type
-// is read; one whose specifier is not a plain string is reported, because the
-// guard cannot tell what it loads.
+// Two readers, each for what it alone can tell:
+//
+// - esbuild, which wrangler bundles the functions with, resolves each import
+//   the bundle keeps, with wrangler's options. The guard does not resolve a
+//   path itself, so it checks the file the bundle loads: extension order, a
+//   written `.js` naming a `.ts`, a directory's `package.json`, a link's real
+//   path. An import the bundle drops (`import type`, an unused binding in a
+//   `.ts` file) loads nothing and is not checked.
+// - @babel/parser reads the syntax tree, so a specifier computed at run time
+//   (`import(name)`, `require("" + x)`) is reported with its line: esbuild
+//   leaves such a call alone, so it never reaches the resolver.
 
-import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { isBuiltin } from "node:module";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { type ParserPlugin, parse } from "@babel/parser";
+import { build, type Plugin } from "esbuild";
 
-/** One import a file writes. `specifier` is null when it is computed at run time. */
+/**
+ * One import a file writes. `specifier` is null when it is computed at run
+ * time; `call` is true for `import()` and `require()`.
+ */
 export interface ImportSite {
   line: number;
   specifier: string | null;
+  call: boolean;
 }
 
 /** The imports in `text`, or the parse error when it does not parse. */
@@ -40,8 +51,8 @@ export function readImports(
   }
 
   const imports: ImportSite[] = [];
-  const add = (node: Node, arg: Node | undefined) =>
-    imports.push({ line: node.loc?.start.line ?? 0, specifier: literal(arg) });
+  const add = (node: Node, arg: Node | undefined, call = false) =>
+    imports.push({ line: node.loc?.start.line ?? 0, specifier: literal(arg), call });
   walk(program, (node) => {
     switch (node.type) {
       case "ImportDeclaration":
@@ -52,14 +63,14 @@ export function readImports(
         if (node.source) add(node, node.source);
         break;
       case "ImportExpression":
-        add(node, node.source);
+        add(node, node.source, true);
         break;
       case "CallExpression":
       case "OptionalCallExpression": {
         const callee = unwrap(node.callee as Node);
         const isImport = callee.type === "Import";
         const isRequire = callee.type === "Identifier" && callee.name === "require";
-        if (isImport || isRequire) add(node, (node.arguments as Node[])[0]);
+        if (isImport || isRequire) add(node, (node.arguments as Node[])[0], true);
         break;
       }
       case "TSExternalModuleReference":
@@ -98,20 +109,19 @@ export function listFiles(root: string, dir: string): string[] {
 }
 
 /**
- * Checks each file (repo paths, POSIX) and the modules it imports directly:
- * both must be on the boundary, a package or built-in must be in the policy,
- * and every specifier must be a string that resolves. A symbolic link is
- * judged by the file it points to, since that is what gets bundled. Returns
- * one line per problem, and the repo files the functions import.
+ * Checks each function (repo paths, POSIX) and the modules it imports
+ * directly: both must be on the boundary, a package or built-in must be in
+ * the policy, and every specifier must be a string that resolves. A symbolic
+ * link is judged by the file it points to, since that is what gets bundled.
+ * Returns one line per problem, and the repo files the functions import.
  */
-export function checkImports(options: {
+export async function checkImports(options: {
   root: string;
   files: readonly string[];
-  read: (path: string) => string;
   policy: ImportPolicy;
   onBoundary: (path: string) => boolean;
-}): { problems: string[]; imported: string[] } {
-  const { root, files, read, policy, onBoundary } = options;
+}): Promise<{ problems: string[]; imported: string[] }> {
+  const { root, files, policy, onBoundary } = options;
   const problems: string[] = [];
   const imported = new Set<string>();
   // Real paths on both sides, so a root reached through a link still contains its files.
@@ -119,23 +129,43 @@ export function checkImports(options: {
   const offBoundary = (path: string) => path.startsWith("../") || !onBoundary(path);
   for (const file of files) {
     const onDisk = resolve(root, file);
-    const real = existsSync(onDisk) ? toRepoPath(realRoot, realpathSync(onDisk)) : file;
+    const real = toRepoPath(realRoot, realpathSync(onDisk));
     if (offBoundary(file)) problems.push(`${file}: off the boundary`);
     else if (offBoundary(real)) problems.push(`${file}: links to ${real}, off the boundary`);
-    const result = readImports(file, read(file));
+
+    const result = readImports(file, readFileSync(onDisk, "utf-8"));
     if ("error" in result) {
       problems.push(`${file}: does not parse: ${result.error}`);
       continue;
     }
-    for (const { line, specifier } of result.imports) {
-      const at = `${file}:${line}`;
-      if (specifier === null) {
-        problems.push(`${at}: computed import specifier`);
-      } else if (isBuiltin(specifier)) {
+    const lineOf = (specifier: string) => {
+      const site = result.imports.find((s) => s.specifier === specifier);
+      return site ? `${file}:${site.line}` : file;
+    };
+
+    let bundled: BundledImport[];
+    try {
+      bundled = await bundledImports(realRoot, onDisk);
+    } catch (error) {
+      problems.push(`${file}: does not build: ${(error as Error).message}`);
+      continue;
+    }
+    // A call the bundle does not resolve stays a run-time `require` /
+    // `import()`, such as `require?.(x)` or `(0, require)(x)`; the guard
+    // cannot tell what it loads, so it fails, as a computed specifier does.
+    const kept = new Set(bundled.map((b) => b.specifier));
+    for (const { line, specifier, call } of result.imports) {
+      if (specifier === null) problems.push(`${file}:${line}: computed import specifier`);
+      else if (call && !kept.has(specifier))
+        problems.push(`${file}:${line}: "${specifier}" is loaded at run time, not bundled`);
+    }
+    for (const { specifier, resolved } of bundled) {
+      const at = lineOf(specifier);
+      if (isBuiltin(specifier)) {
         const name = specifier.startsWith("node:") ? specifier : `node:${specifier}`;
         if (!policy.builtins.has(name))
           problems.push(`${at}: Node built-in "${name}" is not allowed`);
-      } else if (!/^[./]/.test(specifier)) {
+      } else if (resolved === "package") {
         const name = packageName(specifier);
         if (!policy.packages.has(name)) {
           problems.push(`${at}: package "${name}" is not allowed`);
@@ -143,19 +173,77 @@ export function checkImports(options: {
           // `pkg/../../x` can load a repo file when the package has no `exports`.
           problems.push(`${at}: "${specifier}" leaves the package`);
         }
+      } else if (resolved === null) {
+        problems.push(`${at}: "${specifier}" does not resolve`);
       } else {
-        const target = resolveFile(resolve(root, dirname(file), specifier));
-        if (target === null) {
-          problems.push(`${at}: "${specifier}" does not resolve`);
-          continue;
-        }
-        const path = toRepoPath(realRoot, realpathSync(target));
+        const path = toRepoPath(realRoot, realpathSync(resolved));
         imported.add(path);
         if (offBoundary(path)) problems.push(`${at}: ${path} is off the boundary`);
       }
     }
   }
   return { problems, imported: [...imported] };
+}
+
+/** One import the bundle keeps: the file it loads, `package`, or null when it does not resolve. */
+interface BundledImport {
+  specifier: string;
+  resolved: string | "package" | null;
+}
+
+// What wrangler passes esbuild that decides which file an import loads
+// (workers-sdk `packages/wrangler/src/deployment-bundle/bundle.ts`): no
+// `platform`, so esbuild's `browser` and its `mainFields`; these conditions;
+// `.js` read as JSX; no `preserveSymlinks`, so a link resolves from its target.
+const WRANGLER_CONDITIONS = ["workerd", "worker", "browser"];
+const WRANGLER_LOADER = { ".js": "jsx", ".mjs": "jsx", ".cjs": "jsx" } as const;
+
+/**
+ * The imports esbuild keeps in `entry`, each resolved by esbuild itself. Only
+ * the entry's own imports are followed: each is marked external once it is
+ * resolved, so nothing it imports in turn is read.
+ */
+async function bundledImports(root: string, entry: string): Promise<BundledImport[]> {
+  const found: BundledImport[] = [];
+  // esbuild names a linked entry by its target (no `preserveSymlinks`).
+  const importer = realpathSync(entry);
+  const RESOLVING = Symbol("resolving");
+  const direct: Plugin = {
+    name: "direct-imports",
+    setup(b) {
+      b.onResolve({ filter: /.*/ }, async (args) => {
+        if (args.kind === "entry-point" || args.pluginData === RESOLVING) return undefined;
+        // A module the entry does not import itself, such as a file a
+        // template import bundles, is not checked: the walk is one level.
+        if (args.importer !== importer) return { path: args.path, external: true };
+        if (!/^[./]/.test(args.path)) {
+          // A package or a built-in: what it names is checked, not where it is.
+          found.push({ specifier: args.path, resolved: "package" });
+        } else {
+          const r = await b.resolve(args.path, {
+            kind: args.kind,
+            importer: args.importer,
+            resolveDir: args.resolveDir,
+            pluginData: RESOLVING,
+          });
+          found.push({ specifier: args.path, resolved: r.errors.length > 0 ? null : r.path });
+        }
+        return { path: args.path, external: true };
+      });
+    },
+  };
+  await build({
+    entryPoints: [entry],
+    absWorkingDir: root,
+    bundle: true,
+    write: false,
+    format: "esm",
+    conditions: WRANGLER_CONDITIONS,
+    loader: WRANGLER_LOADER,
+    logLevel: "silent",
+    plugins: [direct],
+  });
+  return found;
 }
 
 // The classifier's globs are POSIX; `relative` uses a backslash on Windows.
@@ -167,37 +255,7 @@ const packageName = (specifier: string) => {
   return parts[0].startsWith("@") ? `${parts[0]}/${parts[1]}` : parts[0];
 };
 
-// esbuild's default `resolveExtensions`, in its order: wrangler bundles the
-// functions with it, so a specifier loads the file it picks.
-const SOURCE_EXTENSIONS = [".tsx", ".ts", ".jsx", ".js", ".css", ".json"];
-// A written `.js` names the `.ts` it is compiled from, as esbuild reads it.
-const COMPILED_FROM: Record<string, string[]> = {
-  ".js": [".ts", ".tsx"],
-  ".jsx": [".ts", ".tsx"],
-  ".mjs": [".mts"],
-  ".cjs": [".cts"],
-};
-
 const isFile = (path: string) => existsSync(path) && statSync(path).isFile();
-
-/**
- * The file a relative specifier loads, or null, in esbuild's order: the path
- * as written, then with each extension appended (`b.js` → `b.js.ts`), then
- * with a written `.js` rewritten (`b.js` → `b.ts`), then the directory's index.
- */
-function resolveFile(path: string): string | null {
-  if (isFile(path)) return path;
-  for (const e of SOURCE_EXTENSIONS) if (isFile(path + e)) return path + e;
-  const ext = Object.keys(COMPILED_FROM).find((e) => path.endsWith(e));
-  if (ext) {
-    for (const from of COMPILED_FROM[ext]) {
-      const candidate = path.slice(0, -ext.length) + from;
-      if (isFile(candidate)) return candidate;
-    }
-  }
-  for (const e of SOURCE_EXTENSIONS) if (isFile(`${path}/index${e}`)) return `${path}/index${e}`;
-  return null;
-}
 
 // A Babel node, loosely typed: the walk only reads `type` and a few fields.
 // oxlint-disable-next-line typescript/no-explicit-any
