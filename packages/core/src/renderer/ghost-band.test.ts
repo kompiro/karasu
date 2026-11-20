@@ -298,6 +298,18 @@ describe("ghost band on the entity view (#2823)", () => {
     }
   });
 
+  it("marks each band frame in the SVG with its side, and no ghost ancestor frame", () => {
+    const svg = renderEntityView(src, path).svg;
+    const marked = [
+      ...svg.matchAll(/data-container-id="([^"]+)"[^>]*data-ghost-band="(above|below)"/g),
+    ];
+    expect(marked.map((m) => [m[1], m[2]]).sort()).toEqual(
+      bandFrames(res)
+        .map((f) => [f.id, f.ghostBand])
+        .sort(),
+    );
+  });
+
   it("overlaps no frame or card it does not hold", () => {
     const frames = bandFrames(res);
     expect(frames.length).toBeGreaterThan(0);
@@ -382,5 +394,57 @@ describe("ghost band on the service view (#2823)", () => {
         subLabels: 0,
       })),
     );
+  });
+});
+
+// ─── Ghost systems beside a band ─────────────────────────────────────────────
+
+describe("ghost systems stay level with the focus when the upper band grows the frame (#2823)", () => {
+  // `Shop.Core` has an upper band (`In1` references it), a lower band (it
+  // references `Out1`), an outgoing ghost system (`Ext.Api`) and a caller ghost
+  // system (`Ext.Caller`). The ghost systems are placed after the band; anchored
+  // at the outermost frame's top, they would follow it above the upper band.
+  const domains = (prefix: string, body: string) =>
+    Array.from({ length: 12 }, (_, i) => `    domain ${prefix}${i} {${body}}`).join("\n");
+  const src = `system Shop {
+  service Core {
+    -> Ext.Api
+    domain Hub {
+${Array.from({ length: 12 }, (_, i) => `      -> O${i}`).join("\n")}
+    }
+  }
+  service In1 {
+${domains("I", " -> Hub ")}
+  }
+  service Out1 {
+${domains("O", "")}
+  }
+}
+system Ext {
+  service Api {}
+  service Caller {
+    -> Shop.Core
+  }
+}`;
+  const { slice, result: res } = layoutOf(src, (systems) => extractView(systems, ["Shop", "Core"]));
+  const systemFrames = res.containers.filter((c) => c.id === "Ext");
+  const above = bandFrames(res).filter((f) => f.ghostBand === "above");
+
+  it("has an upper band and both kinds of ghost system", () => {
+    expect(slice.ghostSystems).toHaveLength(1);
+    expect(slice.callerGhostSystems).toHaveLength(1);
+    expect(systemFrames).toHaveLength(2);
+    expect(above.length).toBeGreaterThan(0);
+  });
+
+  it("starts each ghost system frame below the upper band, clear of every band frame", () => {
+    const bandBottom = Math.max(...above.map((f) => f.y + f.height));
+    const clashes = systemFrames.flatMap((s) => [
+      ...(s.y > bandBottom ? [] : [`${s.id}@${s.x} starts at ${s.y}, band ends at ${bandBottom}`]),
+      ...bandFrames(res)
+        .filter((f) => overlaps(s, f))
+        .map((f) => `${s.id}@${s.x} / ${f.id}`),
+    ]);
+    expect(clashes).toEqual([]);
   });
 });

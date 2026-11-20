@@ -158,6 +158,20 @@ export function placeGhostBands(
   return domains || entities;
 }
 
+/**
+ * The top the ghost system frames line up with: where the outermost frame's top
+ * was before the ghost band grew it upward (#2823). The frame right inside the
+ * outermost one (an ancestor, or the focus) is not moved by the band, and the
+ * outermost one sits one `GHOST_MARGIN` outside it. A canvas with one frame
+ * has no ancestor to grow, so its top stays put.
+ */
+function ghostSystemTop(containers: readonly ContainerRect[]): number {
+  const inner = containers[1];
+  return inner !== undefined && inner.ghostBand === undefined
+    ? inner.y - GHOST_MARGIN
+    : containers[0].y;
+}
+
 export function placeCallerGhostSystems(
   viewSlice: ViewSlice,
   layoutNodes: Map<string, LayoutNode>,
@@ -168,7 +182,7 @@ export function placeCallerGhostSystems(
   if (viewSlice.callerGhostSystems.length === 0 || containers.length === 0) return;
 
   const outermost = containers[0];
-  const ghostStartY = outermost.y;
+  const ghostStartY = ghostSystemTop(containers);
 
   const callerContainers: ContainerRect[] = [];
   let tempX = 0;
@@ -214,7 +228,7 @@ export function placeOutgoingGhostSystems(
 
   const outermost = containers[0];
   let ghostX = outermost.x + outermost.width + GHOST_SYSTEM_GAP;
-  const ghostStartY = outermost.y;
+  const ghostStartY = ghostSystemTop(containers);
 
   for (const gs of viewSlice.ghostSystems) {
     const { nodes: gsNodes, containerRect } = layoutGhostSystem(

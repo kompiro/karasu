@@ -389,6 +389,9 @@ export function renderContainer(
       // identity (ADR-2714). Absent when no single node answers to the bare id.
       "data-realized-node-id": container.realizedNodeId,
       "data-kind-band": container.kindBand,
+      // Which side of the focus a ghost band frame sits on (#2823); absent on a
+      // ghost ancestor frame, which is otherwise drawn the same way.
+      "data-ghost-band": container.ghostBand,
       "data-group": container.group ? "true" : undefined,
       "data-expanded": expanded ? "true" : undefined,
       "data-diff-state": diffState,
