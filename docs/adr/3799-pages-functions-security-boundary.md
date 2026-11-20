@@ -68,7 +68,7 @@ globs を足すだけでは足りない。function が新しく import したモ
 
 - **境界かどうかは、wrangler が実際にバンドルするファイルで決まる。** 拡張子を補う順番、`.js` と書いて `.ts` を指す書き方、ディレクトリの `package.json` の `main` / `browser`、tsconfig の `paths`、`browser` の対応表、リンクの実体のパス、は esbuild の規則で決まる。ガードが自前で解決すると、規則の違いがそのまま見逃しになる。esbuild の `onResolve` プラグインで、function 自身の import ごとに `build.resolve` で解決した先を記録し、external にして 1 段で止める
 - **wrangler のオプションに合わせる。** 2026-11-20 に読んだ `workers-sdk` の `packages/wrangler/src/deployment-bundle/bundle.ts` では、`platform` を渡さない（なので esbuild の既定の `browser` と、その既定の `mainFields`）、conditions は `workerd`, `worker`, `browser`、`.js` / `.mjs` / `.cjs` は JSX として読む、`preserveSymlinks` は使わない。デプロイは `wrangler-action` が wrangler を入れるので、後の wrangler がこれを変えても、デプロイで `WRANGLER_BUILD_PLATFORM` / `WRANGLER_BUILD_CONDITIONS` を設定しても、ガードは追いかけない。定数に出典を書いてある
-- **計算される specifier は構文でしか分からない。** esbuild は `import(name)` や `require("" + x)` を解決にかけずに残すので、プラグインに届かない。@babel/parser で構文木を読み、行を付けて落とす
+- **計算される specifier は構文でしか分からない。** esbuild は変数だけの `import(name)` を解決にかけずに実行時に残す。`./dir/` で始まるテンプレートや文字列の連結は、合うファイルに展開して読むが、そのときも `onResolve` を通さない。どちらもプラグインに届かないので、@babel/parser で構文木を読み、行を付けて落とす
 - **呼び出しを 1 か所ずつ照合することは esbuild からはできない。** `require?.(x)` も `(0, require)(x)` も esbuild は実行時の呼び出しとして残し、警告も出さない。`onResolve` は (kind, specifier) ごとに 1 回しか呼ばれない。なので、同じ specifier の `require(x)` がバンドルされると、横の `require?.(x)` が見逃される。`functions/**` で oxlint の `no-restricted-globals` によって `require` への参照をすべて禁じ、`pnpm lint` の対象に `functions/` を足した。残る実行時の読み込みは `import()` だけで、`import` はキーワードなので `?.` や `(0, …)` で回り込めない。`require` は `nodejs_compat` の無い Pages には存在しないので、禁じて失うものは無い
 
 ## 却下した案
