@@ -130,7 +130,7 @@ function buildCellsForPage(page: DrawioPage): Cell[] {
     const parentId = parentContainer ? cellId(parentContainer.id) : rootParent;
 
     const meta = metadata.get(container.id);
-    const style = buildContainerStyle({ ghost: container.ghost });
+    const style = buildContainerStyle({ ghost: container.ghost || container.ghostBand !== undefined });
     cells.push({
       id: cellId(container.id),
       parent: parentId,

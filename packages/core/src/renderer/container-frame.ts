@@ -456,3 +456,60 @@ export function renderDegradedTabs(
   }
   return out;
 }
+
+/**
+ * SPIKE #2823 (Design Doc decision 1): the look a ghost band frame is drawn with.
+ * - `ghost`: the look the Design Doc names, the same muted frame as a ghost
+ *   system frame (dashed `mutedBorder`, the whole group at `GHOST_OPACITY`).
+ * - `legible`: a band-specific look the dedicated branch makes possible: the
+ *   frame stays dashed and muted, but its title is drawn at full strength in
+ *   `textMuted`, with a faint tint inside the frame.
+ */
+export type BandFrameLook = "ghost" | "legible";
+let bandFrameLook: BandFrameLook = "legible";
+export function setBandFrameLook(look: BandFrameLook): void {
+  bandFrameLook = look;
+}
+
+/** Draw a ghost band frame without `containerStyleOf`: it is no node and takes no node style. */
+export function renderBandFrame(
+  container: ContainerRect,
+  palette: DiagramPalette,
+  fontFamily: string,
+  borderRadius: number,
+): string {
+  const ghostLook = bandFrameLook === "ghost";
+  return el(
+    "g",
+    {
+      "data-container-id": container.id,
+      "data-ghost-band": container.ghostBand,
+      opacity: ghostLook ? GHOST_OPACITY : undefined,
+    },
+    el("rect", {
+      x: container.x,
+      y: container.y,
+      width: container.width,
+      height: container.height,
+      fill: ghostLook ? "transparent" : palette.textMuted,
+      "fill-opacity": ghostLook ? undefined : "0.05",
+      stroke: palette.mutedBorder,
+      "stroke-width": 2,
+      "stroke-dasharray": "8 4",
+      rx: borderRadius,
+    }),
+    el(
+      "text",
+      {
+        x: container.x + 12,
+        y: container.y + 18,
+        fill: ghostLook ? palette.textPrimary : palette.textMuted,
+        "font-size": "12px",
+        "font-family": fontFamily,
+        "font-weight": "bold",
+        opacity: ghostLook ? MUTED_FRAME_TITLE_OPACITY : undefined,
+      },
+      escapeXml(container.label),
+    ),
+  );
+}

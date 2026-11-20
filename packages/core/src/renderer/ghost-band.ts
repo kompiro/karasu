@@ -189,7 +189,7 @@ export function placeGhostBand(
           y,
           width,
           height,
-          ghost: true,
+          ghost: false,
           ghostBand: side,
         });
         let rowY = y + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING / 2;

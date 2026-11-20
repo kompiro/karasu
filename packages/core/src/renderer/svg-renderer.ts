@@ -5,7 +5,7 @@ import { CATEGORY_STUB_TAG } from "./category-collapse.js";
 import type { DisplayMode, LayoutNode, LayoutResult, Rect } from "./layout-types.js";
 import { renderArrowMarker } from "./edge-routing.js";
 import { edgeLineKeyOf } from "./edge-line-key.js";
-import { containerStyleOf, renderContainer } from "./container-frame.js";
+import { containerStyleOf, renderBandFrame, renderContainer } from "./container-frame.js";
 import { buildLegendFooter, el, escapeXml } from "./svg-builder.js";
 import { GHOST_OPACITY } from "./rendering-constants.js";
 import { DEFAULT_EMPTY_STATE_LABELS } from "./empty-state-labels.js";
@@ -264,9 +264,17 @@ export function renderFromLayout(
     }
   }
 
+  // Ghost band frames (#2823): their own branch, not a node's style.
+  for (const container of layoutResult.containers) {
+    if (container.ghostBand !== undefined) {
+      const base = styles.defaultNodeStyle;
+      parts.push(renderBandFrame(container, palette, base.fontFamily, base.borderRadius));
+    }
+  }
+
   // Focused container
   for (const container of layoutResult.containers) {
-    if (!container.ghost) {
+    if (!container.ghost && container.ghostBand === undefined) {
       const containerStyle = containerStyleOf(styles, container, palette);
       const diffState = options?.containerDiffState?.get(container.id);
       parts.push(
