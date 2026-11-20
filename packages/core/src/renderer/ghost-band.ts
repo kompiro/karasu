@@ -90,7 +90,7 @@ export function placeGhostBand(
   const { items } = input;
   if (items.length === 0 || containers.length === 0) return false;
   const { NODE_GAP } = getLayoutConstants(ctx.displayMode);
-  const focus = containers.find((c) => !c.ghost) ?? containers[0];
+  const focus = containers.find((c) => !c.ghost && c.ghostBand === undefined) ?? containers[0];
   // The band sits outside every frame between the focus and the outermost one;
   // only the outermost grows around it (design: "which ancestor encloses the band").
   const inner = containers.length > 1 ? containers.slice(1) : [focus];
@@ -189,7 +189,7 @@ export function placeGhostBand(
           y,
           width,
           height,
-          ghost: true,
+          ghost: false,
           ghostBand: side,
         });
         let rowY = y + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING / 2;

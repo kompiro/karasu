@@ -20,6 +20,7 @@ import type { ContainerRect, LayoutNode, LayoutResult } from "./layout-types.js"
 import { placeGhostBand } from "./ghost-band.js";
 import { measureNode, type MeasureContext } from "./layout-measure.js";
 import { CONTAINER_PADDING, getLayoutConstants } from "./layout-constants.js";
+import { resolvePalette } from "./palette.js";
 import type { ViewSlice } from "../view/view-slice.js";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -292,13 +293,32 @@ describe("ghost band on the entity view (#2823)", () => {
     expect(new Set(bandFrames(res).map((f) => f.id)).size).toBe(bandFrames(res).length);
   });
 
-  it("draws band frames as ghost frames that are no node", () => {
+  it("makes band frames neither ghost ancestors nor nodes", () => {
     // 5 incoming + 5 outgoing domains, TwoWay below, Both above and below.
     expect(bandFrames(res)).toHaveLength(13);
-    for (const f of bandFrames(res)) {
-      expect(f.ghost).toBe(true);
-      expect(f.path).toBeUndefined();
-    }
+    expect(bandFrames(res).map((f) => [f.ghost, f.path])).toEqual(
+      bandFrames(res).map(() => [false, undefined]),
+    );
+    // The focus frame is still the one container that is neither.
+    const focus = res.containers.filter((c) => !c.ghost && c.ghostBand === undefined);
+    expect(focus.map((c) => c.id)).toEqual(["Hub"]);
+  });
+
+  it("draws a band frame undimmed, its title in the muted text colour, without the node style", () => {
+    const { textMuted, mutedBorder } = resolvePalette("dark");
+    const svg = renderEntityView(src, path, undefined, undefined, undefined, "dark").svg;
+    const groups = [
+      ...svg.matchAll(/<g data-container-id="ghost-band:[^"]+"[^>]*>[\s\S]*?<\/g>/g),
+    ].map((m) => m[0]);
+    expect(groups).toHaveLength(13);
+    const off = groups.filter(
+      (g) =>
+        /^<g[^>]*\bopacity=/.test(g) ||
+        !g.includes(`stroke="${mutedBorder}"`) ||
+        !new RegExp(`<text[^>]*fill="${textMuted}"`).test(g) ||
+        /<text[^>]*\bopacity=/.test(g),
+    );
+    expect(off).toEqual([]);
   });
 
   it("marks each band frame in the SVG with its side, and no ghost ancestor frame", () => {

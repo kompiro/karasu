@@ -78,7 +78,7 @@ export function computeLayoutEdges(
         y: fromNode.y + fromNode.height / 2,
       };
     } else {
-      const mainContainer = containers.find((c) => !c.ghost);
+      const mainContainer = containers.find((c) => !c.ghost && c.ghostBand === undefined);
       if (!mainContainer) continue;
       fromPoint = {
         x: mainContainer.x + mainContainer.width,
@@ -112,7 +112,7 @@ export function computeLayoutEdges(
     if (toNode) {
       toPoint = { x: toNode.x, y: toNode.y + toNode.height / 2 };
     } else {
-      const mainContainer = containers.find((c) => !c.ghost);
+      const mainContainer = containers.find((c) => !c.ghost && c.ghostBand === undefined);
       if (!mainContainer) continue;
       toPoint = {
         x: mainContainer.x,
@@ -139,7 +139,7 @@ export function computeLayoutEdges(
     const containerId = viewSlice.containerNode ? viewSlice.containerNode.id : "";
     const from = remapGhostEndpoint(edge.from);
     const to = remapGhostEndpoint(edge.to);
-    const mainContainer = containers.find((c) => !c.ghost);
+    const mainContainer = containers.find((c) => !c.ghost && c.ghostBand === undefined);
     const ghostNode = layoutNodes.get(from === containerId ? to : from);
     if (!ghostNode || !mainContainer) continue;
 

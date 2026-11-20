@@ -258,10 +258,11 @@ export interface ContainerRect {
   /**
    * Ghost band frame marker (#2823): a muted frame grouping two or more ghosts
    * of one foreign domain (entity view) or foreign service (service view) on
-   * one side of the focus frame. Set together with `ghost: true`, so every
-   * `ghost` reader (muted drawing, export) treats it as the ghost frame it is;
-   * this marker tells it apart from a ghost *ancestor* frame. It has no `path`:
-   * it is not a node, so it takes no node style and is not a drill target.
+   * one side of the focus frame. A band frame is not a ghost *ancestor*, so it
+   * keeps `ghost: false`; anything that looks for the focus frame as the
+   * container that is not a ghost must also skip this marker. It has no
+   * `path`: it is not a node, so it takes no node style and is not a drill
+   * target. `renderBandFrame` draws it.
    */
   ghostBand?: "above" | "below";
   /**

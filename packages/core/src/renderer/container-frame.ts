@@ -304,6 +304,7 @@ function containerStrokeWidth(
   styles: ResolvedStyles,
   palette: DiagramPalette,
 ): number {
+  if (container.ghostBand !== undefined) return BAND_FRAME_STROKE_WIDTH;
   const style = containerStyleOf(styles, container, palette);
   const paint = container.ghost
     ? resolveFramePaint(container, style, undefined, undefined, undefined)
@@ -389,9 +390,6 @@ export function renderContainer(
       // identity (ADR-2714). Absent when no single node answers to the bare id.
       "data-realized-node-id": container.realizedNodeId,
       "data-kind-band": container.kindBand,
-      // Which side of the focus a ghost band frame sits on (#2823); absent on a
-      // ghost ancestor frame, which is otherwise drawn the same way.
-      "data-ghost-band": container.ghostBand,
       "data-group": container.group ? "true" : undefined,
       "data-expanded": expanded ? "true" : undefined,
       "data-diff-state": diffState,
@@ -455,4 +453,57 @@ export function renderDegradedTabs(
     );
   }
   return out;
+}
+
+/** The stroke a ghost band frame is drawn with, as wide as a ghost system frame's. */
+const BAND_FRAME_STROKE_WIDTH = 2;
+/** How strongly the inside of a ghost band frame is tinted with `textMuted`. */
+const BAND_FRAME_TINT_OPACITY = 0.05;
+
+/**
+ * A ghost band frame (#2823): one foreign domain's (or service's) ghosts on one
+ * side of the focus frame. Drawn here, not through `containerStyleOf` — it is
+ * no node and takes no node style. The ghost cards inside stay muted, but the
+ * frame itself is not dimmed: its dashed `mutedBorder` outline and its
+ * `textMuted` title are drawn at full strength, so the foreign domain's name
+ * reads without zooming, and a faint tint sets the group off from the canvas.
+ */
+export function renderBandFrame(
+  container: ContainerRect,
+  palette: DiagramPalette,
+  fontFamily: string,
+  borderRadius: number,
+): string {
+  return el(
+    "g",
+    {
+      "data-container-id": container.id,
+      // Which side of the focus the frame sits on; absent on every other frame.
+      "data-ghost-band": container.ghostBand,
+    },
+    el("rect", {
+      x: container.x,
+      y: container.y,
+      width: container.width,
+      height: container.height,
+      fill: palette.textMuted,
+      "fill-opacity": String(BAND_FRAME_TINT_OPACITY),
+      stroke: palette.mutedBorder,
+      "stroke-width": BAND_FRAME_STROKE_WIDTH,
+      "stroke-dasharray": "8 4",
+      rx: borderRadius,
+    }),
+    el(
+      "text",
+      {
+        x: container.x + 12,
+        y: container.y + 18,
+        fill: palette.textMuted,
+        "font-size": "12px",
+        "font-family": fontFamily,
+        "font-weight": "bold",
+      },
+      escapeXml(container.label),
+    ),
+  );
 }

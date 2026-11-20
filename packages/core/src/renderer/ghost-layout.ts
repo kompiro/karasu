@@ -29,7 +29,8 @@ export function placeGhostUsers(
   if (viewSlice.ghostUsers.length === 0) return;
   const { NODE_GAP } = getLayoutConstants(ctx.displayMode);
 
-  const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
+  const mainContainer =
+    containers.find((c) => !c.ghost && c.ghostBand === undefined) ?? containers[0];
   const userX = (mainContainer?.x ?? 0) - 20;
   let userY = (mainContainer?.y ?? 0) + CONTAINER_LABEL_HEIGHT + NODE_GAP;
   const ghostUserNodes: LayoutNode[] = [];

@@ -57,7 +57,7 @@ type: product
 
 ## 手動確認
 
-- [ ] 次のモデルを `index.krs` として開き、`Shop › Commerce › Ordering` にドリルして ◇ Entities に切り替える。焦点の枠の上に Billing の枠（Invoice / Payment / Refund）と Marketing の枠（Coupon / Campaign）、subLabel 付きのカード Shipment (Shipping) と Points (Loyalty) が並ぶ。下に Customers の枠と Catalog の枠、subLabel 付きのカード Carrier (Shipping) が並ぶ。帯の枠は ghost system の枠と同じ muted な破線の枠で、タイトルが読める
+- [ ] 次のモデルを `index.krs` として開き、`Shop › Commerce › Ordering` にドリルして ◇ Entities に切り替える。焦点の枠の上に Billing の枠（Invoice / Payment / Refund）と Marketing の枠（Coupon / Campaign）、subLabel 付きのカード Shipment (Shipping) と Points (Loyalty) が並ぶ。下に Customers の枠と Catalog の枠、subLabel 付きのカード Carrier (Shipping) が並ぶ。帯の枠は破線の枠で、中の ghost のカードは muted のまま、枠のタイトル（外部ドメインの名前）は図を拡大しなくても読める
 
   ```krs
   system Shop {
