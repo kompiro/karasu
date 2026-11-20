@@ -116,6 +116,9 @@ export function placeGhostBand(
     groups.set(id, group);
   });
 
+  // The band's rows, and the frames in them, wrap at this width.
+  const limit = Math.max(input.widthBudget, focus.width);
+  let widthBound = false;
   const boxes: Record<BandSide, BandBox[]> = { above: [], below: [] };
   for (const { side, members, order } of groups.values()) {
     const partnerX = meanX(members.flatMap((m) => tallies.get(m.key)?.partnerXs ?? []));
@@ -154,8 +157,15 @@ export function placeGhostBand(
       continue;
     }
 
-    const columns = Math.min(gridColumnCount(cards.length), cards.length);
     const columnWidth = Math.max(...cards.map((c) => c.dims.width));
+    // A frame takes no more columns than fit the band's width; a column the
+    // limit cut is reported, so the search can try a wider budget.
+    const preferred = Math.min(gridColumnCount(cards.length), cards.length);
+    const fitting = Math.floor(
+      (limit - CONTAINER_PADDING * 2 + NODE_GAP) / (columnWidth + NODE_GAP),
+    );
+    const columns = Math.max(1, Math.min(preferred, fitting));
+    if (columns < preferred) widthBound = true;
     const rows: (typeof cards)[] = [];
     for (let i = 0; i < cards.length; i += columns) rows.push(cards.slice(i, i + columns));
     const rowHeights = rows.map((row) => Math.max(...row.map((c) => c.dims.height)));
@@ -193,8 +203,6 @@ export function placeGhostBand(
     });
   }
 
-  const limit = Math.max(input.widthBudget, focus.width);
-  let widthBound = false;
   const placed: { x: number; y: number; width: number; height: number }[] = [];
   for (const side of ["above", "below"] as const) {
     const sorted = boxes[side].sort((a, b) => a.partnerX - b.partnerX || a.order - b.order);

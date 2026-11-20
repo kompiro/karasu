@@ -17,6 +17,9 @@ import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
 import { compile, renderEntityView } from "../compile/compile.js";
 import type { ContainerRect, LayoutNode, LayoutResult } from "./layout-types.js";
+import { placeGhostBand } from "./ghost-band.js";
+import { measureNode, type MeasureContext } from "./layout-measure.js";
+import { CONTAINER_PADDING, getLayoutConstants } from "./layout-constants.js";
 import type { ViewSlice } from "../view/view-slice.js";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -446,5 +449,59 @@ system Ext {
         .map((f) => `${s.id}@${s.x} / ${f.id}`),
     ]);
     expect(clashes).toEqual([]);
+  });
+});
+
+// ─── A frame inside the band's width ─────────────────────────────────────────
+
+describe("a band frame takes no more columns than the band's width holds (#2823)", () => {
+  const krsFile = parse(`system S {
+  service A {
+    domain D {
+      entity E0 {}
+      entity E1 {}
+    }
+  }
+}`);
+  const domain = krsFile.systems[0].children[0].children[0];
+  const [e0, e1] = domain.children;
+  const ctx: MeasureContext = {
+    displayMode: undefined,
+    shapeForNode: undefined,
+    effectiveAnnotations: (n) => n.annotations,
+    drawnLabel: (n) => n.label ?? n.id,
+  };
+  const { NODE_GAP } = getLayoutConstants(undefined);
+  const card = Math.max(
+    measureNode(e0, undefined, ctx).width,
+    measureNode(e1, undefined, ctx).width,
+  );
+  // One pixel short of the two-column frame the grid would pick for two cards.
+  const limit = 2 * card + NODE_GAP + CONTAINER_PADDING * 2 - 1;
+  const nodes = new Map<string, LayoutNode>();
+  const containers: ContainerRect[] = [
+    { id: "S", label: "S", x: -40, y: -40, width: limit + 80, height: 180, ghost: true },
+    { id: "F", label: "F", x: 0, y: 0, width: limit, height: 100, ghost: false },
+  ];
+  const cut = placeGhostBand(
+    {
+      items: [e0, e1].map((node) => ({ node, key: `D.${node.id}`, groupId: "D", groupLabel: "D" })),
+      edges: [],
+      remap: (id) => id,
+      widthBudget: 0,
+    },
+    nodes,
+    containers,
+    ctx,
+  );
+  const frame = containers.find((c) => c.ghostBand !== undefined)!;
+
+  it("stacks the cards in one column and stays within the limit", () => {
+    expect(frame.width).toBeLessThanOrEqual(limit);
+    expect(nodes.get("D.E0")!.x).toBe(nodes.get("D.E1")!.x);
+  });
+
+  it("reports the cut, so the width-budget search tries a wider budget", () => {
+    expect(cut).toBe(true);
   });
 });
