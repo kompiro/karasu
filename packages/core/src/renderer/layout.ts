@@ -26,8 +26,7 @@ import {
 import { computeLayoutEdges, portResolver, runRoutingChain } from "./layout-edges.js";
 import {
   placeGhostUsers,
-  placeGhostDomains,
-  placeGhostEntities,
+  placeGhostBands,
   placeCallerGhostSystems,
   placeOutgoingGhostSystems,
 } from "./ghost-layout.js";
@@ -467,10 +466,10 @@ function layoutInner(
     if (degraded.length > 0) degradedMemberships = degraded;
   }
 
-  // Place ghost nodes
+  // Place ghost nodes; the ghost band (#2823) reports a row the width budget cut.
   placeGhostUsers(viewSlice, layoutNodes, containers, measureCtx);
-  placeGhostDomains(viewSlice, layoutNodes, containers, measureCtx);
-  placeGhostEntities(viewSlice, layoutNodes, containers, measureCtx);
+  const ghostBand = { remap: remapGhostEndpoint, widthBudget };
+  const bandBound = placeGhostBands(viewSlice, layoutNodes, containers, measureCtx, ghostBand);
   placeCallerGhostSystems(viewSlice, layoutNodes, containers, ownerOf, measureCtx);
   placeOutgoingGhostSystems(viewSlice, layoutNodes, containers, ownerOf, measureCtx);
 
@@ -581,7 +580,7 @@ function layoutInner(
       containers,
       width: totalWidth,
       height: totalHeight,
-      widthBound: placed.widthBound,
+      widthBound: placed.widthBound || bandBound,
       foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
       foldedFacetMembership: foldFacetMembership(
         viewSlice.childNodes,
