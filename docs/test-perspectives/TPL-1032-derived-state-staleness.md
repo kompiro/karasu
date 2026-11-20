@@ -67,4 +67,5 @@ scope:
 - `packages/app/src/components/NodeDetailPanel.test.tsx`
 - `packages/app/src/components/WarningPanel.test.tsx`
 - `packages/app/src/hooks/useSystemView.test.tsx`
+- `packages/app/src/hooks/useAppViews.matrix.test.tsx` — `useAppViews` の全ビュー（`Record<ActiveView, …>` で型が網羅を強制する）で、valid → error → 同じ valid に戻したときに結果が publish し直されることを確かめる（チェックリスト項目 3）。項目 3 の印にはしない：`useAppViews` の外で派生 view を再計算する経路（AppShell の entity view が使う `useViewSvg` + `useDebouncedValue` など）はこの表に入らず、そうした経路を新しく足しても型が表への追加を強制しないため
 - `packages/app/src/hooks/useDebouncedCompile.test.tsx` — recompile 結果の publish 経路を固定する（チェックリスト項目 3）：入力が途中で変わった in-flight compile の古い結果は捨て（`drops a stale in-flight compile when inputs change mid-flight`、#1534）、error から同一内容へ復帰したときは fingerprint が同じでも publish し直す（`re-publishes after error→recovery even when the fingerprint is unchanged`、#1540）

@@ -229,7 +229,8 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `cross-system-ref-unresolved` | KRS045 | warning | cross-system edge（`Sys.Svc`）の対象が見つからない。 |
 | `cross-system-ref-implicit-external` | KRS046 | warning | cross-system edge が `[external]` 未付与の system に跨る。 |
 | `delivers-target-not-client` | KRS047 | warning | `delivers` の対象が `client` node でない。 |
-| `unresolved-resource-ref` | KRS048 | warning | dot 記法の `resource <Infra>.<Leaf>` が、merge 後のモデルに宣言されていない infra ブロック、または宣言されていない leaf を指している。どちらが欠けているかをメッセージに出す — 修復が異なるため（ブロックごと欠けていれば `database` / `queue` / `storage` 宣言そのものの喪失、leaf だけなら sub-resource の欠落）。`[external]` の resource は `unassigned-resource` と揃えて対象外。import-coupled — 共有 infra は各スライスが import する専用ファイルで宣言するのが正準形（§S4.5）なので、単一ドキュメントでは判定しない。 |
+| `unresolved-resource-ref` | KRS048 | warning | dot 記法の `resource <Parent>.<Child>` が、merge 後のモデルに宣言されていない infra ブロックでも client でもない親、または親が宣言していない子（infra ブロックの leaf か、client の storage の id。#3794。`parentKind` がどちらかを示す）を指している。どちらが欠けているかをメッセージに出す — 修復が異なるため（ブロックごと欠けていれば `database` / `queue` / `storage` 宣言そのものの喪失、leaf だけなら sub-resource の欠落）。`[external]` の resource は `unassigned-resource` と揃えて対象外。import-coupled — 共有 infra は各スライスが import する専用ファイルで宣言するのが正準形（§S4.5）なので、単一ドキュメントでは判定しない。 |
+| `resource-target-ambiguous` | KRS115 | warning | `resource <Parent>.<Child>` の親が 1 つに決まらない（#3794）。`infra-and-client`: scope の違う infra ブロックと、id 付きの storage を宣言した client が同じ id を持つ。参照は client が解決先になる前と同じく infra ブロックを指し（leaf が無ければ `unresolved-resource-ref` のまま）、client の storage は参照できない。`multiple-clients`: 同じ id の client ノード（KRS018 / KRS030）の 2 つ以上が子を宣言しているので、参照は解決しない。`[external]` の resource は対象外。import 結合: マージ後モデルでのみ判定する。 |
 | `unresolved-table-ref` | KRS049 | warning | `entity` の `table <Infra>.<Leaf>` が未宣言のブロック / leaf を指している。`missing` の区別・`[external]` 除外・import-coupling は `unresolved-resource-ref` と同じ。`table` を **持たない** entity は正当な状態（forward design、read-model projection、KV backed）なのでここでは一切報告しない — 数えるのは `karasu coverage` の役割。 |
 
 ### infra の単一宣言・fan-in
@@ -333,6 +334,7 @@ annotation 語彙（`.krs language v2.0` はツール語彙のみを受理する
 | --- | --- | --- | --- |
 | `client-resource-invalid-kind` | KRS096 | error | client の `resource` storage kind が予約値のいずれでもない。 |
 | `client-capability-duplicate` | KRS097 | warning | client が同じ capability 名を 2 度宣言する。 |
+| `client-resource-duplicate-id` | KRS116 | warning | client が同じ id の storage resource を 2 つ宣言する（#3794）。`resource <ClientId>.<Id>` は最初のものに解決する。1 つの client ノードの行どうしだけを比べる。 |
 
 ### 構文・パースレベルのエラー
 

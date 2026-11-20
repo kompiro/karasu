@@ -77,7 +77,7 @@ scope:
 規則が 1 本であることは、**綴りの違う 2 つの参照に同じ判定式を通して**確かめる:
 
 - [ ] 既存コーパス（`examples/**/*.krs`）で**新診断が 0 件**であること — 記法を広げた
-      変更が既存モデルの判定を動かしていないことの実測。宣言ではなく計測で示す
+      変更が既存モデルの判定を動かしていないことの実測。宣言ではなく計測で示す [guard: `packages/core/src/compile/examples-diagnostic-baseline.test.ts`]
 - [ ] 到達できる形（`Portal.Web -> Shop.Checkout.Payment`）が解決し、**描画される**こと
 - [ ] 到達できない形（anchor されていない `Checkout.Payment`）が、無検査で通るのでも
       「見つからない」でもなく、**書き直しを促す診断**になること。あわせて
@@ -89,6 +89,9 @@ scope:
 - `packages/core/src/resolver/edge-endpoint.test.ts` — 到達できる形の解決と描画、
   到達できない形の診断と描画の不在、宣言順への非依存
 - `packages/core/src/examples.test.ts` — 既存コーパスで新診断が 0 件
+- `packages/core/src/compile/examples-diagnostic-baseline.test.ts` — 1 項目目のガード。全 example の診断と
+  warning を code を問わず数え、理由付きの例外表と比べる（新しい example も追加した日から加わる）。bare と
+  qualified の両方の endpoint を corpus が含むことも確かめる
 
 ## 派生元 spec
 

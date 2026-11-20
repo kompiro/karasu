@@ -1,4 +1,3 @@
-import { fileURLToPath } from "url";
 import {
   createConnection,
   TextDocuments,
@@ -8,7 +7,6 @@ import {
   TextDocumentSyncKind,
   CompletionItem,
   CompletionItemKind,
-  Location,
   Hover,
   TextEdit,
   Range,
@@ -17,7 +15,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { Parser, type KrsFile } from "@karasu-tools/core";
 import type { Locale } from "@karasu-tools/i18n";
 import { computeDiagnostics } from "./diagnostics.js";
-import { findDefinitionInImports } from "./definition-imports.js";
+import { resolveDefinition } from "./definition-imports.js";
 import { formatSource } from "./formatting.js";
 import { resolveLspLocale } from "./locale.js";
 import {
@@ -26,6 +24,7 @@ import {
   collectAllIdentifiers,
   getNodeDescription,
   getWordAtPosition,
+  getQualifierAtPosition,
 } from "./position-resolver.js";
 import { buildDocumentSymbols } from "./document-symbols.js";
 import { NodeAtPositionRequest, PositionOfNodeRequest } from "./protocol.js";
@@ -120,7 +119,8 @@ connection.onRequest(PositionOfNodeRequest, ({ uri, nodeId }) => {
   const parsed = getParsedDocument(uri);
   if (!parsed) return { range: null };
 
-  return { range: findRangeOfNode(parsed.file, nodeId) };
+  // A preview click names a node, never a client storage id (#3794).
+  return { range: findRangeOfNode(parsed.file, nodeId, { nodesOnly: true }) };
 });
 
 // ─── Completion ───────────────────────────────────────────────────────────────
@@ -161,14 +161,11 @@ connection.onDefinition((params) => {
   // isn't on an identifier.
   const file = Parser.parse(doc.getText()).value;
 
-  // Same-file lookup
-  const range = findRangeOfNode(file, word);
-  if (range) return Location.create(params.textDocument.uri, range);
-
-  // Cross-file lookup: recursively search all imports (named, wildcard, transitive)
-  const visited = new Set<string>([fileURLToPath(params.textDocument.uri)]);
-  const result = findDefinitionInImports(file.nodeImports, word, params.textDocument.uri, visited);
-  return result;
+  // A `<Client>.<Id>` reference goes to that client's storage; otherwise the
+  // same file, then imports (named, wildcard, transitive), then a client
+  // storage id in this file.
+  const qualifier = getQualifierAtPosition(doc.getText(), params.position);
+  return resolveDefinition(file, word, params.textDocument.uri, qualifier);
 });
 
 // ─── Hover ────────────────────────────────────────────────────────────────────

@@ -324,7 +324,9 @@ export function renderDefaultText(
   if (node.properties.resources && node.properties.resources.length > 0) {
     const resCount = node.properties.resources.length;
     const resFontSize = Math.round(fontSize * META_FONT_RATIO);
-    const tooltip = node.properties.resources.map((r) => `${r.storageKind} "${r.name}"`).join(", ");
+    const tooltip = node.properties.resources
+      .map((r) => `${r.storageKind}${r.id !== undefined ? ` ${r.id}` : ""} "${r.name}"`)
+      .join(", ");
     children.push(
       renderCountChip(
         "package",

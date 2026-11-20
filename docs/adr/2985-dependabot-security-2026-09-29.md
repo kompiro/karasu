@@ -10,7 +10,7 @@ related_to: [ADR-1694, ADR-2813, ADR-2693, ADR-2564, ADR-2404, ADR-2390, ADR-240
 assumptions:
   # 決定は patched な系列へ caret で floor を置くことであって、そのときの
   # patch 番号ではない（ADR-2628 / ADR-2813）。
-  - "grep: pnpm-workspace.yaml :: undici: \\^7\\."
+  - "grep: pnpm-workspace.yaml :: undici@7: \\^7\\."
 ---
 
 # ADR-2985: Dependabot security alert 2026-09-29（`undici` の override floor が脆弱範囲の内側だったので `^7.29.1` に上げた）

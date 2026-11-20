@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { format } from "./formatter.js";
+import {
+  HOSTILE_RESPELLINGS,
+  withHostileIds,
+  type HostileRespelling,
+} from "../testing/hostile-ids.js";
 import { Parser } from "../parser/parser.js";
 import type { KrsNode } from "../types/ast.js";
 
@@ -36,7 +41,7 @@ const FIXTURES = {
   handles: `system S {\n  service A {\n    domain D {}\n  }\n  service B {\n    handles D\n  }\n  B -> A "calls"\n}\n`,
   delivers: `system S {\n  client C [web] {}\n  service Web {\n    delivers C\n  }\n}\n`,
   operations: `system S {\n  service A {\n    domain D {\n      usecase U {\n        resource DB.T {\n          operations read, list:read\n        }\n      }\n    }\n  }\n  database DB {\n    table T {}\n  }\n}\n`,
-  resources: `system S {\n  client C [web] {\n    resource localStorage "prefs"\n    resource indexedDB "outbox"\n  }\n}\n`,
+  resources: `system S {\n  client C [web] {\n    resource localStorage "prefs"\n    resource indexedDB Outbox "outbox"\n  }\n}\n`,
   capabilities: `system S {\n  client C [web] {\n    capability camera\n    capability p2p-2\n    capability geolocation {\n      label "Delivery tracking"\n      description "Continuous tracking during delivery"\n    }\n    capability bluetooth {\n      description "Pairs with the scanner"\n    }\n  }\n}\n`,
 } satisfies Record<PropertyKeys<KrsNode>, string>;
 
@@ -98,6 +103,32 @@ describe("formatter node-property comment placement", () => {
 
       expect(format(format(annotated))).toBe(format(annotated));
     });
+  }
+});
+
+// TPL-2707: the same fixtures again, with every id they declare respelled so it
+// needs quotes (`withHostileIds`). The formatter has to quote an id wherever it
+// prints one; an emit path that prints an id bare without asking `quoteId`
+// writes a spelling the parser reads back differently. The table above makes a
+// new construct bring a fixture, so it joins this check too.
+describe("formatter node-property coverage with ids that need quotes", () => {
+  const respellings = Object.keys(HOSTILE_RESPELLINGS) as HostileRespelling[];
+  for (const [key, src] of Object.entries(FIXTURES)) {
+    it.each(respellings)(
+      `round-trips the ${key} fixture with every id respelled: %s`,
+      (respelling) => {
+        const hostile = withHostileIds(src, respelling);
+        expect(hostile).not.toBe(src);
+        const before = Parser.parse(hostile);
+        expect(before.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+
+        const formatted = format(hostile);
+        const after = Parser.parse(formatted);
+        expect(after.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+        expect(stripLocations(after.value)).toEqual(stripLocations(before.value));
+        expect(format(formatted)).toBe(formatted);
+      },
+    );
   }
 });
 

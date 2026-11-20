@@ -61,8 +61,8 @@ dispatch した値と state を突き合わせて「反映済み」を判定す�
 URL/共有から state を復元する hook を実装・修正するとき:
 
 - [ ] 復元する各フィールドについて、後発の seed/初期化 effect（`SELECT_FILE` → `VIEW_RESET` 等）で巻き戻されないか確認したか
-- [ ] 巻き戻されるなら pending ref に退避し、**seed reset より後**であることが保証されるシグナル（model 由来 index の非空など）で再 dispatch しているか
-- [ ] 再適用は **一度きり**か（pending ref を消費後 null にし、その後の index 変化で再発火しない）
+- [ ] 巻き戻されるなら pending ref に退避し、**seed reset より後**であることが保証されるシグナル（model 由来 index の非空など）で再 dispatch しているか [guard: `packages/app/src/hooks/history-restore-matrix.test.ts`]
+- [ ] 再適用は **一度きり**か（pending ref を消費後 null にし、その後の index 変化で再発火しない） [guard: `packages/app/src/hooks/history-restore-matrix.test.ts`]
 - [ ] node だけでなく highlight / 選択中ブロック等、**復元値すべて**に deferral があるか（非対称な取りこぼしがないか）
 - [ ] 「mount → 子で復元 dispatch → 親 seed が reset → index 充填」を模した回帰テスト（空 index で再適用なし → index 充填で再適用、を rerender で検証）があるか
 - [ ] mount から復元が commit されるまでの hash の書き込みがすべて replace で、cold boot 後の `history.length` が 1 だけ増えるか。復元が終わった後のユーザー操作は push に戻るか（#3284）
@@ -86,3 +86,4 @@ URL/共有から state を復元する hook を実装・修正するとき:
 - `packages/e2e/tests/at-1094-matrix-url-hash.spec.ts` › `a cold boot at ${hash} lands on the ${tab} tab (AT-I)` / `reloading on the ${tab} tab in memory mode stays on it (AT-I)`（実アプリの cold boot と reload で、非 system のタブが seed reset を越えて残る）
 - `packages/app/src/hooks/useHistoryNavigation.test.ts` › `a cold boot on a deep link adds no history entry (#3284)`（実 reducer で、復元が commit されるまで `pushState` が 0 回、その後のユーザー操作は push）
 - `packages/e2e/tests/at-3284-deep-link-cold-boot-history.spec.ts` › `a cold boot at ${hash} adds one history entry, and Back leaves it (AT-B)`（実アプリの cold boot で `history.length` が 1 だけ増え、Back でリンク元に戻る）
+- `packages/app/src/hooks/history-restore-matrix.test.ts` — `parseHash` が返す全フィールド（`keyof` への `Record`。新しいフィールドは行を足すまで型検査で落ちる）について、Project mode の cold boot の順序を実 reducer の上で通す。seed のファイルが開いていて index もある状態で hash 付きで mount し、hook が hash の名指すファイルを `onFileChange` で開かせ、その `SELECT_FILE` が view を reset する。各フィールドの各部分（org tree なら tab と mode、entity なら drill と mode）が reset を越えて戻ること（2 つ目の項目）と、訪問者が離れた後に index が変わり再描画されても、どの部分も再適用されないこと（3 つ目の項目）を確かめる。dispatch の回数に上限を置き、消費しない pending ref の再適用ループもハングではなく失敗になる。highlight を退避しない・highlight / view の pending を消費しない・node を退避しない・名指すファイルを開かない・ファイルを待たずに再適用する、の 6 つで赤くなるのを確かめた。org tree と entity の mode は reducer の外の state なので、reset で消えないことは hook でなく持ち主の作りによる。Memory / Serve mode の順序（index が後から埋まる）は #3284 のテストが見る。対象はこの hook だけで、別の hook が URL から state を復元し始めても表には加わらない。このため 1・4・5 つ目の項目は印なし

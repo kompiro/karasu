@@ -208,12 +208,12 @@ function layoutInner(
     displayMode,
     shapeForNode: options.shapeForNode,
     effectiveAnnotations,
+    drawnLabel: (n) => viewSlice.resourceLabelMap.get(n.id) ?? n.label ?? n.id,
   };
 
   // Multi-system root view: lay out all systems side by side. The same path
-  // also handles the single-system case when that system is the synthesized
-  // "Unassigned" pseudo-system, so it still gets its own labeled frame
-  // instead of rendering as a frameless peer list.
+  // also handles a lone synthesized "Unassigned" pseudo-system, so it still
+  // gets its own labeled frame instead of rendering as a frameless peer list.
   const isUnassignedOnly =
     viewSlice.systems.length === 1 && viewSlice.systems[0].id === "__unassigned__";
   if (viewSlice.systems.length > 1 || isUnassignedOnly) {
