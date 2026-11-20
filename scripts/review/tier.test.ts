@@ -390,6 +390,31 @@ describe("classifyChange", () => {
     expect(problems).toEqual([]);
   });
 
+  // esbuild tells the guard which specifiers it bundled, not which call sites:
+  // `require?.(x)` beside a bundled `require(x)` would pass. Banning every
+  // reference to `require` leaves `import()` as the only run-time load, and
+  // `import` has no optional or indirect form (#3799).
+  it("lints every Pages Function against any reference to require", () => {
+    const config = JSON.parse(readFileSync(resolve(REPO_ROOT, ".oxlintrc.json"), "utf8")) as {
+      overrides: { files: string[]; rules: Record<string, unknown> }[];
+    };
+    const banned = config.overrides
+      .filter((o) => o.files.includes("functions/**"))
+      .flatMap((o) => {
+        const rule = o.rules["no-restricted-globals"];
+        return Array.isArray(rule) && rule[0] === "error" ? rule.slice(1) : [];
+      })
+      .map((entry: { name?: string } | string) => (typeof entry === "string" ? entry : entry.name));
+    expect(banned).toContain("require");
+
+    const scripts = (
+      JSON.parse(readFileSync(resolve(REPO_ROOT, "package.json"), "utf8")) as {
+        scripts: Record<string, string>;
+      }
+    ).scripts;
+    expect(scripts.lint.split(" ")).toContain("functions/");
+  });
+
   describe("dangerous sinks (#3505)", () => {
     const changing = (path: string, removed: string[], addedLines: string[]) =>
       modified(path, { hunks: [{ oldStart: 3, removed, newStart: 3, added: addedLines }] });

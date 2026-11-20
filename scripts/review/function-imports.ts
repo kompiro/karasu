@@ -13,6 +13,9 @@
 // - @babel/parser reads the syntax tree, so a specifier computed at run time
 //   (`import(name)`, `require("" + x)`) is reported with its line: esbuild
 //   leaves such a call alone, so it never reaches the resolver.
+//
+// `require` itself is banned in `functions/**` by lint, so `import()` is the
+// only run-time load a function can write.
 
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { isBuiltin } from "node:module";
@@ -154,6 +157,10 @@ export async function checkImports(options: {
     // A call the bundle does not resolve stays a run-time `require` /
     // `import()`, such as `require?.(x)` or `(0, require)(x)`; the guard
     // cannot tell what it loads, so it fails, as a computed specifier does.
+    // esbuild reports specifiers, not call sites, so this misses such a call
+    // beside a bundled one of the same specifier: the lint rule that bans
+    // `require` in `functions/**` closes that (`.oxlintrc.json`), and `import`
+    // has no optional or indirect form.
     const keptCalls = new Set(bundle.imports.filter((b) => b.call).map((b) => b.specifier));
     for (const { line, specifier, call } of result.imports) {
       if (specifier === null) problems.push(`${file}:${line}: computed import specifier`);
