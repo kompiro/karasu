@@ -68,6 +68,13 @@ describe("buildContainerStyle", () => {
     expect(style.container).toBe(1);
     expect(style.collapsible).toBe(0);
   });
+
+  it("draws a ghost band frame dashed in the ghost colours but undimmed (#2823)", () => {
+    const style = buildContainerStyle({ ghostBand: true });
+    expect(style.dashed).toBe(1);
+    expect(style.fontColor).toBe(buildContainerStyle({ ghost: true }).fontColor);
+    expect(style.opacity).toBeUndefined();
+  });
 });
 
 describe("buildEdgeStyle", () => {

@@ -280,7 +280,8 @@ function frameStrokeWidth(
 
 /**
  * Every frame the canvas draws, as label placement obstacles (#3155): each at
- * the stroke width `renderContainer` draws it with. Exported so the tests'
+ * the stroke width `renderContainer` (or, for a ghost band frame,
+ * `renderBandFrame`) draws it with. Exported so the tests'
  * fences measure the same stroke the canvas paints, not a fixed width.
  */
 export function frameBordersOf(
@@ -294,10 +295,11 @@ export function frameBordersOf(
 }
 
 /**
- * The stroke width `renderContainer` draws `container`'s frame at, resolved
- * with the arguments the container loops pass it: a ghost frame without the
- * palette or the frame sheets, every other frame with them. The label pass
- * avoids the stroke this reports (#3155).
+ * The stroke width `container`'s frame is drawn at. A ghost band frame is drawn
+ * by `renderBandFrame` at `BAND_FRAME_STROKE_WIDTH`; every other frame by
+ * `renderContainer`, resolved with the arguments the container loops pass it: a
+ * ghost frame without the palette or the frame sheets, every other frame with
+ * them. The label pass avoids the stroke this reports (#3155).
  */
 function containerStrokeWidth(
   container: ContainerRect,

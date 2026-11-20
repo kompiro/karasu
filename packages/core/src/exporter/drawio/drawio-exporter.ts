@@ -131,7 +131,8 @@ function buildCellsForPage(page: DrawioPage): Cell[] {
 
     const meta = metadata.get(container.id);
     const style = buildContainerStyle({
-      ghost: container.ghost || container.ghostBand !== undefined,
+      ghost: container.ghost,
+      ghostBand: container.ghostBand !== undefined,
     });
     cells.push({
       id: cellId(container.id),
