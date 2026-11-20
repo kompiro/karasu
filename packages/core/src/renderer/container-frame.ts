@@ -465,8 +465,10 @@ export function renderDegradedTabs(
  *   frame stays dashed and muted, but its title is drawn at full strength in
  *   `textMuted`, with a faint tint inside the frame.
  */
+/** @public SPIKE: read by reports/2823-band-frame. */
 export type BandFrameLook = "ghost" | "legible";
 let bandFrameLook: BandFrameLook = "legible";
+/** @public SPIKE: called by reports/2823-band-frame. */
 export function setBandFrameLook(look: BandFrameLook): void {
   bandFrameLook = look;
 }
