@@ -166,10 +166,10 @@ export function placeGhostBands(
  * has no ancestor to grow, so its top stays put.
  */
 function ghostSystemTop(containers: readonly ContainerRect[]): number {
-  const inner = containers[1];
-  return inner !== undefined && inner.ghostBand === undefined
-    ? inner.y - GHOST_MARGIN
-    : containers[0].y;
+  // The nest frames come first, outermost to focus; group and band frames are
+  // appended after them and do not count.
+  const inner = containers.slice(1).find((c) => c.group !== true && c.ghostBand === undefined);
+  return inner !== undefined ? inner.y - GHOST_MARGIN : containers[0].y;
 }
 
 export function placeCallerGhostSystems(
