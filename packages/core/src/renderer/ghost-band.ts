@@ -30,11 +30,11 @@ import { gridColumnCount } from "./layer-layout-logics.js";
 import { makeLayoutNode, measureNode, type MeasureContext } from "./layout-measure.js";
 
 /** Gap between the focus side (its outermost inner frame) and the first band row. */
-export const GHOST_ROW_GAP = 60;
+const GHOST_ROW_GAP = 60;
 
-export type BandSide = "above" | "below";
+type BandSide = "above" | "below";
 
-export interface BandItem {
+interface BandItem {
   node: KrsNode;
   /** Layout key the ghost is stored under, and that its edges' endpoints remap to. */
   key: string;
@@ -54,7 +54,7 @@ export interface BandInput {
 }
 
 /** The side a ghost goes to, from how many of its relations come in and go out. */
-export function bandSideOf(incoming: number, outgoing: number): BandSide {
+function bandSideOf(incoming: number, outgoing: number): BandSide {
   return incoming > outgoing ? "above" : "below";
 }
 
