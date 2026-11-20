@@ -138,14 +138,15 @@ export async function checkImports(options: {
       problems.push(`${file}: does not parse: ${result.error}`);
       continue;
     }
-    const lineOf = (specifier: string) => {
-      const site = result.imports.find((s) => s.specifier === specifier);
+    const lineOf = (specifier: string, call: boolean) => {
+      const sites = result.imports.filter((s) => s.specifier === specifier);
+      const site = sites.find((s) => s.call === call) ?? sites[0];
       return site ? `${file}:${site.line}` : file;
     };
 
-    let bundled: BundledImport[];
+    let bundle: Bundle;
     try {
-      bundled = await bundledImports(realRoot, onDisk);
+      bundle = await bundledImports(realRoot, onDisk);
     } catch (error) {
       problems.push(`${file}: does not build: ${(error as Error).message}`);
       continue;
@@ -153,42 +154,71 @@ export async function checkImports(options: {
     // A call the bundle does not resolve stays a run-time `require` /
     // `import()`, such as `require?.(x)` or `(0, require)(x)`; the guard
     // cannot tell what it loads, so it fails, as a computed specifier does.
-    const kept = new Set(bundled.map((b) => b.specifier));
+    const keptCalls = new Set(bundle.imports.filter((b) => b.call).map((b) => b.specifier));
     for (const { line, specifier, call } of result.imports) {
       if (specifier === null) problems.push(`${file}:${line}: computed import specifier`);
-      else if (call && !kept.has(specifier))
+      else if (call && !keptCalls.has(specifier))
         problems.push(`${file}:${line}: "${specifier}" is loaded at run time, not bundled`);
     }
-    for (const { specifier, resolved } of bundled) {
-      const at = lineOf(specifier);
-      if (isBuiltin(specifier)) {
+    // The walk is one level: esbuild reads another module's imports only when
+    // the guard did not expect it to, so that module goes unchecked.
+    for (const other of bundle.otherImporters)
+      problems.push(
+        `${file}: esbuild read the imports of ${toRepoPath(realRoot, other)}, unchecked`,
+      );
+
+    for (const { specifier, call, target } of bundle.imports) {
+      const at = lineOf(specifier, call);
+      if (target === "builtin") {
         const name = specifier.startsWith("node:") ? specifier : `node:${specifier}`;
         if (!policy.builtins.has(name))
           problems.push(`${at}: Node built-in "${name}" is not allowed`);
-      } else if (resolved === "package") {
+        continue;
+      }
+      if (!/^[./]/.test(specifier)) {
         const name = packageName(specifier);
         if (!policy.packages.has(name)) {
           problems.push(`${at}: package "${name}" is not allowed`);
-        } else if (specifier.split("/").some((part) => part === "." || part === "..")) {
+          continue;
+        }
+        if (specifier.split("/").some((part) => part === "." || part === "..")) {
           // `pkg/../../x` can load a repo file when the package has no `exports`.
           problems.push(`${at}: "${specifier}" leaves the package`);
+          continue;
         }
-      } else if (resolved === null) {
-        problems.push(`${at}: "${specifier}" does not resolve`);
-      } else {
-        const path = toRepoPath(realRoot, realpathSync(resolved));
-        imported.add(path);
-        if (offBoundary(path)) problems.push(`${at}: ${path} is off the boundary`);
       }
+      if (target === null) {
+        problems.push(`${at}: "${specifier}" does not resolve`);
+        continue;
+      }
+      const path = toRepoPath(realRoot, realpathSync(target));
+      // An allowed package is checked by its name. A package name that lands on
+      // a repo file (a tsconfig `paths` or `browser` alias) is that file.
+      if (!/^[./]/.test(specifier) && (path.startsWith("../") || path.includes("node_modules/")))
+        continue;
+      imported.add(path);
+      if (offBoundary(path)) problems.push(`${at}: ${path} is off the boundary`);
     }
   }
   return { problems, imported: [...imported] };
 }
 
-/** One import the bundle keeps: the file it loads, `package`, or null when it does not resolve. */
+/**
+ * One import the bundle keeps, resolved by esbuild: the file it loads,
+ * `builtin`, or null when it does not resolve.
+ */
 interface BundledImport {
   specifier: string;
-  resolved: string | "package" | null;
+  /** Kept as `require()` or `import()`, not as a declaration. */
+  call: boolean;
+  target: string | "builtin" | null;
+}
+
+/** What esbuild read in one function. */
+interface Bundle {
+  imports: BundledImport[];
+  /** Modules other than the entry whose imports esbuild asked to resolve. */
+  otherImporters: Set<string>;
 }
 
 // What wrangler passes esbuild that decides which file an import loads
@@ -203,8 +233,9 @@ const WRANGLER_LOADER = { ".js": "jsx", ".mjs": "jsx", ".cjs": "jsx" } as const;
  * the entry's own imports are followed: each is marked external once it is
  * resolved, so nothing it imports in turn is read.
  */
-async function bundledImports(root: string, entry: string): Promise<BundledImport[]> {
-  const found: BundledImport[] = [];
+async function bundledImports(root: string, entry: string): Promise<Bundle> {
+  const imports: BundledImport[] = [];
+  const otherImporters = new Set<string>();
   // esbuild names a linked entry by its target (no `preserveSymlinks`).
   const importer = realpathSync(entry);
   const RESOLVING = Symbol("resolving");
@@ -213,20 +244,25 @@ async function bundledImports(root: string, entry: string): Promise<BundledImpor
     setup(b) {
       b.onResolve({ filter: /.*/ }, async (args) => {
         if (args.kind === "entry-point" || args.pluginData === RESOLVING) return undefined;
-        // A module the entry does not import itself, such as a file a
-        // template import bundles, is not checked: the walk is one level.
-        if (args.importer !== importer) return { path: args.path, external: true };
-        if (!/^[./]/.test(args.path)) {
-          // A package or a built-in: what it names is checked, not where it is.
-          found.push({ specifier: args.path, resolved: "package" });
+        if (args.importer !== importer) {
+          // Only a file a template import expands reaches here, and the
+          // template already fails as computed; anything else is reported.
+          otherImporters.add(args.importer);
+          return { path: args.path, external: true };
+        }
+        const call = args.kind === "require-call" || args.kind === "dynamic-import";
+        if (isBuiltin(args.path)) {
+          imports.push({ specifier: args.path, call, target: "builtin" });
         } else {
+          // A package name too, since tsconfig `paths` or a `browser` map can
+          // point it at a repo file.
           const r = await b.resolve(args.path, {
             kind: args.kind,
             importer: args.importer,
             resolveDir: args.resolveDir,
             pluginData: RESOLVING,
           });
-          found.push({ specifier: args.path, resolved: r.errors.length > 0 ? null : r.path });
+          imports.push({ specifier: args.path, call, target: r.errors.length > 0 ? null : r.path });
         }
         return { path: args.path, external: true };
       });
@@ -243,7 +279,7 @@ async function bundledImports(root: string, entry: string): Promise<BundledImpor
     logLevel: "silent",
     plugins: [direct],
   });
-  return found;
+  return { imports, otherImporters };
 }
 
 // The classifier's globs are POSIX; `relative` uses a backslash on Windows.

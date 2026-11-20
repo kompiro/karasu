@@ -32,6 +32,27 @@ for (const file of [
   writeFileSync(join(ROOT, file), "export const x = 1;\n");
 }
 writeFileSync(join(ROOT, "lib/data.json"), "{}\n");
+// The allowed package, installed as pnpm would.
+for (const [file, text] of [
+  [
+    "node_modules/@resvg/resvg-wasm/package.json",
+    '{ "name": "@resvg/resvg-wasm", "main": "index.js" }',
+  ],
+  ["node_modules/@resvg/resvg-wasm/index.js", "export const Resvg = 1;\n"],
+  ["node_modules/@resvg/resvg-wasm/index_bg.wasm", ""],
+  // Functions whose directory aliases the allowed package name to a repo file.
+  [
+    "functions/paths/tsconfig.json",
+    '{ "compilerOptions": { "paths": { "@resvg/resvg-wasm": ["../../other/x.ts"] } } }',
+  ],
+  [
+    "functions/browser-map/package.json",
+    '{ "browser": { "@resvg/resvg-wasm": "../../other/x.ts" } }',
+  ],
+]) {
+  mkdirSync(dirname(join(ROOT, file)), { recursive: true });
+  writeFileSync(join(ROOT, file), text);
+}
 // Directories whose package.json names the entry, as esbuild reads it for `browser`.
 writeFileSync(join(ROOT, "lib/pkg-main/package.json"), '{ "main": "./entry.ts" }');
 writeFileSync(
@@ -97,12 +118,18 @@ describe("checkImports: what it must catch", () => {
     ["export const m = await import(name);"],
     ['export const m = require("" + name);'],
     ["export const m = require(name);"],
-    // esbuild bundles each file such a template can name, but past the
-    // resolver a plugin sees, so the guard fails on the template itself.
-    ["export const m = await import(`../other/${name}.ts`);"],
-    ["export const m = require(`../lib/${name}`);"],
   ])("fails on a computed specifier: %s", async (source) => {
     expect(await problemsOf(source)).toEqual(["functions/f.ts:1: computed import specifier"]);
+  });
+
+  // esbuild bundles each file such a template can name, past the resolver a
+  // plugin sees, so the guard fails on the template itself. A file it expands
+  // to that imports something is reported too, as read without a check.
+  it.each([
+    ["export const m = await import(`../other/${name}.ts`);"],
+    ["export const m = require(`../lib/${name}`);"],
+  ])("fails on a template specifier: %s", async (source) => {
+    expect(await problemsOf(source)).toContain("functions/f.ts:1: computed import specifier");
   });
 
   // Declined #21 in PR #3824, reopened by kompiro.
@@ -213,6 +240,32 @@ describe("checkImports: what it must catch", () => {
       expect(await problemsOf(source)).toEqual([OFF]);
     },
   );
+
+  // Review of 6601ffbe: an alias of an allowed package name is the file it names.
+  it.each([["functions/paths/f.ts"], ["functions/browser-map/f.ts"]])(
+    "fails on an allowed package name aliased to a file off the boundary: %s",
+    async (file) => {
+      const source = 'import { x } from "@resvg/resvg-wasm"; export const use = [x];';
+      expect(await problemsOf(source, file)).toEqual([`${file}:1: other/x.ts is off the boundary`]);
+    },
+  );
+
+  it("fails on an allowed package that does not resolve", async () => {
+    const source = 'import { x } from "@resvg/resvg-wasm/missing.js"; export const use = [x];';
+    expect(await problemsOf(source)).toEqual([
+      'functions/f.ts:1: "@resvg/resvg-wasm/missing.js" does not resolve',
+    ]);
+  });
+
+  // Review of 6601ffbe: the run-time call is reported even when a
+  // declaration of the same specifier is bundled.
+  it("fails on a run-time require beside a bundled import of the same file", async () => {
+    const source =
+      'import { x } from "../lib/a.js";\nexport const use = [x, require?.("../lib/a.js")];';
+    expect(await problemsOf(source)).toEqual([
+      'functions/f.ts:2: "../lib/a.js" is loaded at run time, not bundled',
+    ]);
+  });
 
   it("fails on a function off the boundary", async () => {
     expect(await problemsOf("export const x = 1;", "off/f.ts")).toEqual([
