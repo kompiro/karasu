@@ -2,7 +2,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
+import { checkImports, listFiles } from "./function-imports.ts";
 import { type GitFacts, parseRecord } from "./local-review-record.ts";
+import { isTestFile } from "./test-changes.ts";
 import {
   ADR_GENERATED_GLOBS,
   adrEditIsRecordOnly,
@@ -75,6 +77,16 @@ describe("pathTier", () => {
     ["packages/app/src/components/ChatPane.tsx", "high"],
     ["packages/app/src/components/NodeDetailPanel.tsx", "high"],
     ["packages/app/src/components/EdgeDetailPanel.tsx", "high"],
+    // The app's Pages Functions and what they delegate to (#3799).
+    ["functions/render.ts", "high"],
+    ["functions/s.ts", "high"],
+    ["functions/[[path]].ts", "high"],
+    ["functions/r/[[path]].ts", "high"],
+    ["functions/_lib/share-raster.ts", "high"],
+    ["packages/app/src/render/share-render.ts", "high"],
+    ["packages/app/src/render/share-page.ts", "high"],
+    ["packages/app/src/render/repo-permalink.ts", "high"],
+    ["packages/core/src/renderer/ogp-frame.ts", "high"],
     // Language behavior (#3505).
     ["packages/core/src/lexer/lexer.ts", "high"],
     ["packages/core/src/parser/parser.ts", "high"],
@@ -91,6 +103,8 @@ describe("pathTier", () => {
     ["packages/cli/src/serve.test.ts", "low"],
     ["packages/nest/src/worker.test.ts", "low"],
     ["packages/core/src/renderer/svg-builder.test.ts", "low"],
+    ["packages/app/src/render/share-render.test.ts", "low"],
+    ["packages/core/src/renderer/ogp-frame.test.ts", "low"],
     ["packages/lsp/src/diagnostics.test.ts", "low"],
     [".github/actions/purge-preview-deployments/action.yml", "high"],
     ["packages/cli/CHANGELOG.md", "high"],
@@ -349,9 +363,77 @@ describe("classifyChange", () => {
     expect(sec("packages/nest/src/a.ts")).toBe(true);
     expect(sec("packages/cli/src/render-fetch.ts")).toBe(true);
     expect(sec("packages/core/src/renderer/svg-builder.ts")).toBe(true);
+    expect(sec("functions/render.ts")).toBe(true);
+    expect(sec("packages/app/src/render/share-render.ts")).toBe(true);
+    expect(sec("packages/core/src/renderer/ogp-frame.ts")).toBe(true);
     expect(sec(".github/workflows/x.yml")).toBe(true);
     expect(sec("packages/core/a.ts")).toBe(false);
     expect(sec("packages/core/src/parser/parser.ts")).toBe(false);
+  });
+
+  // Every Pages Function answers a public request, so the modules it hands that
+  // request to are a security boundary too (#3799). Derived from the import
+  // graph, one level deep: a new function, or a function importing a module
+  // off the boundary, fails here. What those modules import in turn is not
+  // checked (`bare-route.ts` reads the `routes.ts` constant table).
+  //
+  // esbuild, with wrangler's options, resolves what each function imports
+  // (`function-imports.ts`), so the guard checks the file the bundle loads;
+  // the syntax tree adds a specifier computed at run time. Both, and a Node
+  // built-in, fail unless allowed below.
+  it("keeps every module a Pages Function imports directly on the security boundary", async () => {
+    const sec = (path: string) =>
+      classifyChange({ files: [modified(path)], author: "kompiro" }).securityReview;
+    const files = listFiles(REPO_ROOT, "functions").filter(
+      (path) => /\.[cm]?[jt]sx?$/.test(path) && !/\.d\.[cm]?ts$/.test(path) && !isTestFile(path),
+    );
+
+    const { problems, imported } = await checkImports({
+      root: REPO_ROOT,
+      files,
+      policy: {
+        // Any other package, a workspace package included (its modules are
+        // not checked here), fails until it is added.
+        packages: new Set(["@resvg/resvg-wasm"]),
+        // Pages runs the functions without `nodejs_compat` (wrangler.toml), so
+        // no built-in is allowed; enabling one means listing it here.
+        builtins: new Set(),
+      },
+      onBoundary: sec,
+    });
+    // The graph held the handlers this exists for.
+    expect(imported).toEqual(
+      expect.arrayContaining([
+        "packages/app/src/render/share-render.ts",
+        "functions/_lib/share-raster.ts",
+      ]),
+    );
+    expect(problems).toEqual([]);
+  });
+
+  // esbuild tells the guard which specifiers it bundled, not which call sites:
+  // `require?.(x)` beside a bundled `require(x)` would pass. Banning every
+  // reference to `require` leaves `import()` as the only run-time load, and
+  // `import` has no optional or indirect form (#3799).
+  it("lints every Pages Function against any reference to require", () => {
+    const config = JSON.parse(readFileSync(resolve(REPO_ROOT, ".oxlintrc.json"), "utf8")) as {
+      overrides: { files: string[]; rules: Record<string, unknown> }[];
+    };
+    const banned = config.overrides
+      .filter((o) => o.files.includes("functions/**"))
+      .flatMap((o) => {
+        const rule = o.rules["no-restricted-globals"];
+        return Array.isArray(rule) && rule[0] === "error" ? rule.slice(1) : [];
+      })
+      .map((entry: { name?: string } | string) => (typeof entry === "string" ? entry : entry.name));
+    expect(banned).toContain("require");
+
+    const scripts = (
+      JSON.parse(readFileSync(resolve(REPO_ROOT, "package.json"), "utf8")) as {
+        scripts: Record<string, string>;
+      }
+    ).scripts;
+    expect(scripts.lint.split(" ")).toContain("functions/");
   });
 
   describe("dangerous sinks (#3505)", () => {

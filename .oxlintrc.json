@@ -183,6 +183,18 @@
       }
     },
     {
+      "files": ["functions/**"],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "require",
+            "message": "Load a module in a Pages Function with import or a literal import(), never require. Pages runs the functions without nodejs_compat, so require does not exist there, and the guard that keeps a function's imports on the security boundary reads only what esbuild bundles (scripts/review/function-imports.ts, #3799)."
+          }
+        ]
+      }
+    },
+    {
       "files": ["packages/*/src/**/*.{ts,tsx,mts,cts}"],
       "excludeFiles": [
         "**/*.{test,spec}.{ts,tsx,mts,cts}",
