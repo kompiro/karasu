@@ -29,8 +29,8 @@ SVG からコピーした fragment はアプリでも解決し、その逆も成
   `<id>` は domain id で、`#krs-entity-<domainId>` はそのドメインのエンティティ
   ビュー（エンティティとドメイン内関連。修飾付きの他ドメイン参照は外部
   エンティティの muted な ghost として描かれる。ドメインを参照する ghost は
-  ドメインの枠の上に、ドメインが参照する ghost は下に置かれ、外部ドメインごとの
-  枠に入る。その側に 1 件しかない ghost は所属ドメインの subLabel 付きのカードに
+  ドメインの枠の上に、ドメインが参照する ghost は下に置かれ（両方向の関連を持つ
+  ghost は本数の多い側、同数なら下）、外部ドメインごとの枠に入る。その側に 1 件しかない ghost は所属ドメインの subLabel 付きのカードに
   なる。[syntax.md](./syntax.md) を参照）を開く。エンティティビューは
   静的 all-views バンドル（`drill-down-svg.ts`）に出力され、system ビューの
   ドメインからドリルされるため system pane 内に置かれる。SPA では entity ビューは

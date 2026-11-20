@@ -1,5 +1,5 @@
 /**
- * The ghost band (#2823, design `docs/design/ghost-band-layout.md` slice A).
+ * The ghost band (#2823 slice A, #3880).
  *
  * Fixtures reach the limit the old single ghost row failed at (TPL-2598): an
  * entity view with 40+ ghosts from 8+ foreign domains, on both sides of the

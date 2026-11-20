@@ -29,9 +29,10 @@ fragment you copy from a rendered SVG resolves in the app, and vice versa.
   a domain id and `#krs-entity-<domainId>` opens that domain's entity view (its
   entities and their intra-domain relations; a qualified cross-domain target is
   drawn as a muted ghost of the foreign entity, above the domain's frame when it
-  references the domain and below when the domain references it, framed per
-  foreign domain or, alone on its side, sub-labelled with its owning domain —
-  see [syntax.md](./syntax.md)). Entity views are emitted into the static all-views bundle
+  references the domain and below when the domain references it (a two-way
+  ghost takes the side with more relations, below on a tie), framed per foreign
+  domain or, alone on its side, sub-labelled with its owning domain — see
+  [syntax.md](./syntax.md)). Entity views are emitted into the static all-views bundle
   (`drill-down-svg.ts`) and live inside the system pane, since they are drilled
   from a domain in the system view. In the SPA the entity view is a **sub-mode
   of the `system` view** (not a distinct `ActiveView`): the app drills into the

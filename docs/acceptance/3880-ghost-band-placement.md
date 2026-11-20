@@ -22,24 +22,38 @@ type: product
 - [ ] AT-1: 外部ドメイン 8 つ以上から ghost 40 件以上を持つエンティティビューと、外部 service 8 つから ghost domain 40 件を持つ service ビューの canvas が、縦横比 16:9〜9:16 に入る
 
   > ✅ Automated — `packages/core/src/renderer/ghost-band.test.ts` › `ghost band on the entity view (#2823)` › `keeps the canvas inside the 16:9 to 9:16 aspect band`
+  >
+  > ✅ Automated — `packages/core/src/renderer/ghost-band.test.ts` › `ghost band on the service view (#2823)` › `keeps the canvas inside the 16:9 to 9:16 aspect band`
 
 ### AC-2: 参照してくるものは上、参照されるものは下
 
 - [ ] AT-2: 自ドメインを参照する ghost は焦点の枠の上、自ドメインが参照する ghost は下に置かれる。両方向の関連を持つ ghost は本数の多い向きの側に置かれ、同数なら下に置かれる
 
   > ✅ Automated — `packages/core/src/renderer/ghost-band.test.ts` › `ghost band on the entity view (#2823)` › `places a two-way ghost by its majority direction, a tie below`
+  >
+  > ✅ Automated — `packages/core/src/renderer/ghost-band.test.ts` › `ghost band on the entity view (#2823)` › `puts what references the focus above it and what it references below`
 
 ### AC-3: 外部ドメインごとの枠に入り、1 件だけなら今のカードのまま
 
 - [ ] AT-3: 同じ外部ドメインの ghost が同じ側に 2 件以上あれば、ドメイン名をタイトルにした枠に入り、中のカードは subLabel を持たない。同じ側に 1 件だけなら枠を作らず、所属ドメインの subLabel 付きのカードになる。上下の両方に枠を持つドメインの 2 つの枠は id が異なる。service ビューの ghost domain は外部 service ごとの枠に入る
 
   > ✅ Automated — `packages/core/src/renderer/ghost-band.test.ts` › `ghost band on the entity view (#2823)` › `frames each foreign domain's ghosts on a side, titled with the domain, cards without a sub-label`
+  >
+  > ✅ Automated — `packages/core/src/renderer/ghost-band.test.ts` › `ghost band on the entity view (#2823)` › `leaves a ghost alone on its (domain × side) as a sub-labelled card`
+  >
+  > ✅ Automated — `packages/core/src/renderer/ghost-band.test.ts` › `ghost band on the entity view (#2823)` › `gives a domain framed on both sides two frames with distinct ids`
+  >
+  > ✅ Automated — `packages/core/src/renderer/ghost-band.test.ts` › `ghost band on the service view (#2823)` › `frames ghost domains per foreign service, callers above and callees below`
 
 ### AC-4: 帯の枠はほかの枠やカードに重ならず、相手の x の順に並ぶ
 
 - [ ] AT-4: 帯の枠どうし、帯の枠と焦点側の枠、帯の枠と中に持たないカードは重ならない。枠と単独のカードは、焦点に近い段から左から右へ、相手（自ドメインのエンティティ）の中心 x の平均の順に並ぶ
 
   > ✅ Automated — `packages/core/src/renderer/ghost-band.test.ts` › `ghost band on the entity view (#2823)` › `orders frames and lone cards by their partners' x, row by row from the focus`
+  >
+  > ✅ Automated — `packages/core/src/renderer/ghost-band.test.ts` › `ghost band on the entity view (#2823)` › `overlaps no frame or card it does not hold`
+  >
+  > ✅ Automated — `packages/core/src/renderer/ghost-band.test.ts` › `ghost band on the entity view (#2823)` › `orders the cards inside a frame by their partners' x`
 
 ## 手動確認
 
