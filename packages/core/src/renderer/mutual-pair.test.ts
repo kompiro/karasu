@@ -211,8 +211,10 @@ describe("mutual pair drawn as one line (#3027)", () => {
     });
 
     it("crosses 58 times or fewer instead of 134", () => {
-      // 157 and 61 before #3494 anchored the wrapped layer's edges top and bottom.
-      expect(crossings(before.edges)).toBe(134);
+      // 157 and 61 before #3494 anchored the wrapped layer's edges top and bottom;
+      // 134 before the ghost band (#2823) put the ghost domains that reference
+      // this service above its frame instead of in one row below it.
+      expect(crossings(before.edges)).toBe(126);
       expect(crossings(after.edges)).toBeLessThanOrEqual(58);
     });
 

@@ -891,8 +891,14 @@ target is resolved by scope:
 
 In the per-domain **entity view**, a qualified cross-domain target is drawn as a
 muted **ghost** of the foreign entity (both directions: this domain's entities →
-foreign, and foreign → this domain's entities), sub-labelled with its owning
-domain. A **bare** id that does not match a local entity is **not** resolved
+foreign, and foreign → this domain's entities). Ghosts sit in a band outside the
+domain's frame, split by the direction of their relations: a ghost that
+references this domain goes **above** the frame, and one this domain references
+goes **below**. A ghost with relations both ways goes to the side with more of
+them, and below on a tie. On each side, two or more ghosts of one foreign domain
+share a muted frame titled with that domain; a ghost that is the only one of its
+domain on that side is a card sub-labelled with its owning domain. The band
+wraps into rows to keep the canvas screen-shaped. A **bare** id that does not match a local entity is **not** resolved
 cross-domain — it is dropped from the entity view (write it qualified to surface
 the relation).
 

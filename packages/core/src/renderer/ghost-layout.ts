@@ -3,10 +3,10 @@
  * domains / entities around the main container, and caller / outgoing ghost
  * system frames with their visible services.
  */
-import type { KrsNode } from "../types/ast.js";
 import type { ViewSlice, GhostSystem } from "../view/view-slice.js";
 import type { LayoutNode, ContainerRect } from "./layout-types.js";
 import { nodePathKey, nodePathRefId } from "../parser/node-path.js";
+import { placeGhostBand } from "./ghost-band.js";
 import {
   CONTAINER_PADDING,
   CONTAINER_LABEL_HEIGHT,
@@ -29,7 +29,8 @@ export function placeGhostUsers(
   if (viewSlice.ghostUsers.length === 0) return;
   const { NODE_GAP } = getLayoutConstants(ctx.displayMode);
 
-  const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
+  const mainContainer =
+    containers.find((c) => !c.ghost && c.ghostBand === undefined) ?? containers[0];
   const userX = (mainContainer?.x ?? 0) - 20;
   let userY = (mainContainer?.y ?? 0) + CONTAINER_LABEL_HEIGHT + NODE_GAP;
   const ghostUserNodes: LayoutNode[] = [];
@@ -67,110 +68,109 @@ export function placeGhostUsers(
   }
 }
 
-/**
- * Place a row of muted ghost nodes below the main container, then grow the
- * outermost container to include them. Shared by {@link placeGhostDomains} and
- * {@link placeGhostEntities}: each item carries the layout `key` to store under
- * (bare id for domains, qualified `DomainId.EntityId` for entities) and the
- * `subLabel` (owning service / domain) to show muted. `ghost: true` drives the
- * muting in svg-renderer; no renderer change is needed.
- */
-function placeGhostRow(
-  items: { node: KrsNode; key: string; subLabel: string }[],
-  layoutNodes: Map<string, LayoutNode>,
-  containers: ContainerRect[],
-  ctx: MeasureContext,
-  gap: number,
-): void {
-  if (items.length === 0 || containers.length === 0) return;
-  const { NODE_GAP } = getLayoutConstants(ctx.displayMode);
-
-  const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
-  const ghostY = mainContainer.y + mainContainer.height + gap;
-  let ghostX = mainContainer.x + CONTAINER_PADDING;
-
-  for (const { node, key, subLabel } of items) {
-    const dims = measureNode(node, undefined, ctx);
-    layoutNodes.set(
-      key,
-      makeLayoutNode(node, key, {
-        label: node.label ?? node.id,
-        annotations: ctx.effectiveAnnotations(node),
-        subLabel,
-        x: ghostX,
-        y: ghostY,
-        width: dims.width,
-        height: dims.height,
-        ghost: true,
-      }),
-    );
-    ghostX += dims.width + NODE_GAP;
-  }
-
-  // Expand outermost container to include the ghost row (both height and width)
-  const placed = items
-    .map(({ key }) => layoutNodes.get(key))
-    .filter((n): n is LayoutNode => n !== undefined);
-  if (placed.length > 0) {
-    const maxGhostY = Math.max(...placed.map((n) => n.y + n.height)) + GHOST_MARGIN;
-    const maxGhostX = Math.max(...placed.map((n) => n.x + n.width)) + GHOST_MARGIN;
-    const outermost = containers[0];
-    if (maxGhostY > outermost.y + outermost.height) {
-      outermost.height = maxGhostY - outermost.y;
-    }
-    if (maxGhostX > outermost.x + outermost.width) {
-      outermost.width = maxGhostX - outermost.x;
-    }
-  }
-}
-
-const GHOST_ROW_GAP = 60;
-
 /** Horizontal gap between a ghost system frame and its neighbor / the main container. */
 const GHOST_SYSTEM_GAP = 80;
 
-export function placeGhostDomains(
+/**
+ * Where a ghost band reads its relations from, and the width budget it wraps
+ * at — the run-level inputs `layoutInner` holds.
+ */
+interface GhostBandRun {
+  remap: (id: string) => string;
+  widthBudget: number;
+}
+
+/**
+ * Place the service view's cross-service ghost domains in the band around the
+ * main container (#2823), framed per owning service.
+ * @returns whether the width budget cut a band row or a frame's columns.
+ */
+function placeGhostDomains(
   viewSlice: ViewSlice,
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
   ctx: MeasureContext,
-): void {
-  placeGhostRow(
-    viewSlice.ghostDomains.map((gd) => ({
-      node: gd.node,
-      key: gd.node.id,
-      subLabel: gd.parentServiceLabel,
-    })),
+  run: GhostBandRun,
+): boolean {
+  return placeGhostBand(
+    {
+      items: viewSlice.ghostDomains.map((gd) => ({
+        node: gd.node,
+        key: gd.node.id,
+        groupId: gd.parentServiceId,
+        groupLabel: gd.parentServiceLabel,
+      })),
+      edges: viewSlice.ghostDomainEdges,
+      ...run,
+    },
     layoutNodes,
     containers,
     ctx,
-    GHOST_ROW_GAP,
   );
 }
 
 /**
- * Place cross-domain ghost entities below the entity view's main container.
- * Keyed by the qualified `DomainId.EntityId` (not the bare id) because entity
- * ids are only warning-level unique — the matching `ghostEntityEdges` endpoints
- * use the same qualified key for foreign endpoints.
+ * Place the entity view's cross-domain ghost entities in the band around the
+ * main container (#2823), framed per owning domain. Keyed by the qualified
+ * `DomainId.EntityId` (not the bare id) because entity ids are only
+ * warning-level unique — the matching `ghostEntityEdges` endpoints use the
+ * same qualified key for foreign endpoints.
+ * @returns whether the width budget cut a band row or a frame's columns.
  */
-export function placeGhostEntities(
+function placeGhostEntities(
   viewSlice: ViewSlice,
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
   ctx: MeasureContext,
-): void {
-  placeGhostRow(
-    viewSlice.ghostEntities.map((ge) => ({
-      node: ge.node,
-      key: ge.key,
-      subLabel: ge.parentDomainLabel,
-    })),
+  run: GhostBandRun,
+): boolean {
+  return placeGhostBand(
+    {
+      items: viewSlice.ghostEntities.map((ge) => ({
+        node: ge.node,
+        key: ge.key,
+        groupId: ge.parentDomainId,
+        groupLabel: ge.parentDomainLabel,
+      })),
+      edges: viewSlice.ghostEntityEdges,
+      ...run,
+    },
     layoutNodes,
     containers,
     ctx,
-    GHOST_ROW_GAP,
   );
+}
+
+/**
+ * Place the ghost band of whichever view this is — ghost domains on a service
+ * view, ghost entities on an entity view (#2823). Both run; neither
+ * short-circuits the other.
+ * @returns whether the width budget cut a band row or a frame's columns.
+ */
+export function placeGhostBands(
+  viewSlice: ViewSlice,
+  layoutNodes: Map<string, LayoutNode>,
+  containers: ContainerRect[],
+  ctx: MeasureContext,
+  run: GhostBandRun,
+): boolean {
+  const domains = placeGhostDomains(viewSlice, layoutNodes, containers, ctx, run);
+  const entities = placeGhostEntities(viewSlice, layoutNodes, containers, ctx, run);
+  return domains || entities;
+}
+
+/**
+ * The top the ghost system frames line up with: where the outermost frame's top
+ * was before the ghost band grew it upward (#2823). The frame right inside the
+ * outermost one (an ancestor, or the focus) is not moved by the band, and the
+ * outermost one sits one `GHOST_MARGIN` outside it. A canvas with one frame
+ * has no ancestor to grow, so its top stays put.
+ */
+function ghostSystemTop(containers: readonly ContainerRect[]): number {
+  // The nest frames come first, outermost to focus; group and band frames are
+  // appended after them and do not count.
+  const inner = containers.slice(1).find((c) => c.group !== true && c.ghostBand === undefined);
+  return inner !== undefined ? inner.y - GHOST_MARGIN : containers[0].y;
 }
 
 export function placeCallerGhostSystems(
@@ -183,7 +183,7 @@ export function placeCallerGhostSystems(
   if (viewSlice.callerGhostSystems.length === 0 || containers.length === 0) return;
 
   const outermost = containers[0];
-  const ghostStartY = outermost.y;
+  const ghostStartY = ghostSystemTop(containers);
 
   const callerContainers: ContainerRect[] = [];
   let tempX = 0;
@@ -229,7 +229,7 @@ export function placeOutgoingGhostSystems(
 
   const outermost = containers[0];
   let ghostX = outermost.x + outermost.width + GHOST_SYSTEM_GAP;
-  const ghostStartY = outermost.y;
+  const ghostStartY = ghostSystemTop(containers);
 
   for (const gs of viewSlice.ghostSystems) {
     const { nodes: gsNodes, containerRect } = layoutGhostSystem(

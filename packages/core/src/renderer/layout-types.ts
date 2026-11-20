@@ -256,6 +256,16 @@ export interface ContainerRect {
    */
   kindBand?: "job";
   /**
+   * Ghost band frame marker (#2823): a muted frame grouping two or more ghosts
+   * of one foreign domain (entity view) or foreign service (service view) on
+   * one side of the focus frame. A band frame is not a ghost *ancestor*, so it
+   * keeps `ghost: false`; anything that looks for the focus frame as the
+   * container that is not a ghost must also skip this marker. It has no
+   * `path`: it is not a node, so it takes no node style and is not a drill
+   * target. `renderBandFrame` draws it.
+   */
+  ghostBand?: "above" | "below";
+  /**
    * Group boundary-frame marker (system-view Group by, #1858). When set, the
    * renderer draws this container as a dashed group frame (full opacity, unlike
    * a ghost) with the group label. `undefined` for ordinary containers.

@@ -13,7 +13,7 @@ known_consumers:
   - routing-parity
 discovered_from:
   - issue: "#2823"
-  - root_cause_file: "packages/core/src/renderer/ghost-layout.ts:placeGhostRow"
+  - root_cause_adr: "ADR-1911"
   - root_cause_file: "packages/core/src/renderer/edge-routing-channels.ts:routeOrthogonalEdges"
 related_to:
   - TPL-2593
@@ -61,5 +61,5 @@ karasu の配置と配線は、共有の仕組みを何度も足して育って�
 
 ## 関連テスト
 
-- （#2823 の実装で足す）帯の配置の柵: 外部ドメイン 8 つ以上・ghost 40 件以上のフィクスチャで、エンティティビューと service ビューの canvas が縦横比の範囲に入る。
+- `packages/core/src/renderer/ghost-band.test.ts`（#3880）: 外部ドメイン 8 つ以上・ghost 40 件以上のフィクスチャで、エンティティビューと service ビューの canvas が縦横比の範囲に入る。帯の後に置く ghost system の枠が、帯で上に広がった外側の枠に引きずられず焦点の高さに残る。
 - （#2823 の実装で足す）routing-parity: 同じフィクスチャで帯の線の貫通 0、共線 0、交差に hop が付く。

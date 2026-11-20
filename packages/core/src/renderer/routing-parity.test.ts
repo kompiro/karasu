@@ -1564,16 +1564,18 @@ describe("drill-down channels end at the frame (#3132, TPL-3132 / TPL-2598)", ()
   );
 
   it("a ghost card outside the frame does not widen the channel below the last row", () => {
-    // `X` calls into `App` from a sibling service, so the drill-down places it
-    // as a ghost card below the frame. The channel below the row ends at the
-    // frame's bottom border, and the one run there sits midway between the row
-    // and that border, not midway between the row and the ghost card.
+    // `A` calls into `X` in a sibling service, so the drill-down places `X` as a
+    // ghost card in the band below the frame (#2823: what this canvas references
+    // goes below). The channel below the row ends at the frame's bottom border,
+    // and the one run there sits midway between the row and that border, not
+    // midway between the row and the ghost card.
     const res = layoutOfSource(
       `system S {
   service App {
     domain A {
       -> B
       -> C
+      -> X
     }
     domain B {
       -> A
@@ -1584,9 +1586,7 @@ describe("drill-down channels end at the frame (#3132, TPL-3132 / TPL-2598)", ()
     }
   }
   service Tools {
-    domain X {
-      -> A
-    }
+    domain X {}
   }
 }`,
       undefined,
