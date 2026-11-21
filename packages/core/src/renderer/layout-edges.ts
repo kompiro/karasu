@@ -17,8 +17,13 @@ import {
 } from "./edge-routing-groups.js";
 import { framePieces } from "./frame-geometry.js";
 import { ObstacleIndex, type ObstacleQuery } from "./obstacle-index.js";
+import { BAND_PHASE, clearHeldPorts, isPeripheralEdge } from "./band-routing.js";
 import { distributePorts } from "./edge-routing-ports.js";
-import { channelLimitsOf, distributeChannelLanes } from "./edge-routing-lanes.js";
+import {
+  channelLimitsOf,
+  distributeChannelLanes,
+  type ChannelLimits,
+} from "./edge-routing-lanes.js";
 import { BBOX_PORT_FRAME, seatPortsOnOutline, type PortResolver } from "./port-frame.js";
 import { degradedTabsZone } from "./degraded-tabs.js";
 import { getShapePortFrame } from "../shapes/shape-registry.js";
@@ -438,11 +443,10 @@ export function runRoutingChain(
   // Built from the whole canvas, never from the subset a particular candidate
   // would touch: the obstacle set an edge is tested against must not depend on
   // which route shape is being tried (TPL-1954).
-  const obstacleIndex = ObstacleIndex.build(
-    [...nodes.values()],
-    [...groupFrames, ...opts.bandFrames],
-    expandedFrames,
-  );
+  // The canvas's own edges first, exactly as on a canvas without a ghost band
+  // (#3881): the band's edges are routed afterwards, around what these hold.
+  const canvas = edges.filter((e) => e.band !== true);
+  const obstacleIndex = ObstacleIndex.build([...nodes.values()], groupFrames, expandedFrames);
   const obstaclesFor = (edge: LayoutEdge): ObstacleQuery =>
     obstacleIndex.forEdge(edge.from, edge.to);
   // Distribute ports across each node side that hosts ≥ 2 edges, so labels
@@ -450,14 +454,14 @@ export function runRoutingChain(
   // port on the shape's drawn outline rather than its bounding box (#2422).
   // Must run before channel routing so the orthogonal pass uses the new
   // ports. See ADR-968 and Issue #996.
-  distributePorts(nodes, edges, ports);
+  distributePorts(nodes, canvas, ports);
   // Candidate 1: interior channel-L. Frames become obstacles (per-endpoint
   // exemption) so the near route cannot be bent through a frame it is not in.
-  routeOrthogonalEdges(nodes, edges, obstaclesFor);
+  routeOrthogonalEdges(nodes, canvas, obstaclesFor);
   // Candidate 2: side gutter, then mixed channel, for whatever is still
   // blocked. `groupBackward` dashing stays band-gated — "against the flow" is
   // only defined where there is a band stack.
-  routeGroupedEdges(nodes, edges, groupFrames, obstacleIndex, expandedFrames, grouped, limits);
+  routeGroupedEdges(nodes, canvas, groupFrames, obstacleIndex, expandedFrames, grouped, limits);
   // Merge edges sharing an infra/external target onto one trunk lane per
   // target so distinct targets' spines no longer overlap (#1859 P2c-B).
   // Grouped only: trunk lanes live in the right gutter, so on an ungrouped
@@ -465,11 +469,11 @@ export function runRoutingChain(
   // interior corridors (#2365) those edges would otherwise take. Measured and
   // rejected in #2364.
   if (grouped) {
-    aggregateGroupTrunks(nodes, edges, groupFrames, obstacleIndex, expandedFrames, limits);
+    aggregateGroupTrunks(nodes, canvas, groupFrames, obstacleIndex, expandedFrames, limits);
     // The mirror (#2885): edges leaving one source share one spine that sheds a
     // branch at each target's row. After the fan-in pass, which claims a shared
     // target first; grouped only, for the same reason.
-    aggregateGroupSourceTrunks(nodes, edges, groupFrames, obstacleIndex, expandedFrames, limits);
+    aggregateGroupSourceTrunks(nodes, canvas, groupFrames, obstacleIndex, expandedFrames, limits);
   }
   // Give the remaining non-trunked gutter corridors distinct lanes so two
   // single-incoming edges no longer share a collinear vertical segment
@@ -479,15 +483,15 @@ export function runRoutingChain(
   // *or entering* one node/frame on the same side. Both are waypoint-driven,
   // so every route shape the chain can produce takes part in the overlap
   // passes (TPL-1954) in both modes.
-  distributeGutterLanes(nodes, edges, groupFrames, limits);
-  fanOutGutterPorts(nodes, edges, obstacleIndex, expandedFrames, ports);
+  distributeGutterLanes(nodes, canvas, groupFrames, limits);
+  fanOutGutterPorts(nodes, canvas, obstacleIndex, expandedFrames, ports);
   // Stagger the horizontal runs that share an inter-row channel across
   // distinct lanes at a fixed pitch (#2608). Keyed on the channel rather than
   // on the route shape, so every route's runs take part (TPL-1954); the room
   // the lanes need is reserved by `layout()`'s second placement pass. Frames
   // bound a channel the same way cards do, so a lane never lands in the
   // padding of a frame the edge is not in.
-  distributeChannelLanes(nodes, edges, groupFrames.flatMap(framePieces), limits);
+  distributeChannelLanes(nodes, canvas, groupFrames.flatMap(framePieces), limits);
   // Seat every endpoint on the shape's drawn outline, now that the chain has
   // settled which route each edge takes (#2422). The candidate passes
   // re-anchor what they reroute, so this is where the guarantee is finally
@@ -497,6 +501,61 @@ export function runRoutingChain(
     // The same obstacle set the chain checks against: every card but the two
     // this edge terminates on, plus the frames it does not belong to, which is
     // exactly what the shared index answers.
-    seatPortsOnOutline(nodes, edges, ports, obstaclesFor);
+    seatPortsOnOutline(nodes, canvas, ports, obstaclesFor);
   }
+  routeBandEdges(nodes, edges, groupFrames, opts, limits, grouped);
+}
+
+/**
+ * The second run of the chain (#3881): the ghost band's edges only, each pass
+ * given the canvas's routed edges as fixed occupants (`BAND_PHASE`). The
+ * band's frames join the obstacles here, with the per-endpoint exemption, so a
+ * band edge does not cross a frame neither of its endpoints is in. Trunk
+ * aggregation is left out: whether the band's lines share a spine is the hub
+ * density question of #3804.
+ */
+function routeBandEdges(
+  nodes: Map<string, LayoutNode>,
+  edges: LayoutEdge[],
+  groupFrames: ContainerRect[],
+  opts: Parameters<typeof runRoutingChain>[3],
+  limits: ChannelLimits,
+  grouped: boolean,
+): void {
+  const band = edges.filter((e) => BAND_PHASE.routes(e));
+  if (band.length === 0) return;
+  const { expandedFrames, ports } = opts;
+  const occupants = edges.filter((e) => !isPeripheralEdge(e));
+  const held = occupants.filter((e) => !BAND_PHASE.routes(e));
+  const obstacleIndex = ObstacleIndex.build(
+    [...nodes.values()],
+    [...groupFrames, ...opts.bandFrames],
+    expandedFrames,
+  );
+  // A band edge leaves the focus frame, so its gutters run outside it and the
+  // band: those frames are the content edge they are measured from.
+  const outside: ContainerRect[] = [
+    ...groupFrames,
+    ...opts.bandFrames,
+    ...(opts.enclosure ? [{ id: "", label: "", ghost: false, ...opts.enclosure }] : []),
+  ];
+  const obstaclesFor = (edge: LayoutEdge): ObstacleQuery =>
+    obstacleIndex.forEdge(edge.from, edge.to);
+  distributePorts(nodes, band, ports);
+  clearHeldPorts(nodes, band, held);
+  routeOrthogonalEdges(nodes, band, obstaclesFor);
+  routeGroupedEdges(
+    nodes,
+    occupants,
+    outside,
+    obstacleIndex,
+    expandedFrames,
+    grouped,
+    limits,
+    BAND_PHASE,
+  );
+  distributeGutterLanes(nodes, occupants, outside, limits, BAND_PHASE);
+  fanOutGutterPorts(nodes, band, obstacleIndex, expandedFrames, ports);
+  distributeChannelLanes(nodes, occupants, groupFrames.flatMap(framePieces), limits, BAND_PHASE);
+  if (ports) seatPortsOnOutline(nodes, band, ports, obstaclesFor);
 }

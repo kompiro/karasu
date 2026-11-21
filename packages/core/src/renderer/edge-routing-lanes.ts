@@ -35,7 +35,7 @@
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";
 import type { Rect } from "./edge-geometry.js";
 import { CONTAINER_LABEL_HEIGHT } from "./layout-constants.js";
-import { isPeripheralEdge } from "./band-routing.js";
+import { CANVAS_PHASE, isPeripheralEdge, type RoutingPhase } from "./band-routing.js";
 
 /** Vertical distance between two lanes that share a channel (px). */
 export const LANE_PITCH = 14;
@@ -239,6 +239,12 @@ export function distributeChannelLanes(
   edges: LayoutEdge[],
   frames: readonly Rect[],
   limits: ChannelLimits,
+  /**
+   * Which runs this pass may move (#3881). In the band phase the canvas's runs
+   * keep their y; a band run takes its lane's y unless a held run is on it, and
+   * then the nearest free one at `LANE_PITCH`.
+   */
+  phase: RoutingPhase = CANVAS_PHASE,
 ): void {
   for (const channel of collectChannels(nodes, edges, frames, limits)) {
     const { runs, lanes, upper, lower } = channel;
@@ -263,12 +269,27 @@ export function distributeChannelLanes(
     const nearest = openAbove
       ? Math.max(...runs.map((r) => r.y))
       : Math.min(...runs.map((r) => r.y));
-    for (const run of runs) {
-      const y = openAbove
+    const laneY = (run: ChannelRun) =>
+      openAbove
         ? nearest - (lanes - 1 - rank[run.lane]) * LANE_PITCH
         : openBelow
           ? nearest + rank[run.lane] * LANE_PITCH
           : centre + (rank[run.lane] - (lanes - 1) / 2) * pitch;
+    const moved = runs.filter((run) => phase.routes(run.edge));
+    if (moved.length === 0) continue;
+    // A run this pass does not move holds its y (the canvas phase moves them all).
+    const held = runs.filter((run) => !phase.routes(run.edge)).map((run) => run.y);
+    const taken = (y: number) => held.some((h) => Math.abs(h - y) < LANE_PITCH / 2);
+    for (const run of moved) {
+      const base = laneY(run);
+      let y = base;
+      for (let k = 1; taken(y) && k <= runs.length; k++) {
+        y = !taken(base - k * LANE_PITCH)
+          ? base - k * LANE_PITCH
+          : !taken(base + k * LANE_PITCH)
+            ? base + k * LANE_PITCH
+            : base;
+      }
       const wps = run.edge.waypoints!;
       wps[run.i] = { x: wps[run.i].x, y };
       wps[run.i + 1] = { x: wps[run.i + 1].x, y };

@@ -52,7 +52,7 @@ import { NO_CHANNEL_LIMITS, type ChannelLimits } from "./edge-routing-lanes.js";
 import { framePieces } from "./frame-geometry.js";
 import type { ObstacleIndex, ObstacleQuery } from "./obstacle-index.js";
 import { attachableSpans, BBOX_PORT_FRAME, mapToSpans, type PortResolver } from "./port-frame.js";
-import { isPeripheralEdge, isRowCard } from "./band-routing.js";
+import { CANVAS_PHASE, isPeripheralEdge, type RoutingPhase } from "./band-routing.js";
 
 /**
  * A routable endpoint box — a laid-out node card or an in-place-expanded
@@ -199,6 +199,11 @@ export function routeGroupedEdges(
    * stops at them instead of being measured against a card outside the frame.
    */
   limits: ChannelLimits = NO_CHANNEL_LIMITS,
+  /**
+   * Which edges this run may route, and which cards bound its rows (#3881).
+   * In the band phase the canvas's edges only claim what they hold.
+   */
+  phase: RoutingPhase = CANVAS_PHASE,
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
@@ -235,7 +240,7 @@ export function routeGroupedEdges(
     blockersAt.set(
       x,
       nodes
-        .filter((n) => isRowCard(n) && x > n.x && x < n.x + n.width)
+        .filter((n) => phase.rowCard(n) && x > n.x && x < n.x + n.width)
         .map((n) => ({ top: n.y, bottom: n.y + n.height })),
     );
   }
@@ -246,9 +251,9 @@ export function routeGroupedEdges(
   const claimed = createClaimRegister();
   // The inter-row channels a claimed vertical may later be dragged across
   // (#2611); see `verticalClaim`.
-  const bands = channelBandsOf(nodes);
+  const bands = channelBandsOf(nodes, phase.rowCard);
   // Row geometry and its lanes, cut once for the whole canvas (#2611).
-  const grid = buildRowGrid(nodes);
+  const grid = buildRowGrid(nodes, phase.rowCard);
 
   // What is already on the canvas occupies its columns too (#2611). The first
   // candidate in the chain (the interior channel-L, ADR-968) has routed some
@@ -281,7 +286,7 @@ export function routeGroupedEdges(
   );
 
   for (const edge of ordered) {
-    if (isPeripheralEdge(edge)) continue;
+    if (!phase.routes(edge)) continue;
     if (edge.waypoints && edge.waypoints.length > 0) continue;
 
     const from = boxOf(edge.from);
@@ -420,7 +425,7 @@ export function routeGroupedEdges(
           "whole-side",
         );
       } else if (frames.length === 0 && innerTop < innerBottom) {
-        freeColumnLanes(nodes, innerTop, innerBottom)
+        freeColumnLanes(nodes, innerTop, innerBottom, phase.rowCard)
           .sort(nearerCorridor)
           .some((x) =>
             tryCorridorRoute(
@@ -1192,9 +1197,12 @@ interface RowGrid {
   lanesByRow: number[][];
 }
 
-function buildRowGrid(nodes: LayoutNode[]): RowGrid {
-  const rows = rowsOf(nodes);
-  const real = nodes.filter(isRowCard);
+function buildRowGrid(
+  nodes: LayoutNode[],
+  rowCard: (n: LayoutNode) => boolean = (n) => n.ghost !== true,
+): RowGrid {
+  const rows = rowsOf(nodes, rowCard);
+  const real = nodes.filter(rowCard);
   const contentLeft = real.length > 0 ? Math.min(...real.map((n) => n.x)) : 0;
   const contentRight = real.length > 0 ? Math.max(...real.map((n) => n.x + n.width)) : 0;
   const half = GUTTER_GAP / 2;
@@ -1229,8 +1237,13 @@ function lanesAcross(left: number, right: number): number[] {
  * one column here, where per-row gaps never find it. Beyond the content is
  * the gutters' room and is not offered.
  */
-function freeColumnLanes(nodes: LayoutNode[], top: number, bottom: number): number[] {
-  const real = nodes.filter(isRowCard);
+function freeColumnLanes(
+  nodes: LayoutNode[],
+  top: number,
+  bottom: number,
+  rowCard: (n: LayoutNode) => boolean = (n) => n.ghost !== true,
+): number[] {
+  const real = nodes.filter(rowCard);
   if (real.length === 0) return [];
   const half = GUTTER_GAP / 2;
   const contentRight = Math.max(...real.map((n) => n.x + n.width));
@@ -1277,7 +1290,10 @@ function nearestFreeLane(
 }
 
 /** Rows of cards by y, each with its interior gaps, top to bottom. */
-function rowsOf(nodes: LayoutNode[]): {
+function rowsOf(
+  nodes: LayoutNode[],
+  rowCard: (n: LayoutNode) => boolean = (n) => n.ghost !== true,
+): {
   y: number;
   bottom: number;
   left: number;
@@ -1286,7 +1302,7 @@ function rowsOf(nodes: LayoutNode[]): {
 }[] {
   const byY = new Map<number, LayoutNode[]>();
   for (const n of nodes) {
-    if (!isRowCard(n)) continue;
+    if (!rowCard(n)) continue;
     const key = Math.round(n.y * 2) / 2;
     const row = byY.get(key);
     if (row) row.push(n);
@@ -1355,8 +1371,11 @@ function claimedSegmentsOf(
  * The empty bands between consecutive rows of cards — the inter-row channels
  * the lane pass later spreads horizontal runs across.
  */
-function channelBandsOf(nodes: LayoutNode[]): { top: number; bottom: number }[] {
-  const rows = rowsOf(nodes);
+function channelBandsOf(
+  nodes: LayoutNode[],
+  rowCard: (n: LayoutNode) => boolean = (n) => n.ghost !== true,
+): { top: number; bottom: number }[] {
+  const rows = rowsOf(nodes, rowCard);
   const bands: { top: number; bottom: number }[] = [];
   for (let i = 0; i + 1 < rows.length; i++) {
     if (rows[i + 1].y > rows[i].bottom) bands.push({ top: rows[i].bottom, bottom: rows[i + 1].y });
@@ -1758,6 +1777,11 @@ export function distributeGutterLanes(
   frames: ContainerRect[],
   /** The enclosing frame, which the gutters are measured inside (#3154). */
   limits: ChannelLimits = NO_CHANNEL_LIMITS,
+  /**
+   * Which corridors this run may move (#3881). In the band phase the canvas's
+   * corridors keep their lanes, and the band's take lanes beyond them.
+   */
+  phase: RoutingPhase = CANVAS_PHASE,
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
@@ -1779,8 +1803,17 @@ export function distributeGutterLanes(
   // locate its corridor with `gutterCorridor` rather than assuming waypoints[0].
   const right: { e: LayoutEdge; corridor: GutterCorridor }[] = [];
   const left: { e: LayoutEdge; corridor: GutterCorridor }[] = [];
+  // The outermost lane a corridor this run does not move already holds.
+  let heldRight = -Infinity;
+  let heldLeft = Infinity;
   for (const e of layoutEdges) {
     if (isPeripheralEdge(e)) continue;
+    if (!phase.routes(e)) {
+      const held = gutterCorridor(e);
+      if (held && held.x > maxRight) heldRight = Math.max(heldRight, held.x);
+      else if (held && held.x < minLeft) heldLeft = Math.min(heldLeft, held.x);
+      continue;
+    }
     if (e.trunkId !== undefined || e.outTrunkId !== undefined) continue;
     const corridor = gutterCorridor(e);
     if (!corridor) continue;
@@ -1790,12 +1823,20 @@ export function distributeGutterLanes(
 
   // One counter across both sides, so every lane bundle's id is unique.
   const bundleIds = { next: 0 };
+  // Beyond every held lane: no corridor this run moves lands on one it does not.
+  const rightFrom = Math.max(maxTrunkX, heldRight);
+  const leftFrom = Math.min(leftBase, heldLeft);
   assignGutterLanes(bundleGutterCorridors(right, bundleIds), (lane) =>
-    lane === 0 ? rightBase : maxTrunkX + lane * TRUNK_LANE_GAP,
+    Number.isFinite(heldRight)
+      ? rightFrom + (lane + 1) * TRUNK_LANE_GAP
+      : lane === 0
+        ? rightBase
+        : maxTrunkX + lane * TRUNK_LANE_GAP,
   );
-  assignGutterLanes(
-    bundleGutterCorridors(left, bundleIds),
-    (lane) => leftBase - lane * TRUNK_LANE_GAP,
+  assignGutterLanes(bundleGutterCorridors(left, bundleIds), (lane) =>
+    Number.isFinite(heldLeft)
+      ? leftFrom - (lane + 1) * TRUNK_LANE_GAP
+      : leftBase - lane * TRUNK_LANE_GAP,
   );
 }
 

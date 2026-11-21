@@ -9,7 +9,7 @@ import { channelLimitsOf, collectChannels, LANE_PITCH } from "./edge-routing-lan
 import { TRUNK_LANE_GAP } from "./edge-routing-groups.js";
 import { framePieces } from "./frame-geometry.js";
 import type { LayoutNode, LayoutEdge, ContainerRect, LayoutResult } from "./layout-types.js";
-import { isPeripheralEdge } from "./band-routing.js";
+import { isPeripheralEdge, withoutBandEdges } from "./band-routing.js";
 
 /**
  * Extra gap each placement row needs above it so the channel there holds its
@@ -25,10 +25,12 @@ import { isPeripheralEdge } from "./band-routing.js";
  * grows the frame, which is drawn around the placed rows.
  */
 export function channelReservations(
-  result: LayoutResult,
+  routed: LayoutResult,
   rows: readonly (readonly string[])[],
   enclosure: ContainerRect | undefined,
 ): Map<number, number> {
+  // The ghost band's edges (#3881) take what the canvas leaves; they reserve nothing.
+  const result = withoutBandEdges(routed);
   const out = new Map<number, number>();
   for (const [row, { need, gap }] of channelLanes(result, rows, enclosure)) {
     if (need > gap) out.set(row, need - gap);
@@ -105,10 +107,11 @@ const FRAME_SIDE_MARGIN = 12;
  * so from the second lane on they were drawn on or past the border.
  */
 export function gutterReservations(
-  result: LayoutResult,
+  routed: LayoutResult,
   enclosure: ContainerRect | undefined,
 ): FrameSides | undefined {
   if (!enclosure) return undefined;
+  const result = withoutBandEdges(routed);
   const innerLeft = enclosure.x + FRAME_SIDE_MARGIN;
   const innerRight = enclosure.x + enclosure.width - FRAME_SIDE_MARGIN;
   let left = 0;
@@ -154,9 +157,10 @@ export function gutterReservations(
  * settled and ADR-2598 kept.
  */
 export function columnReservations(
-  result: LayoutResult,
+  routed: LayoutResult,
   rows: readonly (readonly string[])[],
 ): Map<number, Map<string, number>> {
+  const result = withoutBandEdges(routed);
   const out = new Map<number, Map<string, number>>();
   // Two rows have no row *between* them, so no column can be reserved.
   if (rows.length < 3) return out;
