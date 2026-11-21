@@ -22,123 +22,15 @@ import { measureNode, type MeasureContext } from "./layout-measure.js";
 import { CONTAINER_PADDING, getLayoutConstants } from "./layout-constants.js";
 import { resolvePalette } from "./palette.js";
 import type { ViewSlice } from "../view/view-slice.js";
-
-// ─── Fixtures ────────────────────────────────────────────────────────────────
-
-const HUB = ["E0", "E1", "E2", "E3", "E4"];
-/** Foreign domains that only reference the hub (incoming: band above). */
-const INCOMING = ["Billing", "Audit", "Marketing", "Support", "Search"];
-/** Foreign domains the hub only references (outgoing: band below). */
-const OUTGOING = ["Catalog", "Customers", "Shipping", "Pricing", "Storage"];
-const PER_DOMAIN = 4;
-
-/**
- * `Shop.Core.Hub` is the focus. Besides the ten one-way domains:
- * - `TwoWay.In` has 2 incoming / 1 outgoing (above), `TwoWay.Out` 1 / 2
- *   (below), `TwoWay.Tie` 1 / 1, a mutual pair (below on the tie).
- * - `Lone.Up` / `Lone.Down`: one ghost per side, so no frame on either side.
- * - `Both` has two ghosts per side: a frame above and a frame below.
- */
-function entityFixture(): string {
-  const hubEntities = HUB.map((e, i) => {
-    const local = i + 1 < HUB.length ? [`${e} -> ${HUB[i + 1]} "next"`] : [];
-    const out = OUTGOING.flatMap((d, di) =>
-      Array.from({ length: PER_DOMAIN }, (_, k) => k)
-        .filter((k) => (di * PER_DOMAIN + k) % HUB.length === i)
-        .map((k) => `${e} -> ${d}.${d}${k} "uses"`),
-    );
-    const extra: Record<string, string[]> = {
-      E0: [`E0 -> TwoWay.Out "a"`],
-      E1: [`E1 -> TwoWay.Out "b"`],
-      E2: [`E2 -> TwoWay.In "c"`],
-      E3: [`E3 -> TwoWay.Tie "d"`],
-      E4: [`E4 -> Lone.Down "e"`, `E4 -> Both.Down0 "f"`, `E4 -> Both.Down1 "g"`],
-    };
-    return `      entity ${e} {\n${[...local, ...out, ...(extra[e] ?? [])].map((l) => `        ${l}`).join("\n")}\n      }`;
-  });
-  const foreign = (d: string, body: (k: number) => string) =>
-    `    domain ${d} {\n${Array.from({ length: PER_DOMAIN }, (_, k) => `      entity ${d}${k} {${body(k)}}`).join("\n")}\n    }`;
-  const incoming = INCOMING.map((d, di) =>
-    foreign(d, (k) => ` ${d}${k} -> Hub.${HUB[(di * PER_DOMAIN + k) % HUB.length]} "refs" `),
-  );
-  const outgoing = OUTGOING.map((d) => foreign(d, () => ""));
-  return `system Shop {
-  service Core {
-    domain Hub {
-${hubEntities.join("\n")}
-    }
-  }
-  service Others {
-${[...incoming, ...outgoing].join("\n")}
-    domain TwoWay {
-      entity In {
-        In -> Hub.E0 "x"
-        In -> Hub.E1 "y"
-      }
-      entity Out {
-        Out -> Hub.E2 "z"
-      }
-      entity Tie {
-        Tie -> Hub.E3 "w"
-      }
-    }
-    domain Lone {
-      entity Up {
-        Up -> Hub.E4 "u"
-      }
-      entity Down {}
-    }
-    domain Both {
-      entity Up0 {
-        Up0 -> Hub.E0 "p"
-      }
-      entity Up1 {
-        Up1 -> Hub.E1 "q"
-      }
-      entity Down0 {}
-      entity Down1 {}
-    }
-  }
-}`;
-}
-
-const SERVICES = [
-  "Billing",
-  "Audit",
-  "Marketing",
-  "Support",
-  "Catalog",
-  "Customers",
-  "Shipping",
-  "Pricing",
-];
-const DOMAINS_PER_SERVICE = 5;
-
-/** `Shop.Core` is the focus; the first four services reference it, it references the last four. */
-function serviceFixture(): string {
-  const services = SERVICES.map((s, si) => {
-    const domains = Array.from({ length: DOMAINS_PER_SERVICE }, (_, k) =>
-      si < 4
-        ? `    domain ${s}${k} {\n      -> ${k % 2 === 0 ? "Hub" : "Aux"}\n    }`
-        : `    domain ${s}${k} {}`,
-    );
-    return `  service ${s} {\n${domains.join("\n")}\n  }`;
-  });
-  const outgoing = SERVICES.slice(4).flatMap((s) =>
-    Array.from({ length: DOMAINS_PER_SERVICE }, (_, k) => `      -> ${s}${k}`),
-  );
-  return `system Shop {
-  service Core {
-    domain Hub {
-${outgoing.join("\n")}
-    }
-    domain Aux {
-      -> Hub
-    }
-  }
-${services.join("\n")}
-}`;
-}
+import {
+  DOMAINS_PER_SERVICE,
+  INCOMING,
+  OUTGOING,
+  PER_DOMAIN,
+  SERVICES,
+  entityFixture,
+  serviceFixture,
+} from "./fixtures/ghost-band.js";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

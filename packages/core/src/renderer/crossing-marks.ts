@@ -35,7 +35,6 @@ import type {
 } from "./layout-types.js";
 import type { Point } from "./edge-geometry.js";
 import { BoxGrid, chooseCellSize } from "./spatial-grid.js";
-import { isPeripheralEdge } from "./band-routing.js";
 
 /**
  * The band that shows how many edges a trunk stretch carries: this wide for one
@@ -250,9 +249,9 @@ export function detectMarks(edges: LayoutEdge[]): {
   };
 
   edges.forEach((edge, edgeIdx) => {
-    // Ghost/cyclic edges are peripheral (dimmed / nudged perpendicular) and are
-    // not part of the orthogonal grouped route set, so they carry no marks.
-    if (isPeripheralEdge(edge)) return;
+    // A cyclic edge, or a ghost outside the band, is peripheral and carries no
+    // marks; a ghost band edge is routed like any other and does (#3881).
+    if (edge.cyclic || (edge.ghost && !edge.band)) return;
 
     const pts: Point[] = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
     for (let i = 0; i < pts.length - 1; i++) {

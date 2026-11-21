@@ -12,7 +12,8 @@
  * frame and the band are measured against it. Ghost user and ghost system
  * cards stay out of the rows, as before.
  */
-import type { LayoutEdge, LayoutNode } from "./layout-types.js";
+import type { ContainerRect, LayoutEdge, LayoutNode, Rect } from "./layout-types.js";
+import { CHAR_WIDTH, estimateTextWidth } from "./rendering-constants.js";
 
 /** Whether the routing passes leave this edge as drawn (a ghost outside the band, or a cycle). */
 export function isPeripheralEdge(edge: LayoutEdge): boolean {
@@ -20,7 +21,7 @@ export function isPeripheralEdge(edge: LayoutEdge): boolean {
 }
 
 /** Whether this card is one a row of the canvas is measured with. */
-export function isRowCard(node: LayoutNode): boolean {
+function isRowCard(node: LayoutNode): boolean {
   return node.ghost !== true || node.ghostBand !== undefined;
 }
 
@@ -66,8 +67,10 @@ const PORT_CLEARANCE = 12;
 /**
  * Move each band edge's port off any port a held (canvas) edge already uses on
  * the same side of the same card, to the middle of the widest free stretch of
- * that side (#3881). Runs after `distributePorts` spread the band's own ports
- * and before any route is built, so only the two endpoints move.
+ * that side (#3881). Runs once after `distributePorts` spread the band's own
+ * ports, and once more after the band's routes are built, since the candidate
+ * passes re-anchor what they reroute: then the stub square to the side moves
+ * with its port, so the route stays orthogonal.
  */
 export function clearHeldPorts(
   nodes: ReadonlyMap<string, LayoutNode>,
@@ -126,9 +129,75 @@ export function clearHeldPorts(
       }
       const moved =
         side === "top" || side === "bottom" ? { x: best.mid, y: p.y } : { x: p.x, y: best.mid };
+      // A routed edge's stub off this side moves with its port, so it stays square.
+      const wps = e.waypoints;
+      const stub = wps && wps.length > 0 ? (end === "from" ? 0 : wps.length - 1) : undefined;
+      if (stub !== undefined) {
+        const w = wps![stub];
+        const across = side === "top" || side === "bottom" ? w.x === p.x : w.y === p.y;
+        if (across) {
+          wps![stub] =
+            side === "top" || side === "bottom" ? { x: moved.x, y: w.y } : { x: w.x, y: moved.y };
+        }
+      }
       if (end === "from") e.fromPoint = moved;
       else e.toPoint = moved;
       taken.push(best.mid);
     }
   }
+}
+
+/** What the band phase of the routing chain needs from the canvas's frames (#3881). */
+export interface BandRouting {
+  /** The band's frames: obstacles with the per-endpoint exemption. */
+  frames: readonly ContainerRect[];
+  /** The frame that encloses the band, grown to hold the band's routes. */
+  outer: ContainerRect | undefined;
+  /** The title text of every frame that is not the band's: obstacles to every band edge. */
+  titles: readonly Rect[];
+}
+
+export const NO_BAND: BandRouting = { frames: [], outer: undefined, titles: [] };
+
+/** The title text box a frame draws (`renderContainer`: 12px bold at x + 12, baseline y + 18). */
+export function frameTitleBox(frame: ContainerRect): Rect {
+  return {
+    x: frame.x + 12,
+    y: frame.y + 4,
+    width: estimateTextWidth(frame.label, (CHAR_WIDTH * 12) / 13) + 4,
+    height: 18,
+  };
+}
+
+/** The band routing inputs of a single-system canvas: {@link NO_BAND} when it has no band. */
+export function bandRoutingOf(containers: readonly ContainerRect[]): BandRouting {
+  const frames = containers.filter((c) => c.ghostBand !== undefined);
+  if (frames.length === 0) return NO_BAND;
+  return {
+    frames,
+    outer: containers[0]?.ghostBand === undefined ? containers[0] : undefined,
+    titles: containers
+      .filter((c) => c.ghostBand === undefined && c.group !== true)
+      .map(frameTitleBox),
+  };
+}
+
+/** Grow `outer` so it holds every point of the band's routes, `margin` inside its border. */
+export function growAroundBandRoutes(
+  outer: ContainerRect | undefined,
+  band: readonly LayoutEdge[],
+  margin: number,
+): void {
+  if (!outer || band.length === 0) return;
+  const pts = band.flatMap((e) => [e.fromPoint, ...(e.waypoints ?? []), e.toPoint]);
+  const minX = Math.min(...pts.map((p) => p.x)) - margin;
+  const maxX = Math.max(...pts.map((p) => p.x)) + margin;
+  const minY = Math.min(...pts.map((p) => p.y)) - margin;
+  const maxY = Math.max(...pts.map((p) => p.y)) + margin;
+  const right = Math.max(outer.x + outer.width, maxX);
+  const bottom = Math.max(outer.y + outer.height, maxY);
+  outer.x = Math.min(outer.x, minX);
+  outer.y = Math.min(outer.y, minY);
+  outer.width = right - outer.x;
+  outer.height = bottom - outer.y;
 }

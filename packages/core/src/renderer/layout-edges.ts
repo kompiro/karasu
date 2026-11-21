@@ -12,12 +12,21 @@ import {
   routeGroupedEdges,
   aggregateGroupTrunks,
   aggregateGroupSourceTrunks,
-  distributeGutterLanes,
   fanOutGutterPorts,
 } from "./edge-routing-groups.js";
+import { distributeGutterLanes } from "./edge-routing-gutter-lanes.js";
 import { framePieces } from "./frame-geometry.js";
 import { ObstacleIndex, type ObstacleQuery } from "./obstacle-index.js";
-import { BAND_PHASE, clearHeldPorts, isPeripheralEdge } from "./band-routing.js";
+import { GHOST_MARGIN } from "./layout-constants.js";
+
+export { NO_BAND } from "./band-routing.js";
+import {
+  BAND_PHASE,
+  clearHeldPorts,
+  growAroundBandRoutes,
+  isPeripheralEdge,
+  type BandRouting,
+} from "./band-routing.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import {
   channelLimitsOf,
@@ -418,13 +427,14 @@ export function runRoutingChain(
      */
     enclosure: Rect | undefined;
     /**
-     * The ghost band's frames (#2823). Obstacles with the per-endpoint
-     * exemption, like a group frame: an edge whose endpoint is not inside a band
-     * frame does not cross it. Kept out of `groupFrames`, which also decides
-     * gutters, lanes and trunks, where a band frame must not count as a group.
-     * Required so every pipeline states it (`[]` where there is no band).
+     * The ghost band (#2823, #3881): its frames are obstacles with the
+     * per-endpoint exemption, like a group frame, and every other frame's
+     * title is an obstacle to the band's edges. Kept out of `groupFrames`,
+     * which also decides gutters, lanes and trunks, where a band frame must
+     * not count as a group. Required so every pipeline states it (`NO_BAND`
+     * where there is no band).
      */
-    bandFrames: readonly ContainerRect[];
+    band: BandRouting;
   },
 ): void {
   const { expandedFrames, ports } = opts;
@@ -527,16 +537,23 @@ function routeBandEdges(
   const { expandedFrames, ports } = opts;
   const occupants = edges.filter((e) => !isPeripheralEdge(e));
   const held = occupants.filter((e) => !BAND_PHASE.routes(e));
+  // A frame title is a frame no node is in, so no band edge is exempt from it.
+  const titles = opts.band.titles.map((r, i) => ({
+    id: `title#${i}`,
+    label: "",
+    ghost: false,
+    ...r,
+  }));
   const obstacleIndex = ObstacleIndex.build(
     [...nodes.values()],
-    [...groupFrames, ...opts.bandFrames],
+    [...groupFrames, ...opts.band.frames, ...titles],
     expandedFrames,
   );
   // A band edge leaves the focus frame, so its gutters run outside it and the
   // band: those frames are the content edge they are measured from.
   const outside: ContainerRect[] = [
     ...groupFrames,
-    ...opts.bandFrames,
+    ...opts.band.frames,
     ...(opts.enclosure ? [{ id: "", label: "", ghost: false, ...opts.enclosure }] : []),
   ];
   const obstaclesFor = (edge: LayoutEdge): ObstacleQuery =>
@@ -556,6 +573,11 @@ function routeBandEdges(
   );
   distributeGutterLanes(nodes, occupants, outside, limits, BAND_PHASE);
   fanOutGutterPorts(nodes, band, obstacleIndex, expandedFrames, ports);
-  distributeChannelLanes(nodes, occupants, groupFrames.flatMap(framePieces), limits, BAND_PHASE);
+  // A band frame bounds the channels next to it, as a card row does.
+  const channelFrames = [...groupFrames, ...opts.band.frames].flatMap(framePieces);
+  distributeChannelLanes(nodes, occupants, channelFrames, limits, BAND_PHASE);
   if (ports) seatPortsOnOutline(nodes, band, ports, obstaclesFor);
+  clearHeldPorts(nodes, band, held);
+  // A route that went round the band stays inside the frame that holds it.
+  growAroundBandRoutes(opts.band.outer, band, GHOST_MARGIN);
 }

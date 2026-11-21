@@ -202,20 +202,24 @@ describe("mutual pair drawn as one line (#3027)", () => {
     const before = laidOut(UMAMI, UMAMI_PATH, { withKey: false });
     const after = laidOut(UMAMI, UMAMI_PATH);
 
-    it("draws 27 lines instead of 41, with every authored edge still its own LayoutEdge", () => {
+    it("draws 28 lines instead of 41, with every authored edge still its own LayoutEdge", () => {
       expect(before.edges).toHaveLength(41);
       expect(linesDrawn(before)).toBe(41);
       expect(after.edges).toHaveLength(41);
-      expect(pairsOf(after)).toHaveLength(14);
-      expect(linesDrawn(after)).toBe(27);
+      // 14 pairs and 27 lines before the band's edges were routed (#3881): a
+      // band edge now crosses Boards <-> TrackedEntities where the split would go.
+      expect(pairsOf(after)).toHaveLength(13);
+      expect(linesDrawn(after)).toBe(28);
     });
 
-    it("crosses 58 times or fewer instead of 134", () => {
+    it("crosses 64 times or fewer instead of 140", () => {
       // 157 and 61 before #3494 anchored the wrapped layer's edges top and bottom;
       // 134 before the ghost band (#2823) put the ghost domains that reference
-      // this service above its frame instead of in one row below it.
-      expect(crossings(before.edges)).toBe(126);
-      expect(crossings(after.edges)).toBeLessThanOrEqual(58);
+      // this service above its frame instead of in one row below it; 126 before
+      // the band's edges were routed around the canvas's (#3881), which cross it more.
+      expect(crossings(before.edges)).toBe(140);
+      // 58 before the band's edges were routed (#3881).
+      expect(crossings(after.edges)).toBeLessThanOrEqual(64);
     });
 
     it("moves no card", () => {
@@ -303,7 +307,8 @@ describe("mutual pair drawn as one line (#3027)", () => {
 
     it("still merges every pair when a global rule positions the labels", () => {
       const offset = laidOut(UMAMI, UMAMI_PATH, { style: "edge { label-offset: 0 8px; }" });
-      expect(pairsOf(offset)).toHaveLength(14);
+      // 13 since a band edge crosses one pair's split (#3881), as in the default case.
+      expect(pairsOf(offset)).toHaveLength(13);
     });
   });
 

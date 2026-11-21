@@ -48,7 +48,6 @@ import { segmentCrossesRect } from "./edge-geometry.js";
 import { BoxGrid, chooseCellSize } from "./spatial-grid.js";
 import { canvasLabel } from "./edge-label-disclosure.js";
 import { drawnFrame } from "./frame-geometry.js";
-import { isPeripheralEdge } from "./band-routing.js";
 
 /**
  * One edge label offered to the placement pass. `anchor` is the label's default
@@ -321,7 +320,7 @@ export function buildLabelInputs(
     // exception: a label the canvas may leave off (`label-display: auto`,
     // #3022) has to be seen by the pass, because a label the pass never looks
     // at is drawn into whatever it lands on.
-    const peripheral = isPeripheralEdge(edge);
+    const peripheral = edge.ghost === true || edge.cyclic === true;
     if (peripheral && drawn?.display !== "auto") return;
     // A dimmed ghost line never displaces a real label, in any mode (#2360).
     // A cyclic line is added below, once for the whole canvas.

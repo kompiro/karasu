@@ -25,6 +25,7 @@ import {
 } from "./layout-geometry.js";
 import { computeLayoutEdges, portResolver, runRoutingChain } from "./layout-edges.js";
 import {
+  bandRoutingOf,
   placeGhostUsers,
   placeGhostBands,
   placeCallerGhostSystems,
@@ -526,8 +527,7 @@ function layoutInner(
   // runRoutingChain. In-place expansion (#1921/#1923) shares the chain: the
   // expanded frame rects let a service-level edge anchor on the frame border
   // and detour around the *other* frames, while an edge to an interior domain
-  // still enters its own frame. The style-fed port resolver (#2422) turns on
-  // outline seating.
+  // still enters its own frame. The style-fed port resolver (#2422) seats ports.
   runRoutingChain(
     layoutNodes,
     layoutEdges,
@@ -545,7 +545,7 @@ function layoutInner(
       groupBands: groupBy ? groupBands : null,
       ports: portResolver(options),
       enclosure: focusFrame,
-      bandFrames: containers.filter((c) => c.ghostBand !== undefined),
+      band: bandRoutingOf(containers),
     },
   );
 

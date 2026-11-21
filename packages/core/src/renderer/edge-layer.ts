@@ -15,7 +15,6 @@ import { el } from "./svg-builder.js";
 import { GHOST_OPACITY } from "./rendering-constants.js";
 import type { DiagramPalette } from "./palette.js";
 import { FACET_DIM_OPACITY, type FacetOverlay } from "./facet-overlay.js";
-import { isPeripheralEdge } from "./band-routing.js";
 
 /**
  * The renderer's label pass (#2048), run once by the edge pass below and once
@@ -57,7 +56,7 @@ export function withheldLabelsOf(
   return placeLabels(layoutResult, styles, palette)
     .labelInputs.filter((label) => {
       const edge = layoutResult.edges[label.index];
-      return label.deferred === true && !isPeripheralEdge(edge);
+      return label.deferred === true && edge.ghost !== true && edge.cyclic !== true;
     })
     .map((label) => {
       const box = labelBox(label.anchor, label.width, label.fontSize);

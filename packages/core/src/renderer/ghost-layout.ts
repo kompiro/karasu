@@ -7,6 +7,8 @@ import type { ViewSlice, GhostSystem } from "../view/view-slice.js";
 import type { LayoutNode, ContainerRect } from "./layout-types.js";
 import { nodePathKey, nodePathRefId } from "../parser/node-path.js";
 import { placeGhostBand } from "./ghost-band.js";
+
+export { bandRoutingOf } from "./band-routing.js";
 import {
   CONTAINER_PADDING,
   CONTAINER_LABEL_HEIGHT,
