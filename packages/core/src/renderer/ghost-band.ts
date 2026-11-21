@@ -31,7 +31,7 @@ import { gridColumnCount } from "./layer-layout-logics.js";
 import { makeLayoutNode, measureNode, type MeasureContext } from "./layout-measure.js";
 
 /** Gap between the focus side (its outermost inner frame) and the first band row. */
-export const GHOST_ROW_GAP = 60;
+const GHOST_ROW_GAP = 60;
 
 type BandSide = "above" | "below";
 
