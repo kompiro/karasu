@@ -91,6 +91,7 @@ function routePair(
     groupBands: null,
     ports: undefined,
     enclosure: undefined,
+    bandFrames: [],
   });
   return edges;
 }

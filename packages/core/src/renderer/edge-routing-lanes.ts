@@ -35,6 +35,7 @@
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";
 import type { Rect } from "./edge-geometry.js";
 import { CONTAINER_LABEL_HEIGHT } from "./layout-constants.js";
+import { isPeripheralEdge } from "./band-routing.js";
 
 /** Vertical distance between two lanes that share a channel (px). */
 export const LANE_PITCH = 14;
@@ -174,7 +175,7 @@ export function collectChannels(
   type Band = { upper: number; lower: number; runs: Omit<ChannelRun, "lane">[] };
   const bands = new Map<string, Band>();
   for (const edge of edges) {
-    if (edge.ghost || edge.cyclic) continue;
+    if (isPeripheralEdge(edge)) continue;
     for (const run of channelRunsOf(edge)) {
       const band = bandAround(run.y, obstacles);
       const key = `${band.upper}|${band.lower}`;

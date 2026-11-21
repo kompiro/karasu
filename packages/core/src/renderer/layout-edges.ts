@@ -226,6 +226,8 @@ function pushGhostEdges(
         y: fromIsAbove ? toNode.y : toNode.y + toNode.height,
       },
       ghost: true,
+      // Both lists this serves are band relations: the chain routes them (#2823).
+      band: true,
     });
   }
 }
@@ -410,6 +412,14 @@ export function runRoutingChain(
      * encloses the canvas.
      */
     enclosure: Rect | undefined;
+    /**
+     * The ghost band's frames (#2823). Obstacles with the per-endpoint
+     * exemption, like a group frame: an edge whose endpoint is not inside a band
+     * frame does not cross it. Kept out of `groupFrames`, which also decides
+     * gutters, lanes and trunks, where a band frame must not count as a group.
+     * Required so every pipeline states it (`[]` where there is no band).
+     */
+    bandFrames: readonly ContainerRect[];
   },
 ): void {
   const { expandedFrames, ports } = opts;
@@ -428,7 +438,11 @@ export function runRoutingChain(
   // Built from the whole canvas, never from the subset a particular candidate
   // would touch: the obstacle set an edge is tested against must not depend on
   // which route shape is being tried (TPL-1954).
-  const obstacleIndex = ObstacleIndex.build([...nodes.values()], groupFrames, expandedFrames);
+  const obstacleIndex = ObstacleIndex.build(
+    [...nodes.values()],
+    [...groupFrames, ...opts.bandFrames],
+    expandedFrames,
+  );
   const obstaclesFor = (edge: LayoutEdge): ObstacleQuery =>
     obstacleIndex.forEdge(edge.from, edge.to);
   // Distribute ports across each node side that hosts ≥ 2 edges, so labels

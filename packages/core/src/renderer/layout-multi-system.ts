@@ -473,6 +473,8 @@ export function layoutMultipleSystems(
       // (no canvas-wide row ordinal, ADR-2598), so its channels are left as
       // they were.
       enclosure: undefined,
+      // No ghost band on the multi-system root (#2823).
+      bandFrames: [],
     });
 
     // A gutter route runs outside the system's cards, so it can reach past the

@@ -143,6 +143,7 @@ export function placeGhostBand(
           width: c.dims.width,
           height: c.dims.height,
           ghost: true,
+          ghostBand: side,
         }),
       );
 

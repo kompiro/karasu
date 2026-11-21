@@ -545,6 +545,7 @@ function layoutInner(
       groupBands: groupBy ? groupBands : null,
       ports: portResolver(options),
       enclosure: focusFrame,
+      bandFrames: containers.filter((c) => c.ghostBand !== undefined),
     },
   );
 

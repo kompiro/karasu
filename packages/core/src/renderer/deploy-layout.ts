@@ -652,6 +652,8 @@ function routeDeployEdges(containers: ContainerRect[], edges: LayoutEdge[]): voi
     ports: undefined,
     // The containers are the cards here; no frame encloses them all.
     enclosure: undefined,
+    // Deploy views have no ghost band (#2823).
+    bandFrames: [],
   });
   for (const e of edges) e.ghost = true;
 }

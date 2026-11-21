@@ -30,6 +30,7 @@
  */
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";
 import { BBOX_PORT_FRAME, portPoint, type PortResolver, type Side } from "./port-frame.js";
+import { isPeripheralEdge } from "./band-routing.js";
 
 interface Anchor {
   edge: LayoutEdge;
@@ -54,7 +55,7 @@ export function distributePorts(
   const groups = new Map<string, Anchor[]>();
 
   for (const edge of layoutEdges) {
-    if (edge.ghost || edge.cyclic) continue;
+    if (isPeripheralEdge(edge)) continue;
     const from = layoutNodes.get(edge.from);
     const to = layoutNodes.get(edge.to);
     if (!from || !to) continue;

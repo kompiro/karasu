@@ -52,6 +52,7 @@ import { NO_CHANNEL_LIMITS, type ChannelLimits } from "./edge-routing-lanes.js";
 import { framePieces } from "./frame-geometry.js";
 import type { ObstacleIndex, ObstacleQuery } from "./obstacle-index.js";
 import { attachableSpans, BBOX_PORT_FRAME, mapToSpans, type PortResolver } from "./port-frame.js";
+import { isPeripheralEdge, isRowCard } from "./band-routing.js";
 
 /**
  * A routable endpoint box — a laid-out node card or an in-place-expanded
@@ -234,7 +235,7 @@ export function routeGroupedEdges(
     blockersAt.set(
       x,
       nodes
-        .filter((n) => !n.ghost && x > n.x && x < n.x + n.width)
+        .filter((n) => isRowCard(n) && x > n.x && x < n.x + n.width)
         .map((n) => ({ top: n.y, bottom: n.y + n.height })),
     );
   }
@@ -258,7 +259,7 @@ export function routeGroupedEdges(
   // measurements showed. Claiming them keys the arbitration on the resource
   // rather than on which pass produced the route (TPL-1954).
   for (const edge of layoutEdges) {
-    if (edge.ghost || edge.cyclic) continue;
+    if (isPeripheralEdge(edge)) continue;
     if (!edge.waypoints || edge.waypoints.length === 0) continue;
     const from = boxOf(edge.from);
     const to = boxOf(edge.to);
@@ -272,10 +273,15 @@ export function routeGroupedEdges(
   // and gutter lanes are handed out greedily, so the order decides who gets
   // what; keyed on geometry it does not depend on where in the file an edge
   // was declared.
-  const ordered = [...layoutEdges].sort((a, b) => cmpEdgeGeometry(a, b, boxOf));
+  // A band edge (#2823) routes after every edge of the canvas itself, so it
+  // takes only what they leave and never pushes one of them to a gutter.
+  const bandLast = (e: LayoutEdge) => (e.band === true ? 1 : 0);
+  const ordered = [...layoutEdges].sort(
+    (a, b) => bandLast(a) - bandLast(b) || cmpEdgeGeometry(a, b, boxOf),
+  );
 
   for (const edge of ordered) {
-    if (edge.ghost || edge.cyclic) continue;
+    if (isPeripheralEdge(edge)) continue;
     if (edge.waypoints && edge.waypoints.length > 0) continue;
 
     const from = boxOf(edge.from);
@@ -839,7 +845,7 @@ function settledRoutes(
 ): Point[][] {
   const out: Point[][] = [];
   for (const e of edges) {
-    if (e === self || e.ghost || e.cyclic) continue;
+    if (e === self || isPeripheralEdge(e)) continue;
     if (e.waypoints && e.waypoints.length > 0) {
       out.push([e.fromPoint, ...e.waypoints, e.toPoint]);
     } else if (!obstaclesFor(e, obstacleIndex).segmentCrosses(e.fromPoint, e.toPoint)) {
@@ -1188,7 +1194,7 @@ interface RowGrid {
 
 function buildRowGrid(nodes: LayoutNode[]): RowGrid {
   const rows = rowsOf(nodes);
-  const real = nodes.filter((n) => !n.ghost);
+  const real = nodes.filter(isRowCard);
   const contentLeft = real.length > 0 ? Math.min(...real.map((n) => n.x)) : 0;
   const contentRight = real.length > 0 ? Math.max(...real.map((n) => n.x + n.width)) : 0;
   const half = GUTTER_GAP / 2;
@@ -1224,7 +1230,7 @@ function lanesAcross(left: number, right: number): number[] {
  * the gutters' room and is not offered.
  */
 function freeColumnLanes(nodes: LayoutNode[], top: number, bottom: number): number[] {
-  const real = nodes.filter((n) => !n.ghost);
+  const real = nodes.filter(isRowCard);
   if (real.length === 0) return [];
   const half = GUTTER_GAP / 2;
   const contentRight = Math.max(...real.map((n) => n.x + n.width));
@@ -1280,7 +1286,7 @@ function rowsOf(nodes: LayoutNode[]): {
 }[] {
   const byY = new Map<number, LayoutNode[]>();
   for (const n of nodes) {
-    if (n.ghost) continue;
+    if (!isRowCard(n)) continue;
     const key = Math.round(n.y * 2) / 2;
     const row = byY.get(key);
     if (row) row.push(n);
@@ -1774,7 +1780,7 @@ export function distributeGutterLanes(
   const right: { e: LayoutEdge; corridor: GutterCorridor }[] = [];
   const left: { e: LayoutEdge; corridor: GutterCorridor }[] = [];
   for (const e of layoutEdges) {
-    if (e.ghost || e.cyclic) continue;
+    if (isPeripheralEdge(e)) continue;
     if (e.trunkId !== undefined || e.outTrunkId !== undefined) continue;
     const corridor = gutterCorridor(e);
     if (!corridor) continue;
@@ -2038,7 +2044,7 @@ export function fanOutGutterPorts(
   };
 
   for (const e of layoutEdges) {
-    if (e.ghost || e.cyclic) continue;
+    if (isPeripheralEdge(e)) continue;
     const from = boxOf(e.from);
     const to = boxOf(e.to);
     if (!from || !to) continue;
@@ -2321,7 +2327,7 @@ function buildSegmentIndex(
     }
   };
   for (const edge of edges) {
-    if (edge.ghost || edge.cyclic) continue;
+    if (isPeripheralEdge(edge)) continue;
     add(edge, [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint]);
   }
   return {
