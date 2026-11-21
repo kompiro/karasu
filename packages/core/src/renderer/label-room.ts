@@ -14,6 +14,7 @@
  */
 import { channelLimitsOf } from "./edge-routing-lanes.js";
 import { channelLanes } from "./layout-reservations.js";
+import { withoutBandEdges } from "./band-routing.js";
 import { applyMutualPairs } from "./mutual-pair.js";
 import type {
   ContainerRect,
@@ -167,7 +168,8 @@ export function chooseLabelRoom<R extends Run>(input: {
   if (!withheldOf || first.rows.length === 0) return baseline;
   // Lanes are counted on the edges before the mutual pairs are split, as the
   // structural reservations were; the labels on the halves the canvas draws.
-  const lanes = channelLanes(first.result, first.rows, first.enclosure);
+  // The ghost band's runs (#3881) never open room between the canvas's rows.
+  const lanes = channelLanes(withoutBandEdges(first.result), first.rows, first.enclosure);
   settle(first, options);
   const withheld = withheldOf(first.result);
   if (withheld.length === 0) return baseline;

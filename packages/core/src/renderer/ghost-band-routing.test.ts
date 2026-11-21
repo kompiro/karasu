@@ -173,6 +173,39 @@ for (const [name, src, extract] of [
       expect(collinearWithBand(res)).toEqual([]);
     });
 
+    it("runs along no frame border", () => {
+      // A muted band line laid a few pixels inside a frame border reads as the border.
+      const borders = res.containers
+        .filter((c) => c.ghostBand === undefined)
+        .flatMap((c) => [
+          { v: true, at: c.x, lo: c.y, hi: c.y + c.height, id: c.id },
+          { v: true, at: c.x + c.width, lo: c.y, hi: c.y + c.height, id: c.id },
+          { v: false, at: c.y, lo: c.x, hi: c.x + c.width, id: c.id },
+          { v: false, at: c.y + c.height, lo: c.x, hi: c.x + c.width, id: c.id },
+        ]);
+      const hugging = bandEdges(res).flatMap((e) => {
+        const pts = pointsOf(e);
+        return pts.slice(0, -1).flatMap((a, i) => {
+          const b = pts[i + 1];
+          const v = Math.abs(a.x - b.x) < 1e-6;
+          if (!v && Math.abs(a.y - b.y) > 1e-6) return [];
+          const at = v ? a.x : a.y;
+          const [lo, hi] = v
+            ? [Math.min(a.y, b.y), Math.max(a.y, b.y)]
+            : [Math.min(a.x, b.x), Math.max(a.x, b.x)];
+          return borders
+            .filter(
+              (f) =>
+                f.v === v &&
+                Math.abs(f.at - at) < 6 &&
+                Math.min(hi, f.hi) - Math.max(lo, f.lo) > 20,
+            )
+            .map((f) => `${e.from}->${e.to} along ${f.id}`);
+        });
+      });
+      expect(hugging).toEqual([]);
+    });
+
     it("crosses no frame title", () => {
       const titles = res.containers.filter((c) => c.ghostBand === undefined).map(frameTitleBox);
       const crossing = bandEdges(res).filter(
@@ -312,5 +345,22 @@ ${below.map((d) => `    domain ${d} {\n      entity ${d}0 {}\n    }`).join("\n")
         .map(() => `${e.from}->${e.to} outside`),
     ]);
     expect(off).toEqual([]);
+  });
+});
+
+describe("ghost band routing beside a ghost system (#3881)", () => {
+  // The service view fixture with a caller system: the frame around the band
+  // grows round the band's routes, and the caller's frame keeps its distance.
+  const src = serviceFixture().replace(
+    /\n}$/,
+    "\n}\nsystem Caller {\n  service Front {\n    -> Shop.Core\n  }\n}",
+  );
+  const { res } = layoutOf(src, (s) => extractView(s, ["Shop", "Core"]));
+
+  it("keeps the caller's frame as far from the frame around the band as without a band", () => {
+    const caller = res.containers.find((c) => c.id === "Caller")!;
+    const outer = res.containers[0];
+    expect(caller).toBeDefined();
+    expect(outer.x - (caller.x + caller.width)).toBe(80);
   });
 });

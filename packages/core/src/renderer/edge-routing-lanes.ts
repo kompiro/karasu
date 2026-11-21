@@ -277,20 +277,45 @@ export function distributeChannelLanes(
           : centre + (rank[run.lane] - (lanes - 1) / 2) * pitch;
     const moved = runs.filter((run) => phase.routes(run.edge));
     if (moved.length === 0) continue;
-    // A run this pass does not move holds its y (the canvas phase moves them all).
-    const held = runs.filter((run) => !phase.routes(run.edge)).map((run) => run.y);
-    const taken = (y: number) => held.some((h) => Math.abs(h - y) < LANE_PITCH / 2);
+    // A run this pass does not move holds its y (the canvas phase moves them
+    // all, so nothing is held and every run takes its lane's y). In the band
+    // phase a band run keeps clear of the held runs and of the band runs already
+    // placed that share its x range, inside the channel's bounds (#3881).
+    const occupied: { y: number; leftX: number; rightX: number }[] = runs.filter(
+      (run) => !phase.routes(run.edge),
+    );
+    const anyHeld = occupied.length > 0;
+    const fits = (y: number) =>
+      y > upper + LANE_PITCH / 2 - 1e-6 && y < lower - LANE_PITCH / 2 + 1e-6;
+    // Runs of one lane stay on one y: a lane bundle's shared run is one run.
+    const laneAt = new Map<number, number>();
     for (const run of moved) {
       const base = laneY(run);
-      let y = base;
-      // Every held run rules out at most one lane, so a free one is this close.
-      for (let k = 1; taken(y) && k <= held.length + 1; k++) {
-        y = !taken(base - k * LANE_PITCH)
-          ? base - k * LANE_PITCH
-          : !taken(base + k * LANE_PITCH)
-            ? base + k * LANE_PITCH
-            : base;
+      const near = occupied.filter((o) => o.leftX < run.rightX && run.leftX < o.rightX);
+      const clearance = (y: number) => Math.min(Infinity, ...near.map((o) => Math.abs(o.y - y)));
+      const free = (y: number) => clearance(y) >= LANE_PITCH - 1e-6 && fits(y);
+      let y = laneAt.get(run.lane) ?? base;
+      if (anyHeld && !laneAt.has(run.lane) && near.length > 0 && !free(base)) {
+        // The nearest free lane at the pitch, then the roomiest y the channel
+        // still has when no whole lane is left.
+        const steps = Array.from({ length: near.length + 1 }, (_, k) => k + 1);
+        const atPitch = steps
+          .flatMap((k) => [base - k * LANE_PITCH, base + k * LANE_PITCH])
+          .find(free);
+        const span = [
+          Math.max(upper, base - (near.length + 1) * LANE_PITCH),
+          Math.min(lower, base + (near.length + 1) * LANE_PITCH),
+        ];
+        const roomiest = Array.from(
+          { length: Math.max(0, Math.floor(span[1] - span[0]) + 1) },
+          (_, k) => span[0] + k,
+        )
+          .filter((c) => c > upper && c < lower)
+          .reduce((best, c) => (clearance(c) > clearance(best) ? c : best), base);
+        y = atPitch ?? roomiest;
       }
+      laneAt.set(run.lane, y);
+      if (anyHeld) occupied.push({ y, leftX: run.leftX, rightX: run.rightX });
       const wps = run.edge.waypoints!;
       wps[run.i] = { x: wps[run.i].x, y };
       wps[run.i + 1] = { x: wps[run.i + 1].x, y };
