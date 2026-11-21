@@ -169,13 +169,19 @@ export function frameTitleBox(frame: ContainerRect): Rect {
   };
 }
 
-/** The band routing inputs of a single-system canvas: {@link NO_BAND} when it has no band. */
+/**
+ * The band routing inputs of a single-system canvas. A band whose groups are all
+ * single cards has no frame of its own, but its edges are routed all the same,
+ * so the titles and the frame around the band are given whatever the frames.
+ * The band phase does nothing on a canvas without band edges.
+ */
 export function bandRoutingOf(containers: readonly ContainerRect[]): BandRouting {
-  const frames = containers.filter((c) => c.ghostBand !== undefined);
-  if (frames.length === 0) return NO_BAND;
+  if (containers.length === 0) return NO_BAND;
   return {
-    frames,
-    outer: containers[0]?.ghostBand === undefined ? containers[0] : undefined,
+    frames: containers.filter((c) => c.ghostBand !== undefined),
+    // Only a frame around the focus grows: on a canvas whose one frame is the
+    // focus, the band already sits outside it.
+    outer: containers[0].ghost ? containers[0] : undefined,
     titles: containers
       .filter((c) => c.ghostBand === undefined && c.group !== true)
       .map(frameTitleBox),

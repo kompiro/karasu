@@ -283,7 +283,8 @@ export function distributeChannelLanes(
     for (const run of moved) {
       const base = laneY(run);
       let y = base;
-      for (let k = 1; taken(y) && k <= runs.length; k++) {
+      // Every held run rules out at most one lane, so a free one is this close.
+      for (let k = 1; taken(y) && k <= held.length + 1; k++) {
         y = !taken(base - k * LANE_PITCH)
           ? base - k * LANE_PITCH
           : !taken(base + k * LANE_PITCH)

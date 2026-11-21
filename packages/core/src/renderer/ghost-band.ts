@@ -31,7 +31,7 @@ import { gridColumnCount } from "./layer-layout-logics.js";
 import { makeLayoutNode, measureNode, type MeasureContext } from "./layout-measure.js";
 
 /** Gap between the focus side (its outermost inner frame) and the first band row. */
-const GHOST_ROW_GAP = 60;
+export const GHOST_ROW_GAP = 60;
 
 type BandSide = "above" | "below";
 
@@ -52,6 +52,12 @@ export interface BandInput {
   remap: (id: string) => string;
   /** The row-width budget this placement run is trying (ADR-2593). */
   widthBudget: number;
+  /**
+   * Room reserved before a band row (#3881), keyed `"<side>:<row>"`; row 0's
+   * is between the focus side and the first row. `layout()`'s second placement
+   * passes what the band's lanes measured they lacked; absent on the first.
+   */
+  bandGaps?: ReadonlyMap<string, number>;
 }
 
 /** The side a ghost goes to, from how many of its relations come in and go out. */
@@ -211,8 +217,11 @@ export function placeGhostBand(
     const rows = wrapRows(sorted, limit, NODE_GAP);
     if (rows.length > 1) widthBound = true;
     // Row 0 faces the focus; the upper band stacks upward, bottom-aligned.
-    let edgeY = side === "below" ? innerBottom + GHOST_ROW_GAP : innerTop - GHOST_ROW_GAP;
-    for (const row of rows) {
+    const extra = (row: number) => input.bandGaps?.get(`${side}:${row}`) ?? 0;
+    const step = side === "below" ? 1 : -1;
+    let edgeY = (side === "below" ? innerBottom : innerTop) + step * (GHOST_ROW_GAP + extra(0));
+    for (const [r, row] of rows.entries()) {
+      if (r > 0) edgeY += step * extra(r);
       const rowWidth = row.reduce((a, b) => a + b.width, 0) + (row.length - 1) * NODE_GAP;
       const rowHeight = Math.max(...row.map((b) => b.height));
       let x = centreX - rowWidth / 2;

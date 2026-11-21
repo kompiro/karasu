@@ -128,6 +128,23 @@ function collinearWithBand(res: LayoutResult): string[] {
   return out;
 }
 
+/** Strict-interior crossing points of two polylines. */
+function properCrossings(p: Point[], q: Point[]): Point[] {
+  const out: Point[] = [];
+  for (let i = 0; i + 1 < p.length; i++) {
+    for (let k = 0; k + 1 < q.length; k++) {
+      const [a, b, c, d] = [p[i], p[i + 1], q[k], q[k + 1]];
+      const den = (b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x);
+      if (Math.abs(den) < 1e-9) continue;
+      const t = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / den;
+      const u = ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)) / den;
+      if (t > 1e-6 && t < 1 - 1e-6 && u > 1e-6 && u < 1 - 1e-6)
+        out.push({ x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
+    }
+  }
+  return out;
+}
+
 for (const [name, src, extract] of [
   [
     "entity view",
@@ -164,10 +181,25 @@ for (const [name, src, extract] of [
       expect(crossing.map((e) => `${e.from}->${e.to}`)).toEqual([]);
     });
 
-    it("marks its crossings with hops", () => {
-      const band = new Set(bandEdges(res).map((e) => res.edges.indexOf(e)));
+    it("marks every crossing it is part of with a hop", () => {
+      const band = new Set(bandEdges(res));
+      const lines = res.edges.filter((e) => !e.cyclic && !(e.ghost && !band.has(e)));
       const hops = res.crossingMarks?.hops ?? [];
-      expect([...band].some((i) => hops.some((h) => h.edge === i))).toBe(true);
+      const crossings: { at: Point; pair: string }[] = [];
+      lines.forEach((a, i) => {
+        for (const b of lines.slice(i + 1)) {
+          if (!band.has(a) && !band.has(b)) continue;
+          if (a.trunkId !== undefined && a.trunkId === b.trunkId) continue;
+          if (a.outTrunkId !== undefined && a.outTrunkId === b.outTrunkId) continue;
+          for (const at of properCrossings(pointsOf(a), pointsOf(b)))
+            crossings.push({ at, pair: `${a.from}->${a.to} x ${b.from}->${b.to}` });
+        }
+      });
+      expect(crossings.length).toBeGreaterThan(0);
+      const bare = crossings.filter(
+        ({ at }) => !hops.some((h) => Math.hypot(h.x - at.x, h.y - at.y) <= h.halfWidth + 1),
+      );
+      expect(bare.map((c) => c.pair)).toEqual([]);
     });
 
     it("leaves the canvas's own frame and routes as they are without the band's edges", () => {
@@ -240,5 +272,45 @@ describe("ghost band routing: lanes and pairs (#3881)", () => {
     );
     const halves = bandEdges(pair).filter((e) => e.pairHalf);
     expect(halves.map((e) => `${e.from}->${e.to}`).sort()).toEqual(["Far.F->L", "L->Far.F"]);
+  });
+});
+
+describe("ghost band routing on a band of single cards (#3881)", () => {
+  // Every foreign domain contributes one ghost per side, so the band has no
+  // frame of its own; its edges are routed all the same.
+  const above = ["Billing", "Audit", "Search"];
+  const below = ["Shipping", "Pricing", "Storage"];
+  const src = `system S {
+  service A {
+    domain Hub {
+      entity E0 {
+${below.map((d) => `        E0 -> ${d}.${d}0 "uses"`).join("\n")}
+        E0 -> E1 "next"
+      }
+      entity E1 {}
+    }
+  }
+  service B {
+${above.map((d) => `    domain ${d} {\n      entity ${d}0 {\n        ${d}0 -> Hub.E1 "refs"\n      }\n    }`).join("\n")}
+${below.map((d) => `    domain ${d} {\n      entity ${d}0 {}\n    }`).join("\n")}
+  }
+}`;
+  const { res } = layoutOf(src, (s) => extractEntityView(s, ["S", "A", "Hub"]));
+
+  it("has a band without frames", () => {
+    expect(res.containers.filter((c) => c.ghostBand !== undefined)).toEqual([]);
+    expect(bandEdges(res)).toHaveLength(above.length + below.length);
+  });
+
+  it("crosses no frame title and stays inside the frame around the band", () => {
+    const titles = res.containers.filter((c) => c.ghostBand === undefined).map(frameTitleBox);
+    const outer = res.containers[0];
+    const off = bandEdges(res).flatMap((e) => [
+      ...(countPolylinePenetrations(pointsOf(e), titles) > 0 ? [`${e.from}->${e.to} title`] : []),
+      ...pointsOf(e)
+        .filter((p) => !inside({ ...p, width: 0, height: 0 }, outer))
+        .map(() => `${e.from}->${e.to} outside`),
+    ]);
+    expect(off).toEqual([]);
   });
 });
