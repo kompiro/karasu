@@ -313,13 +313,12 @@ export function buildLabelInputs(
     if (edge.cyclic === true && edge.ghost !== true) {
       cyclicLines.push(edgeLine(index, points, style.strokeWidth));
     }
-    // Ghost/cyclic edges are peripheral (dimmed / back-arc styled) and sit
-    // outside the "real" geometry every other renderer pass reasons about —
-    // crossing-marks, port fan-out, channel/group routing and bundle nudging
-    // all skip them (ADR-968). They stay out of this pass too, with one
-    // exception: a label the canvas may leave off (`label-display: auto`,
-    // #3022) has to be seen by the pass, because a label the pass never looks
-    // at is drawn into whatever it lands on.
+    // Ghost/cyclic edges are peripheral (dimmed / back-arc styled). Most passes
+    // skip them (ADR-968); a ghost band edge is routed (#3881) but stays dimmed,
+    // so its label is treated as any ghost's here. They stay out of this pass,
+    // with one exception: a label the canvas may leave off (`label-display:
+    // auto`, #3022) has to be seen by the pass, because a label the pass never
+    // looks at is drawn into whatever it lands on.
     const peripheral = edge.ghost === true || edge.cyclic === true;
     if (peripheral && drawn?.display !== "auto") return;
     // A dimmed ghost line never displaces a real label, in any mode (#2360).

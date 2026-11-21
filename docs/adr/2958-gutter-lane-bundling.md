@@ -13,8 +13,8 @@ scope:
   concerns:
     - performance
 assumptions:
-  - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: bundleGutterCorridors"
-  - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: distributeGutterLanes"
+  - "symbol: packages/core/src/renderer/edge-routing-gutter-lanes.ts :: bundleGutterCorridors"
+  - "symbol: packages/core/src/renderer/edge-routing-gutter-lanes.ts :: distributeGutterLanes"
   - "symbol: packages/core/src/renderer/layout-types.ts :: trunkJoin"
   - "symbol: packages/core/src/renderer/edge-routing-lanes.ts :: collectChannels"
   - "symbol: packages/core/src/renderer/crossing-marks.ts :: hopGrid"
