@@ -148,10 +148,11 @@ export function clearHeldPorts(
         if (end === "from") e.fromPoint = moved;
         else e.toPoint = moved;
       };
+      // A fresh copy each time: the next `place` edits the waypoints in place.
       const restore = () => {
         e.fromPoint = before.from;
         e.toPoint = before.to;
-        e.waypoints = before.wps;
+        e.waypoints = before.wps?.map((w) => ({ ...w }));
       };
       // A move is kept only where the route it leaves behind is still sound.
       const settled = mids.find((mid) => {

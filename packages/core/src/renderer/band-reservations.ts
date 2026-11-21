@@ -37,8 +37,19 @@ export function bandGapReservations(result: {
   const inner = nest.filter(
     (c) => c === focus || (c !== result.containers[0] && contains(c, focus)),
   );
+  // Ghost users hang beside the focus and can reach below it; the placer starts
+  // the lower band below them too. A ghost system's cards sit in their frame.
+  const users = [...result.nodes.values()].filter(
+    (n) =>
+      n.ghost &&
+      n.ghostBand === undefined &&
+      !result.containers.some((c, i) => i > 0 && c.ghost && contains(c, n)),
+  );
   const focusTop = Math.min(...inner.map((c) => c.y));
-  const focusBottom = Math.max(...inner.map((c) => c.y + c.height));
+  const focusBottom = Math.max(
+    ...inner.map((c) => c.y + c.height),
+    ...users.map((n) => n.y + n.height),
+  );
   const runs = result.edges
     .filter((e) => e.band === true)
     .flatMap((e) => {
@@ -71,10 +82,7 @@ export function bandGapReservations(result: {
           ? [r === 0 ? focusBottom : rows[r - 1].bottom, row.top]
           : [row.bottom, r === 0 ? focusTop : rows[r - 1].top];
       const inGap = runs.filter((run) => run.y > lo + 1e-6 && run.y < hi - 1e-6);
-      const lanes = Math.max(
-        0,
-        ...inGap.map((a) => inGap.filter((b) => b.lo < a.hi && a.lo < b.hi).length),
-      );
+      const lanes = lanesFor(inGap);
       const lack = Math.ceil((lanes + 1) * LANE_PITCH - (hi - lo));
       if (lanes > 0 && lack > 0) out.set(`${side}:${r}`, lack);
     });
@@ -84,3 +92,18 @@ export function bandGapReservations(result: {
 
 const contains = (f: Rect, n: Rect) =>
   n.x >= f.x && n.y >= f.y && n.x + n.width <= f.x + f.width && n.y + n.height <= f.y + f.height;
+
+/**
+ * How many lanes runs take when each goes on the first lane whose last run
+ * ends a lane's gap before it starts: the interval partition the lane pass
+ * (`collectChannels`) does.
+ */
+function lanesFor(runs: readonly { lo: number; hi: number }[]): number {
+  const ends: number[] = [];
+  for (const run of [...runs].sort((a, b) => a.lo - b.lo)) {
+    const lane = ends.findIndex((end) => end + LANE_PITCH <= run.lo);
+    if (lane === -1) ends.push(run.hi);
+    else ends[lane] = run.hi;
+  }
+  return ends.length;
+}

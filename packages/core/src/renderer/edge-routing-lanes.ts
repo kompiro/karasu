@@ -287,15 +287,19 @@ export function distributeChannelLanes(
     const anyHeld = occupied.length > 0;
     const fits = (y: number) =>
       y > upper + LANE_PITCH / 2 - 1e-6 && y < lower - LANE_PITCH / 2 + 1e-6;
-    // Runs of one lane stay on one y: a lane bundle's shared run is one run.
-    const laneAt = new Map<number, number>();
+    // A lane bundle's runs stay on one y: their shared run is one run (#2958).
+    // Runs merely sharing a lane index (x ranges apart) each find their own.
+    const bundleOf = (run: ChannelRun) => run.edge.trunkId ?? run.edge.outTrunkId;
+    const laneAt = new Map<string, number>();
     for (const run of moved) {
       const base = laneY(run);
       const near = occupied.filter((o) => o.leftX < run.rightX && run.leftX < o.rightX);
       const clearance = (y: number) => Math.min(Infinity, ...near.map((o) => Math.abs(o.y - y)));
       const free = (y: number) => clearance(y) >= LANE_PITCH - 1e-6 && fits(y);
-      let y = laneAt.get(run.lane) ?? base;
-      if (anyHeld && !laneAt.has(run.lane) && near.length > 0 && !free(base)) {
+      const bundle = bundleOf(run);
+      const shared = bundle !== undefined ? laneAt.get(`${bundle}@${run.lane}`) : undefined;
+      let y = shared ?? base;
+      if (anyHeld && shared === undefined && near.length > 0 && !free(base)) {
         // The nearest free lane at the pitch, then the roomiest y the channel
         // still has when no whole lane is left.
         const steps = Array.from({ length: near.length + 1 }, (_, k) => k + 1);
@@ -314,7 +318,7 @@ export function distributeChannelLanes(
           .reduce((best, c) => (clearance(c) > clearance(best) ? c : best), base);
         y = atPitch ?? roomiest;
       }
-      laneAt.set(run.lane, y);
+      if (bundle !== undefined) laneAt.set(`${bundle}@${run.lane}`, y);
       if (anyHeld) occupied.push({ y, leftX: run.leftX, rightX: run.rightX });
       const wps = run.edge.waypoints!;
       wps[run.i] = { x: wps[run.i].x, y };

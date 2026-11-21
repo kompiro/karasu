@@ -102,7 +102,7 @@ export function routeBandEdges(
   );
   liftOffBorders(
     band,
-    opts.band.inner,
+    [...opts.band.inner, ...opts.band.frames],
     LANE_PITCH,
     (e) => obstaclesFor(e).polylineClear(pts(e)) && !sharesStretch(e, occupants),
     occupants,

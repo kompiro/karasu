@@ -46,4 +46,22 @@ describe("bandGapReservations (#3881)", () => {
     const edges = [run(310, 0, 100), run(320, 150, 250), run(330, 0, 300, false)];
     expect(bandGapReservations({ nodes, edges, containers })).toBeUndefined();
   });
+
+  it("counts lanes as the lane pass partitions them, not as runs that overlap one run", () => {
+    // 0..100 and 250..400 share a lane; 50..300 takes the other.
+    const edges = [run(310, 0, 100), run(320, 50, 300), run(330, 250, 400)];
+    expect(bandGapReservations({ nodes, edges, containers })).toEqual(
+      new Map([["below:0", 3 * LANE_PITCH - 40]]),
+    );
+  });
+
+  it("measures the first row's channel below ghost users hanging under the focus", () => {
+    const user = { id: "u", x: -200, y: 120, width: 120, height: 200, ghost: true } as LayoutNode;
+    const withUser = new Map([...nodes, ["u", user]]);
+    // The channel is 320..340, not 300..340: three lanes lack 4 × LANE_PITCH − 20.
+    const edges = [run(325, 0, 200), run(330, 50, 250), run(335, 100, 300)];
+    expect(bandGapReservations({ nodes: withUser, edges, containers })).toEqual(
+      new Map([["below:0", 4 * LANE_PITCH - 20]]),
+    );
+  });
 });

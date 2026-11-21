@@ -176,7 +176,7 @@ for (const [name, src, extract] of [
     it("runs along no frame border", () => {
       // A muted band line laid a few pixels inside a frame border reads as the border.
       const borders = res.containers
-        .filter((c) => c.ghostBand === undefined)
+        .filter((c) => c.group !== true)
         .flatMap((c) => [
           { v: true, at: c.x, lo: c.y, hi: c.y + c.height, id: c.id },
           { v: true, at: c.x + c.width, lo: c.y, hi: c.y + c.height, id: c.id },
