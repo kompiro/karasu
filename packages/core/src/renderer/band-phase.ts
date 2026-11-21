@@ -90,7 +90,11 @@ export function routeBandEdges(
     { x: c.x, y: c.y - 1, width: c.width, height: 2 },
     { x: c.x, y: c.y + c.height - 1, width: c.width, height: 2 },
   ]);
-  const channelFrames = [...[...groupFrames, ...opts.band.frames].flatMap(framePieces), ...borders];
+  const channelFrames = [
+    ...[...groupFrames, ...opts.band.frames].flatMap(framePieces),
+    ...borders,
+    ...opts.band.titles,
+  ];
   distributeChannelLanes(nodes, occupants, channelFrames, limits, BAND_PHASE);
   if (ports) seatPortsOnOutline(nodes, band, ports, obstaclesFor);
   const pts = (e: LayoutEdge) => [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];

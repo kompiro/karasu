@@ -17,7 +17,7 @@ type: product
 
 ### AC-1: 帯の線はカードと帯の枠を貫通しない
 
-- [ ] AT-1: エンティティビューと service ビューの帯の線は、端点でないカードと、どちらの端点も入っていない帯の枠を横切らず、ほかの線と同じ区間に重ならず、どの枠のタイトルの文字も横切らない
+- [ ] AT-1: エンティティビューと service ビューの帯の線は、端点でないカードと、どちらの端点も入っていない帯の枠を横切らず、ほかの線と同じ区間に重ならず、端点を中に持たない枠のタイトルの文字を横切らない（帯の枠に入る線は、その枠の上端を通る）
 
   > ✅ Automated — `packages/core/src/renderer/ghost-band-routing.test.ts` › `ghost band routing on the entity view (#3881)` › `crosses no card and no band frame that holds neither end`
   >
@@ -31,7 +31,7 @@ type: product
 
 - [ ] AT-2: 帯の線の交差に hop が付く。帯の線の相互の関連の対は、ADR-3027 のほかの条件を満たせば 1 本の線で描かれる。焦点の枠と帯の間の横走りは `LANE_PITCH` 以上離れる
 
-  > ✅ Automated — `packages/core/src/renderer/ghost-band-routing.test.ts` › `ghost band routing on the entity view (#3881)` › `marks its crossings with hops`
+  > ✅ Automated — `packages/core/src/renderer/ghost-band-routing.test.ts` › `ghost band routing on the entity view (#3881)` › `marks every crossing it is part of with a hop`
   >
   > ✅ Automated — `packages/core/src/renderer/ghost-band-routing.test.ts` › `ghost band routing: lanes and pairs (#3881)` › `draws a band edge's mutual pair as one line (ADR-3027)`
   >

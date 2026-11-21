@@ -97,7 +97,8 @@ export function distributeGutterLanes(
   }
 
   // One counter across both sides, so every lane bundle's id is unique.
-  const bundleIds = { next: 0 };
+  // The band phase's bundles (#3881) are named apart from the canvas phase's.
+  const bundleIds = { next: 0, prefix: phase === CANVAS_PHASE ? "" : "band-" };
   // Beyond every held lane: no corridor this run moves lands on one it does not.
   const rightFrom = Math.max(maxTrunkX, heldRight);
   const leftFrom = Math.min(leftBase, heldLeft);
@@ -164,7 +165,10 @@ interface LaneUnit {
  * A group of one is not a bundle: the corridor keeps a lane of its own, so a
  * model whose gutter edges share no end lays out exactly as before.
  */
-function bundleGutterCorridors(items: CorridorItem[], ids: { next: number }): LaneUnit[] {
+function bundleGutterCorridors(
+  items: CorridorItem[],
+  ids: { next: number; prefix: string },
+): LaneUnit[] {
   const units: LaneUnit[] = [];
   const pointsKey = (pts: readonly Point[]) => pts.map((p) => `${p.x},${p.y}`).join(";");
   const groupBy = (list: CorridorItem[], key: (it: CorridorItem) => string) => {
@@ -196,7 +200,7 @@ function bundleGutterCorridors(items: CorridorItem[], ids: { next: number }): La
       rest.push(...group);
       continue;
     }
-    const id = `${group[0].e.to}#lane-in-${ids.next++}`;
+    const id = `${group[0].e.to}#lane-in-${ids.prefix}${ids.next++}`;
     for (const { e, corridor } of group) {
       e.trunkId = id;
       e.trunkJoin = corridor.i;
@@ -216,7 +220,7 @@ function bundleGutterCorridors(items: CorridorItem[], ids: { next: number }): La
       units.push(unitOf(group));
       continue;
     }
-    const id = `${group[0].e.from}#lane-out-${ids.next++}`;
+    const id = `${group[0].e.from}#lane-out-${ids.prefix}${ids.next++}`;
     for (const { e, corridor } of group) {
       e.outTrunkId = id;
       e.trunkJoin = corridor.i + 1;

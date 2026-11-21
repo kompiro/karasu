@@ -268,13 +268,13 @@ export function routeGroupedEdges(
   // rather than on which pass produced the route (TPL-1954).
   for (const edge of layoutEdges) {
     if (isPeripheralEdge(edge)) continue;
-    if (!edge.waypoints || edge.waypoints.length === 0) continue;
-    const from = boxOf(edge.from);
-    const to = boxOf(edge.to);
+    // In the band phase (#3881) a held straight route claims its line too.
+    const held = phase !== CANVAS_PHASE && !phase.routes(edge);
+    if (!edge.waypoints?.length && !held) continue;
+    const [from, to] = [boxOf(edge.from), boxOf(edge.to)];
     if (!from || !to) continue;
-    claimed.add(
-      claimedSegmentsOf([edge.fromPoint, ...edge.waypoints, edge.toPoint], from, to, bands),
-    );
+    const path = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
+    claimed.add(claimedSegmentsOf(path, from, to, bands));
   }
 
   // Canonical order (#2610): by the endpoints' geometry, then by id. Corridors

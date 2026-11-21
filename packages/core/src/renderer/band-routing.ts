@@ -389,7 +389,13 @@ export function liftOffBorders(
       const fit = [1, -1, 2, -2]
         .map((k) => on.at + k * pitch)
         .find((c) => {
-          if (!roomy(e, v, c, lo, hi)) return false;
+          const onAnother = borders.some(
+            (f) =>
+              f.v === v &&
+              Math.abs(f.at - c) < pitch / 2 &&
+              Math.min(hi, f.hi) > Math.max(lo, f.lo),
+          );
+          if (onAnother || !roomy(e, v, c, lo, hi)) return false;
           set(c);
           return accept(e);
         });
