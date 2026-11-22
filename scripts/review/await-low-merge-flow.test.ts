@@ -132,7 +132,7 @@ describe("awaitLowMerge: what the session must do first", () => {
   });
 });
 
-describe("awaitLowMerge: falling back to --auto", () => {
+describe("awaitLowMerge: the merger leaves a ready PR unmerged", () => {
   it("falls back once the merger could merge for 30 minutes and did not", async () => {
     const { deps } = fake({ pulls: [open()], verdicts: [mergeVerdict()] });
     expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({
