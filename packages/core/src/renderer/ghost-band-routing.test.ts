@@ -214,6 +214,38 @@ for (const [name, src, extract] of [
       expect(crossing.map((e) => `${e.from}->${e.to}`)).toEqual([]);
     });
 
+    it("leaves a band line straight only where nothing blocks it, and routes the rest with horizontal and vertical runs (#3888)", () => {
+      // The canvas's rule (#3888): a band line may stay one straight line,
+      // diagonal or not, only where it crosses no card, band frame or frame
+      // title; a routed one is made of horizontal and vertical runs only.
+      const nodes = [...res.nodes.values()];
+      const bandFrames = res.containers.filter((c) => c.ghostBand !== undefined);
+      const titles = res.containers.filter((c) => c.ghostBand === undefined).map(frameTitleBox);
+      const blocked = (e: LayoutEdge) => {
+        const ends = [res.nodes.get(e.from)!, res.nodes.get(e.to)!];
+        const obstacles = [
+          ...nodes.filter((n) => n.id !== e.from && n.id !== e.to),
+          ...bandFrames.filter((f) => !ends.some((n) => inside(n, f))),
+          ...titles,
+        ];
+        return countPolylinePenetrations([e.fromPoint, e.toPoint], obstacles) > 0;
+      };
+      const straight = bandEdges(res).filter((e) => (e.waypoints?.length ?? 0) === 0);
+      const routed = bandEdges(res).filter((e) => (e.waypoints?.length ?? 0) > 0);
+      expect(straight.length).toBeGreaterThan(0);
+      expect(routed.length).toBeGreaterThan(0);
+      expect(straight.filter(blocked).map((e) => `${e.from}->${e.to}`)).toEqual([]);
+      const slanted = routed.filter((e) => {
+        const pts = pointsOf(e);
+        return pts
+          .slice(0, -1)
+          .some(
+            (a, i) => Math.abs(a.x - pts[i + 1].x) > 1e-6 && Math.abs(a.y - pts[i + 1].y) > 1e-6,
+          );
+      });
+      expect(slanted.map((e) => `${e.from}->${e.to}`)).toEqual([]);
+    });
+
     it("marks every crossing it is part of with a hop", () => {
       const band = new Set(bandEdges(res));
       const lines = res.edges.filter((e) => !e.cyclic && !(e.ghost && !band.has(e)));
