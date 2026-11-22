@@ -3,7 +3,8 @@
  * `runRoutingChain` routes the canvas's own edges, then hands the ghost band's
  * edges to {@link routeBandEdges}.
  */
-import type { LayoutNode, LayoutEdge, ContainerRect } from "./layout-types.js";
+import type { LayoutNode, LayoutEdge, ContainerRect, LayoutOptions, Rect } from "./layout-types.js";
+import { applyMutualPairs } from "./mutual-pair.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
 import { routeGroupedEdges, fanOutGutterPorts } from "./edge-routing-groups.js";
 import { distributeGutterLanes } from "./edge-routing-gutter-lanes.js";
@@ -127,4 +128,25 @@ export function routeBandEdges(
   const before = opts.band.outer && { ...opts.band.outer };
   growAroundBandRoutes(opts.band.outer, band, GHOST_MARGIN);
   if (before) keepBesideClear(before, opts.band, nodes, edges);
+}
+
+/**
+ * The boxes of the labels the canvas draws (#3889), for the band phase: the
+ * canvas's routed edges are copied, their mutual pairs split as the canvas will
+ * draw them (#3027), and the renderer's label pass is run on them. The band's
+ * lines are not in that pass's obstacles (#2360), so these are the boxes the
+ * final drawing has.
+ */
+export function canvasLabelsOf(
+  nodes: Map<string, LayoutNode>,
+  containers: ContainerRect[],
+  options: LayoutOptions,
+): (canvas: readonly LayoutEdge[]) => readonly Rect[] {
+  const boxesOf = options.canvasLabelBoxes;
+  if (!boxesOf) return () => [];
+  return (canvas) => {
+    const edges = canvas.map((e) => ({ ...e, waypoints: e.waypoints && [...e.waypoints] }));
+    const crossingMarks = applyMutualPairs(edges, options);
+    return boxesOf({ nodes, edges, containers, width: 0, height: 0, crossingMarks });
+  };
 }

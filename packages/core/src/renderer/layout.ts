@@ -57,15 +57,9 @@ import {
 } from "./layout-measure.js";
 import { nodePathRefId } from "../parser/node-path.js";
 import { applyMutualPairs } from "./mutual-pair.js";
+import { canvasLabelsOf } from "./band-phase.js";
 import { chooseLabelRoom } from "./label-room.js";
-import type {
-  LayoutNode,
-  LayoutEdge,
-  ContainerRect,
-  LayoutResult,
-  LayoutOptions,
-  Rect,
-} from "./layout-types.js";
+import type { LayoutNode, ContainerRect, LayoutResult, LayoutOptions } from "./layout-types.js";
 
 export type { LayoutNode, LayoutEdge, LayoutResult, DisplayMode } from "./layout-types.js";
 
@@ -173,27 +167,6 @@ interface LayoutRun {
    * that pass the chain none.
    */
   enclosure?: ContainerRect;
-}
-
-/**
- * The boxes of the labels the canvas draws (#3889), for the band phase: the
- * canvas's routed edges are copied, their mutual pairs split as the canvas will
- * draw them (#3027), and the renderer's label pass is run on them. The band's
- * lines are not in that pass's obstacles (#2360), so these are the boxes the
- * final drawing has.
- */
-function canvasLabelsOf(
-  nodes: Map<string, LayoutNode>,
-  containers: ContainerRect[],
-  options: LayoutOptions,
-): (canvas: readonly LayoutEdge[]) => readonly Rect[] {
-  const boxesOf = options.canvasLabelBoxes;
-  if (!boxesOf) return () => [];
-  return (canvas) => {
-    const edges = canvas.map((e) => ({ ...e, waypoints: e.waypoints && [...e.waypoints] }));
-    const crossingMarks = applyMutualPairs(edges, options);
-    return boxesOf({ nodes, edges, containers, width: 0, height: 0, crossingMarks });
-  };
 }
 
 function layoutInner(

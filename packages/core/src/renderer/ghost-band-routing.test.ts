@@ -404,7 +404,7 @@ describe("ghost band routing off the canvas's labels (#3889)", () => {
     );
   };
 
-  it("draws the canvas labels a band line ran through before (\"has\", \"holds\")", () => {
+  it('draws the canvas labels a band line ran through before ("has", "holds")', () => {
     expect([...canvasLabels(res).keys()].sort()).toEqual(["Cart->LineItem", "Order->LineItem"]);
   });
 
