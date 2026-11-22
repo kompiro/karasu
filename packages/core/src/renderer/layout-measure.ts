@@ -127,6 +127,8 @@ export function makeLayoutNode(
     height: number;
     subLabel?: string;
     ghost?: boolean;
+    /** The ghost band side (#2823); set only on a band card. */
+    ghostBand?: "above" | "below";
     /** Full path of the node (see `LayoutNode.path`); omitted for ghosts and stubs. */
     path?: readonly string[];
   },
@@ -151,6 +153,7 @@ export function makeLayoutNode(
     width: opts.width,
     height: opts.height,
     ghost: opts.ghost ?? false,
+    ...(opts.ghostBand !== undefined ? { ghostBand: opts.ghostBand } : {}),
   };
 }
 

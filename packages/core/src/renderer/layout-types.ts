@@ -67,6 +67,12 @@ export interface LayoutNode {
   width: number;
   height: number;
   ghost?: boolean;
+  /**
+   * Set on a ghost card placed in the ghost band (#2823), with the side of the
+   * focus frame it sits on. Such a card counts as a card of a row for routing
+   * (`isRowCard`); ghost users and ghost systems leave it unset.
+   */
+  ghostBand?: "above" | "below";
   /** Optional sub-label rendered below the main label (e.g., parent service name for ghost domains). */
   subLabel?: string;
   /**
@@ -108,6 +114,12 @@ export interface LayoutEdge {
    */
   canonicalId?: string;
   ghost?: boolean;
+  /**
+   * A ghost band edge (#2823): a ghost entity or ghost domain relation. It is
+   * still drawn muted (`ghost`), but the routing chain routes it like any other
+   * edge (`isPeripheralEdge`). Ghost user and ghost system edges leave it unset.
+   */
+  band?: boolean;
   cyclic?: boolean;
   /** Constituent domain edges for aggregated "N domain edges" implicit service edges. */
   domainEdges?: DomainEdgeDetail[];

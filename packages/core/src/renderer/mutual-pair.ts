@@ -27,6 +27,7 @@
 import { computeCrossingMarks } from "./crossing-marks.js";
 import type { Point } from "./edge-geometry.js";
 import type { CrossingMarks, LayoutEdge, LayoutOptions } from "./layout-types.js";
+import { isPeripheralEdge } from "./band-routing.js";
 
 /**
  * How far the split stays from a crossing on the shared line (px), at least.
@@ -68,8 +69,7 @@ function isCollapseStub(id: string): boolean {
  */
 function eligible(e: LayoutEdge): boolean {
   return (
-    e.ghost !== true &&
-    e.cyclic !== true &&
+    !isPeripheralEdge(e) &&
     e.groupBackward !== true &&
     e.trunkId === undefined &&
     e.outTrunkId === undefined &&

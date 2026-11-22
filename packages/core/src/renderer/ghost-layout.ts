@@ -7,6 +7,9 @@ import type { ViewSlice, GhostSystem } from "../view/view-slice.js";
 import type { LayoutNode, ContainerRect } from "./layout-types.js";
 import { nodePathKey, nodePathRefId } from "../parser/node-path.js";
 import { placeGhostBand } from "./ghost-band.js";
+
+export { bandRoutingOf } from "./band-routing.js";
+export { bandGapReservations } from "./band-reservations.js";
 import {
   CONTAINER_PADDING,
   CONTAINER_LABEL_HEIGHT,
@@ -78,6 +81,8 @@ const GHOST_SYSTEM_GAP = 80;
 interface GhostBandRun {
   remap: (id: string) => string;
   widthBudget: number;
+  /** Room reserved before band rows by `layout()`'s second placement (#3881). */
+  bandGaps?: ReadonlyMap<string, number>;
 }
 
 /**
