@@ -150,7 +150,7 @@ export function routeBandEdges(
  * so a pair the band crosses may split, and label, elsewhere; and a band label
  * an author positioned is an obstacle the canvas's labels go round.
  */
-export function canvasLabelsOf(
+function canvasLabelsOf(
   nodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
   options: LayoutOptions,
