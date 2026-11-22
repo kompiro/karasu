@@ -2387,7 +2387,6 @@ interface PrView {
   baseRefName: string;
   title: string;
   body: string;
-  autoMergeRequest: unknown;
   closingIssuesReferences: {
     number: number;
     repository: { name: string; owner: { login: string } };
@@ -2534,7 +2533,7 @@ export function checkPr(pr: string, head?: string): PrCheck {
       "--repo",
       REPO,
       "--json",
-      "author,labels,headRefOid,baseRefName,title,body,autoMergeRequest,closingIssuesReferences",
+      "author,labels,headRefOid,baseRefName,title,body,closingIssuesReferences",
     ]),
   ) as PrView;
   if (head !== undefined && view.headRefOid !== head) {
@@ -2593,12 +2592,6 @@ export function checkPr(pr: string, head?: string): PrCheck {
     files,
   });
   errors.push(...tests.errors);
-  if (view.autoMergeRequest !== null && tier !== "low") {
-    errors.push(
-      `PR #${pr} has auto-merge enabled but its tier is ${tier}; only Low merges on its own. ` +
-        `Disable it with gh pr merge ${pr} --disable-auto.`,
-    );
-  }
   let design: DesignCheck | null = null;
   if (tier === "high") {
     let why: string | null = null;

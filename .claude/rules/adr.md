@@ -211,7 +211,6 @@ node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/review/await-low-mer
 | --- | --- |
 | `merged-by-merger` | 終わり。下の「マージ後の後始末」をする |
 | `merged-otherwise` | merger の App 以外（人の手など）がマージした。下の「マージ後の後始末」をする |
-| `auto-merge-enabled` | native の auto-merge が有効になっている（古い手順のセッションか人の操作）。`gh pr merge <N> --disable-auto` で解き、もう一度走らせる |
 | `fix-pr` | `reasons` の問題を PR で直し、もう一度走らせる。コミットを足すなら下の「PR を作った後に差分を足すとき」に従う |
 | `checks-stuck` | 止まった check を `gh run rerun <run-id>` で走らせ直す。必須 check が 1 本も現れていなければ PR を close して reopen する。もう一度走らせる |
 | `fallback` | PR の側に落ちたものが無いのに merger がマージしない（理由は JSON 行の `verdict` と `details`）。`gh run list -w low-pr-merger.yml --status completed -L 5` で終わった run を探し、判定を `gh run view <run-id> --log`（または run のページの summary）で読み、JSON 行と一緒に kompiro に知らせて止まる |
@@ -308,18 +307,15 @@ Low でなければ、出た段階のラベルを付けて draft で作り、`gh
 - 新しい ADR が karasu のドメインの外への URL を足すと、その ADR は Medium になり、
   merger はマージしない（`docs/process/review.md`「リスク段階」の「外のドメインへのリンク」）。
   上流の Issue や PR を引くトリアージの ADR はこれに当たり、人間が読む
-- PR を作った後に差分を足すときは、native の auto-merge が有効なら（`gh pr view <N> --json autoMergeRequest --jq '.autoMergeRequest != null'` が `true` を出す）
-  先に `gh pr merge <N> --disable-auto` で解き、それから push する。native の auto-merge は merger の判定も SHA の固定も
-  通らずに新しい HEAD をマージしうる。有効でなければ、そのまま push してよい。push すると記録が HEAD を覆わなくなるので、
+- PR を作った後に差分を足すときは、そのまま push してよい。push すると記録が HEAD を覆わなくなるので、
   記録を作り直すまで merger はマージしない。push の前に merger が判定していても、マージは判定した head の SHA に
   固定されているので、足したコミットは入らない。push より先にマージされていたら、足す差分は新しい PR で出す。
   push 後は手順 1（段階の判定）からやり直し、足したコミットの指摘と対応で記録を作り直す。
   - Low のとき: 本文の記録を作り直し、手順 3 のスクリプトをもう一度走らせる
   - Low でないとき: `gh pr ready <N> --undo` で draft に戻し、ラベルを出た段階に付け替えて `gh pr ready <N>` で
     外し、通常の PR として扱う。`risk: high` / `risk: design` なら、CodeRabbit のレビューはこのときに走る
-- Low でない段階のラベルの PR は merger の対象外で、人間がマージする。`gh pr merge --auto` は使わない
-  （native の auto-merge は ruleset の required check しか待たず、Review tier はその中に無いので、Review tier が
-  auto-merge の有効な PR を落としてもマージは止まらない）
+- Low でない段階のラベルの PR は merger の対象外で、人間がマージする。native の auto-merge は repo の設定
+  （`allow_auto_merge` が false。#3681）で使えないので、どの段階でも `gh pr merge --auto` は失敗する
 
 ### マージ後の後始末
 

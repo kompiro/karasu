@@ -30,8 +30,8 @@ draft を経ずに作る Low の ADR の PR でも CLI が使えなければ、`
 ### リスク段階
 
 **到達状態**: どの PR にも段階のラベル（`risk: low` / `risk: design` / `risk: medium` / `risk: high`）が付き、
-check「Review tier」が通っている（ruleset の required check ではない。#3364）。この check は、ラベルが変更から判定した段階より低い PR、Low でないのに
-auto-merge が有効な PR、High 以外でローカルレビューの記録が無いか HEAD を覆っていない PR を落とす。ラベルの無い PR は
+check「Review tier」が通っている（ruleset の required check ではない。#3364）。この check は、ラベルが変更から判定した段階より低い PR、
+High 以外でローカルレビューの記録が無いか HEAD を覆っていない PR を落とす。ラベルの無い PR は
 High として扱う。
 
 ```
@@ -85,8 +85,8 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
   分類器で判定し直し、ruleset の required check が通った head の SHA を固定して GitHub App の名義でマージする。
   `risk: low` を付けて PR を作ることがマージの依頼になり、Claude は `gh pr merge` を打たない（`--auto` も使わない）。
   マージを待つ手順と、PR を作った後に差分を足すときの扱いは `.claude/rules/adr.md`「ADR PR のマージ（Low PR merger）」。
-  Low 以外の PR は人間がマージし、auto-merge は使わない。native の auto-merge は ruleset の required check しか待たず、
-  Review tier はその中に無いので、Review tier が auto-merge の有効な PR を落としてもマージは止まらない
+  Low 以外の PR は人間がマージする。native の auto-merge は repo の設定（`allow_auto_merge` が false。#3681）で
+  使えない。ruleset の required check しか待たず、Review tier が落ちてもマージを止めなかったので閉じた（#3386）
 - `skip-coderabbit` ラベルと本文の ignore コマンドは使わない。Medium 以下には CodeRabbit が走らないので、外す必要がない
 - 仕組みと却下した案は [ADR-3286](../adr/3286-risk-based-review-tiers.md)
 

@@ -20,7 +20,6 @@ const open = (over: Partial<PrState> = {}): PrState => ({
   mergeSha: null,
   headSha: HEAD,
   headRef: "docs/adr-1",
-  autoMerge: false,
   ...over,
 });
 const merged = (over: Partial<PrState> = {}): PrState =>
@@ -86,11 +85,6 @@ describe("awaitLowMerge: a merged PR", () => {
 });
 
 describe("awaitLowMerge: what the session must do first", () => {
-  it("stops on native auto-merge, which would merge before the merger", async () => {
-    const { deps } = fake({ pulls: [open({ autoMerge: true })] });
-    expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({ outcome: "auto-merge-enabled" });
-  });
-
   it("stops on a PR the merger does not judge", async () => {
     const { deps } = fake({ pulls: [open()], verdicts: [null] });
     expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({

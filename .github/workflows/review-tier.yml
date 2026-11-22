@@ -3,7 +3,6 @@ name: Review tier
 # Holds a PR to the review its change calls for (Issue #3286, docs/process/review.md
 # "リスク段階"). The check fails when:
 # - the PR's `risk: *` label is lower than the tier its diff and author give;
-# - auto-merge is on for a PR that is not Low;
 # - a Low, Design or Medium PR has no valid local review record in its body
 #   (scripts/review/local-review-record.ts). High reads no record: CodeRabbit's
 #   rounds and a human reading the diff carry it. Neither does a Low PR that
@@ -40,8 +39,6 @@ on:
       - unlabeled
       # The record lives in the body.
       - edited
-      - auto_merge_enabled
-      - auto_merge_disabled
 
 concurrency:
   group: review-tier-${{ github.event.pull_request.number }}
