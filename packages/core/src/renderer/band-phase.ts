@@ -22,6 +22,7 @@ import {
   keepBesideClear,
   liftOffBorders,
   sharesStretch,
+  stepOffBoxes,
   type BandRouting,
 } from "./band-routing.js";
 
@@ -109,6 +110,17 @@ export function routeBandEdges(
     [...opts.band.inner, ...opts.band.frames],
     LANE_PITCH,
     (e) => obstaclesFor(e).polylineClear(pts(e)) && !sharesStretch(e, occupants),
+    occupants,
+  );
+  // The labels the canvas draws stay readable (#3889): a band run through one
+  // steps a lane or more aside.
+  stepOffBoxes(
+    band,
+    opts.band.labels(edges.filter((e) => e.band !== true)),
+    [...opts.band.inner, ...opts.band.frames],
+    LANE_PITCH,
+    (e) => obstaclesFor(e).polylineClear(pts(e)) && !sharesStretch(e, occupants),
+    nodes,
     occupants,
   );
   // A route that went round the band stays inside the frame that holds it.

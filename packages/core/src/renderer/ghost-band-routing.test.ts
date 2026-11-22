@@ -18,11 +18,15 @@ import { frameTitleBox } from "./band-routing.js";
 import { LANE_PITCH } from "./edge-routing-lanes.js";
 import type { LayoutEdge, LayoutResult, Rect } from "./layout-types.js";
 import type { ViewSlice } from "../view/view-slice.js";
-import { entityFixture, serviceFixture } from "./fixtures/ghost-band.js";
+import { entityFixture, orderingFixture, serviceFixture } from "./fixtures/ghost-band.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { collectModelWarnings } from "../resolver/model-warnings.js";
-import { edgeLineKeyOf } from "./edge-line-key.js";
+import { edgeLineKeyOf, resolvedEdgeStyle } from "./edge-line-key.js";
+import { drawnLabelBoxesOf, withheldLabelsOf } from "./edge-layer.js";
+import { resolvePalette } from "./palette.js";
+import { buildLabelInputs, labelBox, resolveLabelPlacements } from "./label-placement.js";
+import { frameBordersOf } from "./container-frame.js";
 
 function parse(src: string) {
   const parsed = Parser.parse(src);
@@ -30,16 +34,22 @@ function parse(src: string) {
   return parsed.value;
 }
 
+const stylesOf = new WeakMap<object, ReturnType<typeof resolveStyles>>();
+
 /** Laid out the way `compile` lays a view out: styles, shapes and the pair key. */
 function optionsOf(krsFile: ReturnType<typeof parse>) {
   const sheets = [getBuiltinStyleSheet()];
   collectModelWarnings(krsFile, sheets);
   const styles = resolveStyles(krsFile.systems, sheets);
+  const palette = resolvePalette(undefined);
+  stylesOf.set(krsFile, styles);
   return {
     ownerIndex: krsFile.ownerIndex,
     layoutHints: styles.layoutHints,
     edgeDirections: new Map(),
     edgeLineKey: edgeLineKeyOf(styles, undefined),
+    withheldLabels: (r: LayoutResult) => withheldLabelsOf(r, styles, palette),
+    canvasLabelBoxes: (r: LayoutResult) => drawnLabelBoxesOf(r, styles, palette),
     shapeForNode: (id: string) => {
       const style = styles.nodes.get(id) ?? styles.defaultNodeStyle;
       return typeof style.shape === "string" ? style.shape : style.shape.url;
@@ -60,7 +70,7 @@ function layoutOf(
     ...slice.ghostDomains.map((g) => g.node.id),
   ];
   bandKeys.set(res, new Set(keys));
-  return { slice, res, options };
+  return { slice, res, options, styles: stylesOf.get(krsFile)! };
 }
 
 /** The band's ghost keys per laid-out result. */
@@ -362,5 +372,63 @@ describe("ghost band routing beside a ghost system (#3881)", () => {
     const outer = res.containers[0];
     expect(caller).toBeDefined();
     expect(outer.x - (caller.x + caller.width)).toBe(80);
+  });
+});
+
+describe("ghost band routing off the canvas's labels (#3889)", () => {
+  const { slice, res, options, styles } = layoutOf(orderingFixture(), (s) =>
+    extractEntityView(s, ["Shop", "Commerce", "Ordering"]),
+  );
+  const palette = resolvePalette(undefined);
+  /** The boxes of the canvas's drawn labels in `r`, by `from->to`. */
+  const canvasLabels = (r: LayoutResult) => {
+    const { inputs, nodeRects, edgeLines } = buildLabelInputs(r.edges, r.nodes, (e) =>
+      resolvedEdgeStyle(styles, e),
+    );
+    const moved = resolveLabelPlacements(
+      inputs,
+      nodeRects,
+      edgeLines,
+      frameBordersOf(r, styles, palette),
+    );
+    return new Map(
+      inputs
+        .filter((l) => !l.deferred && r.edges[l.index].ghost !== true)
+        .map((l) => {
+          const e = r.edges[l.index];
+          return [
+            `${e.from}->${e.to}`,
+            labelBox(moved.get(l.index) ?? l.anchor, l.width, l.fontSize),
+          ];
+        }),
+    );
+  };
+
+  it("draws the canvas labels a band line ran through before (\"has\", \"holds\")", () => {
+    expect([...canvasLabels(res).keys()].sort()).toEqual(["Cart->LineItem", "Order->LineItem"]);
+  });
+
+  it("runs no band line through a label the canvas draws", () => {
+    const boxes = [...canvasLabels(res).values()];
+    const through = bandEdges(res).filter((e) => countPolylinePenetrations(pointsOf(e), boxes) > 0);
+    expect(through.map((e) => `${e.from}->${e.to}`)).toEqual([]);
+  });
+
+  it("leaves the canvas's labels where they are without the band's edges", () => {
+    const without = layout({ ...slice, ghostEntityEdges: [] }, options);
+    const rel = (r: LayoutResult) => {
+      const f = focusOf(r);
+      return [...canvasLabels(r)].map(([k, b]) => [
+        k,
+        +(b.x - f.x).toFixed(2),
+        +(b.y - f.y).toFixed(2),
+      ]);
+    };
+    expect(rel(res)).toEqual(rel(without));
+  });
+
+  it("still crosses no card and no band frame that holds neither end", () => {
+    expect(bandPenetrations(res)).toEqual([]);
+    expect(collinearWithBand(res)).toEqual([]);
   });
 });

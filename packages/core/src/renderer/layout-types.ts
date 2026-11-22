@@ -479,6 +479,14 @@ export interface LayoutOptions {
    */
   withheldLabels?: (result: LayoutResult) => readonly WithheldLabel[];
   /**
+   * The renderer's label pass, run on the canvas's own edges: the boxes of the
+   * labels it draws, at the places it seats them (#3889). The ghost band's lines
+   * are routed after the canvas's and keep off these boxes; the band never moves
+   * a canvas label (#2360), so the boxes do not depend on the band's routes.
+   * Omitted (draw.io, bare layout), the band's lines do not look at labels.
+   */
+  canvasLabelBoxes?: (result: LayoutResult) => readonly Rect[];
+  /**
    * Team id → declared `label`, from `buildTeamLabelIndex`. Supplies the chip's
    * display string on every axis (the group-frame titles get theirs from
    * `groupLabels`, which only exists when grouping by team). Omitted → the chip

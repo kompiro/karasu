@@ -14,6 +14,7 @@
  */
 import type { ContainerRect, LayoutEdge, LayoutNode, Rect } from "./layout-types.js";
 import { CHAR_WIDTH, estimateTextWidth } from "./rendering-constants.js";
+import { segmentCrossesRect, type Point } from "./edge-geometry.js";
 
 /** Whether the routing passes leave this edge as drawn (a ghost outside the band, or a cycle). */
 export function isPeripheralEdge(edge: LayoutEdge): boolean {
@@ -181,6 +182,11 @@ export interface BandRouting {
   inner: readonly ContainerRect[];
   /** Ghost system frames beside `outer`, kept clear of it as `outer` grows. */
   beside: readonly ContainerRect[];
+  /**
+   * The boxes of the labels the canvas draws, given the canvas's routed edges
+   * (#3889): the band's lines step off them once routed.
+   */
+  labels: (canvas: readonly LayoutEdge[]) => readonly Rect[];
 }
 
 export const NO_BAND: BandRouting = {
@@ -189,6 +195,7 @@ export const NO_BAND: BandRouting = {
   titles: [],
   inner: [],
   beside: [],
+  labels: () => [],
 };
 
 /** The title text box a frame draws (`renderContainer`: 12px bold at x + 12, baseline y + 18). */
@@ -207,7 +214,10 @@ export function frameTitleBox(frame: ContainerRect): Rect {
  * so the titles and the frame around the band are given whatever the frames.
  * The band phase does nothing on a canvas without band edges.
  */
-export function bandRoutingOf(containers: readonly ContainerRect[]): BandRouting {
+export function bandRoutingOf(
+  containers: readonly ContainerRect[],
+  labels: BandRouting["labels"],
+): BandRouting {
   if (containers.length === 0) return NO_BAND;
   const nest = containers.filter((c) => c.ghostBand === undefined && c.group !== true);
   const focus = nest.find((c) => !c.ghost) ?? nest[0];
@@ -222,6 +232,7 @@ export function bandRoutingOf(containers: readonly ContainerRect[]): BandRouting
     titles: containers
       .filter((c) => c.ghostBand === undefined && c.group !== true)
       .map(frameTitleBox),
+    labels,
   };
 }
 
@@ -403,6 +414,144 @@ export function liftOffBorders(
         wps[i] = saved[0];
         wps[i + 1] = saved[1];
       }
+    }
+  }
+}
+
+/**
+ * Step each band route off `boxes` (the labels the canvas draws, #3889): a
+ * horizontal or vertical stretch of the route that runs through a box moves
+ * aside by a lane, two, three or four, nearer first and the positive side first,
+ * until it clears every box. An inner stretch moves on its own; the first or
+ * last one moves its port along the card's side with it, which a port on a
+ * rectangle's side can do without leaving the card's outline. A move is undone
+ * when the route crosses more boxes after it, enters its own cards, lands
+ * within half a lane of another port on the card, within a lane of another
+ * edge's parallel run, or on a frame border, or leaves the route unsound
+ * (`accept`). A straight line has no stretch to move and stays as it is.
+ */
+export function stepOffBoxes(
+  band: readonly LayoutEdge[],
+  boxes: readonly Rect[],
+  frames: readonly Rect[],
+  pitch: number,
+  accept: (edge: LayoutEdge) => boolean,
+  nodes: ReadonlyMap<string, LayoutNode>,
+  others: readonly LayoutEdge[],
+): void {
+  if (boxes.length === 0) return;
+  const through = (e: LayoutEdge) => {
+    const pts = pathOf(e);
+    let n = 0;
+    for (let j = 0; j + 1 < pts.length; j++)
+      for (const r of boxes) if (segmentCrossesRect(pts[j], pts[j + 1], r)) n++;
+    return n;
+  };
+  const own = (e: LayoutEdge) =>
+    [nodes.get(e.from), nodes.get(e.to)].filter((n) => n !== undefined);
+  const intoOwn = (e: LayoutEdge) => {
+    const pts = pathOf(e);
+    let n = 0;
+    for (let j = 0; j + 1 < pts.length; j++)
+      for (const r of own(e)) if (segmentCrossesRect(pts[j], pts[j + 1], r)) n++;
+    return n;
+  };
+  const roomy = (e: LayoutEdge, v: boolean, c: number, lo: number, hi: number) =>
+    others.every((o) => {
+      if (o === e) return true;
+      const pts = pathOf(o);
+      return pts.slice(0, -1).every((p, j) => {
+        const q = pts[j + 1];
+        const ov = Math.abs(p.x - q.x) < 1e-6;
+        if (ov !== v || (!ov && Math.abs(p.y - q.y) > 1e-6)) return true;
+        const oat = v ? p.x : p.y;
+        const [olo, ohi] = v
+          ? [Math.min(p.y, q.y), Math.max(p.y, q.y)]
+          : [Math.min(p.x, q.x), Math.max(p.x, q.x)];
+        return Math.min(hi, ohi) <= Math.max(lo, olo) || Math.abs(oat - c) >= pitch - 1e-6;
+      });
+    });
+  const onBorder = (v: boolean, c: number, lo: number, hi: number) =>
+    frames.some((f) =>
+      (v ? [f.x, f.x + f.width] : [f.y, f.y + f.height]).some(
+        (at) =>
+          Math.abs(at - c) < pitch / 2 &&
+          Math.min(hi, v ? f.y + f.height : f.x + f.width) > Math.max(lo, v ? f.y : f.x),
+      ),
+    );
+  // A port that may slide along its card's side to `c`: on a side of the card's
+  // box, parallel to the move, and a margin inside the side's ends.
+  const slides = (e: LayoutEdge, end: "from" | "to", v: boolean, c: number) => {
+    const n = nodes.get(end === "from" ? e.from : e.to);
+    const p = end === "from" ? e.fromPoint : e.toPoint;
+    if (!n) return false;
+    const onSide = v
+      ? Math.abs(p.y - n.y) < 0.5 || Math.abs(p.y - (n.y + n.height)) < 0.5
+      : Math.abs(p.x - n.x) < 0.5 || Math.abs(p.x - (n.x + n.width)) < 0.5;
+    if (!onSide) return false;
+    const [lo, hi] = v ? [n.x, n.x + n.width] : [n.y, n.y + n.height];
+    if (c < lo + pitch / 2 || c > hi - pitch / 2) return false;
+    const id = n.id;
+    return others.every((o) =>
+      (["from", "to"] as const).every((k) => {
+        if (o === e && k === end) return true;
+        if ((k === "from" ? o.from : o.to) !== id) return true;
+        const q = k === "from" ? o.fromPoint : o.toPoint;
+        return Math.hypot(q.x - (v ? c : p.x), q.y - (v ? p.y : c)) >= pitch / 2;
+      }),
+    );
+  };
+  for (const e of band) {
+    const wps = e.waypoints;
+    if (!wps || wps.length === 0) continue;
+    const pts = () => pathOf(e);
+    for (let j = 0; j + 1 < pts().length; j++) {
+      const path = pts();
+      const [a, b] = [path[j], path[j + 1]];
+      const v = Math.abs(a.x - b.x) < 1e-6;
+      if (!v && Math.abs(a.y - b.y) > 1e-6) continue;
+      if (!boxes.some((r) => segmentCrossesRect(a, b, r))) continue;
+      const at = v ? a.x : a.y;
+      const [lo, hi] = v
+        ? [Math.min(a.y, b.y), Math.max(a.y, b.y)]
+        : [Math.min(a.x, b.x), Math.max(a.x, b.x)];
+      const first = j === 0;
+      const last = j + 1 === path.length - 1;
+      const before = through(e);
+      const entered = intoOwn(e);
+      const saved = { from: e.fromPoint, to: e.toPoint, wps: wps.map((p) => ({ ...p })) };
+      const restore = () => {
+        e.fromPoint = saved.from;
+        e.toPoint = saved.to;
+        saved.wps.forEach((p, k) => (wps[k] = { ...p }));
+      };
+      const move = (p: Point, c: number): Point => (v ? { x: c, y: p.y } : { x: p.x, y: c });
+      // A lane or more aside, then just past either end of each box the stretch
+      // runs through (a long label is wider than four lanes), nearer first.
+      const past = boxes
+        .filter((r) => segmentCrossesRect(a, b, r))
+        .flatMap((r) =>
+          v
+            ? [r.x - pitch / 2, r.x + r.width + pitch / 2]
+            : [r.y - pitch / 2, r.y + r.height + pitch / 2],
+        );
+      const candidates = [
+        ...[1, -1, 2, -2, 3, -3, 4, -4].map((k) => at + k * pitch),
+        ...past.sort((p, q) => Math.abs(p - at) - Math.abs(q - at) || p - q),
+      ];
+      const fit = candidates.find((c) => {
+        if (onBorder(v, c, lo, hi) || !roomy(e, v, c, lo, hi)) return false;
+        if (first && !slides(e, "from", v, c)) return false;
+        if (last && !slides(e, "to", v, c)) return false;
+        if (first) e.fromPoint = move(e.fromPoint, c);
+        else wps[j - 1] = move(wps[j - 1], c);
+        if (last) e.toPoint = move(e.toPoint, c);
+        else wps[j] = move(wps[j], c);
+        if (through(e) < before && intoOwn(e) <= entered && accept(e)) return true;
+        restore();
+        return false;
+      });
+      if (fit === undefined) restore();
     }
   }
 }

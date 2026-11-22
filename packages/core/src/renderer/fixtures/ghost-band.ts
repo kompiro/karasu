@@ -122,3 +122,119 @@ ${outgoing.join("\n")}
 ${services.join("\n")}
 }`;
 }
+
+/**
+ * The model of AT-3881's manual item (#3889): `Shop.Commerce.Ordering`, whose
+ * entity view has canvas labels ("has", "holds") in the channel a band line
+ * runs down from Order to the band below.
+ */
+export function orderingFixture(): string {
+  return `system Shop {
+  label "Shop"
+
+  service Commerce {
+    label "Commerce"
+    domain Ordering {
+      label "Ordering"
+      Ordering -> Shipping "ships via"
+      Ordering -> Warehouse "reserves stock"
+      entity Order {
+        label "Order"
+        Order -> LineItem "has"
+        Order -> Customers.Customer "placed by"
+        Order -> Customers.Address "ships to"
+        Order -> Shipping.Carrier "carried by"
+        Order -> Loyalty.Points "earns"
+      }
+      entity LineItem {
+        label "Line item"
+        LineItem -> Catalog.Product "of"
+        LineItem -> Catalog.Price "priced at"
+        LineItem -> Catalog.Sku "stocked as"
+      }
+      entity Cart {
+        label "Cart"
+        Cart -> LineItem "holds"
+        Cart -> Customers.Wishlist "moves to"
+      }
+    }
+    domain Catalog {
+      label "Catalog"
+      entity Product { label "Product" }
+      entity Price { label "Price" }
+      entity Sku { label "SKU" }
+    }
+    domain Customers {
+      label "Customers"
+      entity Customer { label "Customer" }
+      entity Address { label "Address" }
+      entity Wishlist {
+        label "Wishlist"
+        Wishlist -> Ordering.Cart "fills"
+      }
+    }
+  }
+
+  service Finance {
+    label "Finance"
+    domain Billing {
+      label "Billing"
+      Billing -> Ordering "bills"
+      entity Invoice {
+        label "Invoice"
+        Invoice -> Ordering.Order "bills"
+      }
+      entity Payment {
+        label "Payment"
+        Payment -> Ordering.Order "settles"
+      }
+      entity Refund {
+        label "Refund"
+        Refund -> Ordering.Order "reverses"
+      }
+    }
+    domain Ledger {
+      label "Ledger"
+      Ledger -> Ordering "posts"
+    }
+  }
+
+  service Fulfillment {
+    label "Fulfillment"
+    domain Shipping {
+      label "Shipping"
+      entity Carrier { label "Carrier" }
+      entity Shipment {
+        label "Shipment"
+        Shipment -> Ordering.Order "delivers"
+      }
+    }
+    domain Warehouse { label "Warehouse" }
+  }
+
+  service Growth {
+    label "Growth"
+    domain Marketing {
+      label "Marketing"
+      Marketing -> Catalog "promotes"
+      entity Coupon {
+        label "Coupon"
+        Coupon -> Ordering.Cart "discounts"
+      }
+      entity Campaign {
+        label "Campaign"
+        Campaign -> Ordering.Cart "targets"
+      }
+    }
+    domain Loyalty {
+      label "Loyalty"
+      entity Points {
+        label "Points"
+        Points -> Ordering.Order "redeemed on"
+        Points -> Ordering.Cart "applied to"
+      }
+    }
+  }
+}
+`;
+}
