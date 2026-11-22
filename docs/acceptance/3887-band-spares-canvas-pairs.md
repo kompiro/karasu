@@ -13,7 +13,7 @@ type: product
 > 帯の線は焦点の線の後に配線されるので、焦点の相互の対の真ん中を横切ることがある。
 > そのとき分け目の候補がすべて交差から 14px 以内になり、帯が無ければ 1 本だった対が
 > 2 本に戻っていた。分け目は、まず今までどおりすべての線から 14px 離れた点を探し、
-> 見つからないときだけ帯の線との交差を、その hop の幅（hop が無ければ hop の半径）だけ避ければよいとする。
+> 見つからないときだけ、帯の線との交差からは hop の半径、帯の線だけの hop からはその幅だけ離れればよいとする。
 
 ## 受け入れ条件
 
@@ -27,7 +27,7 @@ type: product
 
 ### AC-2: 分け目は帯の線の hop の外にあり、帯の無い対の分け目は変わらない
 
-- [ ] AT-2: 分け目は帯の線の交差から hop の半径以上、帯の線の hop の幅の外にあり、焦点の線との交差からは今までどおり 14px 以上離れる。帯の線を除いても分け目が見つかる対では、分け目の位置は変わらない
+- [ ] AT-2: 分け目は帯の線の交差から hop の半径以上、帯の線の hop の幅の外にあり、焦点の線との交差からは今までどおり 14px 以上離れる。帯の線も含めてすべての線から 14px 離れた分け目が見つかる対では、分け目は今までと同じ位置にある。帯の線どうしの対は、焦点の線から 14px 離れた分け目が無ければ 2 本のまま
 
   > ✅ Automated — `packages/core/src/renderer/mutual-pair.test.ts` › `the dense domain canvas (Umami fixture)` › `keeps every split clear of corners, crossings and every hop over its line`
   >
@@ -36,3 +36,7 @@ type: product
   > ✅ Automated — `packages/core/src/renderer/mutual-pair.test.ts` › `where the line splits` › `keeps out of the gap of a hop over a soft line's crossing, not 14px (#3887)`
   >
   > ✅ Automated — `packages/core/src/renderer/mutual-pair.test.ts` › `where the line splits` › `finds a split between soft crossings where hard ones would leave none (#3887)`
+  >
+  > ✅ Automated — `packages/core/src/renderer/mutual-pair.test.ts` › `where the line splits` › `keeps a band line 14px off a canvas pair's split while the full clearance finds one (#3887)`
+  >
+  > ✅ Automated — `packages/core/src/renderer/mutual-pair.test.ts` › `where the line splits` › `gives a band pair no soft clearance from canvas lines (#3887)`
