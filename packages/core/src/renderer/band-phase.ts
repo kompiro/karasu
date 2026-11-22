@@ -25,6 +25,7 @@ import {
   liftOffBorders,
   sharesStretch,
   stepOffBoxes,
+  bandRoutingOf,
   type BandRouting,
 } from "./band-routing.js";
 
@@ -163,4 +164,14 @@ export function canvasLabelsOf(
     const crossingMarks = applyMutualPairs(edges, options);
     return boxesOf({ nodes, edges, containers, width: 0, height: 0, crossingMarks });
   };
+}
+
+/** The band routing inputs of a single-system canvas, with its labels (#3889). */
+export function bandRoutingFor(
+  containers: ContainerRect[],
+  nodes: Map<string, LayoutNode>,
+  options: LayoutOptions,
+  expandedFrames: Map<string, ContainerRect> | undefined,
+): BandRouting {
+  return bandRoutingOf(containers, canvasLabelsOf(nodes, containers, options, expandedFrames));
 }
