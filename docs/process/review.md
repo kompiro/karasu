@@ -85,8 +85,8 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
   分類器で判定し直し、ruleset の required check が通った head の SHA を固定して GitHub App の名義でマージする。
   `risk: low` を付けて PR を作ることがマージの依頼になり、Claude は `gh pr merge` を打たない（`--auto` も使わない）。
   マージを待つ手順と、PR を作った後に差分を足すときの扱いは `.claude/rules/adr.md`「ADR PR のマージ（Low PR merger）」。
-  Low 以外の PR は人間がマージする。native の auto-merge は repo の設定（`allow_auto_merge` が false。#3681）で
-  使えない。ruleset の required check しか待たず、Review tier が落ちてもマージを止めなかったので閉じた（#3386）
+  Low 以外の PR は人間がマージする。native の auto-merge は ruleset の required check しか待たず、Review tier が落ちても
+  マージを止めなかった（#3386）ので、repo の設定で閉じた（`allow_auto_merge` が false。#3681）
 - `skip-coderabbit` ラベルと本文の ignore コマンドは使わない。Medium 以下には CodeRabbit が走らないので、外す必要がない
 - 仕組みと却下した案は [ADR-3286](../adr/3286-risk-based-review-tiers.md)
 

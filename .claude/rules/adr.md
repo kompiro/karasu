@@ -314,8 +314,10 @@ Low でなければ、出た段階のラベルを付けて draft で作り、`gh
   - Low のとき: 本文の記録を作り直し、手順 3 のスクリプトをもう一度走らせる
   - Low でないとき: `gh pr ready <N> --undo` で draft に戻し、ラベルを出た段階に付け替えて `gh pr ready <N>` で
     外し、通常の PR として扱う。`risk: high` / `risk: design` なら、CodeRabbit のレビューはこのときに走る
-- Low でない段階のラベルの PR は merger の対象外で、人間がマージする。native の auto-merge は repo の設定
-  （`allow_auto_merge` が false。#3681）で使えないので、どの段階でも `gh pr merge --auto` は失敗する
+- Low でない段階のラベルの PR は merger の対象外で、人間がマージする。Claude は `gh pr merge` を打たない（`--auto` も）。
+  native の auto-merge は repo の設定（`allow_auto_merge` が false。#3681）で有効にできないが、gh は required check が
+  揃ってすぐマージできる PR（`mergeStateStatus` が `CLEAN` / `UNSTABLE` / `HAS_HOOKS`）では `--auto` でも直接マージする。
+  `UNSTABLE` には Review tier だけが落ちている PR も入る
 
 ### マージ後の後始末
 
