@@ -35,7 +35,7 @@ gh api graphql --paginate --slurp -F n=<n> -f query='query($n: Int!, $endCursor:
 
 CodeRabbit は approve も changes-requested も出さず、どのレビューも COMMENTED になる。収束したかどうかは
 未解決の thread と、review 本文にしかない指摘への答えで見る。CodeRabbit は required check ではなく、マージ判断は
-人間が持つ（例外は Low の auto-merge）。Design の PR では、人間は CodeRabbit の 1 回のレビューを待たずに読み始めてよい。
+人間が持つ（例外は Low PR merger による Low のマージ）。Design の PR では、人間は CodeRabbit の 1 回のレビューを待たずに読み始めてよい。
 
 **PR を出した側がラウンドを収束させてから人間に渡す。** 再レビューを頼むのは、Critical / Major を直したラウンドだけ
 にする。Minor だけを直したラウンドは、修正で触れたファイルに `/engineering:code-review` を当てて終える。再レビューが

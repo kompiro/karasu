@@ -8,6 +8,7 @@ type: product
 - **関連 Issue**: [#3880](https://github.com/kompiro/karasu/issues/3880)（[#2823](https://github.com/kompiro/karasu/issues/2823) のスライス A）
 - **Related TPLs**: [TPL-2823](../test-perspectives/TPL-2823-late-placed-elements-reach-shared-layout.md), [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md), [TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md)
 - **対象ファイル**: `packages/core/src/renderer/ghost-band.ts`, `packages/core/src/renderer/ghost-layout.ts`, `packages/core/src/renderer/layout.ts`, `packages/core/src/renderer/layout-types.ts`, `packages/core/src/view/entity-relations.ts`, `packages/core/src/view/ghost-synthesis.ts`
+- **関連 ADR**: [ADR-2823](../adr/2823-ghost-band-layout.md)
 
 > エンティティビューの ghost entity と service ビューの ghost domain は、焦点の枠の下に
 > 1 行で並んでいた。この行は幅予算（ADR-2593）を通らないので、ghost の多いビューは横に

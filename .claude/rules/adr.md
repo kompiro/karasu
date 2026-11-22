@@ -170,14 +170,15 @@ Design Doc を書いている最中に実装のコメントへ設計の根拠を
 
 昇格フローの位置づけは `/start-dev` スキルのステップ 9.5 を参照。
 
-## ADR PR の auto-merge
+## ADR PR のマージ（Low PR merger）
 
 実装と切り離して ADR のみを記録する PR（昇格 PR・新規 ADR 追記 PR の
-どちらも含む）は、下の適用条件を満たせば段階が Low になり、auto-merge を有効化する。
+どちらも含む）は、下の適用条件を満たせば段階が Low になり、Low PR merger がマージする。
 
-**到達状態**: 適用条件を満たす PR は `risk: low` ラベルとローカルレビューの記録を持ち、required check
-「Review tier」を含む CI を待って auto-merge される。CodeRabbit の review 枠は使わない（Low には CodeRabbit が
-走らない）。満たさない `docs(adr):` PR は、分類器が出した段階のラベルで通常どおり扱う
+**到達状態**: 適用条件を満たす PR は `risk: low` ラベルとローカルレビューの記録を持ち、CI が通った後に
+Low PR merger（`.github/workflows/low-pr-merger.yml`、名義は `low-pr-merger[bot]`）がマージしている。merger は
+`main` の分類器で段階と記録を判定し直し、判定した head の SHA を固定してマージする。CodeRabbit の review 枠は使わない
+（Low には CodeRabbit が走らない）。満たさない `docs(adr):` PR は、分類器が出した段階のラベルで通常どおり扱う
 （`docs/process/review.md`「リスク段階」）。
 
 ```
@@ -190,8 +191,9 @@ node scripts/review/tier.ts classify   # "tier": "low" なら適用条件を満�
 > 下の適用条件は分類器の規則を読める形にしたもので、食い違えば分類器が正しい。
 
 手順は次の順で行う。**段階は PR を作る前にブランチの差分で判定する。**
-Low の PR は draft を経ずに作り、そのまま auto-merge を有効にする。これは `docs/process.md`
-手順 10・11（draft で作り、`gh pr ready` で外す）に優先する。
+Low の PR は draft を経ずに作り、マージは merger に任せる。`risk: low` を付けて PR を作ることが「CI と記録が
+揃ったらマージしてよい」という依頼になる。これは `docs/process.md` 手順 10・11（draft で作り、`gh pr ready` で外す）に
+優先する。マージを起こす `gh pr merge` は打たない（`--auto` も、直接のマージも）。
 
 ```
 git fetch origin main
@@ -199,48 +201,32 @@ git diff --stat origin/main...HEAD; git diff origin/main...HEAD   # 差分を読
 node scripts/review/tier.ts classify                    # 1. Low であることを確認
 # 2. /engineering:code-review と CLI の指摘をローカルレビューの記録として本文に書く
 gh pr create --label "risk: low" --title "docs(adr): ..." --body-file <本文>
-gh pr merge <N> --auto --squash --delete-branch
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/review/await-low-merge.ts <N>   # 3. run_in_background で待つ
 ```
 
-#### #3698 が open のあいだは、`--auto` を打たずに Low PR merger を待つ（一時）
-
-**到達状態**: Low の PR を Low PR merger がマージし（下のスクリプトの `outcome` が `merged-by-merger`）、その結果の
-JSON 行が #3698 にコメントしてある。
-
-この節は、上の手順の最後の `gh pr merge --auto`、下の「PR を作った後に差分を足すとき」で Low の auto-merge を戻す手順、
-「`--auto` を使うので CI 完走前にコマンド発行して構わない」、`docs/process.md` 手順 15 に優先する。
-`gh issue view 3698 --json state --jq .state` が `OPEN` のあいだだけ効き、スライス C（#3681）で消す。`--auto` を打つと
-native の auto-merge が merger より先にマージし、App でマージできるかを #3698 で確かめられない。
-
-PR を作ったら `--auto` は打たず、次を Bash の `run_in_background` で走らせ、出た 1 行の `outcome` に従う。スクリプトは
-merger の judge をその PR の今の head に当てて待つだけで、GitHub には何も書かない。
-
-```
-node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/review/await-low-merge.ts <N>
-```
+手順 3 のスクリプトは merger の judge をその PR の今の head に当てて待つだけで、GitHub には何も書かない。Bash の
+`run_in_background` で走らせ、出た 1 行の `outcome` に従う。
 
 | `outcome` | すること |
 | --- | --- |
-| `merged-by-merger` | JSON 行を #3698 にコメントする。main の push で走った workflow は、そのとき `gh run list --commit <mergeSha> --event push` で読んで添える |
-| `merged-otherwise` | JSON 行を #3698 にコメントする。merger の App（`low-pr-merger[bot]`）以外がマージした（人の手か native の auto-merge）ので 5 本には数えない |
-| `auto-merge-enabled` | `gh pr merge <N> --disable-auto` で解き、もう一度走らせる |
+| `merged-by-merger` | 終わり。下の「マージ後の後始末」をする |
+| `merged-otherwise` | merger の App 以外（人の手など）がマージした。下の「マージ後の後始末」をする |
+| `auto-merge-enabled` | native の auto-merge が有効になっている（古い手順のセッションか人の操作）。`gh pr merge <N> --disable-auto` で解き、もう一度走らせる |
 | `fix-pr` | `reasons` の問題を PR で直し、もう一度走らせる。コミットを足すなら下の「PR を作った後に差分を足すとき」に従う |
-| `checks-stuck` | 止まった check を `gh run rerun <run-id>` で走らせ直す。必須 check が 1 本も現れていなければ PR を close して reopen する。JSON 行を #3698 に書き、もう一度走らせる |
-| `fallback` | JSON 行を #3698 に書き、`gh pr merge <N> --auto --squash --delete-branch` を打つ |
-| `out-of-scope`・`closed`・`timeout` | JSON 行を #3698 に書いて止まる。Low として作った PR が `out-of-scope` なら、`why` を直してもう一度走らせる |
+| `checks-stuck` | 止まった check を `gh run rerun <run-id>` で走らせ直す。必須 check が 1 本も現れていなければ PR を close して reopen する。もう一度走らせる |
+| `fallback` | PR の側に落ちたものが無いのに merger がマージしない（理由は JSON 行の `verdict` と `details`）。`gh run list -w low-pr-merger.yml --status completed -L 5` で終わった run を探し、判定を `gh run view <run-id> --log`（または run のページの summary）で読み、JSON 行と一緒に kompiro に知らせて止まる |
+| `out-of-scope`・`closed`・`timeout` | JSON 行をユーザーに示して止まる。Low として作った PR が `out-of-scope` なら、`why` を直してもう一度走らせる |
 
 `fallback` は、その時点の head で PR の側（段階のラベル、tier の検査、必須 check、コンフリクト）に落ちたものが無く、
 merger がマージしない（または判定できない）まま 30 分たったときだけ出る。PR の側が落ちていれば `fix-pr` か
-`checks-stuck` になり、`--auto` を打っても Review tier と必須 check がマージを止める。
+`checks-stuck` になる。
 
 `gh pr create --label` はラベルを PR を開いた後に付けるが、ラベルの無い PR に `risk: high` を付ける
 「Label untiered PRs High」（`.github/workflows/review-request.yml`）は、開いた PR では 30 秒待ってから
 ラベルを読むので、ふつうは `risk: low` が先に届く（ADR-3504）。`risk: low` がそれより遅れて届くと、ワークフローが
-付けた `risk: high` と両方が残る。その後の `risk: low` の付与や auto-merge の有効化で走る Review tier は、厳しい方の
-High として扱い auto-merge を止める。ワークフローが付けたラベルでは Review tier が走らないので、最後に走った回が `risk: high` の付く前に
-ラベルを読んでいれば止まらずにマージされる（差分は Low なので、失うのは多くても CodeRabbit のレビュー 1 回分）。
-マージ前に両方のラベルが残っているのを見たら、`gh pr edit <N> --remove-label "risk: high"` で外す（`unlabeled` で
-Review tier が走り直し、Low として通る）。マージ後なら、ラベルを片付けるだけでよい。
+付けた `risk: high` と両方が残る。merger は `risk:` のラベルがちょうど `risk: low` の 1 つでない PR をマージせず、
+`fix-pr`（`reasons` に `labels`）になる。`gh pr edit <N> --remove-label "risk: high"` で外す（`unlabeled` で
+Review tier が走り直し、その完了で merger が判定し直す）。
 
 Claude のセッションの gh は、`--draft` の無い `gh pr create` を `risk: low` のときだけ、このブランチの CLI の
 レビューが済んでいれば通す（ADR-3342 のゲート）。通すのは、gh がチェックアウト中のブランチを origin の repo へ push する
@@ -262,7 +248,7 @@ Low でなければ、出た段階のラベルを付けて draft で作り、`gh
    - 昇格対象 `docs/design/<name>.md` の **削除**（Design Doc 全体を ADR に昇格させて
      元ファイルを消すケース）。部分昇格（複数フェーズの一部だけ ADR 化し、残りを
      Design Doc に保持するケース。例: ADR-1168）は Design Doc の更新を含むので段階が
-     Design になり、auto-merge せずに人間がレビューする
+     Design になり、merger はマージせず人間がレビューする
    - **その Design Doc を指していた参照を、新 ADR に張り替える差分**
      （`docs/adr/**` を除く任意のディレクトリ — `docs/acceptance/` /
      `docs/spec/` / `docs/test-perspectives/` / `docs/roadmap.md`
@@ -294,12 +280,12 @@ Low でなければ、出た段階のラベルを付けて draft で作り、`gh
      行頭や値の途中への挿入、同じ hunk の
      ほかの変更（手動項目のチェックなど）は外れる。AT 以外のファイルには使えない
 
-   **Design Doc からの新規昇格はこの 5 種で閉じるので、auto-merge してよい** —
+   **Design Doc からの新規昇格はこの 5 種で閉じるので、merger に任せてよい** —
    新 ADR を足し、元の Design Doc を消し、他の記録の参照を
    張り替えるか ADR へのリンクを足す、で全部である。外れるのは**既存 ADR の本文を触ったとき**だけで、
    それは「既存 ADR を覆すとき」が禁じているので、そもそも書かれない差分である。
 3. `origin/main` を fetch した直後のブランチの差分で 1〜2 を確認し（分類器が `low` を出す）、
-   その直後に PR の作成から auto-merge までを実行する
+   その直後に PR を作る
 
 ### 補足
 
@@ -320,38 +306,32 @@ Low でなければ、出た段階のラベルを付けて draft で作り、`gh
 - 適用条件のいずれかが満たされない場合（例: `packages/**` のファイルが 1 つでも
   差分に含まれる場合）も同様に例外を適用せず、通常通りユーザー確認を経る
 - 新しい ADR が karasu のドメインの外への URL を足すと、その ADR は Medium になり、
-  auto-merge しない（`docs/process/review.md`「リスク段階」の「外のドメインへのリンク」）。
+  merger はマージしない（`docs/process/review.md`「リスク段階」の「外のドメインへのリンク」）。
   上流の Issue や PR を引くトリアージの ADR はこれに当たり、人間が読む
-- PR を作った後に差分を足すときは、**push の前に** auto-merge を解いて draft に戻す。
-  push した瞬間に auto-merge が確認前の差分をマージしうるからである。
-  ```
-  gh pr merge <N> --disable-auto
-  gh pr ready <N> --undo
-  ```
+- PR を作った後に差分を足すときは、native の auto-merge が有効なら（`gh pr view <N> --json autoMergeRequest --jq '.autoMergeRequest != null'` が `true` を出す）
+  先に `gh pr merge <N> --disable-auto` で解き、それから push する。native の auto-merge は merger の判定も SHA の固定も
+  通らずに新しい HEAD をマージしうる。有効でなければ、そのまま push してよい。push すると記録が HEAD を覆わなくなるので、
+  記録を作り直すまで merger はマージしない。push の前に merger が判定していても、マージは判定した head の SHA に
+  固定されているので、足したコミットは入らない。push より先にマージされていたら、足す差分は新しい PR で出す。
   push 後は手順 1（段階の判定）からやり直し、足したコミットの指摘と対応で記録を作り直す。
-  - Low のとき: `gh pr ready <N>` で draft を外してから auto-merge を戻す
-    （`gh pr merge <N> --auto --squash --delete-branch`）。draft のままではマージされない
-  - Low でないとき: ラベルを出た段階に付け替えて `gh pr ready <N>` で draft を外し、通常の PR として扱う。
-    `risk: high` / `risk: design` なら、CodeRabbit のレビューはこのときに走る
-- Low でない段階では auto-merge を有効にしない。CI の途中で有効にすれば Review tier が落とすが、
-  CI が通った後に有効にした PR はそのままマージされ、check では止められない
-- `--auto` を使うので CI 完走前にコマンド発行して構わない（GitHub 側が
-  required check 通過を待つ）
-- リポジトリ設定で `allow_auto_merge=true` 済み
-- ブランチ保護で required check が落ちた場合は通常通り失敗する
-  （auto-merge は強制ではなく「揃ったら入れる」セマンティクス）
+  - Low のとき: 本文の記録を作り直し、手順 3 のスクリプトをもう一度走らせる
+  - Low でないとき: `gh pr ready <N> --undo` で draft に戻し、ラベルを出た段階に付け替えて `gh pr ready <N>` で
+    外し、通常の PR として扱う。`risk: high` / `risk: design` なら、CodeRabbit のレビューはこのときに走る
+- Low でない段階のラベルの PR は merger の対象外で、人間がマージする。`gh pr merge --auto` は使わない
+  （native の auto-merge は ruleset の required check しか待たず、Review tier はその中に無いので、Review tier が
+  auto-merge の有効な PR を落としてもマージは止まらない）
 
 ### マージ後の後始末
 
-**到達状態**: auto-merge した PR の worktree とローカルブランチが残っていない。
+**到達状態**: マージされた Low の PR の worktree とローカルブランチが残っていない。
 `git fetch --prune && git branch -vv | grep '\[gone\]'` が何も出さない。
 
-`--auto` はマージを待たずに手を離すので、この PR は `/hane:start-dev` の
-ステップ 9（クリーンアップ）を通らない。`--delete-branch` で remote branch は
-消えるためローカルは `[gone]` になるが、**worktree は残り続ける**。溜まると次の
+merger のマージを待つあいだセッションは手を離すので、この PR は `/hane:start-dev` の
+ステップ 9（クリーンアップ）を通らない。マージで remote branch は消える（repo の
+`delete_branch_on_merge`）ためローカルは `[gone]` になるが、**worktree は残り続ける**。溜まると次の
 Issue の作業中に無関係な worktree として現れる（実例: #2435 と #2448 の worktree が
 2 件残り、#2451 の片付け中に気づいた）。
 
 掃除は `/commit-commands:clean_gone` — `[gone]` ブランチとその worktree をまとめて
-削除する。auto-merge を有効化した直後にこの後始末を予約するか、上の grep が空に
+削除する。手順 3 のスクリプトが `merged-by-merger` か `merged-otherwise` を出したらこの後始末をするか、上の grep が空に
 なることを次のセッション開始時に確認する。
