@@ -12,9 +12,10 @@ type: product
 
 > 帯の線は焦点の線の後に配線され、焦点の線のラベルを障害物にしていなかったので、
 > ラベルの文字を横切ることがあった（AT-3881 のモデルで「ships to」の線が「has」を通る）。
-> 焦点の線のラベルの位置は帯の線に左右されない（ghost の線は本物のラベルを押しのけない、#2360）ので、
-> 帯の段の前にその箱を求め、帯の線のうち箱を横切る縦横の区間を、レーン幅か箱の端の外までずらす。
-> 端点の区間は、四角いカードの辺に沿って接続点ごとずらす。
+> 帯の線は焦点の線のラベルの障害物にならない（ghost の線は本物のラベルを押しのけない、#2360）ので、
+> 帯の段の前に焦点の線だけで（平行な束と相互の対も描くとおりにして）ラベルの箱を求め、帯の線のうち箱を横切る縦横の区間を、レーン幅か箱の端の外までずらす。
+> 端点の区間は、カードの輪郭が箱そのものの辺（chrome の場所を除く）に限って、接続点ごとずらす。
+> 帯の線が相互の対の分け目の近くを横切ると対の分け目が動き、そのラベルも動くので、その対のラベルはこの限りでない。
 
 ## 受け入れ条件
 
@@ -28,6 +29,12 @@ type: product
 
 ### AC-2: 焦点のラベルは動かない
 
-- [ ] AT-2: 焦点の線のラベルの位置は、帯の線があっても無くても同じ
+- [ ] AT-2: AT-3881 のモデルで、焦点の線のラベルの位置は、帯の線があっても無くても同じ
 
   > ✅ Automated — `packages/core/src/renderer/ghost-band-routing.test.ts` › `ghost band routing off the canvas's labels (#3889)` › `leaves the canvas's labels where they are without the band's edges`
+
+### AC-3: 帯の線が避ける箱は、描かれるラベルの箱と同じ
+
+- [ ] AT-3: 帯の段に渡す焦点のラベルの箱は、描かれる焦点のラベルの箱と同じ。Order から Line item への線を 2 本にして平行な束にし、ラベルが束の上で 1/3 と 2/3 にずれても同じ
+
+  > ✅ Automated — `packages/core/src/renderer/ghost-band-routing.test.ts` › `ghost band routing off the canvas's labels (#3889)` › `hands the band phase the label boxes the canvas draws, a parallel bundle's included`

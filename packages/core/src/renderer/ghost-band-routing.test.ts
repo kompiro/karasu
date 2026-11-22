@@ -396,8 +396,12 @@ describe("ghost band routing off the canvas's labels (#3889)", () => {
         .filter((l) => !l.deferred && r.edges[l.index].ghost !== true)
         .map((l) => {
           const e = r.edges[l.index];
+          const n = inputs.filter(
+            (o) =>
+              o.index < l.index && r.edges[o.index].from === e.from && r.edges[o.index].to === e.to,
+          ).length;
           return [
-            `${e.from}->${e.to}`,
+            `${e.from}->${e.to}${n > 0 ? `#${n}` : ""}`,
             labelBox(moved.get(l.index) ?? l.anchor, l.width, l.fontSize),
           ];
         }),
@@ -425,6 +429,35 @@ describe("ghost band routing off the canvas's labels (#3889)", () => {
       ]);
     };
     expect(rel(res)).toEqual(rel(without));
+  });
+
+  it("hands the band phase the label boxes the canvas draws, a parallel bundle's included", () => {
+    // Two edges Order -> LineItem: the bundle slides their labels to a third and
+    // two thirds of the way, which the label pass sees only once bundles are marked.
+    const src = orderingFixture().replace(
+      'Order -> LineItem "has"',
+      'Order -> LineItem "has"\n          Order -> LineItem "contains"',
+    );
+    const krsFile = parse(src);
+    const bundledSlice = extractEntityView(krsFile.systems, ["Shop", "Commerce", "Ordering"]);
+    const bundledOptions = optionsOf(krsFile);
+    const handed: string[][] = [];
+    const key = (b: Rect, o: Rect) =>
+      [b.x - o.x, b.y - o.y, b.width, b.height].map((v) => v.toFixed(1)).join(",");
+    const bundledRes = layout(bundledSlice, {
+      ...bundledOptions,
+      canvasLabelBoxes: (r: LayoutResult) => {
+        const boxes = bundledOptions.canvasLabelBoxes(r);
+        const order = r.nodes.get("Order")!;
+        handed.push(boxes.map((b) => key(b, order)).sort());
+        return boxes;
+      },
+    });
+    const order = bundledRes.nodes.get("Order")!;
+    const drawn = [...canvasLabels(bundledRes).values()].map((b) => key(b, order)).sort();
+    expect(drawn.length).toBe(3);
+    expect(handed.length).toBeGreaterThan(0);
+    expect(handed[handed.length - 1]).toEqual(drawn);
   });
 
   it("still crosses no card and no band frame that holds neither end", () => {

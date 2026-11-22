@@ -545,7 +545,7 @@ function layoutInner(
       groupBands: groupBy ? groupBands : null,
       ports: portResolver(options),
       enclosure: focusFrame,
-      band: bandRoutingOf(containers, canvasLabelsOf(layoutNodes, containers, options)),
+      band: bandRoutingOf(containers, canvasLabelsOf(layoutNodes, containers, options, expandedFrameRects)),
     },
   );
 

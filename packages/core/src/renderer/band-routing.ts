@@ -423,9 +423,10 @@ export function liftOffBorders(
  * horizontal or vertical stretch of the route that runs through a box moves
  * aside by a lane, two, three or four, nearer first and the positive side first,
  * until it clears every box. An inner stretch moves on its own; the first or
- * last one moves its port along the card's side with it, which a port on a
- * rectangle's side can do without leaving the card's outline. A move is undone
- * when the route crosses more boxes after it, enters its own cards, lands
+ * last one moves its port along the card's side with it, only where the card's
+ * outline is its box (`onOutline`), so the port stays on the drawn outline. A move is undone
+ * when it slants a stretch or leaves any stretch within a lane of another edge's
+ * parallel run or on a frame border, when the route crosses more boxes after it, enters its own cards, lands
  * within half a lane of another port on the card, within a lane of another
  * edge's parallel run, or on a frame border, or leaves the route unsound
  * (`accept`). A straight line has no stretch to move and stays as it is.
@@ -438,6 +439,12 @@ export function stepOffBoxes(
   accept: (edge: LayoutEdge) => boolean,
   nodes: ReadonlyMap<string, LayoutNode>,
   others: readonly LayoutEdge[],
+  /**
+   * Whether a port may sit at a point on the card's box: true only where the
+   * card's drawn outline is its box there (a rectangle's side, clear of its
+   * chrome). A port on another outline is never moved.
+   */
+  onOutline: (node: LayoutNode, at: Point) => boolean,
 ): void {
   if (boxes.length === 0) return;
   const through = (e: LayoutEdge) => {
@@ -491,6 +498,7 @@ export function stepOffBoxes(
     if (!onSide) return false;
     const [lo, hi] = v ? [n.x, n.x + n.width] : [n.y, n.y + n.height];
     if (c < lo + pitch / 2 || c > hi - pitch / 2) return false;
+    if (!onOutline(n, v ? { x: c, y: p.y } : { x: p.x, y: c })) return false;
     const id = n.id;
     return others.every((o) =>
       (["from", "to"] as const).every((k) => {
@@ -500,6 +508,29 @@ export function stepOffBoxes(
         return Math.hypot(q.x - (v ? c : p.x), q.y - (v ? p.y : c)) >= pitch / 2;
       }),
     );
+  };
+  // Every horizontal or vertical stretch of `e`, with the lane spacing and frame
+  // borders checked, and how many stretches are slanted: a move may change the
+  // stretches either side of the one it moves, and must not slant one.
+  const sound = (e: LayoutEdge) => {
+    const pts = pathOf(e);
+    let slanted = 0;
+    let ok = true;
+    for (let j = 0; j + 1 < pts.length; j++) {
+      const [p, q] = [pts[j], pts[j + 1]];
+      const v = Math.abs(p.x - q.x) < 1e-6;
+      if (!v && Math.abs(p.y - q.y) > 1e-6) {
+        slanted++;
+        continue;
+      }
+      const at = v ? p.x : p.y;
+      const [lo, hi] = v
+        ? [Math.min(p.y, q.y), Math.max(p.y, q.y)]
+        : [Math.min(p.x, q.x), Math.max(p.x, q.x)];
+      if (hi - lo < 1e-6) continue;
+      if (!roomy(e, v, at, lo, hi) || onBorder(v, at, lo, hi)) ok = false;
+    }
+    return { slanted, ok };
   };
   for (const e of band) {
     const wps = e.waypoints;
@@ -519,6 +550,7 @@ export function stepOffBoxes(
       const last = j + 1 === path.length - 1;
       const before = through(e);
       const entered = intoOwn(e);
+      const slantedBefore = sound(e).slanted;
       const saved = { from: e.fromPoint, to: e.toPoint, wps: wps.map((p) => ({ ...p })) };
       const restore = () => {
         e.fromPoint = saved.from;
@@ -547,7 +579,15 @@ export function stepOffBoxes(
         else wps[j - 1] = move(wps[j - 1], c);
         if (last) e.toPoint = move(e.toPoint, c);
         else wps[j] = move(wps[j], c);
-        if (through(e) < before && intoOwn(e) <= entered && accept(e)) return true;
+        const after = sound(e);
+        if (
+          through(e) < before &&
+          intoOwn(e) <= entered &&
+          after.ok &&
+          after.slanted <= slantedBefore &&
+          accept(e)
+        )
+          return true;
         restore();
         return false;
       });

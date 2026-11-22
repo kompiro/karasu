@@ -13,7 +13,8 @@ import { ObstacleIndex, type ObstacleQuery } from "./obstacle-index.js";
 import { GHOST_MARGIN } from "./layout-constants.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes, LANE_PITCH, type ChannelLimits } from "./edge-routing-lanes.js";
-import { seatPortsOnOutline, type PortResolver } from "./port-frame.js";
+import { BBOX_PORT_FRAME, seatPortsOnOutline, type PortResolver } from "./port-frame.js";
+import { markParallelBundles } from "./edge-routing-bundles.js";
 import {
   BAND_PHASE,
   clearHeldPorts,
@@ -123,6 +124,14 @@ export function routeBandEdges(
     (e) => obstaclesFor(e).polylineClear(pts(e)) && !sharesStretch(e, occupants),
     nodes,
     occupants,
+    (node, at) => {
+      const frame = ports?.(node);
+      if (!frame) return true;
+      if (frame.frame !== BBOX_PORT_FRAME) return false;
+      return !frame.keepOuts.some(
+        (r) => at.x >= r.x && at.x <= r.x + r.width && at.y >= r.y && at.y <= r.y + r.height,
+      );
+    },
   );
   // A route that went round the band stays inside the frame that holds it.
   const before = opts.band.outer && { ...opts.band.outer };
@@ -132,20 +141,25 @@ export function routeBandEdges(
 
 /**
  * The boxes of the labels the canvas draws (#3889), for the band phase: the
- * canvas's routed edges are copied, their mutual pairs split as the canvas will
- * draw them (#3027), and the renderer's label pass is run on them. The band's
- * lines are not in that pass's obstacles (#2360), so these are the boxes the
- * final drawing has.
+ * canvas's routed edges are copied, marked as parallel bundles and their mutual
+ * pairs split as the canvas will draw them (#1185, #3027), and the renderer's
+ * label pass is run on them. The band's lines are not that pass's obstacles
+ * (#2360), so a canvas label stays where these boxes put it, with two
+ * exceptions: a mutual pair's split also keeps clear of the band's crossings,
+ * so a pair the band crosses may split, and label, elsewhere; and a band label
+ * an author positioned is an obstacle the canvas's labels go round.
  */
 export function canvasLabelsOf(
   nodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
   options: LayoutOptions,
+  expandedFrames: Map<string, ContainerRect> | undefined,
 ): (canvas: readonly LayoutEdge[]) => readonly Rect[] {
   const boxesOf = options.canvasLabelBoxes;
   if (!boxesOf) return () => [];
   return (canvas) => {
     const edges = canvas.map((e) => ({ ...e, waypoints: e.waypoints && [...e.waypoints] }));
+    markParallelBundles(edges, (id) => nodes.get(id) ?? expandedFrames?.get(id));
     const crossingMarks = applyMutualPairs(edges, options);
     return boxesOf({ nodes, edges, containers, width: 0, height: 0, crossingMarks });
   };

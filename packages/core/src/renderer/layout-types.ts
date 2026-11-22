@@ -481,8 +481,10 @@ export interface LayoutOptions {
   /**
    * The renderer's label pass, run on the canvas's own edges: the boxes of the
    * labels it draws, at the places it seats them (#3889). The ghost band's lines
-   * are routed after the canvas's and keep off these boxes; the band never moves
-   * a canvas label (#2360), so the boxes do not depend on the band's routes.
+   * are routed after the canvas's and keep off these boxes. A band line is no
+   * obstacle to a canvas label (#2360), so the boxes are the drawn ones except
+   * where a band line moves a mutual pair's split or a band label an author
+   * positioned is in the way (`canvasLabelsOf`).
    * Omitted (draw.io, bare layout), the band's lines do not look at labels.
    */
   canvasLabelBoxes?: (result: LayoutResult) => readonly Rect[];
