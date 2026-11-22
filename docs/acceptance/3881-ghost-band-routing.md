@@ -8,6 +8,7 @@ type: product
 - **関連 Issue**: [#3881](https://github.com/kompiro/karasu/issues/3881)（[#2823](https://github.com/kompiro/karasu/issues/2823) のスライス B）
 - **Related TPLs**: [TPL-2823](../test-perspectives/TPL-2823-late-placed-elements-reach-shared-layout.md), [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md), [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md), [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)
 - **対象ファイル**: `packages/core/src/renderer/band-routing.ts`, `packages/core/src/renderer/layout-edges.ts`, `packages/core/src/renderer/edge-routing-groups.ts`, `packages/core/src/renderer/edge-routing-gutter-lanes.ts`, `packages/core/src/renderer/edge-routing-lanes.ts`, `packages/core/src/renderer/layout-reservations.ts`
+- **関連 ADR**: [ADR-2823](../adr/2823-ghost-band-layout.md)
 
 > スライス A（#3880）で帯に置いた ghost の線は直線のままで、焦点のカードや帯の枠を横切っていた。
 > 帯の線は、焦点の線を配線したあとの 2 段目で同じ routing chain に通し、焦点の線が使っている
