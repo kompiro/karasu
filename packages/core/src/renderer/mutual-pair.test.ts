@@ -12,19 +12,36 @@ import { compile } from "../compile/compile.js";
 import { edgeKey } from "../diff/view-diff.js";
 import { layout } from "./layout.js";
 import { edgeLineKeyOf } from "./edge-line-key.js";
-import { applyMutualPairs, chooseSplit, findMutualPairs, pairLabelSegment } from "./mutual-pair.js";
+import {
+  applyMutualPairs,
+  chooseSplit,
+  findMutualPairs,
+  pairLabelSegment,
+} from "./mutual-pair.js";
 import { HOP_RADIUS } from "./crossing-marks.js";
-import { buildLabelInputs, labelBox, resolveLabelPlacements } from "./label-placement.js";
+import {
+  buildLabelInputs,
+  labelBox,
+  resolveLabelPlacements,
+} from "./label-placement.js";
 import { directionArrow } from "./edge-label-disclosure.js";
 import type { Point } from "./edge-geometry.js";
 import type { LayoutEdge, LayoutResult, Rect } from "./layout-types.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const UMAMI = readFileSync(resolve(here, "fixtures/dense-domain-canvas.krs"), "utf8");
+const UMAMI = readFileSync(
+  resolve(here, "fixtures/dense-domain-canvas.krs"),
+  "utf8",
+);
 const UMAMI_PATH = ["Umami", "UmamiApp"];
 
-const lineOf = (e: LayoutEdge): Point[] => [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
-const same = (a: Point, b: Point) => Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6;
+const lineOf = (e: LayoutEdge): Point[] => [
+  e.fromPoint,
+  ...(e.waypoints ?? []),
+  e.toPoint,
+];
+const same = (a: Point, b: Point) =>
+  Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6;
 
 interface Run {
   result: LayoutResult;
@@ -34,7 +51,12 @@ interface Run {
 function laidOut(
   src: string,
   path: string[],
-  opts: { style?: string; withKey?: boolean; diff?: Map<string, string>; groupBy?: "team" } = {},
+  opts: {
+    style?: string;
+    withKey?: boolean;
+    diff?: Map<string, string>;
+    groupBy?: "team";
+  } = {},
 ): Run["result"] {
   const file = Parser.parse(src).value;
   const sheets = [getBuiltinStyleSheet()];
@@ -49,7 +71,8 @@ function laidOut(
     edgeDirections: new Map(),
     edgeDiffState: opts.diff,
     groupBy: opts.groupBy,
-    edgeLineKey: opts.withKey === false ? undefined : edgeLineKeyOf(styles, opts.diff),
+    edgeLineKey:
+      opts.withKey === false ? undefined : edgeLineKeyOf(styles, opts.diff),
   });
 }
 
@@ -87,7 +110,8 @@ function alongLine(line: Point[], p: Point): number | undefined {
     const [a, b] = [line[i], line[i + 1]];
     const len = Math.hypot(b.x - a.x, b.y - a.y);
     if (len > 1e-9) {
-      const t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / (len * len);
+      const t =
+        ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / (len * len);
       const q = { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) };
       if (t >= -1e-6 && t <= 1 + 1e-6 && Math.hypot(q.x - p.x, q.y - p.y) < 0.5)
         return acc + t * len;
@@ -107,7 +131,12 @@ function crossingsAlong(line: Point[], others: Point[][]): number[] {
         const [a, b, c, d] = [line[i], line[i + 1], o[k], o[k + 1]];
         const den = (b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x);
         const t = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / den;
-        out.push(alongLine(line, { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) })!);
+        out.push(
+          alongLine(line, {
+            x: a.x + t * (b.x - a.x),
+            y: a.y + t * (b.y - a.y),
+          })!,
+        );
       }
     }
   }
@@ -130,21 +159,29 @@ function placedLabels(r: LayoutResult): Map<number, Rect> {
   return new Map(
     inputs
       .filter((l) => !l.deferred)
-      .map((l) => [l.index, labelBox(moved.get(l.index) ?? l.anchor, l.width, l.fontSize)]),
+      .map((l) => [
+        l.index,
+        labelBox(moved.get(l.index) ?? l.anchor, l.width, l.fontSize),
+      ]),
   );
 }
 
 const contains = (r: Rect, p: Point) =>
   p.x > r.x && p.x < r.x + r.width && p.y > r.y && p.y < r.y + r.height;
 const overlap = (a: Rect, b: Rect) =>
-  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+  a.x < b.x + b.width &&
+  b.x < a.x + a.width &&
+  a.y < b.y + b.height &&
+  b.y < a.y + a.height;
 
 /** The two halves of each merged pair in `r`, as `[forward, backward]`. */
 function pairsOf(r: LayoutResult): [LayoutEdge, LayoutEdge][] {
   const hs = halves(r);
   return hs.flatMap((a) => {
     const b = hs.find((e) => e.from === a.to && e.to === a.from);
-    return b && r.edges.indexOf(a) < r.edges.indexOf(b) ? [[a, b] as [LayoutEdge, LayoutEdge]] : [];
+    return b && r.edges.indexOf(a) < r.edges.indexOf(b)
+      ? [[a, b] as [LayoutEdge, LayoutEdge]]
+      : [];
   });
 }
 
@@ -183,14 +220,18 @@ const ANY_KEY = () => "k";
 
 /** The `<g>` of the PAIR fixture's two edges, `Orders -> Payments` first. */
 function pairGroups(svg: string): [string, string] {
-  const groups = [...svg.matchAll(/<g data-edge-from[^>]*>[\s\S]*?<\/g>/g)].map((m) => m[0]);
-  const of = (label: string) => groups.find((g) => g.includes(`data-edge-label="${label}"`))!;
+  const groups = [...svg.matchAll(/<g data-edge-from[^>]*>[\s\S]*?<\/g>/g)].map(
+    (m) => m[0],
+  );
+  const of = (label: string) =>
+    groups.find((g) => g.includes(`data-edge-label="${label}"`))!;
   return [of("charges the order total"), of("reports settlement")];
 }
 
 /** Where a group's hit-line starts, from a `<line>` or a `<path>`. */
 function hitStart(group: string): [number, number] | undefined {
-  const hit = /<(?:line|path)[^>]*class="krs-edge__hitline"[^>]*>/.exec(group)?.[0] ?? "";
+  const hit =
+    /<(?:line|path)[^>]*class="krs-edge__hitline"[^>]*>/.exec(group)?.[0] ?? "";
   const line = /x1="([-\d.]+)" y1="([-\d.]+)"/.exec(hit);
   const path = /d="M\s*([-\d.]+)[ ,]([-\d.]+)/.exec(hit);
   const m = line ?? path;
@@ -202,14 +243,43 @@ describe("mutual pair drawn as one line (#3027)", () => {
     const before = laidOut(UMAMI, UMAMI_PATH, { withKey: false });
     const after = laidOut(UMAMI, UMAMI_PATH);
 
-    it("draws 28 lines instead of 41, with every authored edge still its own LayoutEdge", () => {
+    it("draws 27 lines instead of 41, with every authored edge still its own LayoutEdge", () => {
       expect(before.edges).toHaveLength(41);
       expect(linesDrawn(before)).toBe(41);
       expect(after.edges).toHaveLength(41);
-      // 14 pairs and 27 lines before the band's edges were routed (#3881): a
-      // band edge now crosses Boards <-> TrackedEntities where the split would go.
-      expect(pairsOf(after)).toHaveLength(13);
-      expect(linesDrawn(after)).toBe(28);
+      // 13 pairs and 28 lines while a band edge's crossing took away the split
+      // of Boards <-> TrackedEntities (#3881, #3887).
+      expect(pairsOf(after)).toHaveLength(14);
+      expect(linesDrawn(after)).toBe(27);
+    });
+
+    it("keeps a canvas pair the band's lines cross as one line, the crossings hopped (#3887)", () => {
+      // Two band lines run down between TrackedEntities and Boards, across the
+      // middle of their pair, which leaves no room for the full clearance.
+      const pair = pairsOf(after).find(([a]) =>
+        [a.from, a.to].every((id) =>
+          /^(TrackedEntities|Boards)$/.test(id.split(".").pop()!),
+        ),
+      );
+      expect(pair).toBeDefined();
+      const band = after.edges.filter((e) => e.band).map(lineOf);
+      const hops = after.crossingMarks!.hops;
+      let crossed = 0;
+      for (const half of pair!) {
+        const line = lineOf(half);
+        for (const at of crossingsAlong(line, band)) {
+          crossed++;
+          // The crossing is marked by a hop on this half.
+          expect(
+            hops.some(
+              (hop) =>
+                Math.abs((alongLine(line, hop) ?? Infinity) - at) <=
+                hop.halfWidth,
+            ),
+          ).toBe(true);
+        }
+      }
+      expect(crossed).toBeGreaterThanOrEqual(1);
     });
 
     it("crosses 64 times or fewer instead of 140", () => {
@@ -232,11 +302,18 @@ describe("mutual pair drawn as one line (#3027)", () => {
     it("joins the two halves of each pair at one shared point, each ending at its own target", () => {
       for (const [a, b] of pairsOf(after)) {
         expect(same(a.fromPoint, b.fromPoint)).toBe(true);
-        const orig = before.edges.find((e) => e.from === a.from && e.to === a.to)!;
-        const origBack = before.edges.find((e) => e.from === b.from && e.to === b.to)!;
+        const orig = before.edges.find(
+          (e) => e.from === a.from && e.to === a.to,
+        )!;
+        const origBack = before.edges.find(
+          (e) => e.from === b.from && e.to === b.to,
+        )!;
         // The earlier edge's route is the shared line, so its target end is kept
         // and the later edge ends where the earlier one started.
-        const first = before.edges.indexOf(orig) < before.edges.indexOf(origBack) ? orig : origBack;
+        const first =
+          before.edges.indexOf(orig) < before.edges.indexOf(origBack)
+            ? orig
+            : origBack;
         const [fwd, back] = first === orig ? [a, b] : [b, a];
         expect(same(fwd.toPoint, first.toPoint)).toBe(true);
         expect(same(back.toPoint, first.fromPoint)).toBe(true);
@@ -246,24 +323,36 @@ describe("mutual pair drawn as one line (#3027)", () => {
     it("keeps every split clear of corners, crossings and every hop over its line", () => {
       const hops = after.crossingMarks!.hops;
       for (const [a, b] of pairsOf(after)) {
-        const others = after.edges.filter((e) => e !== a && e !== b).map(lineOf);
+        const rest = after.edges.filter((e) => e !== a && e !== b);
+        // The band's lines cross a canvas pair with a hop's clearance only (#3887).
+        const soft = (e: LayoutEdge) => a.band !== true && e.band === true;
+        const others = rest.filter((e) => !soft(e)).map(lineOf);
+        const band = rest.filter(soft).map(lineOf);
         for (const half of [a, b]) {
           const line = lineOf(half);
           // Not on a corner: the first segment of each half is at least 10px long.
-          expect(Math.hypot(line[1].x - line[0].x, line[1].y - line[0].y)).toBeGreaterThanOrEqual(
-            10 - 1e-6,
-          );
-          // A crossing is at least 14px from the split, along the half.
-          for (const at of crossingsAlong(line, others))
-            expect(at).toBeGreaterThanOrEqual(14 - 1e-6);
+          expect(
+            Math.hypot(line[1].x - line[0].x, line[1].y - line[0].y),
+          ).toBeGreaterThanOrEqual(10 - 1e-6);
+          // A crossing is at least 14px from the split, along the half; a band
+          // line's, a hop radius.
+          const hard = crossingsAlong(line, others);
+          for (const at of hard) expect(at).toBeGreaterThanOrEqual(14 - 1e-6);
+          for (const at of crossingsAlong(line, band))
+            expect(at).toBeGreaterThanOrEqual(HOP_RADIUS - 1e-6);
           // A hop on the half: its gap (hosted by the half) or its arc (hosted by
-          // the line crossing over) ends before the split.
+          // the line crossing over) ends before the split, and a hop over a
+          // crossing that keeps the full clearance is 14px from it at least.
           for (const hop of hops) {
             const at = alongLine(line, hop);
             if (at === undefined) continue;
-            const reach = after.edges[hop.edge] === half ? hop.halfWidth : (hop.ry ?? 0);
+            const reach =
+              after.edges[hop.edge] === half ? hop.halfWidth : (hop.ry ?? 0);
+            const full = hard.some(
+              (c) => Math.abs(c - at) <= Math.max(reach, HOP_RADIUS) + 1e-6,
+            );
             expect(at, `hop at ${hop.x},${hop.y}`).toBeGreaterThanOrEqual(
-              Math.max(14, reach) - 1e-6,
+              (full ? Math.max(14, reach) : reach) - 1e-6,
             );
           }
         }
@@ -276,7 +365,9 @@ describe("mutual pair drawn as one line (#3027)", () => {
         const onLine = line.slice(1).some((b, i) => {
           const a = line[i];
           const len = Math.hypot(b.x - a.x, b.y - a.y);
-          const t = ((hop.x - a.x) * (b.x - a.x) + (hop.y - a.y) * (b.y - a.y)) / (len * len);
+          const t =
+            ((hop.x - a.x) * (b.x - a.x) + (hop.y - a.y) * (b.y - a.y)) /
+            (len * len);
           const q = { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) };
           return t >= 0 && t <= 1 && Math.hypot(q.x - hop.x, q.y - hop.y) < 0.5;
         });
@@ -294,7 +385,9 @@ describe("mutual pair drawn as one line (#3027)", () => {
         });
         for (const box of boxes) expect(contains(box, a.fromPoint)).toBe(false);
         const [first, second] = boxes;
-        expect(first !== undefined && second !== undefined && overlap(first, second)).toBe(false);
+        expect(
+          first !== undefined && second !== undefined && overlap(first, second),
+        ).toBe(false);
         seated += boxes.length;
       }
       // The check means something only if pairs' labels are on the canvas.
@@ -302,13 +395,16 @@ describe("mutual pair drawn as one line (#3027)", () => {
     });
 
     it("leaves no more labels off the canvas than two lines did", () => {
-      expect(placedLabels(after).size).toBeGreaterThanOrEqual(placedLabels(before).size);
+      expect(placedLabels(after).size).toBeGreaterThanOrEqual(
+        placedLabels(before).size,
+      );
     });
 
     it("still merges every pair when a global rule positions the labels", () => {
-      const offset = laidOut(UMAMI, UMAMI_PATH, { style: "edge { label-offset: 0 8px; }" });
-      // 13 since a band edge crosses one pair's split (#3881), as in the default case.
-      expect(pairsOf(offset)).toHaveLength(13);
+      const offset = laidOut(UMAMI, UMAMI_PATH, {
+        style: "edge { label-offset: 0 8px; }",
+      });
+      expect(pairsOf(offset)).toHaveLength(14);
     });
   });
 
@@ -331,12 +427,15 @@ describe("mutual pair drawn as one line (#3027)", () => {
     });
 
     it("merges when both edges carry the same style", () => {
-      const style = "edge[from=Orders] { color: #ff0000; } edge[from=Payments] { color: #ff0000; }";
+      const style =
+        "edge[from=Orders] { color: #ff0000; } edge[from=Payments] { color: #ff0000; }";
       expect(pairsOf(laidOut(PAIR, PAIR_PATH, { style }))).toHaveLength(1);
     });
 
     it("keeps a pair whose diff states differ as two lines", () => {
-      const diff = new Map([[edgeKey({ from: "Orders", to: "Payments" }), "added"]]);
+      const diff = new Map([
+        [edgeKey({ from: "Orders", to: "Payments" }), "added"],
+      ]);
       expect(halves(laidOut(PAIR, PAIR_PATH, { diff }))).toHaveLength(0);
       diff.set(edgeKey({ from: "Payments", to: "Orders" }), "added");
       expect(pairsOf(laidOut(PAIR, PAIR_PATH, { diff }))).toHaveLength(1);
@@ -404,7 +503,9 @@ system Two {
         /domain Payments \{\n\s+-> Orders "reports settlement"\n\s+\}/,
         "domain Payments",
       );
-      expect(laidOut(src, PAIR_PATH)).toEqual(laidOut(src, PAIR_PATH, { withKey: false }));
+      expect(laidOut(src, PAIR_PATH)).toEqual(
+        laidOut(src, PAIR_PATH, { withKey: false }),
+      );
     });
 
     const a = [
@@ -420,8 +521,12 @@ system Two {
       ["trunked (fan-out)", { outTrunkId: "A" }],
       ["bundled", { bundleIndex: 0, bundleSize: 2 }],
     ])("does not pair an edge that is %s", (_, mark) => {
-      expect(findMutualPairs([edge("A", "B", a), edge("B", "A", b, mark)], ANY_KEY)).toEqual([]);
-      expect(findMutualPairs([edge("A", "B", a), edge("B", "A", b)], ANY_KEY)).toEqual([[0, 1]]);
+      expect(
+        findMutualPairs([edge("A", "B", a), edge("B", "A", b, mark)], ANY_KEY),
+      ).toEqual([]);
+      expect(
+        findMutualPairs([edge("A", "B", a), edge("B", "A", b)], ANY_KEY),
+      ).toEqual([[0, 1]]);
     });
 
     it.each([
@@ -429,11 +534,17 @@ system Two {
       "__group_collapsed_Team__",
       "Sys.__collapsed_Sys_external__",
     ])("does not pair an edge to the collapse stub %s", (stub) => {
-      expect(findMutualPairs([edge("A", stub, a), edge(stub, "A", b)], ANY_KEY)).toEqual([]);
+      expect(
+        findMutualPairs([edge("A", stub, a), edge(stub, "A", b)], ANY_KEY),
+      ).toEqual([]);
     });
 
     it("does not pair when either direction has a parallel edge", () => {
-      const edges = [edge("A", "B", a), edge("B", "A", b), edge("A", "B", a, { kind: "async" })];
+      const edges = [
+        edge("A", "B", a),
+        edge("B", "A", b),
+        edge("A", "B", a, { kind: "async" }),
+      ];
       expect(findMutualPairs(edges, ANY_KEY)).toEqual([]);
     });
 
@@ -465,13 +576,50 @@ system Two {
       expect(chooseSplit(line, [other], none, 0)).toBe(86);
     });
 
+    it("slides off a soft line's crossing by a hop radius only (#3887)", () => {
+      const band = [
+        { x: 100, y: -50 },
+        { x: 100, y: 50 },
+      ];
+      expect(chooseSplit(line, [], none, 0, [band])).toBe(100 - HOP_RADIUS);
+    });
+
+    it("keeps out of the gap of a hop over a soft line's crossing, not 14px (#3887)", () => {
+      const band = [
+        { x: 100, y: -50 },
+        { x: 100, y: 50 },
+      ];
+      const hop = { x: 100, y: 0, halfWidth: 9, angle: 0, edge: 0 };
+      expect(chooseSplit(line, [], { ...none, hops: [hop] }, 0, [band])).toBe(
+        91,
+      );
+      // The same hop over a line that keeps the full clearance keeps 14px.
+      expect(chooseSplit(line, [band], { ...none, hops: [hop] }, 0)).toBe(86);
+    });
+
+    it("finds a split between soft crossings where hard ones would leave none (#3887)", () => {
+      const lines = [40, 60, 80, 100, 120, 140, 160].map((x) => [
+        { x, y: -50 },
+        { x, y: 50 },
+      ]);
+      expect(chooseSplit(line, lines, none, 0)).toBeUndefined();
+      expect(chooseSplit(line, [], none, 0, lines)).toBe(100 - HOP_RADIUS);
+    });
+
     it("keeps out of the whole gap of a wide hop the line hosts", () => {
       const wide = { x: 100, y: 0, halfWidth: 30, angle: 0, edge: 0 };
       expect(chooseSplit(line, [], { ...none, hops: [wide] }, 0)).toBe(70);
     });
 
     it("keeps under an arc another line hosts as far as the arc is tall", () => {
-      const tall = { x: 100, y: 0, halfWidth: HOP_RADIUS, angle: 90, edge: 1, ry: 20 };
+      const tall = {
+        x: 100,
+        y: 0,
+        halfWidth: HOP_RADIUS,
+        angle: 90,
+        edge: 1,
+        ry: 20,
+      };
       expect(chooseSplit(line, [], { ...none, hops: [tall] }, 0)).toBe(80);
     });
 
@@ -607,14 +755,24 @@ system Two {
 
     it("draws each label behind the arrow of its own half and keeps the authored text", () => {
       const { svg } = compile(PAIR, { viewPath: PAIR_PATH });
-      const groups = [...svg.matchAll(/<g data-edge-from[^>]*>[\s\S]*?<\/g>/g)].map((m) => m[0]);
-      const charge = groups.find((g) => g.includes('data-edge-label="charges the order total"'))!;
-      const settle = groups.find((g) => g.includes('data-edge-label="reports settlement"'))!;
-      const publish = groups.find((g) => g.includes('data-edge-label="publishes price changes"'))!;
+      const groups = [
+        ...svg.matchAll(/<g data-edge-from[^>]*>[\s\S]*?<\/g>/g),
+      ].map((m) => m[0]);
+      const charge = groups.find((g) =>
+        g.includes('data-edge-label="charges the order total"'),
+      )!;
+      const settle = groups.find((g) =>
+        g.includes('data-edge-label="reports settlement"'),
+      )!;
+      const publish = groups.find((g) =>
+        g.includes('data-edge-label="publishes price changes"'),
+      )!;
       const drawn = (g: string) =>
         /<text[^>]*>([\s\S]*?)<\/text>/.exec(g)?.[1].replace(/<[^>]+>/g, "");
       // The arrow is its own tspan, so a reader of the drawn text can leave it out.
-      expect(charge).toMatch(/<tspan class="krs-edge__cue">[→↘↓↙←↖↑↗] <\/tspan>charges/);
+      expect(charge).toMatch(
+        /<tspan class="krs-edge__cue">[→↘↓↙←↖↑↗] <\/tspan>charges/,
+      );
       const arrowOf = (text: string | undefined) => text?.split(" ")[0];
       expect(drawn(charge)).toMatch(/^[→↘↓↙←↖↑↗] charges the order total$/);
       expect(drawn(settle)).toMatch(/^[→↘↓↙←↖↑↗] reports settlement$/);
@@ -636,7 +794,9 @@ system Two {
     });
 
     it("gives each half its own hit-line, both starting at the split", () => {
-      const [charge, settle] = pairGroups(compile(PAIR, { viewPath: PAIR_PATH }).svg);
+      const [charge, settle] = pairGroups(
+        compile(PAIR, { viewPath: PAIR_PATH }).svg,
+      );
       expect(hitStart(charge)).toBeDefined();
       expect(hitStart(charge)).toEqual(hitStart(settle));
     });
