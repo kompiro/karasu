@@ -193,7 +193,7 @@ node scripts/review/tier.ts classify   # "tier": "low" なら適用条件を満�
 手順は次の順で行う。**段階は PR を作る前にブランチの差分で判定する。**
 Low の PR は draft を経ずに作り、マージは merger に任せる。`risk: low` を付けて PR を作ることが「CI と記録が
 揃ったらマージしてよい」という依頼になる。これは `docs/process.md` 手順 10・11（draft で作り、`gh pr ready` で外す）に
-優先する。`gh pr merge` は打たない（`--auto` も、直接のマージも）。
+優先する。マージを起こす `gh pr merge` は打たない（`--auto` も、直接のマージも）。
 
 ```
 git fetch origin main
@@ -214,7 +214,7 @@ node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/review/await-low-mer
 | `auto-merge-enabled` | native の auto-merge が有効になっている（古い手順のセッションか人の操作）。`gh pr merge <N> --disable-auto` で解き、もう一度走らせる |
 | `fix-pr` | `reasons` の問題を PR で直し、もう一度走らせる。コミットを足すなら下の「PR を作った後に差分を足すとき」に従う |
 | `checks-stuck` | 止まった check を `gh run rerun <run-id>` で走らせ直す。必須 check が 1 本も現れていなければ PR を close して reopen する。もう一度走らせる |
-| `fallback` | merger 側の問題。`gh run list -w low-pr-merger.yml -L 5` で最新の run の summary を読み、JSON 行と一緒に kompiro に知らせて止まる |
+| `fallback` | merger 側の問題。`gh run list -w low-pr-merger.yml -L 5` で最新の run を探し、判定を `gh run view <run-id> --log`（または run のページの summary）で読み、JSON 行と一緒に kompiro に知らせて止まる |
 | `out-of-scope`・`closed`・`timeout` | JSON 行をユーザーに示して止まる。Low として作った PR が `out-of-scope` なら、`why` を直してもう一度走らせる |
 
 `fallback` は、その時点の head で PR の側（段階のラベル、tier の検査、必須 check、コンフリクト）に落ちたものが無く、
@@ -316,12 +316,12 @@ Low でなければ、出た段階のラベルを付けて draft で作り、`gh
   - Low でないとき: `gh pr ready <N> --undo` で draft に戻し、ラベルを出た段階に付け替えて `gh pr ready <N>` で
     外し、通常の PR として扱う。`risk: high` / `risk: design` なら、CodeRabbit のレビューはこのときに走る
 - Low でない段階のラベルの PR は merger の対象外で、人間がマージする。`gh pr merge --auto` は使わない
-  （Review tier は Low でない PR の auto-merge を落とすが、CI が通った後に有効にした PR はそのままマージされ、
-  check では止められない）
+  （native の auto-merge は ruleset の required check しか待たず、Review tier はその中に無いので、Review tier が
+  auto-merge の有効な PR を落としてもマージは止まらない）
 
 ### マージ後の後始末
 
-**到達状態**: merger がマージした PR の worktree とローカルブランチが残っていない。
+**到達状態**: マージされた Low の PR の worktree とローカルブランチが残っていない。
 `git fetch --prune && git branch -vv | grep '\[gone\]'` が何も出さない。
 
 merger のマージを待つあいだセッションは手を離すので、この PR は `/hane:start-dev` の
@@ -331,5 +331,5 @@ Issue の作業中に無関係な worktree として現れる（実例: #2435 �
 2 件残り、#2451 の片付け中に気づいた）。
 
 掃除は `/commit-commands:clean_gone` — `[gone]` ブランチとその worktree をまとめて
-削除する。手順 3 のスクリプトが `merged-by-merger` を出したらこの後始末をするか、上の grep が空に
+削除する。手順 3 のスクリプトが `merged-by-merger` か `merged-otherwise` を出したらこの後始末をするか、上の grep が空に
 なることを次のセッション開始時に確認する。
