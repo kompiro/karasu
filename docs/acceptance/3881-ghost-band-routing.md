@@ -48,7 +48,7 @@ type: product
 
 ## 手動確認
 
-- [ ] 次のモデルを `index.krs` として開き、`Shop › Commerce › Ordering` にドリルして ◇ Entities に切り替える。帯の線は直交の経路でカードと帯の枠を避け、交差には hop が付き、線は muted のまま。焦点の枠の中のカードと線（Order・Cart・Line item の間）は、#3880 の図と同じ位置にある
+- [ ] 次のモデルを `index.krs` として開き、`Shop › Commerce › Ordering` にドリルして ◇ Entities に切り替える。帯の線はカードと帯の枠を避けて配線され（塞がれていなければ焦点の線と同じく直線のまま、塞がれていれば縦横の折れ線で回り込む）、交差には hop が付き、線は muted のまま。焦点の枠の中のカードと線（Order・Cart・Line item の間）は、#3880 の図と同じ位置にある
 
   ```krs
   system Shop {
