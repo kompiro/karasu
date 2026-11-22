@@ -214,7 +214,7 @@ node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/review/await-low-mer
 | `auto-merge-enabled` | native の auto-merge が有効になっている（古い手順のセッションか人の操作）。`gh pr merge <N> --disable-auto` で解き、もう一度走らせる |
 | `fix-pr` | `reasons` の問題を PR で直し、もう一度走らせる。コミットを足すなら下の「PR を作った後に差分を足すとき」に従う |
 | `checks-stuck` | 止まった check を `gh run rerun <run-id>` で走らせ直す。必須 check が 1 本も現れていなければ PR を close して reopen する。もう一度走らせる |
-| `fallback` | merger 側の問題。`gh run list -w low-pr-merger.yml -L 5` で最新の run を探し、判定を `gh run view <run-id> --log`（または run のページの summary）で読み、JSON 行と一緒に kompiro に知らせて止まる |
+| `fallback` | PR の側に落ちたものが無いのに merger がマージしない（理由は JSON 行の `verdict` と `details`）。`gh run list -w low-pr-merger.yml --status completed -L 5` で終わった run を探し、判定を `gh run view <run-id> --log`（または run のページの summary）で読み、JSON 行と一緒に kompiro に知らせて止まる |
 | `out-of-scope`・`closed`・`timeout` | JSON 行をユーザーに示して止まる。Low として作った PR が `out-of-scope` なら、`why` を直してもう一度走らせる |
 
 `fallback` は、その時点の head で PR の側（段階のラベル、tier の検査、必須 check、コンフリクト）に落ちたものが無く、
