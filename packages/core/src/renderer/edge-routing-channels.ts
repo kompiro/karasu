@@ -29,6 +29,7 @@
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";
 import type { Point } from "./edge-geometry.js";
 import type { ObstacleQuery } from "./obstacle-index.js";
+import { isPeripheralEdge } from "./band-routing.js";
 
 export function routeOrthogonalEdges(
   layoutNodes: Map<string, LayoutNode>,
@@ -47,7 +48,7 @@ export function routeOrthogonalEdges(
   const nodes = [...layoutNodes.values()];
 
   for (const edge of layoutEdges) {
-    if (edge.ghost || edge.cyclic) continue;
+    if (isPeripheralEdge(edge)) continue;
     if (edge.waypoints && edge.waypoints.length > 0) continue;
 
     const from = layoutNodes.get(edge.from);

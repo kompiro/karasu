@@ -35,6 +35,7 @@
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";
 import type { Rect } from "./edge-geometry.js";
 import { CONTAINER_LABEL_HEIGHT } from "./layout-constants.js";
+import { CANVAS_PHASE, isPeripheralEdge, type RoutingPhase } from "./band-routing.js";
 
 /** Vertical distance between two lanes that share a channel (px). */
 export const LANE_PITCH = 14;
@@ -174,7 +175,7 @@ export function collectChannels(
   type Band = { upper: number; lower: number; runs: Omit<ChannelRun, "lane">[] };
   const bands = new Map<string, Band>();
   for (const edge of edges) {
-    if (edge.ghost || edge.cyclic) continue;
+    if (isPeripheralEdge(edge)) continue;
     for (const run of channelRunsOf(edge)) {
       const band = bandAround(run.y, obstacles);
       const key = `${band.upper}|${band.lower}`;
@@ -238,6 +239,12 @@ export function distributeChannelLanes(
   edges: LayoutEdge[],
   frames: readonly Rect[],
   limits: ChannelLimits,
+  /**
+   * Which runs this pass may move (#3881). In the band phase the canvas's runs
+   * keep their y; a band run takes its lane's y unless a held run is on it, and
+   * then the nearest free one at `LANE_PITCH`.
+   */
+  phase: RoutingPhase = CANVAS_PHASE,
 ): void {
   for (const channel of collectChannels(nodes, edges, frames, limits)) {
     const { runs, lanes, upper, lower } = channel;
@@ -262,12 +269,57 @@ export function distributeChannelLanes(
     const nearest = openAbove
       ? Math.max(...runs.map((r) => r.y))
       : Math.min(...runs.map((r) => r.y));
-    for (const run of runs) {
-      const y = openAbove
+    const laneY = (run: ChannelRun) =>
+      openAbove
         ? nearest - (lanes - 1 - rank[run.lane]) * LANE_PITCH
         : openBelow
           ? nearest + rank[run.lane] * LANE_PITCH
           : centre + (rank[run.lane] - (lanes - 1) / 2) * pitch;
+    const moved = runs.filter((run) => phase.routes(run.edge));
+    if (moved.length === 0) continue;
+    // A run this pass does not move holds its y (the canvas phase moves them
+    // all, so nothing is held and every run takes its lane's y). In the band
+    // phase a band run keeps clear of the held runs and of the band runs already
+    // placed that share its x range, inside the channel's bounds (#3881).
+    const occupied: { y: number; leftX: number; rightX: number }[] = runs.filter(
+      (run) => !phase.routes(run.edge),
+    );
+    const anyHeld = occupied.length > 0;
+    const fits = (y: number) =>
+      y > upper + LANE_PITCH / 2 - 1e-6 && y < lower - LANE_PITCH / 2 + 1e-6;
+    // A lane bundle's runs stay on one y: their shared run is one run (#2958).
+    // Runs merely sharing a lane index (x ranges apart) each find their own.
+    const bundleOf = (run: ChannelRun) => run.edge.trunkId ?? run.edge.outTrunkId;
+    const laneAt = new Map<string, number>();
+    for (const run of moved) {
+      const base = laneY(run);
+      const near = occupied.filter((o) => o.leftX < run.rightX && run.leftX < o.rightX);
+      const clearance = (y: number) => Math.min(Infinity, ...near.map((o) => Math.abs(o.y - y)));
+      const free = (y: number) => clearance(y) >= LANE_PITCH - 1e-6 && fits(y);
+      const bundle = bundleOf(run);
+      const shared = bundle !== undefined ? laneAt.get(`${bundle}@${run.lane}`) : undefined;
+      let y = shared ?? base;
+      if (anyHeld && shared === undefined && near.length > 0 && !free(base)) {
+        // The nearest free lane at the pitch, then the roomiest y the channel
+        // still has when no whole lane is left.
+        const steps = Array.from({ length: near.length + 1 }, (_, k) => k + 1);
+        const atPitch = steps
+          .flatMap((k) => [base - k * LANE_PITCH, base + k * LANE_PITCH])
+          .find(free);
+        const span = [
+          Math.max(upper, base - (near.length + 1) * LANE_PITCH),
+          Math.min(lower, base + (near.length + 1) * LANE_PITCH),
+        ];
+        const roomiest = Array.from(
+          { length: Math.max(0, Math.floor(span[1] - span[0]) + 1) },
+          (_, k) => span[0] + k,
+        )
+          .filter((c) => c > upper && c < lower)
+          .reduce((best, c) => (clearance(c) > clearance(best) ? c : best), base);
+        y = atPitch ?? roomiest;
+      }
+      if (bundle !== undefined) laneAt.set(`${bundle}@${run.lane}`, y);
+      if (anyHeld) occupied.push({ y, leftX: run.leftX, rightX: run.rightX });
       const wps = run.edge.waypoints!;
       wps[run.i] = { x: wps[run.i].x, y };
       wps[run.i + 1] = { x: wps[run.i + 1].x, y };

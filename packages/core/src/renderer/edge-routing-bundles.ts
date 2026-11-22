@@ -35,6 +35,7 @@
 import { type AnchorRect, detectSide } from "./edge-routing-ports.js";
 import type { LayoutEdge } from "./layout-types.js";
 import { edgeKey } from "../view/edge-key.js";
+import { isPeripheralEdge } from "./band-routing.js";
 
 const BUNDLE_GAP = 12;
 
@@ -73,7 +74,7 @@ export function markParallelBundles(
       // Ghost/cyclic keep their historical guarantee even where their anchor
       // logic left the lines apart; anything else moves only while it is still
       // drawn on top of a sibling.
-      if (!edge.ghost && !edge.cyclic && !stacked[i]) continue;
+      if (!isPeripheralEdge(edge) && !stacked[i]) continue;
 
       const offset = (i - (N - 1) / 2) * BUNDLE_GAP;
       const dx = edge.toPoint.x - edge.fromPoint.x;
