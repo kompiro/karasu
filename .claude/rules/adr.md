@@ -308,7 +308,7 @@ Low でなければ、出た段階のラベルを付けて draft で作り、`gh
 - 新しい ADR が karasu のドメインの外への URL を足すと、その ADR は Medium になり、
   merger はマージしない（`docs/process/review.md`「リスク段階」の「外のドメインへのリンク」）。
   上流の Issue や PR を引くトリアージの ADR はこれに当たり、人間が読む
-- PR を作った後に差分を足すときは、native の auto-merge が有効なら（`gh pr view <N> --json autoMergeRequest --jq .autoMergeRequest` が `null` 以外を出す）
+- PR を作った後に差分を足すときは、native の auto-merge が有効なら（`gh pr view <N> --json autoMergeRequest --jq '.autoMergeRequest != null'` が `true` を出す）
   先に `gh pr merge <N> --disable-auto` で解き、それから push する。native の auto-merge は merger の判定も SHA の固定も
   通らずに新しい HEAD をマージしうる。有効でなければ、そのまま push してよい。push すると記録が HEAD を覆わなくなるので、
   記録を作り直すまで merger はマージしない。push の前に merger が判定していても、マージは判定した head の SHA に
