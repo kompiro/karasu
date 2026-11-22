@@ -30,7 +30,7 @@ draft を経ずに作る Low の ADR の PR でも CLI が使えなければ、`
 ### リスク段階
 
 **到達状態**: どの PR にも段階のラベル（`risk: low` / `risk: design` / `risk: medium` / `risk: high`）が付き、
-required check「Review tier」が通っている。この check は、ラベルが変更から判定した段階より低い PR、Low でないのに
+check「Review tier」が通っている（ruleset の required check ではない。#3364）。この check は、ラベルが変更から判定した段階より低い PR、Low でないのに
 auto-merge が有効な PR、High 以外でローカルレビューの記録が無いか HEAD を覆っていない PR を落とす。ラベルの無い PR は
 High として扱う。
 
@@ -45,7 +45,7 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 
 | 段階 | 変更したもの | PR での CodeRabbit | 通す条件 |
 | --- | --- | --- | --- |
-| Low | `docs/test-perspectives/**` の Markdown・新しいテストファイル（既存のテストファイルの変更は Medium）、新しい ADR、ADR の昇格（Design Doc の削除、リンクの張り替え、ADR へのリンクの追加）、既存 ADR の frontmatter、ADR の生成物と TPL の索引だけを変える再生成 PR | 回さない | 記録と CI が通れば auto-merge（再生成 PR は記録なしで、スクリプトが REST でマージする） |
+| Low | `docs/test-perspectives/**` の Markdown・新しいテストファイル（既存のテストファイルの変更は Medium）、新しい ADR、ADR の昇格（Design Doc の削除、リンクの張り替え、ADR へのリンクの追加）、既存 ADR の frontmatter、ADR の生成物と TPL の索引だけを変える再生成 PR | 回さない | 記録と CI が通れば Low PR merger がマージする（再生成 PR は記録なしで、スクリプトが REST でマージする） |
 | Design | `docs/design/**` | ready の直後に 1 回だけ。ゲートにしない | 記録と人間のレビュー |
 | Medium | ほかのすべて（`packages/*`・`docs/acceptance/**`・`docs/guide/**`・`examples/**`・既存 ADR の本文など） | 回さない | 記録と、人間の判断。描画やレイアウトが変わる PR（`rendering-change` ラベル、下）は人間が preview で動作を確かめる |
 | High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・`.claude/rules/**`・`.coderabbit.yaml`・レビューの仕組み（`scripts/review/**`・`scripts/coderabbit/**`・`scripts/render-equivalence/**`・`.claude/skills/**` など）・セキュリティの境界（下）・言語の挙動（下） | Critical / Major の未対応が無くなるまで回す（再レビューは 3 回まで） | 人間が High のファイルと `## For Reviewers` 節を読む。合意済みの Design Doc が裏付ける PR は、節と、summary が並べるファイル（セキュリティの境界と、決定・言語の挙動のパスの外の High のファイル）を読む（下の「High の PR で人間が読むもの」）。決定のパスのファイルは、差分が裏付けの Design Doc に載せた文面とちょうど一致すれば Medium に数える（下の「Design Doc に載せた仕様の文面」） |
@@ -79,12 +79,14 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 - **段階のラベルは draft のうちに付ける。** CodeRabbit は `risk: high` / `risk: design` の付いた PR だけを、draft を
   外れたときにレビューする。ラベルを上げるのはよい（人間が CodeRabbit に見せたいと判断した PR など）。ready の後に
   `risk: high` へ上げた PR でレビューが始まらなければ、`@coderabbitai full review` を投げる。Low の ADR の PR だけは
-  draft を経ずに作るので、`gh pr create --label` で付ける（`.claude/rules/adr.md`「ADR PR の auto-merge」）
-- **Low の auto-merge は「PR のマージはユーザー確認を経る」という既定運用への例外である。** 条件は Review tier を含む
-  CI が通ること。有効にした後に変更を足すなら、先に `gh pr merge <n> --disable-auto` で解く。Low 以外では auto-merge を
-  使わない。CI の途中で有効にすれば Review tier が落とすが、CI が通った後に有効にした PR はそのままマージされ、check では
-  止められない。#3698 が open のあいだは、有効にせず（有効なら解き）、Low PR merger のマージを待って結果を #3698 に書く
-  （`.claude/rules/adr.md`「#3698 が open のあいだは、`--auto` を打たずに Low PR merger を待つ（一時）」）
+  draft を経ずに作るので、`gh pr create --label` で付ける（`.claude/rules/adr.md`「ADR PR のマージ（Low PR merger）」）
+- **Low の PR を Low PR merger がマージするのは「PR のマージはユーザー確認を経る」という既定運用への例外である。**
+  `.github/workflows/low-pr-merger.yml` が `main` に固定したコードで `risk: low` の PR を読み、段階と記録を `main` の
+  分類器で判定し直し、ruleset の required check が通った head の SHA を固定して GitHub App の名義でマージする。
+  `risk: low` を付けて PR を作ることがマージの依頼になり、Claude は `gh pr merge` を打たない（`--auto` も使わない）。
+  マージを待つ手順と、PR を作った後に差分を足すときの扱いは `.claude/rules/adr.md`「ADR PR のマージ（Low PR merger）」。
+  Low 以外の PR は人間がマージし、auto-merge は使わない。CI の途中で有効にすれば Review tier が落とすが、CI が通った後に
+  有効にした PR はそのままマージされ、check では止められない
 - `skip-coderabbit` ラベルと本文の ignore コマンドは使わない。Medium 以下には CodeRabbit が走らないので、外す必要がない
 - 仕組みと却下した案は [ADR-3286](../adr/3286-risk-based-review-tiers.md)
 

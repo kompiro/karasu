@@ -151,8 +151,8 @@ ready → implementing → in-review → (close)
 12. CI（test / lint / format / typecheck / knip / check:cycles / build、それに段階と記録を検査する Review tier）が通過することを確認する
 13. Issue ラベルを status: in-review に更新する
 14. 手動検証チェックリストを実施する
-15. 段階に従って進める（review.md「リスク段階」）。High は CodeRabbit のラウンドを収束させる（ラウンドを始める前に docs/process/coderabbit-rounds.md を読む。`/coderabbit-converge` で Critical / Major の未対応が無くなるまで回す。記録済みの決定を変える指摘だけ人間に確認する。Claude が `gh pr ready` で draft を外すと、Claude Code のフックがこの手順を始めるよう促す。仕組みは ADR-3333）。Low は auto-merge を有効にする（gh pr merge <PR番号> --auto --squash --delete-branch）
-16. 人間のレビュー → マージ（Low は auto-merge）→ git worktree remove .claude/worktrees/<branch> でクリーンアップ
+15. 段階に従って進める（review.md「リスク段階」）。High は CodeRabbit のラウンドを収束させる（ラウンドを始める前に docs/process/coderabbit-rounds.md を読む。`/coderabbit-converge` で Critical / Major の未対応が無くなるまで回す。記録済みの決定を変える指摘だけ人間に確認する。Claude が `gh pr ready` で draft を外すと、Claude Code のフックがこの手順を始めるよう促す。仕組みは ADR-3333）。Low は gh pr merge を打たず Low PR merger を待つ（`.claude/rules/adr.md`）
+16. 人間のレビュー → マージ（Low は merger）→ git worktree remove .claude/worktrees/<branch> でクリーンアップ
 ```
 
 詳細な手順は `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
@@ -173,7 +173,7 @@ ready → implementing → in-review → (close)
 | 開発環境（Claude Code plugin・sibling repo の clone） | [docs/process/environment.md](process/environment.md) | スキルが見つからないとき、`/workspaces` の隣の repo を編集するとき |
 | 受け入れテスト（アノテーション書式・到達先） | `.claude/rules/acceptance.md` | `docs/acceptance/**` の編集 |
 | ドキュメントに埋める `.krs`（fence の主張宣言） | `.claude/rules/krs-fences.md` | `docs/{acceptance,spec,guide}/**` `docs/concepts*.md` の編集 |
-| ADR / Design Doc（昇格・supersede・permalink・auto-merge） | `.claude/rules/adr.md` | `docs/adr/**` `docs/design/**` の編集 |
+| ADR / Design Doc（昇格・supersede・permalink・Low のマージ） | `.claude/rules/adr.md` | `docs/adr/**` `docs/design/**` の編集 |
 | spec / concepts（proactive TPL 同梱・適合性監査） | `.claude/rules/spec-audit.md` | `docs/spec/**` `docs/concepts*.md` の編集 |
 | 複数スライスに分けた仕事の追跡 | `.claude/rules/program-slices.md` | Design Doc に `### スライス` を書いたとき |
 | changeset の要否と名指し | `.claude/rules/changesets.md` | 公開対象パッケージの編集 |
