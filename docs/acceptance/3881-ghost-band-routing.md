@@ -46,9 +46,17 @@ type: product
   >
   > ✅ Automated — `packages/core/src/renderer/ghost-band-routing.test.ts` › `ghost band routing on the service view (#3881)` › `leaves the canvas's own frame and routes as they are without the band's edges`
 
+### AC-4: 帯の線の形は焦点の線と同じ規則
+
+- [ ] AT-4: 直線のままの帯の線は、カード・端点を持たない帯の枠・枠のタイトルのどれも横切らない（斜めでもよい）。回り込む帯の線は縦と横の線だけでできている
+
+  > ✅ Automated — `packages/core/src/renderer/ghost-band-routing.test.ts` › `ghost band routing on the entity view (#3881)` › `leaves a band line straight only where nothing blocks it, and routes the rest with horizontal and vertical runs (#3888)`
+  >
+  > ✅ Automated — `packages/core/src/renderer/ghost-band-routing.test.ts` › `ghost band routing on the service view (#3881)` › `leaves a band line straight only where nothing blocks it, and routes the rest with horizontal and vertical runs (#3888)`
+
 ## 手動確認
 
-- [ ] 次のモデルを `index.krs` として開き、`Shop › Commerce › Ordering` にドリルして ◇ Entities に切り替える。帯の線は直交の経路でカードと帯の枠を避け、交差には hop が付き、線は muted のまま。焦点の枠の中のカードと線（Order・Cart・Line item の間）は、#3880 の図と同じ位置にある
+- [ ] 次のモデルを `index.krs` として開き、`Shop › Commerce › Ordering` にドリルして ◇ Entities に切り替える。帯の線はカード・帯の枠・枠のタイトルを横切らない（焦点の線と同じく、何も横切らない線は斜めの直線のままのことがあり、回り込む線は縦横の線だけでできている）、交差には hop が付き、線は muted のまま。焦点の枠の中のカードと線（Order・Cart・Line item の間）は、#3880 の図と同じ位置にある
 
   ```krs
   system Shop {
