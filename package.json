@@ -76,7 +76,7 @@
     "demo-video:record": "tsx scripts/demo-video/record.mts"
   },
   "devDependencies": {
-    "@babel/parser": "^7.29.9",
+    "@babel/parser": "^8.1.2",
     "@changesets/cli": "^3.0.3",
     "@karasu-tools/core": "workspace:*",
     "@kompiro/adr-tools": "^0.0.13",
