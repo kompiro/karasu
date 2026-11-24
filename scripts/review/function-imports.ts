@@ -67,10 +67,11 @@ export function readImports(
         break;
       case "CallExpression":
       case "OptionalCallExpression": {
+        // Babel 8 parses `import()` as an ImportExpression (above), so only `require` is a call here.
         const callee = unwrap(node.callee as Node);
-        const isImport = callee.type === "Import";
-        const isRequire = callee.type === "Identifier" && callee.name === "require";
-        if (isImport || isRequire) add(node, (node.arguments as Node[])[0], true);
+        if (callee.type === "Identifier" && callee.name === "require") {
+          add(node, (node.arguments as Node[])[0], true);
+        }
         break;
       }
       case "TSExternalModuleReference":
