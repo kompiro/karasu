@@ -21,9 +21,10 @@ open な security alert は前回と同じ #104（`glob`）と #106（`minimatch
 
 - #3900（`@types/vscode` 1.140.0 → 1.146.0）: Validate / Check / ExTester。前回の #3852 と同じ VS Code floor の柵で、
   `scripts/ci/vscode-version-policy.test.ts` が `engines.vscode`（`^1.140.0`）と `@types/vscode`（`^1.146.0`）のずれを止めた
-- #3912（`@babel/parser` 7.29.9 → 8.1.2、major）: Check の typecheck。`scripts/review/function-imports.ts:45` が指定する
-  parser plugin `deprecatedImportAssert` が Babel 8 で消えた（`TS2322`）。typecheck で止まるので、Check の後続の step
-  （テスト、build など）はこの PR では走っていない
+- #3912（`@babel/parser` 7.29.9 → 8.1.2、major）: Check と Validate。Check は typecheck で、`scripts/review/function-imports.ts:45`
+  が指定する parser plugin `deprecatedImportAssert` が Babel 8 で消えた（`TS2322`）。typecheck で止まるので、Check の後続の
+  step（app などのテスト、build）はこの PR では走っていない。Validate は `test:scripts` で、`function-imports.test.ts` の
+  2 件が `TSImportType` の AST の変更で落ちた（下記「#3912」）
 
 rollup に並ぶ「Review tier」の `CANCELLED` は、前回と同じく同じ head に対する重複の run である。17 件すべてで、同じ head に
 success の run が 1 本あり、`gh pr checks` の「Review tier」は pass と表示される。rerun は要らない。
@@ -35,8 +36,8 @@ bump 種別を問わず 17 件すべてで、次を確かめた。17 件の merg
 
 - **依存エッジ**: lock の snapshot を peer suffix を落として merge-base と各 PR ヘッドで突き合わせた（`security-alert` skill の
   edges 手順）。加えて `packages:` のキーを `名前@版` で比べ、main の lock に無かった版を全部書き出した。全 PR の和で
-  109 版（うち platform binding が 62 版: `@oxlint/binding-*` / `@oxfmt/binding-*` / `@rolldown/binding-*` /
-  `@vscode/vsce-sign-*`）。main の lock に無い**パッケージ名**が新しく入るのは 3 件:
+  109 版（うち platform binding が 63 版: `@oxlint/binding-*` / `@oxfmt/binding-*` / `@rolldown/binding-*`（wasm32 版を
+  含む）/ `@vscode/vsce-sign-*`）。main の lock に無い**パッケージ名**が新しく入るのは 3 件:
   - `@astrojs/runtime` / `@astrojs/vite-plugin-astro`（#3903 `astro`）: astro の monorepo（`withastro/astro` の
     `packages/runtime` / `packages/vite-plugin-astro`）から provenance 付きで出ており、astro 本体のコードを切り出したもの。
     例として `@astrojs/runtime` の `dist/internal/core/encryption.js` は astro 7.4.8 の `dist/core/encryption.js` と import 文以外が
@@ -57,10 +58,12 @@ bump 種別を問わず 17 件すべてで、次を確かめた。17 件の merg
   `node ./src/postinstall.js` で、`pnpm-workspace.yaml` の `allowBuilds` で `false` にしてあるので走らない。既存の
   `prepare` を持つもの（`jsdom`、`dompurify`、`i18next`、`sitemap`、`brace-expansion` など）は registry install では走らない。
   `graceful-fs` 4.2.12 は逆に `postpublish` を消した
-- **コード差分**: platform binding と型定義を除く 47 組の from / to の tarball を `npm pack --ignore-scripts` で取った。
+- **コード差分**: platform binding と型定義（`@types/vscode`）を除く 43 版は from / to の 2 版、新しい名前の 3 版
+  （`@astrojs/runtime`、`@astrojs/vite-plugin-astro`、`@rolldown/binding-wasm32-wasi`）は to 版だけ、tarball を
+  `npm pack --ignore-scripts` で取った。
   `child_process` / `eval(` / `new Function` / `process.env` / `fetch(` / `atob(` / `base64` / `fromCharCode` / `spawn(` /
   `exec(` / `execSync` / `writeFileSync` / `homedir` / URL を tarball 全体で数えて比べ、新しく現れる URL のホストも出した。
-  - 19 組は全パターン同数で、新しいホストもゼロ
+  - 43 組のうち 19 組は全パターン同数で、新しいホストもゼロ
   - 増えた組は該当する追加行を読んだ。`@anthropic-ai/sdk` の `spawn(` は agent toolset の grep tool（`rg`）と skill の展開で、
     1.9.0 のリリースノートの tools の修正（ripgrep の設定を無視、60 秒の上限、展開したファイルの mode の正規化）に当たる。
     karasu の app は SDK の `messages.create` しか呼ばず、agent toolset は使わない。`knip` の `child_process` は Node の
@@ -70,7 +73,7 @@ bump 種別を問わず 17 件すべてで、次を確かめた。17 件の merg
   - 新しいホストは `@anthropic-ai/sdk`（`example.com`、webhook の JSDoc の例）、`astro`（`https://host`、
     `security.allowedDomains` のコメント）、`graceful-fs`（`blueoakcouncil.org`、ライセンス）、`postcss-selector-parser`
     （`www.w3.org`、仕様の参照）、`@kompiro/adr-tools`（`claude.com`、README）で、どれもコメントか文書中の参照
-- **既知 advisory**: 上の 47 版と `@types/vscode@1.146.0` で、GitHub Advisory API（`affects=`）の該当はゼロ。クエリが
+- **既知 advisory**: 上の 46 版と `@types/vscode@1.146.0` の 47 版で、GitHub Advisory API（`affects=`）の該当はゼロ。クエリが
   効いていることは `astro@7.4.5` で 1 件返ることで確かめた。ただし `dompurify` には GitHub の global DB にまだ載って
   いない upstream の advisory が 2 件ある（下記「#3899」）
 - **公開からの経過**: すべて起票時点で 7 日を越えている。最も新しいのは `marked` 18.2.1（11-16 17:22 公開、起票まで約
@@ -110,7 +113,7 @@ app にも入らないので、配布物の notice には影響しない。
 | ----- | ----------------------------- | ----------------- | --------- | -------------------------- | ------- | ------ | ----------------------- |
 | #3897 | `@kompiro/adr-tools`          | 0.0.13 → 0.0.14   | patch     | root（dev）                | green   | low    | 採用                    |
 | #3898 | `jsdom`                       | 31.0.0 → 31.0.1   | patch     | app（dev）                 | green   | low    | 採用                    |
-| #3899 | `dompurify`                   | 3.4.17 → 3.4.18   | patch     | app（runtime）             | green   | low    | 採用                    |
+| #3899 | `dompurify`                   | 3.4.17 → 3.4.18   | patch     | app（runtime）             | green   | low    | **採用（差し替え PR）** |
 | #3900 | `@types/vscode`               | 1.140.0 → 1.146.0 | minor     | vscode / vscode-e2e（dev） | **red** | low    | **却下（close）**       |
 | #3901 | `@anthropic-ai/sdk`           | 1.7.0 → 1.9.0     | minor     | app（runtime）             | green   | low    | 採用                    |
 | #3902 | `@playwright/test`            | 1.65.0 → 1.65.1   | patch     | root / e2e（dev）          | green   | low    | 採用                    |
@@ -138,11 +141,13 @@ v24.18.0 は満たす。
 
 Babel 8 で、この柵に当たる変更は 2 つある。#3912 の head を手元に取って確かめた:
 
-1. **`deprecatedImportAssert` plugin の削除**: import の `assert { type: "json" }` 構文の parse ができなくなった。CI が落ちた
-   のはこの 1 行。指定を外すと typecheck は通る
+1. **`deprecatedImportAssert` plugin の削除**: import の `assert { type: "json" }` 構文の parse ができなくなった。Check の
+   typecheck が落ちたのはこの 1 行（実行時は「Babel 8 で削除された」という警告だけで、parse は続く）。指定を外すと
+   typecheck は通る
 2. **`TSImportType` の AST の変更**: `typeof import("./x.js")` の文字列が、Babel 7 の `argument`（`TSLiteralType` で包む）から
-   Babel 8 の `source`（`StringLiteral`）に移った。1 を直しただけでは `scripts/review/function-imports.test.ts` の 2 件
-   （`reads an import() type` など）が `TypeError` で落ちる。`node.source` を先に読むように直すと、
+   Babel 8 の `source`（`StringLiteral`）に移った。Validate の `test:scripts` で `scripts/review/function-imports.test.ts` の
+   2 件（`reads an import() type` と `typeof import("../other/x.js")` の型 export）が `TypeError` で落ちたのはこれで、1 を
+   直しても残る。`node.source` を先に読むように直すと、
    `function-imports.test.ts` と `tier.test.ts` の 570 件が通った
 
 1 の結果、Function が `import x from "./y.json" assert { type: "json" }` と書くと柵の parse が失敗する。柵は parse の失敗を
@@ -152,7 +157,8 @@ Babel 8 で、この柵に当たる変更は 2 つある。#3912 の head を手
 正しい変更は「bump + 柵の 2 か所の修正」で、bot が作れる diff には収まらない。**#3912 を close し、同じ bump と
 `function-imports.ts` の修正を 1 本の差し替え PR で入れる**ことを推奨する。判定は採用なので `@dependabot ignore` は
 設定しない。差し替え PR では、上の 2 か所に加えて、plugin の一覧の前にあるコメント（「`assert` on an import」）も
-直す。bot PR の CI は typecheck で止まっているので、後続の step は差し替え PR の CI で初めて確かめることになる。
+直す。bot PR の Check は typecheck で止まっているので、app などのテストと build は差し替え PR の CI で初めて確かめる
+ことになる。
 
 **保留を選ばない理由**: 修正は 1 ファイル 3 行程度で、柵のテストがその正しさを直接確かめる。Babel 7 は 7.x branch で
 保守が続いているが、待っても bot の diff は直らず、毎週同じ PR が出る。
@@ -173,7 +179,7 @@ ADR-3870 と同じ形で、**bot PR を close する**。`@dependabot ignore` �
 8.29.0 を出せば、floor を 1.146 まで上げられる。ただし `vscode-min` が 1.145.3 なので、ExTester を 8.29 に上げると
 floor 1.140 での ExTester 実行ができなくなる可能性がある。floor を動かす判断は #3070 で行う。
 
-### #3899 `dompurify` 3.4.17 → 3.4.18
+### #3899 `dompurify` 3.4.17 → 3.4.18（差し替え PR での採用を推奨）
 
 app の runtime 依存で、`ChatPane` / `NodeDetailPanel` / `EdgeDetailPanel` が `marked` の出力を
 `DOMPurify.sanitize(raw)`（既定の設定）で通す。3.4.18 は `SAFE_FOR_TEMPLATES` の bypass の修正、SVG の許可リストから要素で
@@ -190,17 +196,24 @@ app の runtime 依存で、`ChatPane` / `NodeDetailPanel` / `EdgeDetailPanel` �
 該当なし）。3.4.18 で 1 件目が直る。2 件目の修正版 3.5.0 は 11-22 公開で cooldown の内側なので、来週の bump を待つ。
 
 `.claude/rules/dependabot.md`「Security alert 時は advisory の脆弱範囲を override / 宣言レンジと突き合わせる」は alert を
-処理したときの規則で、今回は alert が無い。それでも同じ突き合わせをしておく:
+処理したときの規則で、今回は alert が無い。それでも同じ突き合わせをした:
 
-| 確認                                  | 結果                                                                                              |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `pnpm-workspace.yaml` の `overrides:` | `dompurify: ^3.4.16`。2 件とも脆弱範囲と交差する                                                  |
-| 宣言（`packages/*/package.json`）     | `packages/app` の `"dompurify": "^3.4.17"`。#3899 で `^3.4.18` に上がり、1 件目とは交差しなくなる |
-| #3899 の head の lock                 | `dompurify@` は 3.4.18 の 1 版だけ                                                                |
+| 確認                                  | 結果                                                                                                      |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `pnpm-workspace.yaml` の `overrides:` | `dompurify: ^3.4.16`。2 件とも脆弱範囲と交差する                                                          |
+| 宣言（`packages/*/package.json`）     | `packages/app` の `"dompurify": "^3.4.17"`。#3899 で `^3.4.18` に上がる                                   |
+| #3899 の head の lock                 | `packages/app` の importer は `specifier: ^3.4.16`、`version: 3.4.18`。`dompurify@` は 3.4.18 の 1 版だけ |
 
-override の floor は今回は据え置くことを推奨する。karasu の設定は当たらず、lock は 3.4.18 に解決され、override の floor を
-上げても 2 件目とは交差したままになるからである。floor は 3.5.0 を入れるときに合わせて上げる（下記「Reviewer に判断を
-仰ぎたい点」）。
+**override が宣言を置き換えるので、#3899 だけでは実効のレンジは `^3.4.16` のまま変わらない。** lock の importer の
+`specifier` が override の値になっていることがその証拠で、宣言を `^3.4.18` に上げても 1 件目の脆弱範囲（`< 3.4.18`）との
+交差は解けない。今の解決は 3.4.18 だが、override の floor が 3.4.16 のままなので、lock を作り直す条件次第で脆弱版に
+戻りうる。規則の手順 3（交差するレンジは patched 版へ上げ、override だけ・宣言だけを据え置かない。ADR-2404「却下した案」）に
+従い、**override の floor も `^3.4.18` に上げる**ことを推奨する。
+
+Dependabot は `overrides:` を書き換えないので、bot の diff では floor が動かない。**#3899 を close し、宣言と
+override の floor を `^3.4.18` に上げる bump を 1 本の差し替え PR で入れる**（ADR-2115 と同じ形）。判定は採用なので
+`@dependabot ignore` は設定しない。2 件目（`< 3.5.0`）とは floor を上げても交差したままだが、修正版 3.5.0 は cooldown の
+内側にある。3.5.0 は来週以降の bump で入れ、そのときに floor を `^3.5.0` に上げる。
 
 ### #3909 `@astrojs/starlight` 0.42.10 → 0.43.1
 
@@ -284,26 +297,32 @@ kompiro の repo（`kompiro/adr-tools`）の `publish.yml`（`refs/tags/v0.0.14`
 
 ## 現時点の方針
 
-**16 件を採用し、#3900 を却下（close）する。** 採用のうち 15 件は bot PR をそのままマージし、#3912 だけ差し替え PR で
-入れる。
+**16 件を採用し、#3900 を却下（close）する。** 採用のうち 14 件は bot PR をそのままマージし、#3899 と #3912 は
+差し替え PR で入れる。
 
 マージの手順（ADR-3870 の lock の事故を繰り返さないための手順を含む）:
 
-1. 全 PR が `pnpm-lock.yaml` を触り、merge-base も同じなので、1 本ずつマージする。各マージの前に、PR の merge-base が
-   その時点の `origin/main` と一致することを `git fetch` してから確かめる。一致しなければ `@dependabot rebase` を頼み、
-   新しい head の CI を待つ。GitHub の MERGEABLE は文字列の衝突しか見ないので、それだけを根拠にしない
-2. head を `--match-head-commit` で固定してマージする。rebase で lock の対象版が繰り上がったら、同じ手順で確かめ直す
-3. 全部マージしたら、main で `pnpm install --frozen-lockfile` を実行し、lock が壊れていないこと（重複した key が無いこと）を
-   確かめる
-4. #3900 は ADR-3870 と #3070 を引いてコメントし、close する（ignore は設定しない）。コメントには ExTester 8.29.0 の
+1. bot PR 14 本と差し替え PR 2 本はすべて `pnpm-lock.yaml` を触るので、1 本ずつマージする。各マージの直前に
+   `git fetch` し、PR の merge-base がその時点の `origin/main` と一致することを確かめる。一致しなければ bot PR は
+   `@dependabot rebase` を頼み、差し替え PR は `origin/main` を merge して lock を作り直し、新しい head の CI を待つ。
+   GitHub の MERGEABLE は文字列の衝突しか見ないので、それだけを根拠にしない
+2. head を `--match-head-commit` で固定してマージする。`--match-head-commit` は PR の head しか固定しないので、確かめて
+   からマージするまでのあいだに別の PR が main の lock を変えていないことを、マージの直前にもう一度 `git fetch` して
+   確かめる（このバッチの作業中は、lock を触るほかの PR をマージしない）。rebase で lock の対象版が繰り上がったら、
+   同じ手順で確かめ直す
+3. #3900 は ADR-3870 と #3070 を引いてコメントし、close する（ignore は設定しない）。コメントには ExTester 8.29.0 の
    `vscode-max` 1.147.0 も書く
+4. #3899 は close し、`packages/app` の宣言と `pnpm-workspace.yaml` の override の floor を `^3.4.18` に上げる差し替え PR を
+   出す。lock の `dompurify@` が 3.4.18 の 1 版だけであることを確かめる
 5. #3912 は close し、`@babel/parser` 8.1.2 の bump と `function-imports.ts` の修正を 1 本の差し替え PR で出す
-6. 結果を ADR に昇格させ、本 Design Doc を削除する
+6. 差し替え PR を含む全部をマージしたら、main で `pnpm install --frozen-lockfile` を実行し、lock が壊れていないこと
+   （重複した key が無いこと）を確かめる
+7. 結果を ADR に昇格させ、本 Design Doc を削除する
 
 ## Reviewer に判断を仰ぎたい点
 
 1. **#3912（Babel 8）を差し替え PR で入れるか、保留するか。** 推奨は差し替え PR。Babel 8 では `assert` 付きの import を
    柵が読めなくなる（読めなければ止める側に倒れる）ので、それを受け入れてよいか
-2. **`dompurify` の override の floor（`^3.4.16`）をいつ上げるか。** 推奨は、今回は据え置き、来週以降 3.5.0 を入れるときに
-   `^3.5.0` へ上げること。今 `^3.4.18` に上げる案もあるが、karasu の設定には当たらず、2 件目の advisory とは交差したまま
-   になる
+2. **#3899（`dompurify`）で override の floor を `^3.4.18` に上げるか。** 推奨は上げる（差し替え PR）。override が宣言を
+   置き換えるので、bot PR だけでは実効のレンジが脆弱範囲と交差したまま残る。karasu は `SAFE_FOR_TEMPLATES` を使わないので
+   当たらない advisory だが、規則の手順どおりに floor を合わせておくか、3.5.0 を入れる来週まで floor の変更を待つか
