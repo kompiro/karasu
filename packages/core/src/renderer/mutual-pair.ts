@@ -24,7 +24,7 @@
  * Design: #3027.
  */
 
-import { computeCrossingMarks } from "./crossing-marks.js";
+import { computeCrossingMarks, HOP_RADIUS } from "./crossing-marks.js";
 import type { Point } from "./edge-geometry.js";
 import type { CrossingMarks, LayoutEdge, LayoutOptions } from "./layout-types.js";
 import { isPeripheralEdge } from "./band-routing.js";
@@ -167,25 +167,41 @@ function positionOn(line: Line, p: Point): number | undefined {
  *
  * `shared` is the line's index in the array `marks` was computed on, so the
  * hops it hosts can be told from the hops other lines host over it.
+ *
+ * `soft` lines cross the shared line without the full clearance: the split
+ * stays a hop radius off each of their crossings and out of a hop that marks
+ * only their crossings (its gap or arch), but not 14px off them. A canvas pair passes the ghost band's lines here (#3887):
+ * they are routed after the canvas's, around its fixed routes, and would
+ * otherwise take away a split the canvas has without them.
  */
 export function chooseSplit(
   line: Line,
   others: readonly Line[],
   marks: CrossingMarks,
   shared: number,
+  soft: readonly Line[] = [],
 ): number | undefined {
   const lengths = line.slice(1).map((p, i) => dist(line[i], p));
   const total = lengths.reduce((s, l) => s + l, 0);
   if (total <= EPS) return undefined;
   // Forbidden stretches as (centre, half-width) along the line.
   const forbidden: [number, number][] = [];
+  // Where the lines that keep the full clearance cross, along the line.
+  const hard: number[] = [];
   let acc = 0;
   for (let i = 0; i + 1 < line.length; i++) {
     if (i > 0) forbidden.push([acc, CORNER_CLEARANCE]);
-    for (const other of others) {
-      for (let k = 0; k + 1 < other.length; k++) {
-        const t = crossingT(line[i], line[i + 1], other[k], other[k + 1]);
-        if (t !== undefined) forbidden.push([acc + t * lengths[i], CROSSING_CLEARANCE]);
+    for (const [lines, clearance] of [
+      [others, CROSSING_CLEARANCE],
+      [soft, HOP_RADIUS],
+    ] as const) {
+      for (const other of lines) {
+        for (let k = 0; k + 1 < other.length; k++) {
+          const t = crossingT(line[i], line[i + 1], other[k], other[k + 1]);
+          if (t === undefined) continue;
+          forbidden.push([acc + t * lengths[i], clearance]);
+          if (lines === others) hard.push(acc + t * lengths[i]);
+        }
       }
     }
     acc += lengths[i];
@@ -196,7 +212,9 @@ export function chooseSplit(
     // A hop the shared line hosts gaps it by `halfWidth` either side. A hop
     // another line hosts arches over it, `ry` high.
     const reach = hop.edge === shared ? hop.halfWidth : (hop.ry ?? 0);
-    forbidden.push([at, Math.max(CROSSING_CLEARANCE, reach)]);
+    // A hop that marks only soft crossings keeps the split out of itself alone.
+    const own = hard.some((c) => Math.abs(c - at) <= Math.max(reach, HOP_RADIUS) + EPS);
+    forbidden.push([at, own || soft.length === 0 ? Math.max(CROSSING_CLEARANCE, reach) : reach]);
   }
   const lo = total * SPLIT_WINDOW;
   const hi = total * (1 - SPLIT_WINDOW);
@@ -284,8 +302,28 @@ export function applyMutualPairs(
     const splits = new Map<number, number>();
     const stay = pairs.filter(([i]) => {
       const shared = lineOf(edges[i]);
-      const others = kept.filter((k) => k !== i).map((k) => lineOf(edges[k]));
-      const s = chooseSplit(shared, others, marks, keptAt.get(i)!);
+      const rest = kept.filter((k) => k !== i);
+      const at = keptAt.get(i)!;
+      // A canvas pair the band's lines leave no full clearance gives them a
+      // soft one (#3887). Tried second, so a split found without it stays put.
+      const isSoft = (k: number) => edges[i].band !== true && edges[k].band === true;
+      const soft = rest.filter(isSoft).map((k) => lineOf(edges[k]));
+      const s =
+        chooseSplit(
+          shared,
+          rest.map((k) => lineOf(edges[k])),
+          marks,
+          at,
+        ) ??
+        (soft.length > 0
+          ? chooseSplit(
+              shared,
+              rest.filter((k) => !isSoft(k)).map((k) => lineOf(edges[k])),
+              marks,
+              at,
+              soft,
+            )
+          : undefined);
       if (s !== undefined) splits.set(i, s);
       return s !== undefined;
     });
