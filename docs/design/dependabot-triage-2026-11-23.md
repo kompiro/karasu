@@ -206,8 +206,8 @@ app の runtime 依存で、`ChatPane` / `NodeDetailPanel` / `EdgeDetailPanel` �
 
 **override が宣言を置き換えるので、#3899 だけでは実効のレンジは `^3.4.16` のまま変わらない。** lock の importer の
 `specifier` が override の値になっていることがその証拠で、宣言を `^3.4.18` に上げても 1 件目の脆弱範囲（`< 3.4.18`）との
-交差は解けない。今の解決は 3.4.18 だが、override の floor が 3.4.16 のままなので、lock を作り直す条件次第で脆弱版に
-戻りうる。規則の手順 3（交差するレンジは patched 版へ上げ、override だけ・宣言だけを据え置かない。ADR-2404「却下した案」）に
+交差は解けない。今の解決は 3.4.18 で、pnpm の既定の解決（highest）なら lock を作り直しても下がらないが、override のレンジ自体は
+脆弱版を許したままになる。規則の手順 3（交差するレンジは patched 版へ上げ、override だけ・宣言だけを据え置かない。ADR-2404「却下した案」）に
 従い、**override の floor も `^3.4.18` に上げる**ことを推奨する。
 
 Dependabot は `overrides:` を書き換えないので、bot の diff では floor が動かない。**#3899 を close し、宣言と
@@ -313,7 +313,8 @@ kompiro の repo（`kompiro/adr-tools`）の `publish.yml`（`refs/tags/v0.0.14`
 3. #3900 は ADR-3870 と #3070 を引いてコメントし、close する（ignore は設定しない）。コメントには ExTester 8.29.0 の
    `vscode-max` 1.147.0 も書く
 4. #3899 は close し、`packages/app` の宣言と `pnpm-workspace.yaml` の override の floor を `^3.4.18` に上げる差し替え PR を
-   出す。lock の `dompurify@` が 3.4.18 の 1 版だけであることを確かめる
+   出す。lock の `packages/app` の importer が `specifier: ^3.4.18` になり、`dompurify@` が 3.4.18 の 1 版だけであることを
+   確かめる
 5. #3912 は close し、`@babel/parser` 8.1.2 の bump と `function-imports.ts` の修正を 1 本の差し替え PR で出す
 6. 差し替え PR を含む全部をマージしたら、main で `pnpm install --frozen-lockfile` を実行し、lock が壊れていないこと
    （重複した key が無いこと）を確かめる
