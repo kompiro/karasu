@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#3896](https://github.com/kompiro/karasu/issues/3896)
+  - PR: [#3914](https://github.com/kompiro/karasu/pull/3914)
   - 関連 ADR: [ADR-3286](../adr/3286-risk-based-review-tiers.md)（指摘の重大度と対応、差分の外は Issue に回す）、[ADR-3542](../adr/3542-high-pr-review-scope.md)（`## For Reviewers` 節と読む範囲の絞り込み）
   - 関連 Issue: [#3546](https://github.com/kompiro/karasu/issues/3546)（High の PR で kompiro が読む範囲）、[#3380](https://github.com/kompiro/karasu/issues/3380)（段階導入 1 か月後の計測）、[#3875](https://github.com/kompiro/karasu/issues/3875)（PR 本文の節の折りたたみ）
   - 関連文書: `docs/process/review.md`「指摘の重大度と対応」「High の PR で人間が読むもの」、`docs/process/coderabbit-rounds.md`「人間に確認する指摘の判定」、`docs/test-perspectives/README.md`（marker の付け方）、`.claude/skills/pr-verify/SKILL.md`、`.claude/skills/coderabbit-converge/SKILL.md`、`.claude/skills/branch-review/SKILL.md`
