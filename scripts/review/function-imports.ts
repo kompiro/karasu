@@ -38,12 +38,9 @@ export function readImports(
   fileName: string,
   text: string,
 ): { imports: ImportSite[] } | { error: string } {
-  // What esbuild also builds: decorators, `accessor` fields, `assert` on an import.
-  const plugins: ParserPlugin[] = [
-    "decorators",
-    "decoratorAutoAccessors",
-    "deprecatedImportAssert",
-  ];
+  // What esbuild also builds: decorators and `accessor` fields. Babel 8 no longer
+  // reads `assert` on an import; such a file reports "does not parse".
+  const plugins: ParserPlugin[] = ["decorators", "decoratorAutoAccessors"];
   if (/\.[cm]?tsx?$/.test(fileName)) plugins.push("typescript");
   if (!/\.[cm]?ts$/.test(fileName)) plugins.push("jsx");
   let program: unknown;
@@ -80,10 +77,7 @@ export function readImports(
         add(node, node.expression);
         break;
       case "TSImportType":
-        add(
-          node,
-          (node.argument as Node).type === "TSLiteralType" ? node.argument.literal : node.argument,
-        );
+        add(node, node.source);
         break;
     }
   });
