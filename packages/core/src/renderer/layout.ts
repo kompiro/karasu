@@ -26,7 +26,6 @@ import {
 import { computeLayoutEdges, portResolver, runRoutingChain } from "./layout-edges.js";
 import {
   bandGapReservations,
-  bandRoutingOf,
   placeGhostUsers,
   placeGhostBands,
   placeCallerGhostSystems,
@@ -57,6 +56,7 @@ import {
 } from "./layout-measure.js";
 import { nodePathRefId } from "../parser/node-path.js";
 import { applyMutualPairs } from "./mutual-pair.js";
+import { bandRoutingFor } from "./band-phase.js";
 import { chooseLabelRoom } from "./label-room.js";
 import type { LayoutNode, ContainerRect, LayoutResult, LayoutOptions } from "./layout-types.js";
 
@@ -544,7 +544,7 @@ function layoutInner(
       groupBands: groupBy ? groupBands : null,
       ports: portResolver(options),
       enclosure: focusFrame,
-      band: bandRoutingOf(containers),
+      band: bandRoutingFor(containers, layoutNodes, options, expandedFrameRects),
     },
   );
 
