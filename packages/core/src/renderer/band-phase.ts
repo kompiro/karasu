@@ -3,7 +3,8 @@
  * `runRoutingChain` routes the canvas's own edges, then hands the ghost band's
  * edges to {@link routeBandEdges}.
  */
-import type { LayoutNode, LayoutEdge, ContainerRect } from "./layout-types.js";
+import type { LayoutNode, LayoutEdge, ContainerRect, LayoutOptions, Rect } from "./layout-types.js";
+import { applyMutualPairs } from "./mutual-pair.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
 import { routeGroupedEdges, fanOutGutterPorts } from "./edge-routing-groups.js";
 import { distributeGutterLanes } from "./edge-routing-gutter-lanes.js";
@@ -12,7 +13,8 @@ import { ObstacleIndex, type ObstacleQuery } from "./obstacle-index.js";
 import { GHOST_MARGIN } from "./layout-constants.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes, LANE_PITCH, type ChannelLimits } from "./edge-routing-lanes.js";
-import { seatPortsOnOutline, type PortResolver } from "./port-frame.js";
+import { BBOX_PORT_FRAME, seatPortsOnOutline, type PortResolver } from "./port-frame.js";
+import { markParallelBundles } from "./edge-routing-bundles.js";
 import {
   BAND_PHASE,
   clearHeldPorts,
@@ -22,6 +24,8 @@ import {
   keepBesideClear,
   liftOffBorders,
   sharesStretch,
+  stepOffBoxes,
+  bandRoutingOf,
   type BandRouting,
 } from "./band-routing.js";
 
@@ -111,8 +115,63 @@ export function routeBandEdges(
     (e) => obstaclesFor(e).polylineClear(pts(e)) && !sharesStretch(e, occupants),
     occupants,
   );
+  // The labels the canvas draws stay readable (#3889): a band run through one
+  // steps a lane or more aside.
+  stepOffBoxes(
+    band,
+    opts.band.labels(edges.filter((e) => e.band !== true)),
+    [...opts.band.inner, ...opts.band.frames],
+    LANE_PITCH,
+    (e) => obstaclesFor(e).polylineClear(pts(e)) && !sharesStretch(e, occupants),
+    nodes,
+    occupants,
+    (node, at) => {
+      const frame = ports?.(node);
+      if (!frame) return true;
+      if (frame.frame !== BBOX_PORT_FRAME) return false;
+      return !frame.keepOuts.some(
+        (r) => at.x >= r.x && at.x <= r.x + r.width && at.y >= r.y && at.y <= r.y + r.height,
+      );
+    },
+  );
   // A route that went round the band stays inside the frame that holds it.
   const before = opts.band.outer && { ...opts.band.outer };
   growAroundBandRoutes(opts.band.outer, band, GHOST_MARGIN);
   if (before) keepBesideClear(before, opts.band, nodes, edges);
+}
+
+/**
+ * The boxes of the labels the canvas draws (#3889), for the band phase: the
+ * canvas's routed edges are copied, marked as parallel bundles and their mutual
+ * pairs split as the canvas will draw them (#1185, #3027), and the renderer's
+ * label pass is run on them. The band's lines are not that pass's obstacles
+ * (#2360), so a canvas label stays where these boxes put it, with two
+ * exceptions: a mutual pair's split also keeps clear of the band's crossings,
+ * so a pair the band crosses may split, and label, elsewhere; and a band label
+ * an author positioned is an obstacle the canvas's labels go round.
+ */
+function canvasLabelsOf(
+  nodes: Map<string, LayoutNode>,
+  containers: ContainerRect[],
+  options: LayoutOptions,
+  expandedFrames: Map<string, ContainerRect> | undefined,
+): (canvas: readonly LayoutEdge[]) => readonly Rect[] {
+  const boxesOf = options.canvasLabelBoxes;
+  if (!boxesOf) return () => [];
+  return (canvas) => {
+    const edges = canvas.map((e) => ({ ...e, waypoints: e.waypoints && [...e.waypoints] }));
+    markParallelBundles(edges, (id) => nodes.get(id) ?? expandedFrames?.get(id));
+    const crossingMarks = applyMutualPairs(edges, options);
+    return boxesOf({ nodes, edges, containers, width: 0, height: 0, crossingMarks });
+  };
+}
+
+/** The band routing inputs of a single-system canvas, with its labels (#3889). */
+export function bandRoutingFor(
+  containers: ContainerRect[],
+  nodes: Map<string, LayoutNode>,
+  options: LayoutOptions,
+  expandedFrames: Map<string, ContainerRect> | undefined,
+): BandRouting {
+  return bandRoutingOf(containers, canvasLabelsOf(nodes, containers, options, expandedFrames));
 }
