@@ -38,8 +38,8 @@ bump 種別を問わず 17 件すべてで、次を確かめた。17 件の merg
   edges 手順）。加えて `packages:` のキーを `名前@版` で比べ、main の lock に無かった版を全部書き出した。全 PR の和で
   109 版（うち platform binding が 63 版: `@oxlint/binding-*` / `@oxfmt/binding-*` / `@rolldown/binding-*`（wasm32 版を
   含む）/ `@vscode/vsce-sign-*`）。main の lock に無い**パッケージ名**が新しく入るのは 3 件:
-  - `@astrojs/runtime` / `@astrojs/vite-plugin-astro`（#3903 `astro`）: astro の monorepo（`withastro/astro` の
-    `packages/runtime` / `packages/vite-plugin-astro`）から provenance 付きで出ており、astro 本体のコードを切り出したもの。
+  - `@astrojs/runtime` / `@astrojs/vite-plugin-astro`（#3903 `astro`）: astro の monorepo（`withastro/astro`。
+    package.json の `repository.directory` がそれぞれ runtime と vite-plugin-astro を指す）から provenance 付きで出ており、astro 本体のコードを切り出したもの。
     例として `@astrojs/runtime` の `dist/internal/core/encryption.js` は astro 7.4.8 の `dist/core/encryption.js` と import 文以外が
     一致する。`eval(` に見えた 1 件は `devalue.uneval()` で、astro 7.4.8 にもある呼び出し
   - `@rolldown/binding-wasm32-wasi`（#3903 / #3906）: rolldown 1.2.19 の wasm 版 binding。`cpu: [wasm32]` の optional
