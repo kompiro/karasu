@@ -81,7 +81,7 @@
     "@karasu-tools/core": "workspace:*",
     "@kompiro/adr-tools": "^0.0.14",
     "@kompiro/tpl-tools": "^0.1.0",
-    "@playwright/test": "^1.65.0",
+    "@playwright/test": "^1.65.1",
     "@types/node": "^26.6.6",
     "esbuild": "^0.28.2",
     "knip": "^6.44.2",
