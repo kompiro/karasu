@@ -18,13 +18,21 @@ import { type AppCommand, collectCommands } from "./e2e-command-coverage.ts";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 
+/** Commands allowed to share one chord, and why they are never mounted together. */
+interface SharedChord {
+  /** The command ids that may hold the chord. Any other holder is a collision. */
+  ids: readonly string[];
+  reason: string;
+}
+
 /**
  * Chords that two commands may share because the commands are never mounted
  * at the same time. If they ever are, `CommandProvider.register` throws in
  * vitest and `vite` dev, while a production build only logs it and keeps the
- * first. Each entry names the commands and why they are exclusive. Empty today.
+ * first. Each entry names the commands and why they are exclusive; a third
+ * command on the chord is still reported. Empty today.
  */
-const SHARED_CHORDS: ReadonlyMap<string, string> = new Map();
+const SHARED_CHORDS: ReadonlyMap<string, SharedChord> = new Map();
 
 /** Every chord held by more than one command id, with those ids. */
 function collisions(commands: readonly AppCommand[]): Map<string, string[]> {
@@ -40,13 +48,19 @@ function collisions(commands: readonly AppCommand[]): Map<string, string[]> {
   );
 }
 
-/** The collisions that `shared` does not list. */
+/**
+ * The collisions that `shared` does not permit: a chord it does not list, or a
+ * listed chord held by a command outside that entry's `ids`.
+ */
 function unexpectedCollisions(
   commands: readonly AppCommand[],
-  shared: ReadonlyMap<string, string>,
+  shared: ReadonlyMap<string, SharedChord>,
 ): Map<string, string[]> {
   const found = collisions(commands);
-  for (const chord of shared.keys()) found.delete(chord);
+  for (const [chord, { ids }] of shared) {
+    const holders = found.get(chord);
+    if (holders?.every((id) => ids.includes(id))) found.delete(chord);
+  }
   return found;
 }
 
@@ -70,9 +84,11 @@ describe("app keybindings (TPL-1419)", () => {
 
   it("keeps every SHARED_CHORDS entry shared and justified", () => {
     const shared = collisions(commands);
-    for (const [chord, reason] of SHARED_CHORDS) {
+    for (const [chord, { ids, reason }] of SHARED_CHORDS) {
       expect(reason.length).toBeGreaterThan(0);
-      expect(shared.has(chord)).toBe(true);
+      // The entry lists exactly the commands that hold the chord today, so a
+      // stale id or a holder that left does not keep the exemption open.
+      expect(shared.get(chord)).toEqual([...ids].sort());
     }
   });
 
@@ -97,7 +113,24 @@ describe("app keybindings (TPL-1419)", () => {
       { id: "d", keybinding: "mod+c", file: "D.tsx" },
     ];
     expect(
-      unexpectedCollisions(synthetic, new Map([["mod+b", "a and b are never mounted together"]])),
+      unexpectedCollisions(
+        synthetic,
+        new Map([["mod+b", { ids: ["a", "b"], reason: "a and b are never mounted together" }]]),
+      ),
     ).toEqual(new Map([["mod+c", ["c", "d"]]]));
+  });
+
+  it("still reports a holder of a shared chord that the entry does not list", () => {
+    const synthetic: AppCommand[] = [
+      { id: "a", keybinding: "mod+b", file: "A.tsx" },
+      { id: "b", keybinding: "mod+b", file: "B.tsx" },
+      { id: "c", keybinding: "mod+b", file: "C.tsx" },
+    ];
+    expect(
+      unexpectedCollisions(
+        synthetic,
+        new Map([["mod+b", { ids: ["a", "b"], reason: "a and b are never mounted together" }]]),
+      ),
+    ).toEqual(new Map([["mod+b", ["a", "b", "c"]]]));
   });
 });

@@ -70,8 +70,10 @@ scope:
 - [ ] `keybinding` が既存コマンドと衝突していないか（衝突時は先勝ちで
       後発が無効化される） [guard: `scripts/lint/keybinding-collisions.test.ts`]
 - [ ] コマンドを登録するコンポーネントのアンマウントで登録解除されるか
-- [ ] platform 依存（`mod` = Cmd/Ctrl）や修飾子順に依存する場合、その
-      正規化を検証したか [guard: `packages/app/src/keyboard/command-types.ts`]
+- [ ] `keybinding` の修飾子を `mod`, `alt`, `shift`, キーの順で書いたか
+      （`Command.keybinding` の `Chord` 型がほかの順と大文字のキーを型エラーに
+      するので、CI の `pnpm run typecheck` が落ちる） [guard: `.github/workflows/ci.yml`]
+- [ ] platform 依存（`mod` = Cmd/Ctrl）に依存する場合、その正規化を検証したか
 - [ ] エディタにフォーカスした状態の検証を、jsdom の `<textarea>` ではなく
       **実ブラウザで実際のエディタにフォーカスして**行ったか（フォーカス先の
       要素はエディタの実装と browser で変わる。#3207）

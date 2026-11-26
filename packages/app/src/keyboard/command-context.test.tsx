@@ -99,6 +99,27 @@ describe("CommandRegistry.register keybinding collisions (TPL-1419)", () => {
     expect(registry.getCommands().map((c) => c.title)).toEqual(["A2"]);
   });
 
+  it("checks a mounted command again when its keybinding changes", () => {
+    const sink = {} as { registry: ReturnType<typeof useCommandRegistry> };
+    function Tree({ chordB }: { chordB: "mod+c" | "mod+d" | "mod+b" }) {
+      return (
+        <CommandProvider>
+          <RegistryProbe sink={sink} />
+          <CommandHost command={{ id: "test.a", title: "A", keybinding: "mod+b", run: () => {} }} />
+          <CommandHost command={{ id: "test.b", title: "B", keybinding: chordB, run: () => {} }} />
+        </CommandProvider>
+      );
+    }
+    const { rerender } = render(<Tree chordB="mod+c" />);
+    rerender(<Tree chordB="mod+d" />);
+    expect(sink.registry.resolveChord("mod+d")?.id).toBe("test.b");
+    expect(sink.registry.resolveChord("mod+c")).toBeUndefined();
+    // Moving onto a chord another live command holds is a collision too.
+    expect(() => rerender(<Tree chordB="mod+b" />)).toThrow(
+      'Keybinding "mod+b" of command "test.b" is already held by "test.a"',
+    );
+  });
+
   it("lets palette-only commands coexist", () => {
     const registry = captureRegistry();
     registry.register({ id: "test.a", title: "A", run: () => {} });

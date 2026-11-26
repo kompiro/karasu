@@ -184,4 +184,52 @@ test.describe("z-index probe on planted elements (TPL-1468)", () => {
     ]);
     await page.close();
   });
+
+  test("checks a following sibling that a sibling selector restyles", async ({ page, opfs }) => {
+    await bootProjectApp(page, opfs, KRS);
+    await plant(
+      page,
+      '.zt-trigger[data-state="open"] + .zt-sibling { position: absolute; z-index: 999; }',
+      '<div class="zt-trigger" data-state="closed"></div><div class="zt-sibling"></div>',
+    );
+    await page.evaluate(() =>
+      document.querySelector(".zt-trigger")!.setAttribute("data-state", "open"),
+    );
+    await page.evaluate(() =>
+      document.querySelector(".zt-trigger")!.setAttribute("data-state", "closed"),
+    );
+    expect((await scanZIndex(page)).filter((h) => h.element === "div.zt-sibling")).toEqual([]);
+    expect(await verdicts(page, "div.zt-sibling")).toEqual([
+      { element: "div.zt-sibling", zIndex: "999", token: null, violation: true },
+    ]);
+    await page.close();
+  });
+
+  test("leaves an element's running transitions running", async ({ page, opfs }) => {
+    await bootProjectApp(page, opfs, KRS);
+    await plant(
+      page,
+      ".zt-fade { position: absolute; z-index: var(--z-handle); opacity: 0; transition: all 10s linear; }" +
+        ".zt-fade.zt-in { opacity: 1; }",
+      '<div class="zt-fade"></div>',
+    );
+    const running = () =>
+      page.evaluate(() =>
+        document
+          .querySelector(".zt-fade")!
+          .getAnimations()
+          .map((a) => (a as CSSTransition).transitionProperty),
+      );
+    // Starting the fade is a class change, so the observer probes the element.
+    await page.evaluate(() => {
+      const el = document.querySelector(".zt-fade")!;
+      void getComputedStyle(el).opacity;
+      el.classList.add("zt-in");
+      void getComputedStyle(el).opacity;
+    });
+    const scanned = (await scanZIndex(page)).filter((h) => h.element.startsWith("div.zt-fade"));
+    expect(scanned.map((h) => h.token)).toEqual(["--z-handle"]);
+    expect(await running()).toEqual(["opacity"]);
+    await page.close();
+  });
 });

@@ -29,8 +29,8 @@ import type { BrowserContext, Page } from "@playwright/test";
  *
  * Two ways in, one probe. `installZIndexProbe` adds an init script to a
  * context: a MutationObserver checks each element as it is added, and the
- * subtree of an element whose attributes change, so a menu a spec opens
- * and closes again is still seen. `scanZIndex` checks the whole document as it stands. `network.ts`
+ * subtrees an attribute change can restyle (the element's own and its
+ * following siblings'), so a menu a spec opens and closes again is still seen. `scanZIndex` checks the whole document as it stands. `network.ts`
  * installs the probe for every test and, after a passing test, fails it on
  * anything either found. `tests/z-index-scale.spec.ts` checks that the probe
  * sees each layer of the scale.
@@ -101,8 +101,14 @@ function probeScript(tokenNames: string[]): void {
     if (!(el instanceof HTMLElement)) return null;
     const saved = el.getAttribute("style");
     // z-index is animatable: with a transition on the element (shadcn's dialog
-    // has one), the sentinel would be interpolated toward, not read back.
-    el.style.setProperty("transition", "none", "important");
+    // has one), the sentinel would be interpolated toward, not read back. Keep
+    // the element's own transitions and append an instant one for z-index: the
+    // last entry naming a property wins, even over `all`. Replacing the list
+    // (`transition: none`) would cancel a running opacity or transform
+    // transition, which restoring the attribute does not resume, so the probe
+    // would change what a spec then sees.
+    const own = getComputedStyle(el).transition;
+    el.style.setProperty("transition", own ? `${own}, z-index 0s` : "z-index 0s", "important");
     const bySentinel = new Map<string, string>();
     let i = 0;
     for (const name of values.keys()) {
@@ -111,8 +117,8 @@ function probeScript(tokenNames: string[]): void {
       bySentinel.set(sentinel, name);
     }
     const probed = getComputedStyle(el).zIndex;
-    // Put the tokens back while transitions are still off, so the return to
-    // the real value does not animate either, then restore the attribute.
+    // Put the tokens back while z-index is still instant, so the return to the
+    // real value does not animate either, then restore the attribute.
     for (const name of values.keys()) el.style.removeProperty(name);
     void getComputedStyle(el).zIndex;
     if (saved === null) el.removeAttribute("style");
@@ -162,19 +168,37 @@ function probeScript(tokenNames: string[]): void {
   const observed = new Map<string, ZIndexHit>();
   /**
    * Check every element a batch of mutations may have moved onto or off the
-   * scale: added subtrees, and the whole subtree of an element whose attributes
-   * changed (a selector such as `.open .menu` or `[data-state=open] .menu`
-   * reaches descendants).
+   * scale. A selector reaches past the element that changed: `.open .menu` and
+   * `[data-state=open] .menu` reach its descendants, and `[data-state=open] +
+   * .menu` and `~ .menu` its following siblings and theirs. So the roots are an
+   * element whose attributes changed, an added node, and the node after a
+   * removed one (`+` and `~` now match a different sibling), each with every
+   * following sibling, and the whole subtree of each root is inspected.
+   * Selectors that reach an ancestor or an earlier sibling (`:has()`) are not
+   * followed.
    */
   const handle = (mutations: MutationRecord[]) => {
-    const touched = new Set<Element>();
-    for (const m of mutations) {
-      const roots = m.type === "attributes" ? [m.target] : Array.from(m.addedNodes);
-      for (const node of roots) {
-        if (node instanceof Element && node.isConnected) {
-          for (const el of elementsUnder(node)) touched.add(el);
-        }
+    const roots = new Set<Element>();
+    /** Add `start` and every sibling after it; a chain already added stops it. */
+    const addFrom = (start: Node | null) => {
+      let el: Element | null =
+        start === null || start instanceof Element ? start : start.nextElementSibling;
+      while (el !== null && el.isConnected && !roots.has(el)) {
+        roots.add(el);
+        el = el.nextElementSibling;
       }
+    };
+    for (const m of mutations) {
+      if (m.type === "attributes") {
+        addFrom(m.target);
+      } else {
+        for (const node of m.addedNodes) addFrom(node);
+        if (m.removedNodes.length > 0) addFrom(m.nextSibling);
+      }
+    }
+    const touched = new Set<Element>();
+    for (const root of roots) {
+      for (const el of elementsUnder(root)) touched.add(el);
     }
     if (touched.size === 0) return;
     const values = tokenValues();
@@ -246,6 +270,20 @@ export async function observedZIndex(page: Page): Promise<ZIndexHit[]> {
   return page.evaluate(() => window.__karasuZIndexProbe?.observed() ?? []);
 }
 
+/**
+ * The current scan and the observer's record, read in one evaluation with the
+ * record last. Two evaluations would leave a gap between them in which a
+ * surface could open off the scale and close again, missed by both reads.
+ */
+async function scannedAndObservedZIndex(page: Page): Promise<ZIndexHit[]> {
+  return page.evaluate(() => {
+    const probe = window.__karasuZIndexProbe;
+    if (!probe) return [];
+    const current = probe.scan();
+    return [...current, ...probe.observed()];
+  });
+}
+
 /** The hits that are off the scale, formatted one per line for an assertion message. */
 export function formatViolations(hits: readonly ZIndexHit[]): string[] {
   return hits.filter((h) => h.violation).map((h) => `${h.element} has z-index ${h.zIndex}`);
@@ -263,7 +301,7 @@ export async function assertZIndexScaleOnPages(pages: readonly Page[]): Promise<
     if (page.isClosed()) continue;
     let hits: ZIndexHit[];
     try {
-      hits = [...(await observedZIndex(page)), ...(await scanZIndex(page))];
+      hits = await scannedAndObservedZIndex(page);
     } catch (error) {
       // The page closed or navigated while being read; anything else is a
       // bug in the probe and must not pass silently.

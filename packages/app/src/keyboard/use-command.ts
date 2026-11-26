@@ -19,19 +19,21 @@ export function useCommand(command: Command): void {
     ref.current = command;
   });
 
+  const { id, keybinding } = command;
   useEffect(() => {
     if (!registry) return;
     // A stable entry that forwards to the latest command via the ref, so the
     // command need not be re-registered when `run` changes between renders.
     const entry: Command = {
-      // Read from `command`, not the ref: this is the one field the effect keys
-      // on, so referencing it directly is what makes the dependency genuine.
-      id: command.id,
+      // `id` and `keybinding` are read from the render, not the ref: the effect
+      // keys on them, so a new chord re-registers the entry and
+      // `CommandProvider.register` checks it for a collision (TPL-1419).
+      // Through the ref, a changed chord would skip that check, and
+      // `resolveChord` would silently keep whichever holder came first.
+      id,
+      keybinding,
       get title() {
         return ref.current.title;
-      },
-      get keybinding() {
-        return ref.current.keybinding;
       },
       get whenTextInputFocused() {
         return ref.current.whenTextInputFocused;
@@ -39,6 +41,5 @@ export function useCommand(command: Command): void {
       run: () => ref.current.run(),
     };
     return registry.register(entry);
-    // `id` is stable for a mounted command; re-register only if it changes.
-  }, [registry, command.id]);
+  }, [registry, id, keybinding]);
 }
