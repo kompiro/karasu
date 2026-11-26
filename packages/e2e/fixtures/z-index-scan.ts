@@ -181,8 +181,10 @@ function probeScript(tokenNames: string[]): void {
     const roots = new Set<Element>();
     /** Add `start` and every sibling after it; a chain already added stops it. */
     const addFrom = (start: Node | null) => {
-      let el: Element | null =
-        start === null || start instanceof Element ? start : start.nextElementSibling;
+      // A text or comment node has no `nextElementSibling`; step to the next element.
+      let node = start;
+      while (node !== null && !(node instanceof Element)) node = node.nextSibling;
+      let el: Element | null = node;
       while (el !== null && el.isConnected && !roots.has(el)) {
         roots.add(el);
         el = el.nextElementSibling;
