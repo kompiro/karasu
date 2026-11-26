@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { synthesizeSharePayload } from "@karasu-tools/core";
 import { translate } from "@karasu-tools/i18n";
-import { decodeShare, fitsUnfurlPayload } from "../utils/inline-share.js";
+import { decodeShare, encodeShare, fitsUnfurlPayload } from "../utils/inline-share.js";
 import {
   parseRepoPermalink,
   resolveRepoPermalink,
@@ -253,6 +254,17 @@ describe("resolveRepoPermalink — unfurl payload cap", () => {
   const resolveWith = (n: number) =>
     resolveRepoPermalink("o/r@sha", stubFetch({ "index.krs": krsWithServices(n) }));
 
+  /** Length of the payload the resolver builds for `n` services, computed independently. */
+  async function encodedLengthOf(n: number): Promise<number> {
+    const fs = new GitHubRawFileSystemProvider(
+      "o",
+      "r",
+      "sha",
+      stubFetch({ "index.krs": krsWithServices(n) }),
+    );
+    return encodeShare(await synthesizeSharePayload("index.krs", fs)).length;
+  }
+
   /** Encoded length the resolver reported it could not fit. */
   function reportedLength(message: string | undefined): number {
     const m = /encodes to (\d+) characters/.exec(message ?? "");
@@ -267,7 +279,10 @@ describe("resolveRepoPermalink — unfurl payload cap", () => {
     expect(res.encodedPayload).toBeUndefined();
     expect(res.message).toContain("Model too large for a permalink: o/r@sha");
     expect(res.message).toContain(String(MAX_UNFURL_PAYLOAD));
-    expect(reportedLength(res.message)).toBeGreaterThan(MAX_UNFURL_PAYLOAD);
+    // The reported size is the model's real encoded length, not just some number over the cap.
+    const encodedLength = await encodedLengthOf(400);
+    expect(encodedLength).toBeGreaterThan(MAX_UNFURL_PAYLOAD);
+    expect(reportedLength(res.message)).toBe(encodedLength);
     // Names the remedy, not just the failure.
     expect(res.message).toContain("narrower entry .krs");
     // The body is the i18n catalog entry, not text built in app code (#3837).
@@ -275,7 +290,7 @@ describe("resolveRepoPermalink — unfurl payload cap", () => {
     expect(res.message).toBe(
       translate("en", "permalink.tooLarge.message", {
         source: "o/r@sha",
-        length: reportedLength(res.message),
+        length: encodedLength,
         limit: MAX_UNFURL_PAYLOAD,
       }),
     );
@@ -299,6 +314,8 @@ describe("resolveRepoPermalink — unfurl payload cap", () => {
 
     const refused = await resolveWith(overflows);
     expect(refused.status).toBe(413);
-    expect(reportedLength(refused.message)).toBeGreaterThan(MAX_UNFURL_PAYLOAD);
+    const refusedLength = await encodedLengthOf(overflows);
+    expect(refusedLength).toBeGreaterThan(MAX_UNFURL_PAYLOAD);
+    expect(reportedLength(refused.message)).toBe(refusedLength);
   });
 });
