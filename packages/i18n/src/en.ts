@@ -557,10 +557,6 @@ export const en: Translations = {
     `Import "${path}" matches multiple nodes of different kind or depth: ${candidates
       .map((c) => `${c.path} (${c.kind})`)
       .join(", ")}. All of them are imported; qualify with a longer path to name one`,
-  "diagnostic.unresolvedResourceRef.message": ({ infraId, subId, missing }) =>
-    missing === "block"
-      ? `"resource ${infraId}.${subId}" references "${infraId}", which no database / queue / storage block declares`
-      : `"resource ${infraId}.${subId}" references "${subId}", which "${infraId}" does not declare`,
   "diagnostic.unresolvedTableRef.message": ({ entityId, infraId, subId, missing }) =>
     missing === "block"
       ? `Entity "${entityId}" maps to "${infraId}.${subId}", but no database / queue / storage block declares "${infraId}"`

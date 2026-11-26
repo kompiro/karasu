@@ -266,6 +266,7 @@ export function extractEntityView(systems: KrsNode[], path: ViewPath): ViewSlice
       ghostMap.set(key, {
         node: foreignEntity,
         parentDomainLabel: foreignDomain.label ?? foreignDomain.id,
+        parentDomainId: foreignDomain.id,
         key,
       });
     }

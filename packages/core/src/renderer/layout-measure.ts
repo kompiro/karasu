@@ -95,6 +95,12 @@ export interface MeasureContext {
    * unrepresentable.
    */
   effectiveAnnotations: (n: KrsNode) => string[];
+  /**
+   * The label the card draws (a promoted resource's `resourceLabelMap` entry
+   * before its own label). Required for the same reason: a card measured by
+   * its id but drawn with a longer label overflows its box (#3794).
+   */
+  drawnLabel: (n: KrsNode) => string;
 }
 
 /**
@@ -121,6 +127,8 @@ export function makeLayoutNode(
     height: number;
     subLabel?: string;
     ghost?: boolean;
+    /** The ghost band side (#2823); set only on a band card. */
+    ghostBand?: "above" | "below";
     /** Full path of the node (see `LayoutNode.path`); omitted for ghosts and stubs. */
     path?: readonly string[];
   },
@@ -145,6 +153,7 @@ export function makeLayoutNode(
     width: opts.width,
     height: opts.height,
     ghost: opts.ghost ?? false,
+    ...(opts.ghostBand !== undefined ? { ghostBand: opts.ghostBand } : {}),
   };
 }
 
@@ -187,7 +196,7 @@ export function measureNode(
     };
   }
 
-  const labelWidth = estimateTextWidth(node.label ?? node.id, CHAR_WIDTH);
+  const labelWidth = estimateTextWidth(ctx.drawnLabel(node), CHAR_WIDTH);
   // Measure the summary the renderer draws (descriptionSummary), not the raw
   // markdown: a long or markdown-heavy description otherwise widens the card
   // and reserves wrap lines for text that is never rendered (review of #2399).

@@ -1,4 +1,5 @@
 import type { SourceRange } from "./tokens.js";
+import type { ClientResource, ClientCapability } from "./client.js";
 import type { ResourceOperation } from "../spec/operations.js";
 import type { DIAGNOSTIC_SEVERITY } from "./diagnostic-severity.js";
 
@@ -351,41 +352,8 @@ export interface UserNode extends BaseNodeFields {
   };
 }
 
-/**
- * Storage kinds whitelisted for `client { resource <kind> "<name>" }`.
- * Cookie / credential storage and device capabilities are intentionally
- * excluded — see Issues #834 / #837.
- */
-const CLIENT_RESOURCE_KINDS = [
-  "localStorage",
-  "sessionStorage",
-  "indexedDB",
-  "opfs",
-  "file",
-  "keychain",
-] as const;
-
-export type ClientResourceKind = (typeof CLIENT_RESOURCE_KINDS)[number];
-
-export interface ClientResource {
-  storageKind: ClientResourceKind;
-  name: string;
-  loc: SourceRange;
-}
-
-/**
- * Device / browser capability declared on a client (camera, geolocation,
- * notification, etc.). Identifier set is intentionally open — see
- * ADR-837. Recommended names live in
- * `docs/spec/tags-annotations.md`.
- */
-export interface ClientCapability {
-  name: string;
-  label?: string;
-  description?: string;
-  loc: SourceRange;
-}
-
+export { CLIENT_RESOURCE_KINDS } from "./client.js";
+export type { ClientResourceKind, ClientResource, ClientCapability } from "./client.js";
 export interface ClientNode extends BaseNodeFields {
   kind: "client";
   properties: CommonProperties & {
@@ -1015,7 +983,7 @@ export interface DiagnosticParamsByCode {
   "expected-brace-or-string": { got: string; value: string };
   "expected-identifier": { got: string; value: string };
   "expected-string-after": {
-    property: "label" | "role" | "description" | "link" | "slack" | "github";
+    property: "label" | "role" | "description" | "link" | "slack" | "github" | "resource";
   };
   "property-not-for-node-kind": {
     property: "role" | "handles" | "delivers" | "operations";
@@ -1077,7 +1045,23 @@ export interface DiagnosticParamsByCode {
   // `database` / `queue` / `storage` declaration is absent (drop the reference,
   // or restore the block), "leaf" means the block is there but the
   // `table` / `queue-item` / `bucket` is not.
-  "unresolved-resource-ref": { infraId: string; subId: string; missing: "block" | "leaf" };
+  "unresolved-resource-ref": {
+    /** The parent id (an infra block or, since #3794, a client). Name kept so JSON output does not change. */
+    infraId: string;
+    subId: string;
+    missing: "block" | "leaf";
+    /** Which kind of parent lacks `subId`; present only when `missing` is `"leaf"`. */
+    parentKind?: "infra" | "client";
+  };
+  "resource-target-ambiguous": {
+    /** The reference as written, `<Parent>.<Child>`. */
+    ref: string;
+    parent: string;
+    child: string;
+    /** `infra-and-client`: an infra block and a client share the parent id (resolves to the
+     *  infra block). `multiple-clients`: two same-id clients declare the child (unresolved). */
+    reason: "infra-and-client" | "multiple-clients";
+  };
   "unresolved-table-ref": {
     entityId: string;
     infraId: string;

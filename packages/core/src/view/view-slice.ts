@@ -62,6 +62,12 @@ export interface GhostDomain {
   node: KrsNode;
   /** Label of the service that owns this domain — shown as sub-label on the ghost node. */
   parentServiceLabel: string;
+  /**
+   * Id of the service that owns this domain. The ghost band (#2823) groups
+   * ghost domains per owning service by this, not by the label, which two
+   * services may share.
+   */
+  parentServiceId: string;
 }
 
 export interface GhostEntity {
@@ -69,6 +75,12 @@ export interface GhostEntity {
   node: KrsNode;
   /** Label of the domain that owns this entity — shown as sub-label on the ghost node. */
   parentDomainLabel: string;
+  /**
+   * Id of the domain that owns this entity. The ghost band (#2823) groups ghost
+   * entities per owning domain by this, not by the label, which two domains may
+   * share.
+   */
+  parentDomainId: string;
   /**
    * Qualified `<domainId>.<entityId>` key. Ghost entities are keyed and laid out
    * by this (not the bare id) because entity ids are only warning-level unique

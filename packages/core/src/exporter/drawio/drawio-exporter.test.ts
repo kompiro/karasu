@@ -14,6 +14,29 @@ function makeLayout(partial: Partial<LayoutResult>): LayoutResult {
 }
 
 describe("exportDrawio", () => {
+  it("exports a ghost band frame undimmed, unlike a ghost frame (#2823)", () => {
+    const frame = { label: "F", x: 0, y: 0, width: 200, height: 100 };
+    const xml = exportDrawio({
+      pages: [
+        {
+          id: "p",
+          name: "P",
+          layout: makeLayout({
+            containers: [
+              { ...frame, id: "ancestor", ghost: true, x: 400 },
+              { ...frame, id: "ghost-band:below:B", ghost: false, ghostBand: "below" },
+            ],
+          }),
+        },
+      ],
+    });
+    const cell = (id: string) =>
+      new RegExp(`<mxCell id="p-${id}[^"]*"[^>]*style="([^"]*)"`).exec(xml)?.[1];
+    expect(cell("ancestor")).toContain("opacity=60");
+    expect(cell("ghost-band")).toContain("dashed=1");
+    expect(cell("ghost-band")).not.toContain("opacity=");
+  });
+
   it("produces a well-formed mxfile header with one diagram per page", () => {
     const xml = exportDrawio({
       pages: [

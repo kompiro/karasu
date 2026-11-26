@@ -16,6 +16,7 @@
 import type { LayoutEdge, LayoutNode, Rect } from "./layout-types.js";
 import type { ObstacleQuery } from "./obstacle-index.js";
 import type { ShapePortFrame, ShapePortSide } from "../shapes/shape-registry.js";
+import { isPeripheralEdge } from "./band-routing.js";
 
 export type Side = "top" | "bottom" | "left" | "right";
 
@@ -231,7 +232,7 @@ export function seatPortsOnOutline(
   obstaclesFor: (edge: LayoutEdge) => ObstacleQuery,
 ): void {
   for (const edge of edges) {
-    if (edge.ghost || edge.cyclic) continue;
+    if (isPeripheralEdge(edge)) continue;
     const obstacles = obstaclesFor(edge);
     seatEndpoint(edge, true, nodes, resolve, obstacles);
     seatEndpoint(edge, false, nodes, resolve, obstacles);

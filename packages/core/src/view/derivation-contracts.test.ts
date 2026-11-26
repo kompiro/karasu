@@ -35,9 +35,10 @@
  * silently drops a documented preservation guarantee is exactly the
  * regression family TPL-510 calls out, and a meta-table is the only
  * structural defense — individual unit tests check their own function
- * in isolation. Failing to register a new entry slips past this test;
- * code review of the new function should surface the omission, since
- * the convention is documented here.
+ * in isolation. Registering is enforced: the registry test at the end of
+ * this file enumerates every exported function of the modules under
+ * `view/` (and the annotation propagator) and fails on one that is neither
+ * a row's subject nor listed in `NOT_A_DERIVATION` with a reason.
  *
  * Refs:
  *   - TPL-510, checklist item 1 (semantic attribute preservation)
@@ -45,11 +46,20 @@
  *   - #1233 (G12-1) / #1241 (GA08-2) / #1247 (GR06-2) — sibling gaps
  *   - #510 — the originating TPL-510 bug (sync/async collapse in implicit edges)
  */
-import { describe, it, expect } from "vitest";
+import { readdirSync } from "node:fs";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { beforeAll, describe, it, expect } from "vitest";
 import { Parser } from "../parser/parser.js";
 import { extractView } from "./view-extract.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
 import { extractTeamDependencies } from "./team-dependency-extract.js";
+import {
+  extractEntityView,
+  projectStoreRelations,
+  unionProjectedRelations,
+} from "./entity-relations.js";
+import type { KrsEdge } from "../types/ast.js";
 
 interface DerivationContract {
   /** Function name + short qualifier, used by `it.each` `$name`. */
@@ -370,6 +380,211 @@ system S {
       return { hasMapEntry: map.has("Order") };
     },
   },
+  {
+    name: "projectStoreRelations: entity relation projected onto the leaves of its store",
+    preserves: {
+      // The relation's arrow and label are what the store canvas has to say
+      // about it; a projected `-->` that turned solid would claim the store
+      // enforces a reference it does not.
+      kind: "async",
+      label: "placed by",
+    },
+    transforms: {
+      // Endpoints move from the entities to the tables they map to.
+      from: "orders",
+      to: "customers",
+      // The relation's own tags stay, `[projected]` marks the origin.
+      tags: ["inferred", "projected"],
+    },
+    observe: () => {
+      const systems = Parser.parse(`
+system S {
+  service Svc {
+    domain Ordering {
+      entity Order {
+        table DB.orders
+        Order --> Customer "placed by" [inferred]
+      }
+      entity Customer { table DB.customers }
+    }
+  }
+  database DB { table orders {} table customers {} }
+}
+`).value.systems;
+      const store = systems[0].children.find((c) => c.id === "DB");
+      if (!store) throw new Error("expected the DB store");
+      const [edge] = projectStoreRelations(store, systems);
+      if (!edge) throw new Error("expected a projected orders->customers edge");
+      return {
+        kind: edge.kind,
+        label: edge.label,
+        from: edge.from,
+        to: edge.to,
+        tags: edge.tags,
+      };
+    },
+  },
+  {
+    name: "unionProjectedRelations: a recorded edge absorbs the projection on its pair",
+    preserves: {
+      // The record is the confirmed side: its arrow and its tags survive, so
+      // the edge does not read as `[projected]` once the store records it.
+      kind: "sync",
+      tags: [],
+    },
+    transforms: {
+      // Only a label the record lacks is taken from the relation.
+      label: "placed by",
+      count: 1,
+    },
+    observe: () => {
+      const loc = {
+        start: { line: 1, column: 1, offset: 0 },
+        end: { line: 1, column: 1, offset: 0 },
+      };
+      const recorded: KrsEdge = {
+        from: "orders",
+        to: "customers",
+        kind: "sync",
+        tags: [],
+        loc,
+      };
+      const projected: KrsEdge = {
+        from: "orders",
+        to: "customers",
+        kind: "async",
+        label: "placed by",
+        tags: ["projected"],
+        loc,
+      };
+      const edges = unionProjectedRelations([recorded], [projected]);
+      return {
+        kind: edges[0].kind,
+        tags: edges[0].tags,
+        label: edges[0].label,
+        count: edges.length,
+      };
+    },
+  },
+  {
+    name: "synthesizeGhosts: a caller in another system drawn as a ghost on the service canvas",
+    preserves: {
+      kind: "async",
+      label: "charges",
+      tags: ["audited"],
+    },
+    transforms: {
+      // The caller is qualified with its system so layout finds the ghost card,
+      // and the target becomes the container the canvas is drawn for.
+      from: "Shop.Checkout",
+      to: "Payments",
+    },
+    observe: () => {
+      const systems = Parser.parse(`
+system Shop {
+  service Checkout {}
+  Checkout --> Billing.Payments "charges" [audited]
+}
+system Billing {
+  service Payments {}
+}
+`).value.systems;
+      const view = extractView(systems, ["Billing", "Payments"]);
+      const [edge] = view.callerGhostSystemEdges;
+      if (!edge) throw new Error("expected a caller ghost edge into Payments");
+      return {
+        kind: edge.kind,
+        label: edge.label,
+        tags: edge.tags,
+        from: edge.from,
+        to: edge.to,
+      };
+    },
+  },
+  {
+    name: "collectPromotedChildren: usecase -> resource edge synthesized from operations",
+    // Purely synthesized from the resource declaration: there is no source
+    // edge, so every observable attribute is a transform.
+    preserves: {},
+    transforms: {
+      from: "PlaceOrder",
+      to: "OrderDB.OrderTable",
+      kind: "sync",
+      // `operations create, read` writes, so the edge carries the write marker
+      // style rules key off, and its label says so.
+      tags: ["write"],
+      label: "W",
+    },
+    observe: () => {
+      const systems = Parser.parse(`
+system S {
+  database OrderDB {
+    table OrderTable {}
+  }
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable {
+          operations create, read
+        }
+      }
+    }
+  }
+}
+`).value.systems;
+      const view = extractView(systems, ["S", "OrderService", "Order"]);
+      const edge = view.childEdges.find(
+        (e) => e.from === "PlaceOrder" && e.to === "OrderDB.OrderTable",
+      );
+      if (!edge) throw new Error("expected a synthesized PlaceOrder->OrderDB.OrderTable edge");
+      return {
+        from: edge.from,
+        to: edge.to,
+        kind: edge.kind,
+        tags: edge.tags,
+        label: edge.label,
+      };
+    },
+  },
+  {
+    name: "extractEntityView: relation into another domain drawn to a ghost entity",
+    preserves: {
+      kind: "async",
+      label: "billed to",
+      tags: ["inferred"],
+    },
+    transforms: {
+      // The target becomes the ghost card's key, qualified by its domain.
+      from: "Order",
+      to: "Billing.Account",
+    },
+    observe: () => {
+      const systems = Parser.parse(`
+system S {
+  service Svc {
+    domain Ordering {
+      entity Order {
+        Order --> Billing.Account "billed to" [inferred]
+      }
+    }
+    domain Billing {
+      entity Account {}
+    }
+  }
+}
+`).value.systems;
+      const view = extractEntityView(systems, ["S", "Svc", "Ordering"]);
+      const [edge] = view.ghostEntityEdges;
+      if (!edge) throw new Error("expected a ghost entity edge into Billing.Account");
+      return {
+        kind: edge.kind,
+        label: edge.label,
+        tags: edge.tags,
+        from: edge.from,
+        to: edge.to,
+      };
+    },
+  },
 ];
 
 describe("meta: every derivation path preserves and transforms documented attributes (TPL-510)", () => {
@@ -377,5 +592,138 @@ describe("meta: every derivation path preserves and transforms documented attrib
     const observed = row.observe();
     const expected = { ...row.preserves, ...row.transforms };
     expect(observed).toMatchObject(expected);
+  });
+});
+
+// ─── Registry: every exported function is a row's subject or exempt ─────────
+
+/**
+ * Exported functions of the scanned modules that are not derivations, each
+ * with the reason. A row's subject is the text of its `name` before the first
+ * `:`. A new export in a scanned module fails the registry test until it is
+ * either the subject of a row above or listed here, so a new `derive*` /
+ * `synthesize*` / `apply*` function cannot land without someone deciding
+ * whether it carries semantic attributes through. Whether a row lists the
+ * right attributes stays with review.
+ */
+const NOT_A_DERIVATION: Record<string, string> = {
+  // anchored-edges.ts
+  nodeId: "reads a node's id; no output edge or node",
+  drawnEdgeKey: "a map key for an edge; no output edge",
+  isAnchoredAt: "a predicate",
+  collectAnchoredPeerEdges:
+    "returns the authored edges whose endpoints are peers, unchanged (same objects)",
+  withChildAnchoredEdges: "concatenates a block's authored edges with its children's, unchanged",
+  containerCanvasEdges: "selects a container's authored edges, unchanged",
+  // coverage-extract.ts
+  extractCoverage: "a report of which nodes are mapped; draws nothing",
+  // crud-matrix-extract.ts / crud-matrix-format.ts
+  cellKey: "a map key",
+  extractCrudMatrix: "a usecase x resource table; no edge or node is drawn from it",
+  formatCell: "formats a table cell",
+  formatMatrixAsMarkdown: "serializes the CRUD matrix",
+  formatMatrixAsCsv: "serializes the CRUD matrix",
+  // deploy-view-extract.ts
+  extractModelDeployView:
+    "calls extractDeployView with a file's deploys, wrapped systems and model-wide target index (#3794)",
+  extractDeployView:
+    "synthesizes ghost edges: re-endpoints `system.edges` and deriveInfraEdges' output onto " +
+    "deploy containers, keeps `label` and `kind`, drops tags and annotations, and dedupes by " +
+    "`from`/`to` alone, so a sync and an async edge between the same containers collapse into " +
+    "whichever came first. Not a row because neither distinction TPL-510 guards (`kind`, tags) " +
+    "reaches the deploy view: layoutDeploy hands the renderer only `from`, `to` and `label` " +
+    "(`label` passes through as authored), so every ghost edge is drawn in one style and the " +
+    "kept `kind` reaches no style rule. Once the deploy " +
+    "view styles ghost edges by `kind` or tags, this needs a row and a dedupe key with `kind`",
+  // derived-edges.ts
+  buildDomainServiceMap: "an index from domain to owning service",
+  deriveCanvasEdges:
+    "composes deriveInfraEdges, deriveImplicitServiceEdges and deriveDeliversEdges (each a row) with authored edges; sets no attribute itself",
+  // edge-key.ts
+  edgeKey: "a map key",
+  edgeKindKey: "a map key",
+  // ghost-synthesis.ts
+  emptyGhostSynthesis: "the empty result",
+  // org-view-extract.ts
+  extractOrgView: "slices teams and members as authored",
+  // resource-promotion.ts
+  buildResourceInferredTagsMap: "the index applyInferredTags reads (applyInferredTags is a row)",
+  buildResourceLabelMap: "an index from resource id to its label",
+  // team-dependency-format.ts
+  formatTeamDependenciesAsMarkdown: "serializes extractTeamDependencies (a row)",
+  formatTeamDependenciesAsCsv: "serializes extractTeamDependencies (a row)",
+  // unassigned-system.ts
+  synthesizeUnassignedSystem:
+    "wraps top-level orphans in a pseudo-system; the nodes and edges inside are the authored ones",
+  withoutUnassignedSegment: "strips the pseudo-system's id from a path",
+  withUnassignedSystem: "adds synthesizeUnassignedSystem's pseudo-system to the system list",
+  isUnassignedSystem: "a predicate",
+  // view-extract.ts / view-path.ts / view-slice.ts
+  createViewExtractor: "a memoizing wrapper around extractView",
+  extractView: "dispatches to the derivations above; each derived family has its own row",
+  resolveContainerChain: "resolves a view path to nodes",
+  emptySlice: "the empty slice",
+  physicalTargetsOf:
+    "re-exported index of what a `<Parent>.<Child>` can name (#3794); builds no node or edge",
+};
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+/** Every module under `view/`, plus the annotation propagator that lives in `resolver/`. */
+const SCANNED_MODULES = [
+  ...readdirSync(HERE)
+    .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))
+    .sort()
+    .map((f) => `./${f.replace(/\.ts$/, ".js")}`),
+  "../resolver/inherited-annotations.js",
+];
+
+describe("meta: every exported function of the derivation modules is classified (TPL-510)", () => {
+  const exported = new Map<string, string>();
+  const duplicates: string[] = [];
+  beforeAll(async () => {
+    for (const path of SCANNED_MODULES) {
+      const mod = (await import(path)) as Record<string, unknown>;
+      for (const [name, value] of Object.entries(mod)) {
+        if (typeof value !== "function") continue;
+        const first = exported.get(name);
+        if (first !== undefined) duplicates.push(`${name}: ${first} and ${path}`);
+        else exported.set(name, path);
+      }
+    }
+  });
+
+  const subjects = new Set(DERIVATION_CONTRACTS.map((row) => row.name.split(":")[0].trim()));
+
+  it("scans the modules that hold the derivations", () => {
+    // Guard against the scan silently matching nothing.
+    const expected = [
+      "deriveImplicitServiceEdges",
+      "synthesizeGhosts",
+      "buildInheritedAnnotations",
+    ];
+    expect(expected.filter((name) => !exported.has(name))).toEqual([]);
+  });
+
+  it("no two scanned modules export a function under the same name", () => {
+    // Rows and exemptions name a function by its export name alone, so a second
+    // module exporting the same name would ride on the first one's entry.
+    expect(duplicates).toEqual([]);
+  });
+
+  it("every exported function is the subject of a row or named as not a derivation", () => {
+    const unclassified = [...exported]
+      .filter(([name]) => !subjects.has(name) && !(name in NOT_A_DERIVATION))
+      .map(([name, path]) => `${path}: ${name}`);
+    // Add a DERIVATION_CONTRACTS row whose name starts with `<function>:`, or
+    // an entry in NOT_A_DERIVATION saying why the function derives nothing.
+    expect(unclassified).toEqual([]);
+  });
+
+  it("names no function that is gone or that also has a row", () => {
+    const stale = Object.keys(NOT_A_DERIVATION).filter(
+      (name) => !exported.has(name) || subjects.has(name),
+    );
+    expect(stale).toEqual([]);
   });
 });

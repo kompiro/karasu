@@ -437,6 +437,79 @@ describe("NodeDetailPanel — pictogram icon", () => {
     });
   });
 
+  describe("client storage ids and references (#3794)", () => {
+    const loc = {
+      start: { line: 1, column: 1, offset: 0 },
+      end: { line: 1, column: 1, offset: 0 },
+    };
+
+    it("shows a storage's id and the usecases that reference it", () => {
+      const { container } = render(
+        <NodeDetailPanel
+          {...baseProps({
+            kind: "client",
+            resources: [
+              {
+                storageKind: "sessionStorage",
+                id: "ApiKey",
+                name: "karasu.ai.anthropic.apiKey",
+                usecases: ["SaveApiKey", "ForgetApiKey"],
+                loc,
+              },
+              { storageKind: "opfs", name: "/meta/projects.json", loc },
+            ],
+          })}
+        />,
+      );
+      const items = container.querySelectorAll(".node-detail-resource-item");
+      expect(items[0].querySelector(".node-detail-resource-id")?.textContent).toBe("ApiKey");
+      expect(items[0].querySelector(".node-detail-resource-usecases")?.textContent).toBe(
+        "used by SaveApiKey, ForgetApiKey",
+      );
+      expect(items[1].querySelector(".node-detail-resource-id")).toBeNull();
+      expect(items[1].querySelector(".node-detail-resource-usecases")).toBeNull();
+    });
+
+    it("says which client storage a promoted resource names", () => {
+      const { container } = render(
+        <NodeDetailPanel
+          {...baseProps({
+            kind: "resource",
+            clientStorage: {
+              clientId: "WebApp",
+              storageId: "ApiKey",
+              storageKind: "sessionStorage",
+              name: "karasu.ai.anthropic.apiKey",
+            },
+          })}
+        />,
+      );
+      expect(container.querySelector(".node-detail-client-storage")?.textContent).toBe(
+        'sessionStorage "karasu.ai.anthropic.apiKey" of client WebApp',
+      );
+    });
+
+    it("words it in Japanese", () => {
+      const { container } = render(
+        <NodeDetailPanel
+          {...baseProps({
+            kind: "resource",
+            clientStorage: {
+              clientId: "WebApp",
+              storageId: "ApiKey",
+              storageKind: "sessionStorage",
+              name: "k",
+            },
+          })}
+        />,
+        "ja",
+      );
+      expect(container.querySelector(".node-detail-client-storage")?.textContent).toBe(
+        'client WebApp の sessionStorage "k"',
+      );
+    });
+  });
+
   describe("capabilities section (#837)", () => {
     const loc = {
       start: { line: 1, column: 1, offset: 0 },

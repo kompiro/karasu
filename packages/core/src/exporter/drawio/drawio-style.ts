@@ -148,6 +148,17 @@ interface NodeStyleInput {
   ghost?: boolean;
 }
 
+/**
+ * A ghost band frame (#2823): dashed and in the ghost colours, like a ghost
+ * frame, but not dimmed, so the foreign domain's name reads as it does in the
+ * SVG (`renderBandFrame`). The ghost cards inside keep `GHOST_OVERRIDES`.
+ */
+const GHOST_BAND_OVERRIDES: DrawioStyle = {
+  dashed: 1,
+  strokeColor: "#999999",
+  fontColor: "#666666",
+};
+
 interface EdgeStyleInput {
   ghost?: boolean;
   cyclic?: boolean;
@@ -167,9 +178,10 @@ export function buildNodeStyle(input: NodeStyleInput): DrawioStyle {
   return style;
 }
 
-export function buildContainerStyle(input: NodeStyleInput): DrawioStyle {
+export function buildContainerStyle(input: NodeStyleInput & { ghostBand?: boolean }): DrawioStyle {
   const style: DrawioStyle = { ...DEFAULT_CONTAINER_STYLE };
   if (input.ghost) Object.assign(style, GHOST_OVERRIDES);
+  if (input.ghostBand) Object.assign(style, GHOST_BAND_OVERRIDES);
   return style;
 }
 

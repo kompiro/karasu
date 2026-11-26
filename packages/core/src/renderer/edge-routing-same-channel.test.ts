@@ -18,7 +18,7 @@
  * until #3494; here it is a hand-built input for the router.
  */
 import { describe, it, expect } from "vitest";
-import { runRoutingChain } from "./layout-edges.js";
+import { NO_BAND, runRoutingChain } from "./layout-edges.js";
 import { countPolylinePenetrations, type Point } from "./edge-geometry.js";
 import type { ContainerRect, LayoutEdge, LayoutNode } from "./layout-types.js";
 
@@ -91,6 +91,7 @@ function routePair(
     groupBands: null,
     ports: undefined,
     enclosure: undefined,
+    band: NO_BAND,
   });
   return edges;
 }

@@ -947,21 +947,25 @@ describe("PreviewPane", () => {
 
     // #3178: zoom and pan chosen for one diagram carried into the next after a
     // drill-down, leaving it tiny or off screen.
-    it("keeps the zoom when the same diagram re-renders, and resets it for another diagram", () => {
+    it("keeps the pan and zoom when the same diagram re-renders, and resets both for another diagram", () => {
       const { container, rerender } = render(
         <PreviewPane {...baseProps()} svg="<div>a</div>" diagramKey='["system",null,[]]' />,
       );
       const previewContainer = container.querySelector(".preview-container")!;
       const zoomLayer = () => previewContainer.querySelector(":scope > div") as HTMLElement;
 
+      // Pan by (50, 30), then zoom out, so both halves of the transform are non-zero.
+      fireEvent.mouseDown(previewContainer, { button: 0, clientX: 10, clientY: 10 });
+      fireEvent.mouseMove(previewContainer, { clientX: 60, clientY: 40 });
+      fireEvent.mouseUp(previewContainer, { button: 0, clientX: 60, clientY: 40 });
       dispatchWheel(previewContainer, 100);
-      expect(zoomLayer().style.transform).toContain("scale(0.9)");
+      expect(zoomLayer().style.transform).toBe("translate(50px, 30px) scale(0.9)");
 
       // An edit: new SVG, same diagram.
       rerender(
         <PreviewPane {...baseProps()} svg="<div>a edited</div>" diagramKey='["system",null,[]]' />,
       );
-      expect(zoomLayer().style.transform).toContain("scale(0.9)");
+      expect(zoomLayer().style.transform).toBe("translate(50px, 30px) scale(0.9)");
 
       // A drill-down: another diagram.
       rerender(
@@ -971,7 +975,9 @@ describe("PreviewPane", () => {
           diagramKey='["system",null,["Payment"]]'
         />,
       );
-      expect(zoomLayer().style.transform).toBe("translate(0px, 0px) scale(1)");
+      // jsdom 31 serializes `translate(0px, 0px)` in its short form `translate(0px)`. Accept
+      // both, so the assertion checks the reset and not the CSS serializer.
+      expect(zoomLayer().style.transform).toMatch(/^translate\(0px(, 0px)?\) scale\(1\)$/);
     });
 
     it("removes the wheel listener on unmount", () => {
