@@ -279,6 +279,15 @@ describe("checkImports: what it must catch", () => {
     expect(problems[0]).toMatch(/^functions\/f\.js: does not parse: /);
   });
 
+  it("fails on an import with `assert`, which Babel 8 no longer reads", async () => {
+    const problems = await problemsOf(
+      'import data from "./data.json" assert { type: "json" }; export const use = [data];',
+      "functions/f.ts",
+    );
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/^functions\/f\.ts: does not parse: /);
+  });
+
   it("reads a .mts and a .cts source instead of skipping them", async () => {
     for (const file of ["functions/f.mts", "functions/f.cts"]) {
       expect(
