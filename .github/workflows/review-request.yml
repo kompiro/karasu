@@ -6,10 +6,12 @@ name: Review request
 # opened as a draft (Issue #3504); this labels every other PR that arrives without a tier
 # label `risk: high`, so an outside author's PR, or one opened from the GitHub UI,
 # is treated as High: CodeRabbit and a human reading the diff. The `Review tier`
-# check treats a missing label as High too; this makes the label say so. Whether
-# CodeRabbit starts a review when the label arrives after the PR was opened is
-# not verified (#3286); if it does not, the PR gets `@coderabbitai full review`
-# by hand (docs/process/review.md "リスク段階").
+# check treats a missing label as High too; this makes the label say so.
+# CodeRabbit does start a review when this label arrives seconds after the PR
+# left draft: #3771, #3772, #3774, #3778 and #3787 were reviewed with no command
+# (checked on #3364). A label raised by hand long after ready is not observed
+# yet; if no review starts then, the PR gets `@coderabbitai full review` by hand
+# (docs/process/review.md "リスク段階").
 #
 # A comment would not do: CodeRabbit does not act on a command posted by
 # github-actions[bot] (checked on #3286).

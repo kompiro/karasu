@@ -9,6 +9,7 @@ import type {
 } from "@karasu-tools/core";
 import { parseNodePathRefId } from "@karasu-tools/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
+import { InjectedHtml } from "./InjectedHtml.js";
 import { EdgeDetailPanel, type SingleEdgeDetail } from "./EdgeDetailPanel.js";
 import { EdgeContextMenu } from "./EdgeContextMenu.js";
 import { FocusCanvas } from "./focus-canvas/FocusCanvas.js";
@@ -682,14 +683,9 @@ export function PreviewPane({
     setIsDragging(false);
   }, []);
 
-  // One `{ __html }` object per distinct `svg`, not one per render. React 19
-  // compares `dangerouslySetInnerHTML` by object identity and, when it differs,
-  // re-assigns `innerHTML` without comparing the string, so an inline literal
-  // re-parses the diagram on every render. That would throw away the highlight
-  // applied below while leaving its effect's dependencies unchanged, and the
-  // class would not come back until the diagram itself changed (#2789).
-  // Keeping this identity tied to `svg` is what makes the two move together.
-  const svgHtml = useMemo(() => ({ __html: svg }), [svg]);
+  // `InjectedHtml` keeps one `{ __html }` object per distinct `svg`, so the
+  // diagram is re-injected exactly when `svg` changes (#2789). The highlight
+  // effect below lists `svg` for the same reason, so the two move together.
 
   // Apply highlight to the element that stands for the node after SVG injection
   useEffect(() => {
@@ -757,13 +753,13 @@ export function PreviewPane({
         onContextMenu={handleContextMenu}
         style={{ cursor: isDragging ? "grabbing" : "grab", position: "relative" }}
       >
-        <div
+        <InjectedHtml
           style={{
             transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
             transformOrigin: "center center",
           }}
           ref={svgRef}
-          dangerouslySetInnerHTML={svgHtml}
+          html={svg}
         />
         {edgeMenu && (
           <EdgeContextMenu

@@ -1,8 +1,9 @@
 import {
   classifyResolveOutcome,
-  decodePathname,
+  errorCacheControl,
+  guardBarePath,
   hasExplicitRef,
-  matchBarePermalink,
+  NEGATIVE_CACHE_CONTROL,
   redirectCacheControl,
 } from "../packages/app/src/render/bare-route.js";
 import { buildNoKrsPage } from "../packages/app/src/render/no-krs-page.js";
@@ -26,9 +27,10 @@ import { resolveRepoPermalink } from "../packages/app/src/render/repo-permalink.
  * `?krs=` query the SPA normalizes (share-page.ts ↔ App.resolveDeepLinkHash).
  *
  * Caching (ADR-1828): an immutable `@<sha>` 302 is cached for a year; a mutable
- * `HEAD`/branch 302 gets a short shared-cache TTL. The signpost page is cached
- * briefly too, so a crawler walking unknown two-segment paths cannot amplify
- * into repeated GitHub raw fetches. This is an ephemeral CDN cache, not a new
+ * `HEAD`/branch 302 gets a short shared-cache TTL. The signpost page and a
+ * deterministic error (a pinned ref with no `.krs`, a model too large to link)
+ * are cached briefly too, so a crawler walking unknown paths cannot amplify into
+ * repeated GitHub raw fetches; a 5xx is never cached. This is an ephemeral CDN cache, not a new
  * store — the Pages surface stays stateless (ADR-2249). The cache key excludes
  * the URL fragment, so one cached 302 serves every `#krs-…` anchor variant.
  */
@@ -41,17 +43,18 @@ export async function onRequest(context: {
   const { request } = context;
   const url = new URL(request.url);
 
-  const decoded = request.method === "GET" ? decodePathname(url.pathname) : null;
-  const match = decoded === null ? null : matchBarePermalink(decoded);
-  if (decoded === null || match === null) {
+  const hit = request.method === "GET" ? guardBarePath(url.pathname) : null;
+  if (hit === null) {
     // Not a permalink (or not a GET) — hand it back to the static-asset pipeline
     // so the SPA and the `_redirects` fallback behave exactly as before.
     return context.next();
   }
 
+  const { decoded, match } = hit;
+
   const cache = caches.default;
-  const hit = await cache.match(request);
-  if (hit) return hit;
+  const cached = await cache.match(request);
+  if (cached) return cached;
 
   // Bind `fetch` to the global scope before handing it off: the Workers runtime
   // throws "Illegal invocation" if the global `fetch` is later called as a bare
@@ -98,15 +101,17 @@ function buildResponse(
         status: page.status,
         headers: {
           "Content-Type": page.contentType,
-          // Short TTL: a repo without a `.krs` today may commit one tomorrow.
-          "Cache-Control": "public, s-maxage=300, max-age=0, must-revalidate",
+          "Cache-Control": NEGATIVE_CACHE_CONTROL,
         },
       });
     }
     default:
       return new Response(result.message ?? "Error.", {
         status: result.status,
-        headers: { "Content-Type": result.contentType, "Cache-Control": "no-store" },
+        headers: {
+          "Content-Type": result.contentType,
+          "Cache-Control": errorCacheControl(result.status),
+        },
       });
   }
 }

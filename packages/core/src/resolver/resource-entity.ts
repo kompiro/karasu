@@ -1,4 +1,10 @@
 import type { KrsNode, ResourceNode, EntityNode } from "../types/ast.js";
+import {
+  indexPhysicalTargets,
+  resolvePhysicalRef,
+  type DeclaredClientStorage,
+  type PhysicalTargetIndex,
+} from "../spec/infra-index.js";
 
 /**
  * The outcome of resolving a `resource` reference to the infra store it
@@ -31,6 +37,11 @@ interface ResolvedResourceRef {
   infraChildId?: string;
   /** Entity id when a bare resource resolved to a unique entity. */
   entityId?: string;
+  /**
+   * The client storage a dotted reference names (#3794). Set only then, and
+   * `infraParentId` is undefined: a client's storage is not an infra store.
+   */
+  clientStorage?: DeclaredClientStorage;
   /**
    * True when a bare id matched more than one entity model-wide. Such a
    * reference is left unresolved (the root cause is separately surfaced by the
@@ -65,7 +76,15 @@ function collectEntities(node: KrsNode, out: Map<string, EntityNode[]>): void {
  * ambiguous and left unresolved, mirroring the unique-target requirement the
  * design specifies (`docs/adr/1870-domain-entity-modeling.md`, §resource 解決).
  */
-export function buildEntityResolver(roots: KrsNode[]): EntityResolver {
+export function buildEntityResolver(
+  roots: KrsNode[],
+  /**
+   * Model-wide `<Parent>.<Child>` targets (#3794). Callers build the resolver
+   * over different roots, so a client the roots do not hold is still known as
+   * a client here. Defaults to an index of `roots`.
+   */
+  physicalTargets: PhysicalTargetIndex = indexPhysicalTargets(roots),
+): EntityResolver {
   const index = new Map<string, EntityNode[]>();
   for (const root of roots) {
     if (root.kind === "entity") {
@@ -80,6 +99,10 @@ export function buildEntityResolver(roots: KrsNode[]): EntityResolver {
     resolve(resource: ResourceNode): ResolvedResourceRef {
       // Physical dot-notation wins directly; no entity lookup needed.
       if (resource.ref) {
+        const target = resolvePhysicalRef(physicalTargets, resource.ref.parent, resource.ref.child);
+        if (target.kind === "client") return { clientStorage: target.storage, ambiguous: false };
+        // An infra leaf, or nothing: the parent stays the infra id, as before,
+        // and each reader checks it against the infra blocks in its own scope.
         return {
           infraParentId: resource.ref.parent,
           infraChildId: resource.ref.child,

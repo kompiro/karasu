@@ -8,6 +8,7 @@ import type {
   DeployBlockInfo,
   NodeDiffMeta,
   SystemNode,
+  PhysicalTargetIndex,
   FacetOverviewEntry,
 } from "@karasu-tools/core";
 import type { ActiveView, HighlightAttribute } from "./app-reducer.js";
@@ -89,6 +90,8 @@ interface SystemViewData {
   nodeDiffByPath?: Map<string, NodeDiffMeta>;
   /** Resolved system AST — used by the CRUD matrix view. */
   systems: SystemNode[];
+  /** Model-wide `<Parent>.<Child>` targets — the CRUD matrix's columns (#3794). */
+  physicalTargets?: PhysicalTargetIndex;
 }
 
 interface DeployViewData {

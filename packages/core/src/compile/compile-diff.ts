@@ -6,7 +6,7 @@
 // only import paths were adjusted from "./x" to "../x" for the new location.
 // ---------------------------------------------------------------------------
 
-import type { Diagnostic } from "../types/ast.js";
+import type { Diagnostic, KrsFile, SystemNode } from "../types/ast.js";
 import type { Warning } from "../types/warnings.js";
 import { mergeMembership, parseBoundaryScopeKey } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
@@ -35,7 +35,7 @@ import { extractView } from "../view/view-extract.js";
 import type { ViewPath } from "../view/view-slice.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
-import { extractDeployView } from "../view/deploy-view-extract.js";
+import { extractModelDeployView } from "../view/deploy-view-extract.js";
 import { ImportResolver, type ResolvedProject } from "../fs/import-resolver.js";
 import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/default-style.js";
 import { withDisplayModeSheet } from "../builtins/display-mode-sheets.js";
@@ -47,6 +47,7 @@ import { diffOrgViewSlices } from "../diff/org-view-diff.js";
 import { injectDiffStyle } from "../diff/diff-style.js";
 import { nodePathRefId, parseNodePathRefId } from "../parser/node-path.js";
 import { collectModelWarnings } from "../resolver/model-warnings.js";
+import { physicalTargetsOf } from "../spec/infra-index.js";
 
 /**
  * Resolve the before / after project entries and concatenate their resolver
@@ -293,14 +294,13 @@ export async function compileSystemDiff(
   // in-place expansion (#1921). Put after's first system first on the before
   // side too, so both sides build that frame from the same system the same way
   // and the diff pairs it by id (#3126, TPL-3126).
-  const beforeSlice = extractView(
+  const sliceOf = (systems: SystemNode[], file: KrsFile) =>
+    extractView(systems, viewPath ?? [], [], [], expandedContainers, physicalTargetsOf(file));
+  const beforeSlice = sliceOf(
     withPrimaryFirst(beforeSystems, afterSystems[0]?.id),
-    viewPath ?? [],
-    [],
-    [],
-    expandedContainers,
+    beforeResolved.krsFile,
   );
-  const afterSlice = extractView(afterSystems, viewPath ?? [], [], [], expandedContainers);
+  const afterSlice = sliceOf(afterSystems, afterResolved.krsFile);
   diagnostics.push(...assignEdgeCanonicalIds(beforeSlice.childEdges));
   diagnostics.push(...assignEdgeCanonicalIds(afterSlice.childEdges));
 
@@ -643,16 +643,8 @@ export async function compileDeployDiff(
 
   // Orphan-wrap so `realizes` targets that point at top-level (unassigned)
   // services/domains resolve to their declared labels (see extractDeployView).
-  const beforeSlice = extractDeployView(
-    beforeResolved.krsFile.deploys,
-    withUnassignedSystem(beforeResolved.krsFile),
-    selectedDeployId,
-  );
-  const afterSlice = extractDeployView(
-    afterResolved.krsFile.deploys,
-    withUnassignedSystem(afterResolved.krsFile),
-    selectedDeployId,
-  );
+  const beforeSlice = extractModelDeployView(beforeResolved.krsFile, selectedDeployId);
+  const afterSlice = extractModelDeployView(afterResolved.krsFile, selectedDeployId);
 
   const diffed = diffDeployViewSlices(beforeSlice, afterSlice);
 

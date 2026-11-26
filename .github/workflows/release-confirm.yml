@@ -75,7 +75,7 @@ jobs:
           path: release-commit
           persist-credentials: false
 
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
         if: ${{ steps.locate.outputs.candidates != '' && steps.locate.outputs.candidates != '[]' }}
         with:
           package_json_file: release-commit/package.json

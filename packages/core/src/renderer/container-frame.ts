@@ -280,7 +280,8 @@ function frameStrokeWidth(
 
 /**
  * Every frame the canvas draws, as label placement obstacles (#3155): each at
- * the stroke width `renderContainer` draws it with. Exported so the tests'
+ * the stroke width `renderContainer` (or, for a ghost band frame,
+ * `renderBandFrame`) draws it with. Exported so the tests'
  * fences measure the same stroke the canvas paints, not a fixed width.
  */
 export function frameBordersOf(
@@ -294,16 +295,18 @@ export function frameBordersOf(
 }
 
 /**
- * The stroke width `renderContainer` draws `container`'s frame at, resolved
- * with the arguments the container loops pass it: a ghost frame without the
- * palette or the frame sheets, every other frame with them. The label pass
- * avoids the stroke this reports (#3155).
+ * The stroke width `container`'s frame is drawn at. A ghost band frame is drawn
+ * by `renderBandFrame` at `BAND_FRAME_STROKE_WIDTH`; every other frame by
+ * `renderContainer`, resolved with the arguments the container loops pass it: a
+ * ghost frame without the palette or the frame sheets, every other frame with
+ * them. The label pass avoids the stroke this reports (#3155).
  */
 function containerStrokeWidth(
   container: ContainerRect,
   styles: ResolvedStyles,
   palette: DiagramPalette,
 ): number {
+  if (container.ghostBand !== undefined) return BAND_FRAME_STROKE_WIDTH;
   const style = containerStyleOf(styles, container, palette);
   const paint = container.ghost
     ? resolveFramePaint(container, style, undefined, undefined, undefined)
@@ -452,4 +455,57 @@ export function renderDegradedTabs(
     );
   }
   return out;
+}
+
+/** The stroke a ghost band frame is drawn with, as wide as a ghost system frame's. */
+const BAND_FRAME_STROKE_WIDTH = 2;
+/** How strongly the inside of a ghost band frame is tinted with `textMuted`. */
+const BAND_FRAME_TINT_OPACITY = 0.05;
+
+/**
+ * A ghost band frame (#2823): one foreign domain's (or service's) ghosts on one
+ * side of the focus frame. Drawn here, not through `containerStyleOf` — it is
+ * no node and takes no node style. The ghost cards inside stay muted, but the
+ * frame itself is not dimmed: its dashed `mutedBorder` outline and its
+ * `textMuted` title are drawn at full strength, so the foreign domain's name
+ * reads without zooming, and a faint tint sets the group off from the canvas.
+ */
+export function renderBandFrame(
+  container: ContainerRect,
+  palette: DiagramPalette,
+  fontFamily: string,
+  borderRadius: number,
+): string {
+  return el(
+    "g",
+    {
+      "data-container-id": container.id,
+      // Which side of the focus the frame sits on; absent on every other frame.
+      "data-ghost-band": container.ghostBand,
+    },
+    el("rect", {
+      x: container.x,
+      y: container.y,
+      width: container.width,
+      height: container.height,
+      fill: palette.textMuted,
+      "fill-opacity": String(BAND_FRAME_TINT_OPACITY),
+      stroke: palette.mutedBorder,
+      "stroke-width": BAND_FRAME_STROKE_WIDTH,
+      "stroke-dasharray": "8 4",
+      rx: borderRadius,
+    }),
+    el(
+      "text",
+      {
+        x: container.x + 12,
+        y: container.y + 18,
+        fill: palette.textMuted,
+        "font-size": "12px",
+        "font-family": fontFamily,
+        "font-weight": "bold",
+      },
+      escapeXml(container.label),
+    ),
+  );
 }

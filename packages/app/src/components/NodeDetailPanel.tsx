@@ -13,6 +13,7 @@ import {
 import type { NodeMetadata } from "@karasu-tools/core";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "../i18n/index.js";
+import { InjectedHtml } from "./InjectedHtml.js";
 
 interface NodeDetailPanelProps {
   nodeId: string;
@@ -111,7 +112,7 @@ export function NodeDetailPanel({
     >
       <div className="node-detail-header">
         {pictogramSvg ? (
-          <span className="node-detail-icon" dangerouslySetInnerHTML={{ __html: pictogramSvg }} />
+          <InjectedHtml as="span" className="node-detail-icon" html={pictogramSvg} />
         ) : (
           <span className="node-detail-icon">{fallbackIcon}</span>
         )}
@@ -124,10 +125,7 @@ export function NodeDetailPanel({
       </div>
 
       {descriptionHtml && (
-        <div
-          className="node-detail-description"
-          dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-        />
+        <InjectedHtml className="node-detail-description" html={descriptionHtml} />
       )}
 
       {metadata.links.length > 0 && (
@@ -157,12 +155,32 @@ export function NodeDetailPanel({
           <div className="node-detail-section-title">{t("nodeDetail.resources.title")}</div>
           <ul className="node-detail-resource-list">
             {metadata.resources.map((r) => (
-              <li key={`${r.storageKind}-${r.name}`} className="node-detail-resource-item">
+              <li
+                key={`${r.storageKind}-${r.id ?? ""}-${r.name}`}
+                className="node-detail-resource-item"
+              >
                 <span className="node-detail-resource-kind">{r.storageKind}</span>
-                <span className="node-detail-resource-name">{r.name}</span>
+                <span className="node-detail-resource-body">
+                  {r.id !== undefined && <span className="node-detail-resource-id">{r.id}</span>}
+                  <span className="node-detail-resource-name">{r.name}</span>
+                  {r.usecases && r.usecases.length > 0 && (
+                    <span className="node-detail-resource-usecases">
+                      {t("nodeDetail.resources.usedBy", { usecases: r.usecases.join(", ") })}
+                    </span>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {metadata.clientStorage && (
+        <div className="node-detail-section">
+          <div className="node-detail-section-title">{t("nodeDetail.clientStorage.title")}</div>
+          <div className="node-detail-client-storage">
+            {t("nodeDetail.clientStorage.value", metadata.clientStorage)}
+          </div>
         </div>
       )}
 

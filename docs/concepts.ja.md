@@ -30,7 +30,22 @@ system
 - `service`：独立したビジネス機能の単位
 - `domain`：サービス内のビジネス上の関心事の境界（DDD の Bounded Context に近い）
 - `usecase`：ドメイン内の業務・操作
-- `resource`：usecase が操作する対象（テーブル、外部API、ファイル等）。`client` 直下にも書ける（`localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `file` / `keychain` 等のクライアント側ストレージ）
+- `resource`：usecase が操作する対象（テーブル、外部API、ファイル等）。`client` 直下にも書ける（`localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `file` / `keychain` 等のクライアント側ストレージ）。id 付きで宣言した client の storage は、usecase の `resource <ClientId>.<Id>` が指す先になる（experimental、#3794）:
+
+```krs
+system Studio {
+  client WebApp [web] {
+    resource opfs Projects "/meta/projects.json"
+  }
+  service App {
+    domain Workspace {
+      usecase SaveProject {
+        resource WebApp.Projects { operations update }
+      }
+    }
+  }
+}
+```
 
 `database` / `queue` / `storage` は system 直下に共有インフラとして配置することもできる（[ADR-316](adr/316-database-as-first-class-node.md) 参照）。
 

@@ -27,7 +27,7 @@ import {
   normalizeCoordinates,
   translateEdgePoints,
 } from "./layout-geometry.js";
-import { computeEdgePoints, portResolver, runRoutingChain } from "./layout-edges.js";
+import { computeEdgePoints, NO_BAND, portResolver, runRoutingChain } from "./layout-edges.js";
 import {
   canvasLayoutHints,
   canvasMembershipFor,
@@ -473,6 +473,8 @@ export function layoutMultipleSystems(
       // (no canvas-wide row ordinal, ADR-2598), so its channels are left as
       // they were.
       enclosure: undefined,
+      // No ghost band on the multi-system root (#2823).
+      band: NO_BAND,
     });
 
     // A gutter route runs outside the system's cards, so it can reach past the

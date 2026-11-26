@@ -163,6 +163,7 @@ Some data stores are shared by several services rather than owned by a single `u
 - `database` / `queue` / `storage` are valid only at the top level or as a direct child of `system`. Nesting one inside a `service`, `domain`, or `usecase` is rejected with `infra-not-in-context`.
 - `table` / `queue-item` / `bucket` are leaf nodes: they accept properties and edges but no nested declarations.
 - A `usecase` ties one of its `resource`s to a shared sub-resource with dot-notation — `resource <InfraId>.<SubResourceId>` (e.g. `resource OrderDB.OrderTable`). The resolver aggregates these references to derive the `service → database` (and `service → queue` / `service → storage`) edges shown on the system view, and may synthesize `[read]` / `[write]` tags on the usecase→resource edges — see [docs/spec/tags-annotations.md](./tags-annotations.md#system-assigned-tags).
+- The same dot-notation reaches a storage a `client` declares with an id, `resource <ClientId>.<Id>` (experimental, see [Referencing a client storage from a usecase](#referencing-a-client-storage-from-a-usecase-experimental)). It is promoted and gets `[read]` / `[write]` like an infra reference, but derives no `service → client` edge.
 - `[external]` may be applied to `database` / `queue` / `storage` for a store that lives outside the system boundary (a managed third-party DB, an external event bus, …).
 - `[index]` may be applied to a `database` to mark it as a **derived search / secondary index** — a store derived as an index to search the system of record quickly — and adds an `index` badge. It denotes a **role, not a technology**: a vector DB / ElasticSearch that is itself the system of record stays a plain `database` (no `[index]`). The concrete engine stays in the physical layer (`store { type "ElasticSearch 8"; realizes SearchIndex }`). See [tags-annotations.md](./tags-annotations.md).
 - Writing `resource OrderTable` *without* a matching `database` block is allowed, so you can discover resources bottom-up while sketching a `usecase`, then group them into a `database` block and switch to the dot-notation reference. For as long as the id resolves to **nothing at all** (no dot-notation ref, and no unique `entity` of the same name), it warns `unassigned-resource` and **is drawn, but only inside its own usecase's drill-down view**: it is *not* promoted to a sibling node in the domain view, because promotion is what resolving the reference buys. Declaring a matching `entity` promotes it and clears the warning with no edit to the usecase, `database` block or not (see [`entity` declaration](#entity-declaration--conceptual-domain-entities)). Sketching bottom-up does give visual feedback, then, just one level deeper until the id resolves.
@@ -352,7 +353,7 @@ Properties are written inside the body block `{ }`. Properties come before child
 | `role` | `role "<role-name>"` | user | Actor archetype, or a short one-line description of what this user does. **Not** an authz primitive (no `requires role = ...` predicate, no RBAC permission bundle) — see [ADR-832](https://github.com/kompiro/karasu/blob/main/docs/adr/832-no-runtime-authz-modeling.md) and [ADR-1281](https://github.com/kompiro/karasu/blob/main/docs/adr/1281-user-role-keyword-clarification.md) |
 | `delivers` | `delivers <ClientId>[, <ClientId>...]` | service | Client(s) this service ships (BFF / SSR pattern). The renderer draws each entry as a distinct dashed edge from the service to the referenced `client` |
 | `link` | `link "<URL>" "<label>"` | All | Link to related documentation (multiple allowed). Label is optional |
-| `resource` | `resource <storageKind> "<name>"` | client | Operation-tied local storage on the client. Multiple allowed. See client resource kinds below |
+| `resource` | `resource <storageKind> [<Id>] "<name>"` | client | Operation-tied local storage on the client. Multiple allowed. The optional id is what a usecase's `resource <ClientId>.<Id>` resolves to (experimental). See client resource kinds below |
 | `capability` | `capability <name>` or `capability <name> { label "..." description "..." }` | client | Device / browser capability the client requests (camera, geolocation, notification, etc.). Multiple allowed. See client capabilities below |
 
 All properties are optional. `link` may appear multiple times within the same node.
@@ -437,13 +438,13 @@ client <id> [<form-factor-tag>] {
   label "<display-name>"
   description "<text>"
   resource <storageKind> "<name>"
-  resource <storageKind> "<name>"
+  resource <storageKind> <Id> "<name>"
 }
 ```
 
 #### `client` `resource` storage kinds
 
-`resource <storageKind> "<name>"` declares operation-tied local storage on a client (a `localStorage` key, an IndexedDB database, an OPFS file, etc.). Multiple `resource` lines are allowed and render inline on the client card.
+`resource <storageKind> [<Id>] "<name>"` declares operation-tied local storage on a client (a `localStorage` key, an IndexedDB database, an OPFS file, etc.). Multiple `resource` lines are allowed and render inline on the client card.
 
 The `<storageKind>` must be one of the six reserved values below. Any other kind is rejected with `client-resource-invalid-kind` so that authentication credentials, cookies, and device capabilities (which need stronger modeling) do not silently slip into the storage list.
 
@@ -467,6 +468,62 @@ client WebApp [web] {
 ```
 
 **Rendering**: the SVG card shows a single `×N` count chip (package vector glyph, `data-meta-glyph="package"`) count badge instead of one row per resource (so card height stays bounded as the list grows). The full list — kind and name in declaration order — is surfaced in the `NodeDetailPanel` "Storage resources" section. See [AT-0069](https://github.com/kompiro/karasu/blob/main/docs/acceptance/0069-client-resource-badge-and-detail-panel.md).
+
+#### Referencing a client storage from a usecase (experimental)
+
+> **Experimental** (#3794): listed in the roadmap's watch table of experimental notation and promoted through the [ADR-1820](https://github.com/kompiro/karasu/blob/main/docs/adr/1820-notation-promotion-gate.md) gate. The language version stays `2.0`.
+
+A storage line may carry an **id** between the storage kind and the name. A usecase then references that storage with the same dot-notation it uses for an infra leaf, `resource <ClientId>.<Id>`:
+
+```krs
+system Studio {
+  client WebApp [web] {
+    resource opfs Projects "/meta/projects.json"
+    resource localStorage "karasu-theme"
+  }
+  service App {
+    delivers WebApp
+    domain Workspace {
+      usecase SaveProject {
+        resource WebApp.Projects { operations create, update }
+      }
+    }
+  }
+}
+```
+
+- The id is optional. A storage without one keeps its old meaning and cannot be referenced. The name stays required. An id no bare word can hold is written quoted (`resource localStorage "api-key" "…"`); a quoted id counts only when the name follows on the same line.
+- The name is read with the shared value reader: a name written on a later line is still the name, unless that line starts an edge (`"WebApp" -> Api`), which reports the missing name instead (ADR-3752). A keyword in the id position (`table`, `storage`, …) is `expected-identifier`.
+- Resolution is model-wide, like an infra leaf: the client may sit in another system, at the top level, or in an imported file. `<Parent>` names an infra block or a client; one resolver decides which.
+- When an infra block and a client (in different scopes) share the parent id, the reference names the **infra block**, as it did before clients were targets (a leaf the block lacks is still `unresolved-resource-ref`). If that client declares a storage with an id, `resource-target-ambiguous` names the clash; its storages are then not referenceable. Here `Media.Uploads` names the bucket, and the client, which declares no storage id, raises no clash diagnostic:
+
+  ```krs
+  client Media [web] {
+    resource localStorage "volume"
+  }
+  system Studio {
+    storage Media {
+      bucket Uploads
+    }
+    service App {
+      domain Library {
+        usecase Upload {
+          resource Media.Uploads { operations create }
+        }
+      }
+    }
+  }
+  ```
+- Same-id client nodes (KRS018 / KRS030) are not merged. If more than one declares the child id, the reference does not resolve (`resource-target-ambiguous`). Two storages of one client with the same id give `client-resource-duplicate-id`; the first wins.
+- A missing child is `unresolved-resource-ref` with `missing: "leaf"` and `parentKind: "client"`. An entity's `table WebApp.Projects` never resolves to a client storage.
+- No `service → client` edge is derived from such a reference (a delivering service is drawn by `delivers`). The promoted resource is labelled `<name> (<storageKind>)` (`/meta/projects.json (opfs)`), the CRUD matrix gets a column per identified storage, and `karasu coverage` reports them per client under `clientStores`.
+- Whether the usecase's service delivers or handles the client is not checked: a pure SPA has no delivering service.
+
+> **Related TPLs**:
+> - [TPL-1720](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md) — the targets of `<Parent>.<Child>` are one enumerated set read by every consumer
+> - [TPL-2088](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md) — the reference sites share the notation and resolution rule
+> - [TPL-1625](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1625-client-vocabulary-structure-not-implementation.md) — the id names a storage slot on the access path, not its schema
+> - [TPL-3752](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-3752-optional-trailing-token-stops-at-next-statement.md) — the name reader stops at an edge on a later line
 
 #### `client` `capability`
 
@@ -834,8 +891,14 @@ target is resolved by scope:
 
 In the per-domain **entity view**, a qualified cross-domain target is drawn as a
 muted **ghost** of the foreign entity (both directions: this domain's entities →
-foreign, and foreign → this domain's entities), sub-labelled with its owning
-domain. A **bare** id that does not match a local entity is **not** resolved
+foreign, and foreign → this domain's entities). Ghosts sit in a band outside the
+domain's frame, split by the direction of their relations: a ghost that
+references this domain goes **above** the frame, and one this domain references
+goes **below**. A ghost with relations both ways goes to the side with more of
+them, and below on a tie. On each side, two or more ghosts of one foreign domain
+share a muted frame titled with that domain; a ghost that is the only one of its
+domain on that side is a card sub-labelled with its owning domain. The band
+wraps into rows to keep the canvas screen-shaped. A **bare** id that does not match a local entity is **not** resolved
 cross-domain — it is dropped from the entity view (write it qualified to surface
 the relation).
 
@@ -2144,7 +2207,7 @@ When an edge `A -> B` cannot resolve one of its endpoints (because the target id
 
 The same rule applies to `realizes` / `owns` / `handles` cross-references: the source node stays, the unresolved relation is reported.
 
-The **physical** dot-notation references follow it too: a usecase's `resource <Infra>.<Leaf>` and an entity's `table <Infra>.<Leaf>` must name a `database` / `queue` / `storage` block, and a leaf that block declares. When they do not, the usecase or entity survives and the reference is reported (`unresolved-resource-ref` / `unresolved-table-ref`, both naming which half is missing). Two exemptions: a resource or entity tagged `[external]` deliberately points outside the model, and — like `owns` / `contains` — a document that still has imports to resolve does not decide the question at all, since the canonical place for a shared `database` block is the imported infra file of §S4.5.
+The **physical** dot-notation references follow it too: a usecase's `resource <Infra>.<Leaf>` and an entity's `table <Infra>.<Leaf>` must name a `database` / `queue` / `storage` block, and a leaf that block declares; a usecase's `resource` may instead name a `client` and the id of one of its storages (#3794, experimental). When they do not, the usecase or entity survives and the reference is reported (`unresolved-resource-ref` / `unresolved-table-ref`, both naming which half is missing). Which target a parent id names (an infra block and a client sharing it, or two same-id clients both declaring the child) is decided on the merged model too, and reported as `resource-target-ambiguous`. Two exemptions: a resource or entity tagged `[external]` deliberately points outside the model, and — like `owns` / `contains` — a document that still has imports to resolve does not decide the question at all, since the canonical place for a shared `database` block is the imported infra file of §S4.5.
 
 An entity that carries **no** `table` mapping is a different thing entirely and is not reported here: modelling the logical side before (or without) the physical one is a supported state. Whether the physical layer is as complete as its declarations imply is a *measurement*, answered by `karasu coverage`, not a diagnostic.
 

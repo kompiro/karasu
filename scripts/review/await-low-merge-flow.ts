@@ -1,9 +1,9 @@
 // Waits for the Low PR merger to merge one Low PR, and says what the session
-// should do when it does not (Issue #3698, slice B of #3673). GitHub, the judge
+// should do when it does not (Issue #3673). GitHub, the judge
 // and the clock come in through interfaces, so the waiting is tested without a
 // network; `await-low-merge.ts` supplies the real ones.
 //
-// Read-only: it never comments, enables auto-merge or pushes. The session acts
+// Read-only: it never comments, merges or pushes. The session acts
 // on the outcome (`.claude/rules/adr.md`).
 //
 // The verdict on the PR is the merger's own judge, run here on this PR alone:
@@ -55,8 +55,8 @@ export const DEFAULT_OPTIONS: Options = {
 
 type Outcome =
   /**
-   * Merged as `MERGER_LOGIN`: what #3698 records. The push workflows on
-   * `mergeSha` are read on #3698 later, when they have all started.
+   * Merged as `MERGER_LOGIN`: the PR is done. `branchDeleted` says whether the
+   * head branch went with it (the repository's `delete_branch_on_merge`).
    */
   | {
       outcome: "merged-by-merger";
@@ -67,7 +67,10 @@ type Outcome =
   /** Merged by anyone else: a person, native auto-merge, or another app. */
   | { outcome: "merged-otherwise"; mergedBy: string | null }
   | { outcome: "closed" }
-  /** Native auto-merge is on and would merge before the merger: disable it and run again. */
+  /**
+   * Native auto-merge is on (an older session or a person enabled it) and would
+   * merge before the merger: disable it and run again.
+   */
   | { outcome: "auto-merge-enabled" }
   /** The merger does not judge this PR (not `risk: low`, draft, another base...). */
   | { outcome: "out-of-scope"; why: string }
@@ -75,7 +78,10 @@ type Outcome =
   | { outcome: "fix-pr"; reasons: string[]; details: string[] }
   /** Required checks missing or ended skipped/cancelled for 30 minutes: re-run them, or close and reopen. */
   | { outcome: "checks-stuck"; reasons: string[]; details: string[] }
-  /** The merger could merge or cannot decide, and has not merged for `settleMs`: fall back to `--auto`. */
+  /**
+   * The merger could merge or cannot decide, and has not merged for `settleMs`:
+   * nothing is left on the PR's side, so the merger itself needs a look.
+   */
   | { outcome: "fallback"; verdict: string; details: string[] }
   | { outcome: "timeout"; last: string };
 

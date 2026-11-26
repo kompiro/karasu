@@ -109,6 +109,15 @@ const SECURITY_TIER_GLOBS: readonly string[] = [
   "packages/core/src/renderer/svg-builder.ts",
   // Decodes the payload of a shared URL.
   "packages/app/src/utils/inline-share.ts",
+  // The app's Cloudflare Pages Functions: each file answers a public request
+  // (`/render`, `/s`, `/r/*`, the catch-all) or hands its input to resvg (#3799).
+  "functions/**",
+  // What those functions delegate to: reading the query and path, the `/s`
+  // page, permalink resolution, the SVG `/render?format=png` rasterizes.
+  // `tier.test.ts` keeps every module a function imports on this list.
+  "packages/app/src/render/**",
+  // Writes the `/render` query's `bg` into the OGP frame's SVG (#3773).
+  "packages/core/src/renderer/ogp-frame.ts",
   // DOMPurify and `dangerouslySetInnerHTML`.
   "packages/app/src/components/{ChatPane,NodeDetailPanel,EdgeDetailPanel}.tsx",
 ];
@@ -123,6 +132,8 @@ const LANGUAGE_TIER_GLOBS: readonly string[] = [
   "packages/core/src/{lexer,parser,resolver,spec,style,formatter,annotations}/**",
   "packages/core/src/language-version.ts",
   "packages/core/src/builtins/default-style.ts",
+  // Builds the annotation rules of the builtin sheet (moved out of default-style.ts, #3814).
+  "packages/core/src/builtins/annotation-badge-rules.ts",
   // Turns diagnostics into what the editor shows; nothing compares its output.
   "packages/lsp/src/diagnostics*",
 ];
@@ -151,7 +162,11 @@ const CODE_FILE = /\.(?:[cm]?[jt]sx?|html|vue|svelte)$/;
 const DESIGN_GLOBS: readonly string[] = ["docs/design/**"];
 
 /** `docs/adr/**` is not here: its Low cases are read from the diff ({@link adrFileTier}). */
-const LOW_GLOBS: readonly string[] = ["docs/test-perspectives/**", "docs/guide/**", ...TEST_GLOBS];
+/**
+ * `docs/guide/**` is not here: the docs site renders its raw HTML and SVG, so a
+ * page can send a reader elsewhere with no URL written (Issue #3786).
+ */
+const LOW_GLOBS: readonly string[] = ["docs/test-perspectives/**/*.md", ...TEST_GLOBS];
 
 /**
  * `pnpm adr:regenerate` output. Pinned to `adr.config.json` `paths.outputs` by a
@@ -447,7 +462,15 @@ export interface Classification {
    * need not be read again. `agreed` when its diff is the text the backing Design
    * Doc agreed, which made it Medium.
    */
-  files: { path: string; tier: Tier; boundary: boolean; narrowable: boolean; agreed?: true }[];
+  files: {
+    path: string;
+    tier: Tier;
+    boundary: boolean;
+    narrowable: boolean;
+    agreed?: true;
+    /** The links outside karasu's domains a Low file adds, which made it Medium (#3786). */
+    outside?: string[];
+  }[];
 }
 
 /** 1-based inclusive line range of the YAML frontmatter, or null when there is none. */
@@ -963,6 +986,464 @@ const touchesDangerousSink = (f: ChangedFile): boolean =>
 const isSinkChange = (f: ChangedFile): boolean =>
   !isTestFile(f.path) && CODE_FILE.test(f.path) && touchesDangerousSink(f);
 
+// ---------------------------------------------------------------------------
+// Links outside karasu's domains (Issue #3786)
+//
+// A Low PR merges with no human reading it, so a Low file that adds a link to a
+// site outside karasu's domains is Medium. Markdown structure is not read (regex
+// parsing of it kept leaking in #3620): every URL-like form is collected from the
+// whole file, on both sides, and a form counts as new when the file has more of
+// it after the change than before. What cannot be read counts as outside.
+
+/** The named character references decoded; any other is an unreadable URL. */
+const NAMED_REFERENCES: Readonly<Record<string, string>> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+};
+
+/** A numeric reference (the `;` is optional) or a named one (with its `;`). */
+const CHARACTER_REFERENCE = /&#x([0-9a-f]+);?|&#([0-9]+);?|&([a-z][a-z0-9]*);/gi;
+
+/** The key a named reference outside {@link NAMED_REFERENCES} is counted under. */
+const UNREADABLE_REFERENCE = "\u0000reference:";
+
+/**
+ * D3: numeric references and the six named ones decoded, and the text lowercased.
+ * Another named reference is kept as a marker that {@link collectLinks} counts as
+ * an unreadable URL. Backslashes are read in {@link countLinks}.
+ *
+ * A reference is data, never markup: `&quot;`, `&#41;` or `&nbsp;` inside a URL
+ * stays part of it where Markdown and HTML render it. So a decoded quote, bracket
+ * or whitespace becomes {@link NEUTRAL}, which ends no URL (#3786, review of #3849).
+ */
+function decodeReferences(text: string): string {
+  const decoded = (c: string): string => (/[\s"'()<>]/.test(c) ? NEUTRAL : c);
+  return text
+    .replace(CHARACTER_REFERENCE, (whole, hex: string, dec: string, name: string) => {
+      if (name !== undefined) {
+        const known = NAMED_REFERENCES[name.toLowerCase()];
+        return known !== undefined
+          ? decoded(known)
+          : ` ${UNREADABLE_REFERENCE}${name.toLowerCase()} `;
+      }
+      const code = hex !== undefined ? Number.parseInt(hex, 16) : Number.parseInt(dec, 10);
+      // Not a code point: kept as a reference no one decodes, which counts as unreadable.
+      return code > 0x10ffff
+        ? ` ${UNREADABLE_REFERENCE}${whole.toLowerCase()} `
+        : decoded(String.fromCodePoint(code));
+    })
+    .toLowerCase();
+}
+
+/**
+ * A backslash as Markdown reads it in a link: removed before ASCII punctuation
+ * (`\@`, `\.`), kept and written `%5c` before anything else. Read only as `/`
+ * (D3), `[x](https://kompiro.github.io\@evil.com)` would look like a path while
+ * GitHub opens evil.com (#3786).
+ */
+const markdownEscapes = (text: string): string =>
+  text
+    .replace(/\\([()<>])/g, NEUTRAL)
+    .replace(/\\([!-/:-@[-`{-~])/g, "$1")
+    .replaceAll("\\", "%5c");
+/**
+ * What an escaped `(`, `)`, `<` or `>`, and a decoded quote, bracket or whitespace,
+ * read as: a character that ends no URL and starts no host, so
+ * `[x](https://kompiro.github.io\)@evil.com)` keeps going to `evil.com`.
+ */
+const NEUTRAL = "\u0001";
+
+/**
+ * Where a URL ends, by Markdown's rules only: raw HTML counts as outside on its
+ * own ({@link HTML_TAG}), so no attribute rules are needed (kompiro's decision of
+ * 2026-11-17, #3786). Whitespace and an unbalanced `)` end it, and a quote or `<`
+ * does not (`[x](https://kompiro.github.io'@evil.com)` opens evil.com, and a
+ * reference definition keeps `<` as `%3C`). Reading a bare URL past the `<` an
+ * autolink stops at only makes it longer. After `<` (an autolink or
+ * `[x](<...>)`), only `>` or a line break ends it, and a space does not.
+ */
+function urlEnd(text: string, opener: string): number {
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (opener === "<") {
+      if (c === ">" || c === "\n" || c === "\r") return i;
+      continue;
+    }
+    // ASCII whitespace only: Markdown keeps U+00A0 or U+3000 in a destination.
+    if (/[ \t\n\r\f\v]/.test(c)) return i;
+    if (c === "(") depth++;
+    else if (c === ")") {
+      if (depth === 0) return i;
+      depth--;
+    }
+  }
+  return text.length;
+}
+/**
+ * What opened a URL starting at `index`: the character right before it, or `(`
+ * when only whitespace stands between, since a link destination may follow `(`
+ * after spaces or a line break (`[x]( https://...)`). A `<` opens a URL only when
+ * it is right before it: in `x < https://kompiro.github.io>@evil.com`, GFM links
+ * the bare URL through `>@evil.com`.
+ */
+function openerBefore(text: string, index: number): string {
+  const before = text[index - 1] ?? "";
+  if (!/\s/.test(before)) return before;
+  let i = index - 1;
+  while (i >= 0 && /\s/.test(text[i])) i--;
+  return text[i] === "(" ? "(" : before;
+}
+/** What may trail a host when nothing follows it in the URL (`**`, `.`, `),`, a code span's backtick). */
+const TRAILING_AFTER_HOST = /^[.,:;!?*_~'"`\])>]+$/;
+/** Trailing punctuation an autolink leaves out (GFM), and a closing quote, bracket or backtick. */
+const TRAILING_PUNCTUATION = /[.,:;!?*_~'"`\])>]+$/;
+/** A commit SHA as a path segment, alone or before a suffix (`.patch`, `~1`, `^`). */
+const SHA_SEGMENT = /^[0-9a-f]{7,}(?:[.~^]|$)/;
+/** The only fragment the app hosts take: an element anchor, which carries no content (#3786). */
+const APP_FRAGMENT = /^#krs-[a-z0-9._-]*$/;
+/** One taka short link segment (D6). */
+const TAKA_SLUG = /^\/[a-z0-9_-]+$/;
+
+/** RFC 2606 and RFC 6761 names, which no one can register. */
+const isReservedHost = (host: string): boolean =>
+  host === "localhost" ||
+  host === "127.0.0.1" ||
+  /(?:^|\.)example\.(?:com|net|org)$/.test(host) ||
+  /\.(?:example|test|invalid|localhost)$/.test(host);
+
+/**
+ * D6: whether `host` with `rest` (what follows the authority: path, query and
+ * fragment, up to where {@link urlEnd} ends the URL) is one of karasu's domains.
+ */
+function isKarasuDomain(host: string, rest: string): boolean {
+  const q = rest.search(/[?#]/);
+  const pathname = q === -1 ? rest : rest.slice(0, q);
+  const hasQuery = rest.includes("?");
+  const hash = rest.indexOf("#");
+  const fragment = hash === -1 ? "" : rest.slice(hash);
+  const hasFragment = fragment !== "";
+  switch (host) {
+    case "github.com": {
+      const segments = pathname.split("/");
+      if (segments[1] !== "kompiro") return false;
+      // A commit, by SHA in any route (`blob`, `blame`, `commit/<sha>.patch`,
+      // `archive/<sha>.zip`) or by ref (`refs/pull/<n>/head`), can be a fork's.
+      if (segments.includes("raw") || segments.includes("refs")) return false;
+      return !segments.slice(3).some((s) => SHA_SEGMENT.test(s));
+    }
+    // The app opens a `.krs` from `?s=` and from `#s=`, which can carry anyone's links.
+    case "karasu.kompiro.dev":
+    case "karasu.pages.dev":
+      return (
+        !hasQuery &&
+        (!hasFragment || APP_FRAGMENT.test(fragment)) &&
+        (pathname === "" || pathname === "/" || pathname.startsWith("/kompiro/"))
+      );
+    case "karasu-nest.kompiro.dev":
+      return !hasQuery;
+    case "kompiro.github.io":
+      return true;
+    case "taka.kompiro.dev":
+      return (
+        !hasQuery &&
+        !hasFragment &&
+        (pathname === "" || pathname === "/" || TAKA_SLUG.test(pathname))
+      );
+    default:
+      return isReservedHost(host);
+  }
+}
+
+/**
+ * The key an outside URL is counted under, or null when it is one of karasu's
+ * domains. `text` starts right after `//` (or at `www.`, which has no `//`), and
+ * `opener` is the character before the URL, which decides where it ends.
+ */
+function outsideAuthority(text: string, opener: string): string | null {
+  const url = text.slice(0, urlEnd(text, opener));
+  const authority = /^[a-z0-9.-]*(?::[0-9]+)?/.exec(url)?.[0] ?? "";
+  const next = url.slice(authority.length);
+  const hostEnd = next.search(/[/?#]/);
+  const tail = hostEnd === -1 ? next : next.slice(0, hostEnd);
+  // Anything inside the authority but the host: userinfo (`@`), an escape, a
+  // non-ASCII letter, a name under another domain (`_.evil.com`).
+  if (tail !== "" && !(hostEnd === -1 && TRAILING_AFTER_HOST.test(tail))) {
+    return `//${authority}${tail.slice(0, 40)}`;
+  }
+  const host = authority.replace(/:[0-9]+$/, "").replace(/\.$/, "");
+  if (host === "") return `//${authority}`;
+  // The same target with or without the punctuation an autolink leaves out.
+  const path = next.replace(TRAILING_PUNCTUATION, "");
+  const key = `//${host}${path}`;
+  if (next.includes("..") || next.includes("%") || next.includes("//")) return key;
+  return isKarasuDomain(host, path) ? null : key;
+}
+
+/**
+ * The schemes that always count as outside (D4), where a URL could start: not
+ * inside a longer word (`root_cause_file:`, `nodeMetadata:`) and not followed by
+ * whitespace (a YAML key, `file: packages/...`). GitHub drops these schemes from
+ * a rendered link anyway (kompiro's decision, #3786).
+ */
+const OTHER_SCHEMES = /(?<![a-z0-9+.-])(?:mailto|javascript|data|vbscript|file):(?=\S)/g;
+/**
+ * A GFM email autolink (D4) whose last domain label has a letter, so a package
+ * version (`ajv@8.20.0`) is not one (kompiro's decision, #3786).
+ */
+const EMAIL = /[a-z0-9._+-]+@[a-z0-9_-]+(?:\.[a-z0-9_-]+)*\.[a-z0-9_-]*[a-z][a-z0-9_-]*/g;
+/**
+ * The second slash of a `//` (D4), one slash at a time so `///evil.com` is found
+ * at its last pair. `//^` and `//|` start no host a URL parser takes.
+ */
+const HOST_SLASH = /(?<=\/)\/(?=[^\s/^|])/g;
+/**
+ * What {@link HOST_SLASH} always counts, as kompiro decided (#3786): a letter, a
+ * digit, `_`, `-`, `%`, `@`, a non-ASCII character or an IPv6 literal after `//`.
+ */
+const HOST_START = /^(?:[a-z0-9_%@\u0080-\uffff-]|\[[0-9a-f:.]*\])/;
+/**
+ * After anything else (`.`, `(`, `[`, `$`, `*`, `{` ...), the authority up to the
+ * end of the word counts when it can still name a host on the internet: userinfo,
+ * an escape, or a dot inside a name (the ideographic and full-width dots, which
+ * IDNA reads as `.`, included). `//$x.evil.com`, `//(x.evil.com` and `//.evil.com`
+ * do; the regex escapes kompiro decided to leave out (`//.color`, `//(x//)`,
+ * `//[theme//]`), a glob's star and `//{port//}` do not.
+ */
+const NAMES_A_HOST =
+  /^[^ \t\n\r\f\v/?#<]*?(?:[@%]|[^.\u3002\uff0e\uff61][.\u3002\uff0e\uff61][^.\u3002\uff0e\uff61 \t\n\r\f\v/?#<])/;
+/**
+ * The start of a raw HTML tag in a Low Markdown file: `<`, a tag name, then
+ * whitespace or `/`. A tag with a URL attribute ({@link URL_ATTRIBUTE_NAMES}, as the
+ * tokenizer reads it in {@link readTag}) counts as an
+ * outside link on its own, because where a URL ends inside an attribute (quotes,
+ * spaces, references) is not read (kompiro's decision of 2026-11-17, #3786).
+ * Placeholders such as `<n>` and an SVG example such as `<g class="x">` open
+ * nothing, and `<https://...>` is an autolink.
+ */
+const HTML_TAG = /<[a-z][a-z0-9-]*(?=[\s/])/g;
+/**
+ * An attribute that takes a URL, found in a tag's text with no tokenizing: the
+ * second reading, so a mismatch in {@link readTag} cannot hide one.
+ */
+const URL_ATTRIBUTE =
+  /[\s/"'](?:href|src|srcset|cite|poster|longdesc|action|formaction|background|data|xlink:href)\s*=/;
+
+/** The names of attributes that take a URL, as {@link readTag} reports them. */
+const URL_ATTRIBUTE_NAMES: ReadonlySet<string> = new Set([
+  "href",
+  "src",
+  "srcset",
+  "cite",
+  "poster",
+  "longdesc",
+  "action",
+  "formaction",
+  "background",
+  "data",
+  "xlink:href",
+]);
+
+/**
+ * The tag that starts at `start`, read by the HTML tokenizer's attribute states
+ * (WHATWG 13.2.5.32 to 13.2.5.39): its text up to the `>` that ends it, and its
+ * attribute names. A quote opens a value only where a value starts, and an
+ * unquoted value runs to whitespace or `>` with any `=` or quote in it as text, so
+ * `<a x'="'>" href=...>` and `<a foo=a=" bar=">" href=...>` both have `href`.
+ */
+function readTag(text: string, start: number): { text: string; names: string[] } {
+  type State =
+    | "before"
+    | "name"
+    | "afterName"
+    | "beforeValue"
+    | "quoted"
+    | "unquoted"
+    | "afterQuoted";
+  const space = /[ \t\n\r\f]/;
+  const names: string[] = [];
+  let state: State = "before";
+  let name = "";
+  let quote = "";
+  let i = start + 1;
+  while (i < text.length && !/[ \t\n\r\f/>]/.test(text[i])) i++; // the tag name
+  for (; i < text.length; i++) {
+    const c = text[i];
+    const end = (): { text: string; names: string[] } => ({
+      text: text.slice(start, i + 1),
+      names,
+    });
+    switch (state) {
+      case "before":
+        if (c === ">") return end();
+        if (space.test(c) || c === "/") break;
+        state = "name";
+        name = c;
+        break;
+      case "name":
+        if (c === ">") {
+          names.push(name);
+          return end();
+        }
+        if (space.test(c) || c === "/" || c === "=") {
+          names.push(name);
+          state = c === "=" ? "beforeValue" : space.test(c) ? "afterName" : "before";
+        } else name += c;
+        break;
+      case "afterName":
+        if (c === ">") return end();
+        if (c === "/") state = "before";
+        else if (c === "=") state = "beforeValue";
+        else if (!space.test(c)) {
+          state = "name";
+          name = c;
+        }
+        break;
+      case "beforeValue":
+        if (c === ">") return end();
+        if (c === '"' || c === "'") {
+          state = "quoted";
+          quote = c;
+        } else if (!space.test(c)) state = "unquoted";
+        break;
+      case "quoted":
+        if (c === quote) state = "afterQuoted";
+        break;
+      case "unquoted":
+        if (c === ">") return end();
+        if (space.test(c)) state = "before";
+        break;
+      case "afterQuoted":
+        if (c === ">") return end();
+        state = "before";
+        if (!space.test(c) && c !== "/") {
+          state = "name";
+          name = c;
+        }
+        break;
+    }
+  }
+  if (state === "name") names.push(name);
+  return { text: text.slice(start), names };
+}
+/** What splits words for the relative-path rule (D4). */
+const WORD_SPLIT = /[\s()<>"'`[\]]+/;
+
+/**
+ * D4: every outside URL-like form in a reading of `text`, as keys (one per
+ * occurrence). `dir` is the file's directory, which a relative path resolves from.
+ */
+function collectLinks(text: string, dir: string): string[] {
+  const keys: string[] = [];
+  for (const m of text.matchAll(/https?:/g)) {
+    const rest = text.slice(m.index + m[0].length);
+    if (!rest.startsWith("//")) {
+      keys.push(`${m[0]}${rest.slice(0, 40).split(/\s/, 1)[0]}`);
+      continue;
+    }
+    const key = outsideAuthority(rest.slice(2), openerBefore(text, m.index));
+    if (key !== null) keys.push(key);
+  }
+  for (const m of text.matchAll(OTHER_SCHEMES)) keys.push(m[0]);
+  for (const m of text.matchAll(HOST_SLASH)) {
+    // The `//` of `http://` and `https://` is read with the scheme, which knows what opened the URL.
+    if (/https?:\/$/.test(text.slice(Math.max(0, m.index - 7), m.index))) continue;
+    const after = text.slice(m.index + 1);
+    if (!HOST_START.test(after) && !NAMES_A_HOST.test(after)) continue;
+    const key = outsideAuthority(after, openerBefore(text, m.index - 1));
+    if (key !== null) keys.push(key);
+  }
+  for (const m of text.matchAll(/(?<![a-z0-9./-])www\./g)) {
+    const key = outsideAuthority(text.slice(m.index), openerBefore(text, m.index));
+    if (key !== null) keys.push(key);
+  }
+  for (const m of text.matchAll(EMAIL)) keys.push(`mailto:${m[0]}`);
+  // The whole tag is the key, so editing an attribute (a host added after a line
+  // break, say) is a new key and not the same tag again.
+  for (const m of text.matchAll(HTML_TAG)) {
+    // Read by the tokenizer's states and, as a second reading, as plain text up to
+    // the first `>`, so a mismatch in one cannot hide a URL attribute.
+    const tag = readTag(text, m.index);
+    const end = text.indexOf(">", m.index);
+    const blind = end === -1 ? text.slice(m.index) : text.slice(m.index, end + 1);
+    if (tag.names.some((n) => URL_ATTRIBUTE_NAMES.has(n)) || URL_ATTRIBUTE.test(blind)) {
+      keys.push(`html:${tag.text}\u0000${blind}`);
+    }
+  }
+  for (const word of text.split(WORD_SPLIT)) {
+    if (word.startsWith(UNREADABLE_REFERENCE)) {
+      keys.push(word);
+      continue;
+    }
+    if (word.includes("%2e")) {
+      keys.push(`path:${word}`);
+      continue;
+    }
+    if (!/(?:^|\/)\.\.(?:\/|$)/.test(word)) continue;
+    const resolved = word.startsWith("/")
+      ? posix.normalize(`.${word}`)
+      : posix.normalize(posix.join(dir, word));
+    if (resolved === ".." || resolved.startsWith("../")) keys.push(`path:${word}`);
+  }
+  return keys;
+}
+
+/**
+ * D4: the forms in `text` counted by key, once per reading of its backslashes:
+ * every backslash as `/` (D3), and Markdown's escapes. Each reading is compared
+ * only with itself, so a link one reading sees cannot hide behind a copy only the
+ * other saw before. No reading removes line breaks: a Markdown URL cannot span
+ * one, and an HTML attribute, which can, counts on its own ({@link HTML_TAG}).
+ */
+function countLinks(text: string, dir: string): Map<string, number>[] {
+  const decoded = decodeReferences(text);
+  return [decoded.replaceAll("\\", "/"), markdownEscapes(decoded)].map((reading) => {
+    const counts = new Map<string, number>();
+    for (const key of collectLinks(reading, dir)) counts.set(key, (counts.get(key) ?? 0) + 1);
+    return counts;
+  });
+}
+
+/** How a key is shown in the reasons and the summary: the host, or what could not be read. */
+function describeLink(key: string): string {
+  if (key.startsWith(UNREADABLE_REFERENCE)) return "an unreadable character reference";
+  if (key.startsWith("path:")) return "a relative path outside the repository";
+  if (key.startsWith("html:")) return "raw HTML";
+  if (/^(?:mailto|javascript|data|vbscript|file):$/.test(key)) return `a ${key} URL`;
+  if (key.startsWith("mailto:")) return "an email address";
+  const host = /^\/\/([a-z0-9.-]+)(?::[0-9]+)?(?:[/?#]|$)/.exec(key)?.[1]?.replace(/\.$/, "");
+  return host !== undefined && host !== "" ? host : "an unreadable URL";
+}
+
+/**
+ * The outside links a changed file adds (D2 to D7), described for the reasons:
+ * empty when it adds none. A file whose text cannot be read (not read, binary, a
+ * change with no hunks) is reported as such: it counts as adding one.
+ */
+export function outsideLinks(f: ChangedFile): string[] {
+  if (f.status === "deleted") return [];
+  const unreadable = (s: string | null | undefined): boolean =>
+    typeof s !== "string" || s.includes("\u0000");
+  const before = f.status === "added" ? "" : f.before;
+  if (f.hunks.length === 0 || unreadable(f.after) || unreadable(before)) {
+    return ["a file whose text could not be read"];
+  }
+  const dir = posix.dirname(f.path);
+  const was = countLinks(before as string, dir);
+  const now = countLinks(f.after as string, dir);
+  const added = new Set<string>();
+  now.forEach((reading, i) => {
+    for (const [key, n] of reading) if (n > (was[i].get(key) ?? 0)) added.add(describeLink(key));
+  });
+  // The hosts come from the PR's text: bounded, so a crafted file cannot flood the summary.
+  const shown = [...added].sort().map((h) => (h.length > 80 ? `${h.slice(0, 80)}…` : h));
+  return shown.length > 10 ? [...shown.slice(0, 10), `${shown.length - 10} more`] : shown;
+}
+
 function fileTier(
   f: ChangedFile,
   promotion: { deletedDesigns: string[]; newAdrs: string[] },
@@ -1095,12 +1576,20 @@ export function classifyChange(input: {
   for (const f of input.files) {
     let t = fileTier(f, promotion);
     const name = f.path === UNREADABLE_PATH ? UNREADABLE_NAME : f.path;
+    // After every way a file can turn out Low, so none of them skips the check (#3786).
+    const outside = t === "low" && !isTestFile(f.path) ? outsideLinks(f) : [];
+    if (outside.length > 0) t = "medium";
     const boundary = onBoundary(f);
     const agreed =
       t === "high" && !boundary && decisionOnly(f.path) && (input.agreed ?? []).includes(f.path);
     if (agreed) t = "medium";
     if (rank(t) > rank("low")) {
-      reasons.push(`${name}: ${t}${agreed ? " (the text the backing Design Doc agreed)" : ""}`);
+      reasons.push(
+        `${name}: ${t}${agreed ? " (the text the backing Design Doc agreed)" : ""}` +
+          (outside.length > 0
+            ? ` (adds a link outside karasu's domains: ${outside.join(", ")})`
+            : ""),
+      );
     }
     files.push({
       path: name,
@@ -1108,6 +1597,7 @@ export function classifyChange(input: {
       boundary,
       narrowable: !boundary && matchesAny(f.path, NARROWABLE_GLOBS),
       ...(agreed ? { agreed: true } : {}),
+      ...(outside.length > 0 ? { outside } : {}),
     });
     tier = stricter(tier, t);
   }
@@ -1453,6 +1943,7 @@ export function tierSummary(input: {
     boundary?: boolean;
     narrowable?: boolean;
     agreed?: boolean;
+    outside?: readonly string[];
   }[];
   /**
    * On a High PR: the Design Doc that backs it, and whether the conformance check
@@ -1532,7 +2023,11 @@ export function tierSummary(input: {
   const listed = input.files.slice(0, SUMMARY_ROWS);
   lines.push("| Tier | File |", "| --- | --- |");
   for (const f of listed) {
-    lines.push(`| ${f.tier}${f.agreed ? " (agreed)" : ""} | ${summaryPath(f.path)} |`);
+    const outside =
+      f.outside && f.outside.length > 0
+        ? ` (adds a link outside karasu's domains: ${summaryText(f.outside.join(", "))})`
+        : "";
+    lines.push(`| ${f.tier}${f.agreed ? " (agreed)" : ""} | ${summaryPath(f.path)}${outside} |`);
   }
   const rest = input.files.length - listed.length;
   if (rest > 0) lines.push("", `${rest} more ${rest === 1 ? "file is" : "files are"} not listed.`);
@@ -1727,6 +2222,9 @@ function changedFiles(base: string, head: string): ChangedFile[] {
       ADR_RECORD.test(d.path) ||
       AT_RECORD.test(d.path) ||
       isTestFile(d.path) ||
+      // Markdown that can be Low, for the outside-link check (#3786).
+      d.path.endsWith(".md") ||
+      d.path.startsWith("docs/adr/") ||
       // Test helpers, runner configs and test inputs, for the test rules.
       CODE_FILE.test(d.path) ||
       isRunnerConfig(d.path) ||

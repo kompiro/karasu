@@ -67,6 +67,12 @@ export interface LayoutNode {
   width: number;
   height: number;
   ghost?: boolean;
+  /**
+   * Set on a ghost card placed in the ghost band (#2823), with the side of the
+   * focus frame it sits on. Such a card counts as a card of a row for routing
+   * (`isRowCard`); ghost users and ghost systems leave it unset.
+   */
+  ghostBand?: "above" | "below";
   /** Optional sub-label rendered below the main label (e.g., parent service name for ghost domains). */
   subLabel?: string;
   /**
@@ -108,6 +114,12 @@ export interface LayoutEdge {
    */
   canonicalId?: string;
   ghost?: boolean;
+  /**
+   * A ghost band edge (#2823): a ghost entity or ghost domain relation. It is
+   * still drawn muted (`ghost`), but the routing chain routes it like any other
+   * edge (`isPeripheralEdge`). Ghost user and ghost system edges leave it unset.
+   */
+  band?: boolean;
   cyclic?: boolean;
   /** Constituent domain edges for aggregated "N domain edges" implicit service edges. */
   domainEdges?: DomainEdgeDetail[];
@@ -255,6 +267,16 @@ export interface ContainerRect {
    * e2e hooks. `undefined` for ordinary containers.
    */
   kindBand?: "job";
+  /**
+   * Ghost band frame marker (#2823): a muted frame grouping two or more ghosts
+   * of one foreign domain (entity view) or foreign service (service view) on
+   * one side of the focus frame. A band frame is not a ghost *ancestor*, so it
+   * keeps `ghost: false`; anything that looks for the focus frame as the
+   * container that is not a ghost must also skip this marker. It has no
+   * `path`: it is not a node, so it takes no node style and is not a drill
+   * target. `renderBandFrame` draws it.
+   */
+  ghostBand?: "above" | "below";
   /**
    * Group boundary-frame marker (system-view Group by, #1858). When set, the
    * renderer draws this container as a dashed group frame (full opacity, unlike
@@ -456,6 +478,16 @@ export interface LayoutOptions {
    * when it seats strictly more; omitted (draw.io, bare layout), none is tried.
    */
   withheldLabels?: (result: LayoutResult) => readonly WithheldLabel[];
+  /**
+   * The renderer's label pass, run on the canvas's own edges: the boxes of the
+   * labels it draws, at the places it seats them (#3889). The ghost band's lines
+   * are routed after the canvas's and keep off these boxes. A band line is no
+   * obstacle to a canvas label (#2360), so the boxes are the drawn ones except
+   * where a band line moves a mutual pair's split or a band label an author
+   * positioned is in the way (`canvasLabelsOf`).
+   * Omitted (draw.io, bare layout), the band's lines do not look at labels.
+   */
+  canvasLabelBoxes?: (result: LayoutResult) => readonly Rect[];
   /**
    * Team id → declared `label`, from `buildTeamLabelIndex`. Supplies the chip's
    * display string on every axis (the group-frame titles get theirs from
