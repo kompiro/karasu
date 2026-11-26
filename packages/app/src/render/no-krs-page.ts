@@ -20,8 +20,8 @@
  *
  * English-only, matching the existing server-rendered pages (`share-page.ts`).
  * The Function has no locale source to pick a language from (#3838), so the
- * page is not routed through `@karasu-tools/i18n` the way the resolver's 413
- * body is.
+ * page is not routed through `@karasu-tools/i18n` the way the resolver's
+ * plain-text bodies are.
  */
 
 const HTML = "text/html; charset=utf-8";

@@ -9,6 +9,13 @@ import { bindTranslate } from "@karasu-tools/i18n";
 import { describeUnfurlOverflow, encodeShare, fitsUnfurlPayload } from "../utils/inline-share.js";
 
 /**
+ * Translator for the plain-text bodies this resolver returns. The words live
+ * in `@karasu-tools/i18n` (`permalink.*`); the route has no locale source yet,
+ * so every body is English (#3838).
+ */
+const t = bindTranslate("en");
+
+/**
  * Repo-backed + ref-pinned permalink resolver for karasu-nest (Phase 2).
  *
  * Turns a permalink path `<owner>/<repo>[/<path>]@<ref>` into an inline share
@@ -97,7 +104,7 @@ const DEFAULT_REF = "HEAD";
  */
 export function parseRepoPermalink(rawPath: string): ParseResult {
   const path = rawPath.replace(/^\/+/, "").replace(/\/+$/, "");
-  if (path === "") return { ok: false, message: "Empty permalink." };
+  if (path === "") return { ok: false, message: t("permalink.parse.empty") };
 
   const at = path.lastIndexOf("@");
   let left: string;
@@ -109,36 +116,32 @@ export function parseRepoPermalink(rawPath: string): ParseResult {
     left = path.slice(0, at);
     ref = path.slice(at + 1);
     if (ref === "") {
-      return {
-        ok: false,
-        message: "Empty ref after '@' — give a branch/tag/SHA, or omit '@' for the default branch.",
-      };
+      return { ok: false, message: t("permalink.parse.emptyRef") };
     }
     if (!REF_RE.test(ref)) {
-      return {
-        ok: false,
-        message: `Invalid ref "${ref}". Use a commit SHA, or a slash-free branch/tag name.`,
-      };
+      return { ok: false, message: t("permalink.parse.invalidRef", { ref }) };
     }
   }
 
   const segments = left.split("/");
   if (segments.length < 2) {
-    return { ok: false, message: "Expected '<owner>/<repo>[/<path>]@<ref>'." };
+    return { ok: false, message: t("permalink.parse.shape") };
   }
   const [owner, repo, ...rest] = segments;
-  if (!OWNER_RE.test(owner)) return { ok: false, message: `Invalid owner "${owner}".` };
-  if (!REPO_RE.test(repo)) return { ok: false, message: `Invalid repo "${repo}".` };
+  if (!OWNER_RE.test(owner))
+    return { ok: false, message: t("permalink.parse.invalidOwner", { owner }) };
+  if (!REPO_RE.test(repo))
+    return { ok: false, message: t("permalink.parse.invalidRepo", { repo }) };
 
   let filePath: string | null = null;
   if (rest.length > 0) {
     filePath = rest.join("/");
     // Reject traversal / absolute / backslash paths before it reaches a URL.
     if (!isSafeRelativePath(filePath)) {
-      return { ok: false, message: `Invalid path "${filePath}".` };
+      return { ok: false, message: t("permalink.parse.invalidPath", { path: filePath }) };
     }
     if (!filePath.endsWith(".krs")) {
-      return { ok: false, message: `Path must point to a .krs file, got "${filePath}".` };
+      return { ok: false, message: t("permalink.parse.notKrs", { path: filePath }) };
     }
   }
 
@@ -315,7 +318,7 @@ export async function resolveRepoPermalink(
       const tried = filePath ?? DEFAULT_ENTRIES.join(" / ");
       return {
         status: 404,
-        message: `No .krs found at ${owner}/${repo}@${ref} (looked for ${tried}).`,
+        message: t("permalink.notFound.message", { source: `${owner}/${repo}@${ref}`, tried }),
         contentType: PLAIN,
       };
     }
@@ -335,12 +338,7 @@ export async function resolveRepoPermalink(
       // rejected alternatives are recorded on Issue #2259.
       return {
         status: STATUS_PAYLOAD_TOO_LARGE,
-        // The route has no locale source yet, so the body is English (#3838).
-        message: describeUnfurlOverflow(
-          bindTranslate("en"),
-          `${owner}/${repo}@${ref}`,
-          encodedPayload.length,
-        ),
+        message: describeUnfurlOverflow(t, `${owner}/${repo}@${ref}`, encodedPayload.length),
         contentType: PLAIN,
       };
     }
@@ -355,13 +353,16 @@ export async function resolveRepoPermalink(
     if (typeof upstream === "number") {
       return {
         status: 502,
-        message: `Upstream GitHub error (${upstream}).`,
+        message: t("permalink.upstream.message", { status: upstream }),
         contentType: PLAIN,
       };
     }
     return {
       status: 500,
-      message: `Failed to resolve ${owner}/${repo}@${ref}: ${(err as Error).message}`,
+      message: t("permalink.failed.message", {
+        source: `${owner}/${repo}@${ref}`,
+        detail: (err as Error).message,
+      }),
       contentType: PLAIN,
     };
   }
