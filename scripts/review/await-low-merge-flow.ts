@@ -13,8 +13,8 @@ import { STALL_MS, type Verdict } from "./low-pr-merger-flow.ts";
 
 /**
  * The login the Low PR merger's GitHub App merges as (`<app slug>[bot]`). A
- * person, and native auto-merge (which merges as whoever enabled it), cannot
- * merge under it, so it alone tells the merger's merges from the rest. The slug
+ * person or another app cannot merge under it, so it alone tells the merger's
+ * merges from the rest. The slug
  * comes from the App's name (github.com/settings/apps/low-pr-merger): renaming the
  * App changes it.
  */
@@ -27,7 +27,6 @@ export interface PrState {
   mergeSha: string | null;
   headSha: string;
   headRef: string;
-  autoMerge: boolean;
 }
 
 export interface Deps {
@@ -64,14 +63,9 @@ type Outcome =
       mergeSha: string | null;
       branchDeleted: boolean;
     }
-  /** Merged by anyone else: a person, native auto-merge, or another app. */
+  /** Merged by anyone else: a person or another app. */
   | { outcome: "merged-otherwise"; mergedBy: string | null }
   | { outcome: "closed" }
-  /**
-   * Native auto-merge is on (an older session or a person enabled it) and would
-   * merge before the merger: disable it and run again.
-   */
-  | { outcome: "auto-merge-enabled" }
   /** The merger does not judge this PR (not `risk: low`, draft, another base...). */
   | { outcome: "out-of-scope"; why: string }
   /** The merger rejects the PR for something on the PR's side: fix it and run again. */
@@ -130,7 +124,6 @@ export async function awaitLowMerge(
     head = p.headSha;
     if (p.merged) return whoMerged(deps, p);
     if (p.state !== "open") return { outcome: "closed" };
-    if (p.autoMerge) return { outcome: "auto-merge-enabled" };
 
     const v = deps.judge(pr);
     if (v === null) return { outcome: "out-of-scope", why: "not labeled risk: low" };

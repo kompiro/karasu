@@ -23,7 +23,7 @@ import { BASE, REPO } from "../adr/regenerate-pr-flow.ts";
 
 const PR_FIELDS =
   "{state, merged, mergedBy: .merged_by.login, mergeSha: .merge_commit_sha, " +
-  "headSha: .head.sha, headRef: .head.ref, autoMerge: (.auto_merge != null)}";
+  "headSha: .head.sha, headRef: .head.ref}";
 
 const realDeps: Deps = {
   pull: (n) => JSON.parse(gh([`repos/${REPO}/pulls/${n}`, "--jq", PR_FIELDS])) as PrState,
