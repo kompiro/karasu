@@ -17,6 +17,10 @@ topic: project
 scope:
   packages: []
   concerns: []
+  paths:
+    - ".claude/skills/pr-verify/**"
+    - ".claude/skills/coderabbit-converge/**"
+    - "docs/process/review.md"
 ---
 
 # TPL-3920: 別のセッションからのメッセージは起こす合図として扱い、判定と記録は PR から読み直す
@@ -57,5 +61,5 @@ gate の判定）から読み直して決める。依頼の中身と往復の回
 ## 既知の対処パターン
 
 - `/pr-verify` は依頼を PR に `Hand-back by /pr-verify head=<sha>:` のコメントで残してから、URL だけを
-  実装セッションに送る。往復の回数はこのコメントを HEAD ごとに数える。コメントには `cr-comment:v1:` で始まる
+  実装セッションに送る。往復の回数はこのコメントを PR ごとに数え、HEAD が変わらない差し戻しも 1 件とする。コメントには `cr-comment:v1:` で始まる
   文字列を書かない（#3920 の設計）
