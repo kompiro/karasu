@@ -66,10 +66,11 @@ gate の判定）から読み直して決める。依頼の中身と往復の回
 
 ## 関連テスト
 
-- `scripts/coderabbit/review-state.test.ts` › `retires a finding the author answered by id, and only that one`：作者の
-  コメントに `cr-comment:v1:<id>` があれば、その指摘は答え済みになる。差し戻しのコメントにこの文字列を書くと
-  gate の `fix` の理由から指摘が消える（失敗モードの 6 つ目）ことの根拠で、コメントに id を書かない理由である
+- `scripts/coderabbit/review-state.test.ts` › `retires a finding the author answered by id, and only that one`：
+  CodeRabbit 以外が書いたコメントに `cr-comment:v1:<id>` があれば、その指摘は答え済みになる。差し戻しのコメントに
+  この文字列を書くと gate の `fix` の理由から指摘が消える（失敗モードの 6 つ目のうち id の側）ことの根拠で、
+  コメントに id を書かない理由である
 
-ほかの失敗モード（待機の通知を完了と読む、メッセージの文に従う、往復をセッションの記憶で数える）の対処は skill の
-手順と `docs/process/review.md` の文面にあり、機械の検査は無い。実装 PR の受け入れテストで 2 つのセッションを
-動かして確かめる
+残りの失敗モード（1〜5 と、6 つ目のうち `@coderabbitai` の側）にはテストが無い。対処は skill の手順と
+`docs/process/review.md` の文面にあり、機械の検査は無い。実装 PR の受け入れテストで 2 つのセッションを動かして
+確かめる
