@@ -66,8 +66,10 @@ gate の判定）から読み直して決める。依頼の中身と往復の回
 
 ## 関連テスト
 
-まだ無い。対処は skill の手順（`.claude/skills/pr-verify/SKILL.md`・`.claude/skills/coderabbit-converge/SKILL.md`）と
-`docs/process/review.md` の文面にあり、機械の検査は無い。待機の通知を完了と読む、メッセージの文に従う、往復を
-セッションの記憶で数える、といった失敗は CI では検出されず、実装 PR の受け入れテストで 2 つのセッションを動かして
-確かめる。依頼のコメントが `cr-comment:v1:` を含むと指摘が消えることは、`scripts/coderabbit/review-state.test.ts` に
-テストを足せば検出できる
+- `scripts/coderabbit/review-state.test.ts` › `retires a finding the author answered by id, and only that one`：作者の
+  コメントに `cr-comment:v1:<id>` があれば、その指摘は答え済みになる。差し戻しのコメントにこの文字列を書くと
+  gate の `fix` の理由から指摘が消える（失敗モードの 6 つ目）ことの根拠で、コメントに id を書かない理由である
+
+ほかの失敗モード（待機の通知を完了と読む、メッセージの文に従う、往復をセッションの記憶で数える）の対処は skill の
+手順と `docs/process/review.md` の文面にあり、機械の検査は無い。実装 PR の受け入れテストで 2 つのセッションを
+動かして確かめる
