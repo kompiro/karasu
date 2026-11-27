@@ -366,7 +366,7 @@ kompiro が見ているセッションで動く必要がある。
 
 1 本の PR で次を変える。`Closes #3920`。
 
-- hook: prompt から名前を返すスクリプト（`scripts/session/` に置き、prompt と名前の対応を vitest で固める）と、
+- hook: prompt から名前を返すスクリプト（`scripts/` の下に新しく `session` のディレクトリを作って置き、prompt と名前の対応を vitest で固める）と、
   `.claude/settings.json` の UserPromptSubmit への登録
 - 起動スキル: `.claude/skills/impl/`・`local-review/`・`verify/` の `SKILL.md`。最初に名前を確かめ、上の各セッションの
   手順を書く（手順の本文は `docs/process/review.md` の新しい節に置き、スキルはそこを指す）
