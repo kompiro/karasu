@@ -1,4 +1,5 @@
 import { firstRunEn, firstRunJa, type FirstRunTranslations } from "./first-run.js";
+import { permalinkEn, permalinkJa, type PermalinkTranslations } from "./permalink.js";
 import { vscodeEn, vscodeJa, type VscodeTranslations } from "./vscode.js";
 import { physicalRefsEn, physicalRefsJa, type PhysicalRefTranslations } from "./physical-refs.js";
 
@@ -7,12 +8,21 @@ import { physicalRefsEn, physicalRefsJa, type PhysicalRefTranslations } from "./
  * files stay inside their line budget. Each catalog spreads its side at one
  * place, so the key order of `en` and `ja` still matches (catalog.test.ts).
  */
-export type PartTranslations = FirstRunTranslations & VscodeTranslations & PhysicalRefTranslations;
+export type PartTranslations = FirstRunTranslations &
+  VscodeTranslations &
+  PermalinkTranslations &
+  PhysicalRefTranslations;
 
-export const partsEn: PartTranslations = { ...firstRunEn, ...vscodeEn, ...physicalRefsEn };
+export const partsEn: PartTranslations = {
+  ...firstRunEn,
+  ...vscodeEn,
+  ...permalinkEn,
+  ...physicalRefsEn,
+};
 
 export const partsJa: Partial<PartTranslations> = {
   ...firstRunJa,
   ...vscodeJa,
+  ...permalinkJa,
   ...physicalRefsJa,
 };

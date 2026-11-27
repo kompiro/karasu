@@ -49,6 +49,12 @@ jobs:
       - name: Build (core)
         run: pnpm --filter @karasu-tools/core run build
 
+      # The Pages Function bundles the permalink resolver, whose 413 body comes
+      # from `@karasu-tools/i18n` (#3837). Wrangler resolves its `import`
+      # condition to `dist/`, so the package must be built before the deploy.
+      - name: Build (i18n)
+        run: pnpm --filter @karasu-tools/i18n run build
+
       - name: Build (app)
         run: pnpm --filter @karasu-tools/app run build
 
