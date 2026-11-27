@@ -63,3 +63,11 @@ gate の判定）から読み直して決める。依頼の中身と往復の回
 - `/pr-verify` は依頼を PR に `Hand-back by /pr-verify head=<sha>:` のコメントで残してから、URL だけを
   実装セッションに送る。往復の回数はこのコメントを PR ごとに数え、HEAD が変わらない差し戻しも 1 件とする。コメントには `cr-comment:v1:` で始まる
   文字列も `@coderabbitai` も書かない（#3920 の設計）
+
+## 関連テスト
+
+まだ無い。対処は skill の手順（`.claude/skills/pr-verify/SKILL.md`・`.claude/skills/coderabbit-converge/SKILL.md`）と
+`docs/process/review.md` の文面にあり、機械の検査は無い。待機の通知を完了と読む、メッセージの文に従う、往復を
+セッションの記憶で数える、といった失敗は CI では検出されず、実装 PR の受け入れテストで 2 つのセッションを動かして
+確かめる。依頼のコメントが `cr-comment:v1:` を含むと指摘が消えることは、`scripts/coderabbit/review-state.test.ts` に
+テストを足せば検出できる
