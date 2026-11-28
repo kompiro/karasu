@@ -14,13 +14,14 @@ import {
 /**
  * The computed z-index scan sees every layer of the scale (TPL-1468).
  *
- * `network.ts` runs `scanZIndex` after every test, so any surface a spec opens
- * is checked against `tokens.css`. That only means something if the scan
- * actually reaches the surfaces each layer is for, portals included. Each
+ * `network.ts` checks the probe after every test (`assertZIndexScaleOnPages`),
+ * so any surface a spec opens is checked against `tokens.css`. That only means
+ * something if the scan actually reaches the surfaces each layer is for,
+ * portals included. Each
  * token below has a scenario that opens a surface on that layer, and the test
  * asserts the scan reports an element whose z-index comes from that token.
  * The table is keyed by the tokens parsed from tokens.css, so a new token
- * fails here until it has a scenario. A last test closes a surface before
+ * fails here until it has a scenario. One more test closes a surface before
  * reading, so the observer, not only the final scan, is shown to see it.
  */
 
