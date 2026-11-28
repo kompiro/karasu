@@ -9,6 +9,7 @@
   - `packages/app/src/utils/inline-share.ts`（`fitsUnfurlPayload` — 共有される判定）
   - `packages/app/src/render/repo-permalink.ts`（`resolveRepoPermalink` — 413 で拒否）
   - `packages/app/src/utils/unfurl-budget.test.ts`（生成点の allowlist ドリフトガード）
+  - `functions/[[path]].ts`（bare route の Pages Function — resolver の 413 の本文をそのまま返す）
 
 > `MAX_UNFURL_PAYLOAD`（8000）は server-visible な `/s?s=` URL に載せてよい encoded 文字数の上限。
 > `buildShareUrls` だけがこれを守っており、`resolveRepoPermalink` は無条件に payload を返していたため、
@@ -50,4 +51,4 @@
 
 - [x] AT-G: 上限を超える `.krs` を置いた repo の permalink を開くと、壊れたリンク（上限超過の `/s?s=` への redirect が 414 になる、など）ではなく、**413 と原因を名指しした本文**が返る。resolver 単体ではなく、bare route の Pages Function 全体を通した応答として確かめる（ref なし・ref 固定の両方）。
 
-  > ✅ Automated — `packages/app/src/render/bare-route-function.test.ts` › `a model too large to link` › `%s, answers 413 with the diagnostic naming the cause`（`Location` が無いこと、本文が `permalink.tooLarge.message` の英語の文面そのもので、報告した長さが上限を超えていることを検査）
+  > ✅ Automated — `packages/app/src/render/bare-route-function.test.ts` › `a model too large to link` › `%s, answers 413 with the diagnostic naming the cause`（`Location` が無いこと、本文が同じモデルへの resolver の答えそのもので、それが `permalink.tooLarge.message` の英語の文面であり、報告した長さが上限を超えていることを検査）

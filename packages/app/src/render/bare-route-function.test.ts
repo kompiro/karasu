@@ -225,14 +225,12 @@ describe("a model too large to link", () => {
   // TPL-2259: the resolver's own tests pin the 413 diagnostic; this checks the
   // Function hands that diagnostic to the visitor as it is, instead of a broken
   // link (a 414 from an over-long `/s?s=` redirect) or a body of its own.
-  const TOO_LARGE =
-    /^Model too large for a permalink: (\S+) encodes to (\d+) characters, over the (\d+) a shareable URL can carry\./;
-
   it.each([
     ["without a ref", ""],
     ["with a pinned ref", "@main"],
   ])("%s, answers 413 with the diagnostic naming the cause", async (_label, ref) => {
-    fetchFake = SCENARIOS[413].github;
+    const scenario = SCENARIOS[413];
+    fetchFake = scenario.github;
     const { response } = await run(`/o/r${ref}`);
     if (response === "next") throw new Error("the Function handed an over-cap model to the SPA");
 
@@ -240,8 +238,19 @@ describe("a model too large to link", () => {
     expect(response.headers.get("Location")).toBeNull();
     expect(response.headers.get("Content-Type")).toContain("text/plain");
     const body = await response.text();
-    const [, source, length, limit] = TOO_LARGE.exec(body) ?? [];
-    expect(source).toBe(`o/r@${ref === "" ? "HEAD" : "main"}`);
+
+    // The resolver's own answer for the same model: the Function must not
+    // rebuild the message, change its numbers or add to it.
+    const resolved = await resolveRepoPermalink(`o/r${ref}`, async (input) =>
+      scenario.github(String(input)),
+    );
+    expect(body).toBe(resolved.message);
+
+    // And that answer is the catalog's diagnostic: the cause, the encoded
+    // length over the cap, and what to do. The cap is private to
+    // `inline-share.ts`, so it is read back from the message, not pinned here.
+    const source = `o/r@${ref === "" ? "HEAD" : "main"}`;
+    const [, length, limit] = /encodes to (\d+) characters, over the (\d+) /.exec(body) ?? [];
     expect(Number(length)).toBeGreaterThan(Number(limit));
     expect(body).toBe(
       translate("en", "permalink.tooLarge.message", {
