@@ -24,8 +24,11 @@ flowchart TD
     ADR_3416["ADR-3416<br/>ADR の生成物は PR に含めず、毎日の routine が出す再生成の PR でだけ更新する"]
     ADR_3471["ADR-3471<br/>docs/ の外からは Design Doc ではなく ADR か Issue を指す"]
     ADR_3595["ADR-3595<br/>docs/adr/README.md の手書き一覧をやめ、topic の語彙と生成物への入口にする"]
+    ADR_3620["ADR-3620<br/>昇格 PR の張り替えに、隣の Design Doc への参照・ラベル・番号での言い換えを含める"]
   end
+  ADR_3286["ADR-3286<br/>[build] PR のレビューの深さとマージの経路を、変更から決めたリスク段階で変える"]
   ADR_1077 --> ADR_788
+  ADR_3620 --> ADR_3286
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -51,4 +54,6 @@ flowchart TD
   class ADR_3416 accepted
   class ADR_3471 accepted
   class ADR_3595 accepted
+  class ADR_3620 accepted
+  class ADR_3286 ghost
 ```

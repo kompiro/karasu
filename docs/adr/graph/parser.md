@@ -36,6 +36,8 @@ flowchart TD
     ADR_2552["ADR-2552<br/>同じ `realizes` ターゲットの繰り返しは 1 つの関係を宣言する（冪等）"]
     ADR_2571["ADR-2571<br/>アノテーションのパラメータを emit 1 箇所に畳み、値の種類ごとに正準形を 1 つ決める"]
     ADR_2707["ADR-2707<br/>引用符なしのアノテーションパラメータ値を壊さずに拒否する"]
+    ADR_3752["ADR-3752<br/>任意で続く要素を読む reader は、後の行で始まる次の edge を読まない"]
+    ADR_3767["ADR-3767<br/>必須の値を読む reader も、後の行で始まる次の edge を読まない"]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
   end
   ADR_285["ADR-285<br/>[edges] クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"]
@@ -133,6 +135,8 @@ flowchart TD
   class ADR_2552 accepted
   class ADR_2571 accepted
   class ADR_2707 accepted
+  class ADR_3752 accepted
+  class ADR_3767 accepted
   class ADR_9008 accepted
   class ADR_285 ghost
   class ADR_429 ghost
