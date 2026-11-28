@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { translate } from "@karasu-tools/i18n";
 import { onRequest } from "../../../../functions/[[path]].js";
 import { resolveRepoPermalink, type ResolveStatus } from "./repo-permalink.js";
 import { RESERVED_TOP_SEGMENTS } from "../routes.js";
@@ -217,6 +218,38 @@ describe.each(STATUSES)("a path the resolver answers %i for", (status) => {
       expect(!scenario.deterministic && refetched === 0).toBe(false);
       expect(await summary(second.response)).toEqual(await summary(first.response));
     });
+  });
+});
+
+describe("a model too large to link", () => {
+  // TPL-2259: the resolver's own tests pin the 413 diagnostic; this checks the
+  // Function hands that diagnostic to the visitor as it is, instead of a broken
+  // link (a 414 from an over-long `/s?s=` redirect) or a body of its own.
+  const TOO_LARGE =
+    /^Model too large for a permalink: (\S+) encodes to (\d+) characters, over the (\d+) a shareable URL can carry\./;
+
+  it.each([
+    ["without a ref", ""],
+    ["with a pinned ref", "@main"],
+  ])("%s, answers 413 with the diagnostic naming the cause", async (_label, ref) => {
+    fetchFake = SCENARIOS[413].github;
+    const { response } = await run(`/o/r${ref}`);
+    if (response === "next") throw new Error("the Function handed an over-cap model to the SPA");
+
+    expect(response.status).toBe(413);
+    expect(response.headers.get("Location")).toBeNull();
+    expect(response.headers.get("Content-Type")).toContain("text/plain");
+    const body = await response.text();
+    const [, source, length, limit] = TOO_LARGE.exec(body) ?? [];
+    expect(source).toBe(`o/r@${ref === "" ? "HEAD" : "main"}`);
+    expect(Number(length)).toBeGreaterThan(Number(limit));
+    expect(body).toBe(
+      translate("en", "permalink.tooLarge.message", {
+        source,
+        length: Number(length),
+        limit: Number(limit),
+      }),
+    );
   });
 });
 

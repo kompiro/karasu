@@ -46,9 +46,8 @@
 
   > ✅ Automated — `packages/app/src/utils/unfurl-budget.test.ts` › `unfurl payload budget — /s?s= builders` › `only known builders construct a server-visible share URL`
 
-### AC-3: 本番での挙動
+### AC-3: 訪問者に届く応答
 
-- [ ] AT-G: 🧑 Manual — 上限を超える `.krs` を commit した public repo を用意し、`https://karasu.kompiro.dev/r/<owner>/<repo>` を開く。壊れたリンク（414 / タイムアウト）ではなく、**413 と原因を名指しした本文**が表示されること。
+- [x] AT-G: 上限を超える `.krs` を置いた repo の permalink を開くと、壊れたリンク（上限超過の `/s?s=` への redirect が 414 になる、など）ではなく、**413 と原因を名指しした本文**が返る。resolver 単体ではなく、bare route の Pages Function 全体を通した応答として確かめる（ref なし・ref 固定の両方）。
 
-  > 手順: flattened で 16 KB 程度以上の `.krs`（encoded ≒ raw × 0.52 なので目安）を public repo の `index.krs` に置く。`examples/ja/getting-started` が encoded 2,874（上限の 36%）なので、その 3 倍程度の規模が必要。
-  > 到達先は本番 URL で確認する（preview URL は PR マージ後に 404 になる — TPL-2254）。
+  > ✅ Automated — `packages/app/src/render/bare-route-function.test.ts` › `a model too large to link` › `%s, answers 413 with the diagnostic naming the cause`（`Location` が無いこと、本文が `permalink.tooLarge.message` の英語の文面そのもので、報告した長さが上限を超えていることを検査）
