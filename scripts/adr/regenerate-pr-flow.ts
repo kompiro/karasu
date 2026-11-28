@@ -388,8 +388,8 @@ export function regeneratePr(deps: Deps): Result {
 
   /**
    * What the run has done to a PR so far, so a failure after that still reports
-   * it: `pr` is the PR the run left open or is waiting on, `pickedUp` yesterday's
-   * PR it merged. `as` keeps them typed past their first assignment.
+   * it: `pr` is the regeneration PR the run is working with (yesterday's open PR,
+   * or the one it opened or reused), `pickedUp` yesterday's PR it merged. `as` keeps them typed past their first assignment.
    */
   let pr = null as Pull | null;
   let pickedUp = undefined as string | undefined;
@@ -441,7 +441,12 @@ export function regeneratePr(deps: Deps): Result {
     // 2. Regenerate from origin/main in the script's own worktree.
     const mainConfigs = workspace.configs("origin/main");
     if (mainConfigs.adr === null) {
-      return { outcome: "failed", pickedUp, message: "origin/main has no adr.config.json" };
+      return {
+        outcome: "failed",
+        pr: pr?.html_url,
+        pickedUp,
+        message: "origin/main has no adr.config.json",
+      };
     }
     const paths = readGeneratedPaths(mainConfigs);
     try {
@@ -473,6 +478,7 @@ export function regeneratePr(deps: Deps): Result {
       if (own.kind !== "regeneration") {
         return {
           outcome: "failed",
+          pr: pr?.html_url,
           pickedUp,
           message: `the regenerated commit is not a generated-only diff: ${own.reasons.join("; ")}`,
         };

@@ -455,6 +455,19 @@ describe("regeneratePr", () => {
     expect(gh.calls).toEqual([]);
   });
 
+  it("names both yesterday's merged PR and the opened PR when a later write fails", () => {
+    const gh = fakeGitHub({ pulls: [pull({ number: 7 })], branch: "old-head" });
+    gh.github.addLabel = () => {
+      throw new Error("gh api ...: HTTP 422");
+    };
+    const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
+    expect(go(gh, ws)).toMatchObject({
+      outcome: "failed",
+      pr: expect.stringContaining("/pull/100"),
+      pickedUp: expect.stringContaining("/pull/7"),
+    });
+  });
+
   it("names the PR when a label write fails", () => {
     const gh = fakeGitHub({});
     gh.github.addLabel = () => {
@@ -628,6 +641,20 @@ describe("regeneratePr", () => {
     });
     expect(go(gh, ws).outcome).toBe("failed");
     expect(ws.calls).not.toContainEqual(expect.stringMatching(/^push/));
+  });
+
+  it("names yesterday's open PR when it refuses the regenerated commit", () => {
+    // Labels left wrong, so step 1 regenerates over #7 instead of merging it.
+    const gh = fakeGitHub({ pulls: [pull({ number: 7, labels: [] })], branch: "old-head" });
+    const ws = fakeWorkspace({
+      commit: "new-head",
+      nameStatus: `${GENERATED_ONLY}M\0package.json\0`,
+    });
+    expect(go(gh, ws)).toMatchObject({
+      outcome: "failed",
+      pr: expect.stringContaining("/pull/7"),
+      message: expect.stringMatching(/not a generated-only diff/),
+    });
   });
 
   it("refuses to merge when the ruleset names no required checks", () => {
