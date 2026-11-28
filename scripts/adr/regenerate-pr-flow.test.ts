@@ -374,7 +374,7 @@ describe("regeneratePr", () => {
     });
   });
 
-  it("does not wait out an error that is not a GitHub read, and names the PR", () => {
+  it("still ends the run on an error that is not a GitHub read while it waits", () => {
     const gh = fakeGitHub({ runs: () => [run("Check", null)] });
     const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
     let mergeBases = 0;
@@ -383,11 +383,7 @@ describe("regeneratePr", () => {
       if (++mergeBases === 2) throw new Error("git merge-base failed");
       return "base";
     };
-    expect(go(gh, ws)).toMatchObject({
-      outcome: "failed",
-      pr: expect.stringContaining("/pull/100"),
-      message: "git merge-base failed",
-    });
+    expect(() => go(gh, ws)).toThrow("git merge-base failed");
     expect(ws.calls.at(-1)).toBe("removeWorktree");
   });
 
@@ -399,7 +395,7 @@ describe("regeneratePr", () => {
       throw new Error("gh api ...: HTTP 502");
     };
     const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
-    expect(go(gh, ws)).toMatchObject({ outcome: "failed", message: "gh api ...: HTTP 502" });
+    expect(() => go(gh, ws)).toThrow("HTTP 502");
     expect(creates).toBe(1);
   });
 
@@ -455,10 +451,12 @@ describe("regeneratePr", () => {
     expect(gh.calls).toEqual([]);
   });
 
-  it("names both yesterday's merged PR and the opened PR when a later write fails", () => {
+  it("names both yesterday's merged PR and the opened PR when a later read fails", () => {
     const gh = fakeGitHub({ pulls: [pull({ number: 7 })], branch: "old-head" });
-    gh.github.addLabel = () => {
-      throw new Error("gh api ...: HTTP 422");
+    const pullOf = gh.github.pull;
+    gh.github.pull = (n) => {
+      if (n === 100) throw new Error("gh api ...: HTTP 502");
+      return pullOf(n);
     };
     const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
     expect(go(gh, ws)).toMatchObject({
@@ -468,17 +466,15 @@ describe("regeneratePr", () => {
     });
   });
 
-  it("names the PR when a label write fails", () => {
+  it("lets a failed write escape, as before, even after the PR exists", () => {
     const gh = fakeGitHub({});
     gh.github.addLabel = () => {
       throw new Error("gh api ...: HTTP 422");
     };
     const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
-    expect(go(gh, ws)).toMatchObject({
-      outcome: "failed",
-      pr: expect.stringContaining("/pull/100"),
-      message: "gh api ...: HTTP 422",
-    });
+    // Only a read that used up its retries is reported with the PR (Issue #3936);
+    // main() turns this into a bare "failed".
+    expect(() => go(gh, ws)).toThrow("HTTP 422");
     expect(gh.calls.some((c) => c.startsWith("merge"))).toBe(false);
   });
 

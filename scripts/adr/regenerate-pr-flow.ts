@@ -387,9 +387,10 @@ export function regeneratePr(deps: Deps): Result {
   };
 
   /**
-   * What the run has done to a PR so far, so a failure after that still reports
-   * it: `pr` is the regeneration PR the run is working with (yesterday's open PR,
-   * or the one it opened or reused), `pickedUp` yesterday's PR it merged. `as` keeps them typed past their first assignment.
+   * What the run has done to a PR so far, so a read that fails after that still
+   * reports it: `pr` is the regeneration PR the run is working with (yesterday's
+   * open PR, or the one it opened or reused), `pickedUp` yesterday's PR it merged.
+   * `as` keeps them typed past their first assignment.
    */
   let pr = null as Pull | null;
   let pickedUp = undefined as string | undefined;
@@ -533,17 +534,18 @@ export function regeneratePr(deps: Deps): Result {
     }
   };
 
-  // A failure after the run started still names the PR it merged or left open
-  // (Issue #3936). The outcome stays "failed", so nothing is reported as done.
+  // A GitHub read that keeps failing after the run started still names the PR it
+  // merged or left open (Issue #3936). The outcome stays "failed", so nothing is
+  // reported as done. Any other error escapes, and main() reports it as "failed".
   try {
     return steps();
   } catch (e) {
-    const message =
-      e instanceof ReadFailed
-        ? `${e.what} failed: ${e.message}`
-        : e instanceof Error
-          ? e.message
-          : String(e);
-    return { outcome: "failed", pr: pr?.html_url, pickedUp, message };
+    if (!(e instanceof ReadFailed)) throw e;
+    return {
+      outcome: "failed",
+      pr: pr?.html_url,
+      pickedUp,
+      message: `${e.what} failed: ${e.message}`,
+    };
   }
 }
