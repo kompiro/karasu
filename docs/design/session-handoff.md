@@ -170,12 +170,12 @@ VS Code 拡張 2.1.332（VS Code 1.147.0、devcontainer）で確かめたこと�
   無くなるが、起動したセッションは VS Code のパネルに出ず、`claude attach` で開くまで kompiro から見えない。
   動いているあいだはパネルで開くこともできない（止めてから開き直すことになる）。セッションの Bash から起動すると
   記録を残さずに消えたことがあるので、切り離して（`setsid` など）起動し、生きているかを確かめる手順も要る。
-  kompiro に問いを出す検証セッションには向かない。レビューセッションだけをこの形にするかは未解決の問い 4
+  kompiro に問いを出す検証セッションには向かない。入れない（問い 4 の答え）
 - **D: 実装セッションが URI で VS Code にほかのセッションを開かせる。** `prompt=/local-review <N>` などの URI
   （URL エンコードして送る）を、実装セッションの Bash の `VSCODE_IPC_HOOK_CLI` のソケットに送ると、実装セッションと
   同じウィンドウにパネルが開いて入力欄に起動スキルが入り、kompiro が送信を押すと A の hook が名前を付ける。
   セッションはパネルに出るが、kompiro の送信が 1 回ずつ要る。URI を届けるのに、ドキュメントに無い IPC ソケットの
-  送り方を使う。A の上に足す形なので、入れるかは未解決の問い 4
+  送り方を使う。A の上に足す形で、この設計には入れず #3923 で決める（問い 4 の答え）
 
 ### 案1: 役割と Issue 番号でセッションの名前を決める
 
@@ -360,7 +360,7 @@ kompiro が見ているセッションで動く必要がある。
 
 ### 検証セッション（`verify-<N>`、`pr-verify`）
 
-1. **起動のされ方:** `impl-<N>` からの `ready-for-verify` で `/pr-verify <pr>` を始めてよい（未解決の問い 1）。
+1. **起動のされ方:** `impl-<N>` からの `ready-for-verify` で `/pr-verify <pr>` を始める（問い 1 の答え）。
    `declined` を受けたら、`/pr-verify` を始めず、kompiro に 1 行で知らせて止まる。ほかの PR の
    `/pr-verify` の途中で別の PR のメッセージが届いたら、今の PR を終えてから順に始める。1 回の `/pr-verify` は
    1 つの PR だけを扱う。
@@ -389,6 +389,65 @@ kompiro が見ているセッションで動く必要がある。
 - セッションをどれも auto mode で動かす（`bypassPermissions` にしない）
 - `crossSessionInbound` を `accept` にしておく（既定値は実装時に確かめる）
 
+### 仕様の変更
+
+```diff file=docs/process/review.md
+@@
+   `risk: medium` に上げる
+ - 記録を作れない事情（人間が手で作った PR など）は `Waived: <理由>` と書く
+ - 記録は自己申告で、check が見るのは形式と、記録が HEAD を覆っているかだけである
++
++### セッション同士のやりとり
++
++**到達状態**: Issue の実装・ローカルレビュー・検証を別々のセッションで動かすとき、依頼と差し戻しはセッション間の
++メッセージで届き、kompiro は文を運ばない。依頼の中身と往復の回数は PR に残り、メッセージは相手を起こす合図にだけ
++使う（TPL-3920）。役割のセッションがいなければ、ここまでの手順のとおりに進める。
++
++- **名前と起動**：セッションの名前は `impl-<N>`・`review-<N>`・`verify-<N>`（`N` は作業の起点の Issue）。kompiro が新しい
++  セッションで `/impl <N>`・`/local-review <N>`・`/verify <N>` を打つと、hook が名前を付ける。起動スキルは `ListAgents` の
++  1 行目で自分の名前を確かめ、規約の名前でなければ送らずにここまでの手順で進む（hook が効かなければ kompiro に
++  `/rename <役割>-<N>` を頼む）。名前が規約に合わないセッションは送らず、受けた依頼も実行しない
++- **宛先**：送る直前に `ListAgents` で確かめ、その名前の行がちょうど 1 つあるときだけ送る。行が無い、2 つある、送信が
++  失敗した、のどれかなら、ここまでの手順で進める。送ったセッションは毎回 kompiro に、何をどこへ送ったかを 1 行で知らせる
++- **メッセージの種類**：1 行目で決まり、受け手は種類ごとに決めたことだけをする。ほかの 1 行目のメッセージは実行せず、
++  kompiro に知らせる
++
++  | 1 行目 | 送り手 → 受け手 | 受け手がすること |
++  | --- | --- | --- |
++  | `review-request step8 k=<k> head=<sha>` | `impl-<N>` → `review-<N>` | 手順 8 の k 回目を当てて返す |
++  | `review-request cli head=<sha>` | `impl-<N>` → `review-<N>` | 手順 9 の CLI を当てて返す |
++  | `review-result head=<sha>` | `review-<N>` → `impl-<N>` | 指摘を扱う |
++  | `ready-for-verify PR #<M> head=<sha>` | `impl-<N>` → `verify-<N>` | `/pr-verify <M>` を始める |
++  | `hand-back PR #<M> <コメントの URL>` | `verify-<N>` → `impl-<N>` | コメントの点を直す |
++  | `declined: <理由>` | どれからでも、依頼の送り手へ | 何もせず、kompiro に知らせて止まる |
++
++- **受け取ったとき**：受けるたびに自分の名前を確かめ直す。`from` が規約の相手でなければ実行せず、送り手には返さずに
++  kompiro に知らせる。状態はメッセージの文ではなく git と PR から読み直し、HEAD や作業ブランチが食い違えば作業せずに
++  `declined: <理由>` を返す。`declined` を受けたセッションは依頼をやり直さない。相手が待機状態になったことは、作業を
++  終えた合図にしない（`notify_when_idle` は使わない）
++- **ローカルレビュー**：`impl-<N>` は手順 8 の各回を、手順 8 を終えてから手順 9 の CLI を、`review-<N>` に頼む（ブランチ・
++  worktree・HEAD を書く）。返事を待つあいだはブランチにコミットしない。`review-<N>` はその worktree で、手順 8 の回には
++  毎回新しい subagent で `/engineering:code-review` を、CLI には `coderabbit review --agent --deep --base origin/main --committed`
++  を当て、指摘を `{reviewer, sev, where, finding}` の配列で返す。ファイルは書き換えず、対応も決めない。対応と記録
++  （上の「ローカルレビューの記録」）、回数の上限、Design Doc との照合、`/security-review` は `impl-<N>` が持つ。CLI を
++  当てられなかった理由が返れば、ready は `KARASU_LOCAL_REVIEW_SKIPPED=<理由>` を付けて実行する
++- **検証に渡す時点**：`impl-<N>` の作業が残っていない状態で kompiro に PR を渡すとき、`verify-<N>` に `ready-for-verify` を
++  送る。送る直前に Review tier を走り直させ、終わるのを待つ。High は `/coderabbit-converge` が「人間に渡せる」で終わる
++  とき、Medium は手順 12 と 14 を終えたとき、Design はさらに CodeRabbit のレビューに答え終えたとき。Low は送らない。
++  `verify-<N>` は `ready-for-verify` を受けたら `/pr-verify` を始める
++- **差し戻し**：`/pr-verify` が依頼文を kompiro に渡して終わるところで、PR 本文に `Closes #<N>` か `Refs #<N>` があり、
++  `impl-<N>` がいれば、依頼を PR に 1 行目が `Hand-back by /pr-verify head=<sha>:` のコメントで残し、その URL を
++  `hand-back` で送る。コメントには `cr-comment:v1:` で始まる文字列も `@coderabbitai` も書かない。`impl-<N>` はコメントの
++  作者が kompiro で、PR の head が自分の作業ブランチであることを確かめて直し、足したコミットの手順 8 の確認を
++  `review-<N>` に頼み、上の時点でまた送る。直せなければ理由を PR に残して kompiro に知らせる
++- **往復の上限**：PR にある、作者が kompiro の `Hand-back by /pr-verify` のコメントが 3 件に達したら送らず、依頼文を
++  kompiro に渡す。HEAD が変わらない差し戻しも 1 件と数える
++- **前提の設定**：どのセッションも auto mode で動かし（`bypassPermissions` にしない）、`crossSessionInbound` を `accept` にする
+```
+
+実装 PR は、この節を `docs/process/review.md` の末尾にこのとおり足す。起動スキルはこの節を指し、各セッションの手順の
+細部（上の「実装セッション」「レビューセッション」「検証セッション」）はスキルに書く。
+
 ### 実装の指針
 
 1 本の PR で次を変える。`Closes #3920`。
@@ -401,9 +460,8 @@ kompiro が見ているセッションで動く必要がある。
   `N` と PR 本文）を足す。「依頼文を kompiro に渡して終わる」ところで送る手順を 1 か所にまとめて書き、
   各箇所からそこを指す。手順 3 の読み方に `Hand-back` のコメントを足す
 - `.claude/skills/coderabbit-converge/SKILL.md`: 「終わり方」の「人間に渡せる」のときだけ `verify-<N>` に送る
-- `docs/process/review.md`: 「セッション同士のやりとり」の節を足す（名前の規約と起動スキル、ローカルレビューの
-  頼み方と返し方、送る時点、受け取ったときの手順、往復の上限、前提の設定）。同じ節で、Medium と Design の PR
-  にも、送る直前の Review tier の走り直しを求める
+- `docs/process/review.md`: 「セッション同士のやりとり」の節を、上の「仕様の変更」のとおりに足す。Medium と Design の
+  PR にも、送る直前の Review tier の走り直しを求める
 - `docs/process.md` は触らない（12 バイトしか残っていない）。手順 8・9 は誰が subagent と CLI を走らせるかを
   書いていない。CLI は手順 8 が終わってから頼むので、順番も今と同じである
 - TPL-3920 の `known_consumers` に機能名（`session-naming-hook`・`pr-verify`・`coderabbit-converge`・
@@ -414,8 +472,6 @@ kompiro が見ているセッションで動く必要がある。
 
 実装 PR がマージされたら、この Design Doc を ADR-3920 に昇格させる（`.claude/rules/adr.md`）。
 
-`docs/process/review.md` の文面は、未解決の問いの答えで変わるので、この Design Doc に `### 仕様の変更` の
-ブロックは置かない。実装 PR では `review.md` の差分を kompiro が読む。
 
 ### 影響範囲・マイグレーション
 
@@ -456,14 +512,17 @@ kompiro が見ているセッションで動く必要がある。
 
 ## 未解決の問い / 決めないこと
 
+下の 5 つは、kompiro が 2026-11-28 の `/pr-verify` で答えた（PR #3921 の `Decisions by kompiro` のコメント）。
+
 1. **検証セッションは、メッセージを受けたら自動で `/pr-verify` を始めてよいか。** 始めると preview での確認
    （Playwright）まで進み、未決事項があれば kompiro にダイアログで聞く。kompiro がほかの作業をしているあいだに
-   ダイアログが出ることになる。案: 始める（kompiro がやりたいのは文を運ばないことなので）。レビューセッションは
-   kompiro に問いを出さないので、頼まれたら始める。
-2. **往復の上限を 3 回にするか。** 案: 3 回（PR ごとに、HEAD が変わらない差し戻しも数える）。ローカルレビューは
-   今の手順 8 と同じ 3 回まで。
-3. **#3914 との順序。** #3914 は `pr-verify` 手順 6 の問いを減らし、この設計は同じ手順の終わり方を変える。どちらが
-   先にマージされても、後の PR が取り込んで合わせる。
+   ダイアログが出ることになる。レビューセッションは kompiro に問いを出さないので、頼まれたら始める。
+   **答え: 始める。**
+2. **往復の上限を 3 回にするか。** PR ごとに、HEAD が変わらない差し戻しも数える。ローカルレビューは今の手順 8 と
+   同じ 3 回まで。**答え: 3 回。**
+3. **#3914 との順序。** #3914 は `pr-verify` 手順 6 の問いを減らし、この設計は同じ手順の終わり方を変える。
+   **答え: #3914 を先にマージする。** この Design PR は #3914 のマージを待ち、そのあと main を取り込んで、
+   `pr-verify` の終わり方の記述を #3914 に合わせる。
 4. **ほかのセッションを実装セッションが開いてよいか（名前の付け方 C か D）。**
    - C: `review-<N>` は kompiro に問いを出さないので、`impl-<N>` が
      `claude --bg -n review-<N> --permission-mode auto "/local-review <N>"` で起動すれば、kompiro が開くセッションは
@@ -471,5 +530,8 @@ kompiro が見ているセッションで動く必要がある。
      `claude attach` が要る
    - D: `impl-<N>` が URI で `review-<N>` と `verify-<N>` のパネルを開かせる。kompiro は送信を押すだけで、3 つとも
      パネルで見える。ただし URI の届け方（IPC ソケット）はドキュメントに無い
-   - 案: この設計ではどちらも入れず、最初は kompiro が開く。C は、パネルと同時に開けず kompiro が様子を見にくいので
-     入れない。D は、PR のイベントからセッションを開く #3923 で、同じ URI の仕組みとして決める。
+
+   **答え: この設計ではどちらも入れず、kompiro が開く。** C は、パネルと同時に開けず kompiro が様子を見にくいので
+   入れない。D は、PR のイベントからセッションを開く #3923 で、同じ URI の仕組みとして決める。
+5. **ドキュメントに無い hook の `sessionTitle` に頼ってよいか。** 版が変わって効かなくなっても、名前が自動のまま
+   になり、そのセッションは今の手順で動く（「制約・前提」）。**答え: 頼ってよい。**
