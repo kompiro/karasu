@@ -335,10 +335,13 @@ kompiro が見ているセッションで動く必要がある。
    Review tier を走り直させ、終わるのを待ってから送る（converge の終わり方と同じ。今の `review.md` が求めて
    いない段階でも、新しい節で求める）。走っている check があると、検証セッションの gate は `wait` になる。
    - High: `coderabbit-converge` が「人間に渡せる」で終わるとき（終わり方で走り直す）。「人間の判断待ちで
-     止まっている」ときは送らない（kompiro の判断が要るので、差し戻されても実装セッションは直せない）。#3914 の
-     P1g の問い（直すのに 50 行を超える修正）が答えを待っているあいだも、converge はここで止まる
+     止まっている」ときは送らない（kompiro の判断が要るので、差し戻されても実装セッションは直せない）。CodeRabbit の
+     thread かコメントから出た #3914 の P1g の問い（直すのに 50 行を超える修正）が答えを待っているあいだも、
+     converge はここで止まる。ローカルレビューから出た P1g の問いは `## For Reviewers` に載るので送ってよく、
+     `verify-<N>` の `/pr-verify` で kompiro が答え、変更が選ばれれば差し戻しとして戻る
    - Medium: `docs/process.md` 手順 12（CI）と 14（手動検証）を終えたとき
-   - Design: 手順 12 と 14 を終え、CodeRabbit のレビューに答え終えたとき
+   - Design: 手順 12 と 14 を終え、CodeRabbit のレビューに答え終え、kompiro への問いを待つ thread が残っていない
+     とき（残っていると gate が `fix` を出し、実装セッションは kompiro の答えなしには直せない）
    - Low: 送らない
 4. **差し戻しを受けたとき:** メッセージにあるコメントを読み、作者が kompiro の login であること、PR の head の
    リポジトリが `kompiro/karasu` で、head のブランチが自分の作業ブランチであることを確かめてから、そこにある点を
@@ -444,7 +447,7 @@ kompiro が見ているセッションで動く必要がある。
 +- **検証に渡す時点**：`impl-<N>` の作業が残っていない状態で kompiro に PR を渡すとき、`verify-<N>` に `ready-for-verify` を
 +  送る。送る直前に Review tier を走り直させ、終わるのを待つ。High は `/coderabbit-converge` が「人間に渡せる」で終わる
 +  とき、Medium は `docs/process.md` の手順 12（CI）と 14（手動検証）を終えたとき、Design はさらに CodeRabbit のレビューに
-+  答え終えたとき。Low は送らない。`verify-<N>` は `ready-for-verify` を受けたら `/pr-verify` を始める
++  答え終え、kompiro への問いを待つ thread が残っていないとき。Low は送らない。`verify-<N>` は `ready-for-verify` を受けたら `/pr-verify` を始める
 +- **差し戻し**：`/pr-verify` が依頼文を kompiro に渡して終わるところで、PR がマージされておらず、PR 本文に `Closes #<N>` か
 +  `Refs #<N>`（`N` は自分の名前の `N`）があり、`impl-<N>` がいれば、依頼を PR に 1 行目が
 +  `Hand-back by /pr-verify head=<sha>:` のコメントで残し、その URL を `hand-back` で送る。コメントは kompiro のアカウントで
@@ -485,7 +488,8 @@ kompiro が見ているセッションで動く必要がある。
 
 #3914 の実装（#3896）も、`.claude/skills/pr-verify/SKILL.md` の手順 6、`.claude/skills/coderabbit-converge/SKILL.md`、
 `docs/process/review.md` を変える。2 つの実装 PR は、後からマージされるほうが main を取り込んで、もう一方の変更に
-合わせる。`review.md` では、#3914 の実装は「指摘の重大度と対応」と「High の PR で人間が読むもの」を書き換え、この
+合わせる。`review.md` では、#3914 の実装は「指摘の重大度と対応」「High の PR で人間が読むもの」と、対応欄に原則の ID を
+書く形として「ローカルレビューの記録」を書き換え、この
 設計は末尾に節を足す。#3914 の実装が先にマージされて末尾の 3 行（「ローカルレビューの記録」の終わり）が変われば、
 下の「仕様の変更」のブロックの文脈が合わなくなるので、実装 PR の前に Design PR でブロックを直す（`review.md`「Design
 Doc に載せた仕様の文面」）。
