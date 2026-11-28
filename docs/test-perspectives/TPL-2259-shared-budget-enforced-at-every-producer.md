@@ -71,4 +71,5 @@ scope:
 - `packages/app/src/utils/unfurl-budget.test.ts` — `/s?s=` 生成点の allowlist ドリフトガード
 - `packages/app/src/utils/inline-share.test.ts` › `fitsUnfurlPayload` — 判定の境界
 - `packages/app/src/render/repo-permalink.test.ts` › `resolveRepoPermalink — unfurl payload cap` — resolver が上限で拒否し、原因を名指しすること
+- `packages/app/src/render/bare-route-function.test.ts` › `a model too large to link` — bare route の Pages Function が、上限超過のモデルに resolver の 413 の診断をそのまま返すこと（redirect にも SPA への差し戻しにもしない）
 - `packages/app/src/utils/unfurl-budget.test.ts` › `exports no number` — `/s?s=` の予算を持つ `inline-share.ts` が数値を 1 つも export しないこと。定数を export し直すと、名前を問わず落ちる。捕まえるのは数値の export だけで、`{ max: 8000 }` のような包んだ export、別モジュールへの定数の移動、生成点が `8000` を直書きする比較は捕まえない（直書きの比較は生成点の allowlist のレビューで見る）。守るのはこの予算だけで、別の予算を足したときはその予算のモジュールに同じ検査を置く
