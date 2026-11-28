@@ -79,7 +79,7 @@ frontmatter が `continue-on-error: false` を宣言していること、lock �
 
 <!-- absent-path-next-line: deleted with the gh-aw workflows in #3423 (ADR-3421), named as history -->
 - `scripts/ci/agentic-workflow-safety.test.ts`
-- `scripts/adr/regenerate-pr-flow.test.ts`（再生成の routine の読み取りがやり直しのあとも失敗したら、マージしない。check を待つあいだはその回を待ちとして読み直し、締め切りまで失敗し続けたら PR を残して `waited`（終了コード 3）で終える。待つあいだ以外では例外で抜ける。GitHub の読み取り以外の例外は待たずに抜ける。例外のときの run の終了状態は `main()` が決め、ここでは検査しない。#3933、#3934）
+- `scripts/adr/regenerate-pr-flow.test.ts`（再生成の routine の読み取りがやり直しのあとも失敗したら、マージしない。check を待つあいだはその回を待ちとして読み直し、締め切りまで失敗し続けたら PR を残して `waited`（終了コード 3）で終える。待つあいだ以外の失敗と、GitHub の読み取り以外の例外は、待たずに `failed`（終了コード 1）で終え、それまでにマージした PR と開いた PR を結果に載せる。#3933、#3934、#3936）
 
 ## 派生元 spec
 

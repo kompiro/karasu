@@ -297,8 +297,15 @@ describe("regeneratePr", () => {
       throw new Error("gh api ...: HTTP 502");
     };
     const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
-    // The lease read before the push; regeneratePr throws and main() turns it into "failed".
-    expect(() => go(gh, ws)).toThrow("HTTP 502");
+    // The lease read before the push: no PR exists yet, so none is reported.
+    const result = go(gh, ws);
+    expect(result).toEqual({
+      outcome: "failed",
+      pr: undefined,
+      pickedUp: undefined,
+      message: "reading chore/adr-regenerate failed: gh api ...: HTTP 502",
+    });
+    expect(EXIT_CODES[result.outcome]).toBe(1);
     expect(attempts).toBe(READ_ATTEMPTS);
     expect(gh.calls).toEqual([]);
     expect(ws.calls.at(-1)).toBe("removeWorktree");
@@ -367,7 +374,7 @@ describe("regeneratePr", () => {
     });
   });
 
-  it("still ends the run on an error that is not a GitHub read while it waits", () => {
+  it("does not wait out an error that is not a GitHub read, and names the PR", () => {
     const gh = fakeGitHub({ runs: () => [run("Check", null)] });
     const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
     let mergeBases = 0;
@@ -376,7 +383,11 @@ describe("regeneratePr", () => {
       if (++mergeBases === 2) throw new Error("git merge-base failed");
       return "base";
     };
-    expect(() => go(gh, ws)).toThrow("git merge-base failed");
+    expect(go(gh, ws)).toMatchObject({
+      outcome: "failed",
+      pr: expect.stringContaining("/pull/100"),
+      message: "git merge-base failed",
+    });
     expect(ws.calls.at(-1)).toBe("removeWorktree");
   });
 
@@ -388,8 +399,74 @@ describe("regeneratePr", () => {
       throw new Error("gh api ...: HTTP 502");
     };
     const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
-    expect(() => go(gh, ws)).toThrow("HTTP 502");
+    expect(go(gh, ws)).toMatchObject({ outcome: "failed", message: "gh api ...: HTTP 502" });
     expect(creates).toBe(1);
+  });
+
+  it("names yesterday's merged PR when the wait for its branch to go keeps failing (Issue #3936)", () => {
+    const gh = fakeGitHub({ pulls: [pull({ number: 7 })], branch: "old-head" });
+    const branchShaOf = gh.github.branchSha;
+    gh.github.branchSha = () => {
+      // Yesterday's PR is merged by now; the wait for its branch to be deleted fails.
+      if (gh.pulls.get(7)!.state === "closed") throw new Error("gh api ...: HTTP 502");
+      return branchShaOf();
+    };
+    const ws = fakeWorkspace({ commit: "new-head" });
+    const result = go(gh, ws);
+    expect(result).toMatchObject({
+      outcome: "failed",
+      pickedUp: expect.stringContaining("/pull/7"),
+      message: expect.stringMatching(/^reading chore\/adr-regenerate failed: .*HTTP 502$/),
+    });
+    expect(result.pr).toBeUndefined();
+    expect(gh.calls).toEqual(["merge #7 old-head"]);
+  });
+
+  it("names the opened PR when reading its labels keeps failing (Issue #3936)", () => {
+    const gh = fakeGitHub({});
+    gh.github.pull = () => {
+      throw new Error("gh api ...: HTTP 502");
+    };
+    const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
+    expect(go(gh, ws)).toMatchObject({
+      outcome: "failed",
+      pr: "https://github.com/kompiro/karasu/pull/100",
+      message: expect.stringMatching(/^reading PR #100 failed: .*HTTP 502$/),
+    });
+    expect(gh.calls).toEqual(["create #100"]);
+    expect(ws.calls.at(-1)).toBe("removeWorktree");
+  });
+
+  it("names yesterday's open PR when re-reading it after the push keeps failing", () => {
+    let reads = 0;
+    const gh = fakeGitHub({ pulls: [pull({ number: 7, labels: [] })], branch: "old-head" });
+    const pullOf = gh.github.pull;
+    gh.github.pull = (n) => {
+      // Step 1's readiness read works (and finds the labels wrong); the re-read after the push fails.
+      if (++reads > 1) throw new Error("gh api ...: HTTP 502");
+      return pullOf(n);
+    };
+    const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
+    expect(go(gh, ws)).toMatchObject({
+      outcome: "failed",
+      pr: expect.stringContaining("/pull/7"),
+      message: expect.stringMatching(/^reading PR #7 failed: /),
+    });
+    expect(gh.calls).toEqual([]);
+  });
+
+  it("names the PR when a label write fails", () => {
+    const gh = fakeGitHub({});
+    gh.github.addLabel = () => {
+      throw new Error("gh api ...: HTTP 422");
+    };
+    const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
+    expect(go(gh, ws)).toMatchObject({
+      outcome: "failed",
+      pr: expect.stringContaining("/pull/100"),
+      message: "gh api ...: HTTP 422",
+    });
+    expect(gh.calls.some((c) => c.startsWith("merge"))).toBe(false);
   });
 
   it("leaves the PR open and exits 3 when the checks do not finish in time", () => {
