@@ -254,12 +254,22 @@ export interface Deps {
 export const READ_ATTEMPTS = 3;
 const READ_BACKOFF_MS = 5 * 1000;
 
+/** A GitHub read that failed on every attempt. Its message is the last failure's. */
+class ReadFailed extends Error {
+  readonly what: string;
+  constructor(what: string, message: string, cause: unknown) {
+    super(message, { cause });
+    this.what = what;
+  }
+}
+
 /**
  * The same GitHub with each read tried up to {@link READ_ATTEMPTS} times. A read
  * through the routine's proxy can fail once and work right after, and giving up
  * on it left an opened PR unmerged until the next day's run (Issue #3933). Writes
  * are not retried: a repeated create could open a second PR, and a merge is
- * already pinned to a SHA. The last failure is thrown as it was (TPL-2786).
+ * already pinned to a SHA. The last failure is thrown as a {@link ReadFailed}
+ * with the same message (TPL-2786), so the wait for checks can tell it from a bug.
  */
 function withReadRetries(github: GitHub, clock: Clock, log: (message: string) => void): GitHub {
   const read = <T>(what: string, call: () => T): T => {
@@ -267,8 +277,8 @@ function withReadRetries(github: GitHub, clock: Clock, log: (message: string) =>
       try {
         return call();
       } catch (e) {
-        if (attempt >= READ_ATTEMPTS) throw e;
         const reason = e instanceof Error ? e.message : String(e);
+        if (attempt >= READ_ATTEMPTS) throw new ReadFailed(what, reason, e);
         log(`${what} failed (attempt ${attempt} of ${READ_ATTEMPTS}), retrying: ${reason}`);
         clock.sleep(READ_BACKOFF_MS);
       }
@@ -356,6 +366,24 @@ export function regeneratePr(deps: Deps): Result {
       return { state: "pending", why: `waiting for ${checks.waiting.join(", ")}` };
     }
     return { state: "ready" };
+  };
+
+  /**
+   * {@link readiness} for the wait in step 4. The PR is open by then, so a read
+   * that keeps failing leaves the same state as checks that do not finish: the
+   * PR stays open for the next run. It is waited on (and at the deadline reported
+   * as `waited` with the PR) instead of ending the run without it (Issue #3934).
+   * Any other error still ends the run.
+   */
+  const pollReadiness = (n: number, sha: string, headMayLag: boolean): Readiness => {
+    try {
+      return readiness(n, sha, headMayLag);
+    } catch (e) {
+      if (!(e instanceof ReadFailed)) throw e;
+      const why = `${e.what} failed: ${e.message}`;
+      log(`PR #${n}: ${why}; polling again`);
+      return { state: "pending", why };
+    }
   };
 
   // 1. Yesterday's PR, if it is still open and ready.
@@ -457,7 +485,7 @@ export function regeneratePr(deps: Deps): Result {
 
     // 4. Wait for the checks, then merge with the head pinned.
     for (;;) {
-      const ready = readiness(pr.number, commit, clock.now() < pushedAt + HEAD_LAG_MS);
+      const ready = pollReadiness(pr.number, commit, clock.now() < pushedAt + HEAD_LAG_MS);
       if (ready.state === "fail") {
         return { outcome: "failed", pr: pr.html_url, pickedUp, message: ready.why };
       }

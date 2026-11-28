@@ -291,6 +291,21 @@ describe("regeneratePr", () => {
 
   it("fails the run with the read's error once every attempt has failed", () => {
     let attempts = 0;
+    const gh = fakeGitHub({});
+    gh.github.branchSha = () => {
+      attempts++;
+      throw new Error("gh api ...: HTTP 502");
+    };
+    const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
+    // The lease read before the push; regeneratePr throws and main() turns it into "failed".
+    expect(() => go(gh, ws)).toThrow("HTTP 502");
+    expect(attempts).toBe(READ_ATTEMPTS);
+    expect(gh.calls).toEqual([]);
+    expect(ws.calls.at(-1)).toBe("removeWorktree");
+  });
+
+  it("reports waited with the PR when a read keeps failing while it waits (Issue #3934)", () => {
+    let attempts = 0;
     const gh = fakeGitHub({
       runs: () => {
         attempts++;
@@ -298,10 +313,70 @@ describe("regeneratePr", () => {
       },
     });
     const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
-    // regeneratePr throws; main() turns it into the "failed" JSON result.
-    expect(() => go(gh, ws)).toThrow("HTTP 502");
-    expect(attempts).toBe(READ_ATTEMPTS);
+    const logged: string[] = [];
+    const result = regeneratePr({
+      github: gh.github,
+      workspace: ws.workspace,
+      clock: fakeClock(),
+      log: (m) => logged.push(m),
+    });
+    expect(result).toMatchObject({
+      outcome: "waited",
+      pr: "https://github.com/kompiro/karasu/pull/100",
+      message: expect.stringMatching(/reading the check runs of new-head failed: .*HTTP 502/),
+    });
+    expect(EXIT_CODES[result.outcome]).toBe(3);
+    // It kept polling instead of stopping after the first read gave up.
+    expect(attempts).toBeGreaterThan(READ_ATTEMPTS);
+    expect(logged).toContainEqual(expect.stringMatching(/^PR #100: .*HTTP 502; polling again$/));
     expect(gh.calls.some((c) => c.startsWith("merge"))).toBe(false);
+    expect(gh.pulls.get(100)!.state).toBe("open");
+    expect(ws.calls.at(-1)).toBe("removeWorktree");
+  });
+
+  it("merges once a read that failed while it waited works again", () => {
+    let attempts = 0;
+    const gh = fakeGitHub({
+      runs: () => {
+        if (++attempts <= READ_ATTEMPTS) throw new Error("gh api ...: HTTP 502");
+        return allPass();
+      },
+    });
+    const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
+    expect(go(gh, ws)).toMatchObject({
+      outcome: "merged",
+      pr: expect.stringContaining("/pull/100"),
+    });
+    expect(gh.calls).toContain("merge #100 new-head");
+  });
+
+  it("keeps yesterday's merged PR in the waited result when a read keeps failing", () => {
+    const gh = fakeGitHub({
+      pulls: [pull({ number: 7 })],
+      branch: "old-head",
+      runs: () => {
+        if (gh.pulls.get(7)!.state === "closed") throw new Error("gh api ...: HTTP 502");
+        return allPass();
+      },
+    });
+    const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
+    expect(go(gh, ws)).toMatchObject({
+      outcome: "waited",
+      pr: expect.stringContaining("/pull/100"),
+      pickedUp: expect.stringContaining("/pull/7"),
+    });
+  });
+
+  it("still ends the run on an error that is not a GitHub read while it waits", () => {
+    const gh = fakeGitHub({ runs: () => [run("Check", null)] });
+    const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
+    let mergeBases = 0;
+    ws.workspace.mergeBase = () => {
+      // The first is the check of the regenerated commit; the second is the first poll.
+      if (++mergeBases === 2) throw new Error("git merge-base failed");
+      return "base";
+    };
+    expect(() => go(gh, ws)).toThrow("git merge-base failed");
     expect(ws.calls.at(-1)).toBe("removeWorktree");
   });
 
