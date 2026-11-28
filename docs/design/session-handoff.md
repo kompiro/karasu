@@ -113,6 +113,22 @@ Claude Code のドキュメント（Message your other Claude Code sessions、Ma
   開く）
 - VS Code 拡張の設定（`claudeCode.*`）に、名前の付け方を変える項目は無い
 
+VS Code 拡張 2.1.332（VS Code 1.147.0、devcontainer）で確かめたこと（2026-11-28。手順と結果は #3923 のコメント）:
+
+- パネルは開くたびに、自分の `claude` のプロセスを起動する。過去の会話は `--resume` で開き直す。ほかで動いている
+  プロセスにはつながらない
+- タブの名前はセッションの名前になる。hook が付けた名前もタブに出る
+- URI `vscode://anthropic.claude-code/open?prompt=<文>` で、パネルを開いて入力欄に文を入れられる。**送信はされず**、
+  kompiro が送信を押す。最初は「拡張にこの URI を開かせるか」の確認が出る（「Do not ask me again」で省ける。
+  kompiro は省く設定にした）。devcontainer の中からは `code --open-url` が使えず、`VSCODE_IPC_HOOK_CLI` の
+  ソケットに `openExternal` を送ると届く。パネルはそのソケットの窓に開く
+- URI で開いたパネルで `/impl 77777` を送信すると、hook は打たれたままの `/impl 77777` を受け取り、プロジェクトの
+  スキルが動き、名前が `impl-77777` になる
+- `--bg` で動いているセッションは、パネルで同時に開けない。拡張が「ほかで開いている」と警告し、「Open here anyway」を
+  押しても CLI が「バックグラウンドで動いている」と再開を断る。`claude stop` で止めてからならパネルで開ける
+- セッションの Bash から切り離さずに `--bg` で起動したセッションが、daemon のログに終わった記録を残さずに消えたことが
+  1 回あった（原因は分からない）
+
 ## 制約・前提
 
 - **判断は kompiro に残す。** 未決事項（For Reviewers など）への答えとマージの OK は、今と同じく kompiro が
@@ -133,10 +149,11 @@ Claude Code のドキュメント（Message your other Claude Code sessions、Ma
 - **同じマシンに限る。** 別のマシンやクラウドのセッションは out of scope（Remote Control が要り、返事が届く
   保証も無い）。
 - hane（`/hane:start-dev` など）への展開は out of scope。karasu の skill・hook と `docs/process/review.md` で試す。
+- PR のイベント（Design PR のマージなど）を見てセッションを開く仕組みは out of scope。#3923 で扱う。
 
 ## 検討した選択肢
 
-名前の付け方（A〜C）と、宛先の決め方（案1〜6）を分けて比べる。
+名前の付け方（A〜D）と、宛先の決め方（案1〜6）を分けて比べる。
 
 ### 名前の付け方
 
@@ -148,7 +165,12 @@ Claude Code のドキュメント（Message your other Claude Code sessions、Ma
   名前を打つことになる。A が効かないときの戻り先として残す
 - **C: 実装セッションがほかのセッションを `claude --bg -n` で起動する。** kompiro がセッションを開く手間も
   無くなるが、起動したセッションは VS Code のパネルに出ず、`claude attach` で開くまで kompiro から見えない。
-  kompiro に問いを出す検証セッションには向かない。レビューセッションだけをこの形にするかは未解決の問い 4
+  動いているあいだはパネルで開くこともできない（止めてから開き直すことになる）。kompiro に問いを出す検証
+  セッションには向かない。レビューセッションだけをこの形にするかは未解決の問い 4
+- **D: 実装セッションが URI で VS Code にほかのセッションを開かせる。** `prompt=/local-review <N>` などの URI を送ると、
+  パネルが開いて入力欄に起動スキルが入り、kompiro が送信を押すと A の hook が名前を付ける。セッションはパネルに
+  出るが、kompiro の送信が 1 回ずつ要る。URI を届けるのに、ドキュメントに無い IPC ソケットの送り方を使う。A の
+  上に足す形なので、入れるかは未解決の問い 4
 
 ### 案1: 役割と Issue 番号でセッションの名前を決める
 
@@ -412,7 +434,7 @@ kompiro が見ているセッションで動く必要がある。
   未解決のスレッドを 1 つ置くか、kompiro が NO で直す点を挙げる）に対して行い、終わったら閉じる。別ブランチの
   項目を先に行い、そのあと `Hand-back` を 3 件にして上限の項目を行う
 
-- [ ] VS Code の新しいセッションで `/impl <N>`・`/local-review <N>`・`/verify <N>` を打つと、それぞれの `ListAgents` の 1 行目が `impl-<N>`・`review-<N>`・`verify-<N>` になり、`/local-review` で始まるのが組み込みの `/code-review` ではなくプロジェクトのスキルである
+- [ ] VS Code の新しいセッションで `/impl <N>`・`/local-review <N>`・`/verify <N>` を打つと、それぞれの `ListAgents` の 1 行目とタブの名前が `impl-<N>`・`review-<N>`・`verify-<N>` になり、`/local-review` で始まるのが組み込みの `/code-review` ではなくプロジェクトのスキルである
 - [ ] `impl-<N>` が手順 8 の回を頼むと、待機中の `review-<N>` が指摘を返す。手順 8 を終えて CLI を頼むと `review-<N>` が CLI を当てて返し、`impl-<N>` の `gh pr ready` が、`review-<N>` の CLI のレビュー（`git.json` の `head` が返されたコミット）で CLI のゲートを通る
 - [ ] `impl-<N>` のセッションで `/verify <N>` を打っても、名前は `impl-<N>` のまま変わらない
 - [ ] 待機中の `review-<N>` を閉じて `--resume` で開き直しても、名前が `review-<N>` のままで、次の依頼を受けられる
@@ -437,7 +459,12 @@ kompiro が見ているセッションで動く必要がある。
    今の手順 8 と同じ 3 回まで。
 3. **#3914 との順序。** #3914 は `pr-verify` 手順 6 の問いを減らし、この設計は同じ手順の終わり方を変える。どちらが
    先にマージされても、後の PR が取り込んで合わせる。
-4. **レビューセッションを実装セッションが起動してよいか（名前の付け方 C）。** `review-<N>` は kompiro に問いを
-   出さないので、`impl-<N>` が `claude --bg -n review-<N> --permission-mode auto "/local-review <N>"` で起動すれば、
-   kompiro が開くセッションは 2 つで済む。ただし VS Code のパネルに出ず、kompiro が見るには `claude attach` が
-   要る。案: 最初は kompiro が開き、慣れてから C を試す。
+4. **ほかのセッションを実装セッションが開いてよいか（名前の付け方 C か D）。**
+   - C: `review-<N>` は kompiro に問いを出さないので、`impl-<N>` が
+     `claude --bg -n review-<N> --permission-mode auto "/local-review <N>"` で起動すれば、kompiro が開くセッションは
+     2 つで済む。ただし VS Code のパネルに出ず、動いているあいだはパネルで開けない。kompiro が見るには
+     `claude attach` が要る
+   - D: `impl-<N>` が URI で `review-<N>` と `verify-<N>` のパネルを開かせる。kompiro は送信を押すだけで、3 つとも
+     パネルで見える。ただし URI の届け方（IPC ソケット）はドキュメントに無い
+   - 案: この設計ではどちらも入れず、最初は kompiro が開く。D は、PR のイベントからセッションを開く #3923 で、
+     同じ URI の仕組みとして決める。
