@@ -133,6 +133,22 @@ function gitIn(cwd: string, args: string[], quiet = false): string {
   });
 }
 
+/**
+ * Runs git with its stdout on this script's stderr. For a push: the pre-push
+ * hooks print to stdout, and a discarded stdout leaves a refused push with only
+ * "failed to push some refs" (Issue #3925). Not this script's stdout, whose last
+ * line is the JSON result the routine reads.
+ */
+function gitLoud(cwd: string, args: string[]): void {
+  execFileSync("git", args, { cwd, stdio: ["ignore", 2, "inherit"] });
+}
+
+/**
+ * The release tags the pre-push hook `diagnostic-ids-history` compares against.
+ * It fails without one, and the routine's clone has no tags (Issue #3925).
+ */
+export const RELEASE_TAGS = "+refs/tags/karasu@*:refs/tags/karasu@*";
+
 /** The main checkout that owns the repository, whichever worktree the caller is in. */
 function repoRoot(cwd: string): string {
   const common = gitIn(cwd, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim();
@@ -142,7 +158,7 @@ function repoRoot(cwd: string): string {
   return dirname(common);
 }
 
-function gitWorkspace(root: string): Workspace {
+export function gitWorkspace(root: string): Workspace {
   const tree = join(root, ".claude", "worktrees", BRANCH);
   const git = (args: string[], quiet = false) => gitIn(root, args, quiet);
   const inTree = (args: string[]) => gitIn(tree, args);
@@ -202,13 +218,16 @@ function gitWorkspace(root: string): Workspace {
       inTree(["commit", "-m", TITLE]);
       return inTree(["rev-parse", "HEAD"]).trim();
     },
-    push: (lease) =>
-      void inTree([
+    push: (lease) => {
+      // The pre-push hooks run here, so fetch what they read first.
+      git(["fetch", "--no-tags", "origin", RELEASE_TAGS]);
+      gitLoud(tree, [
         "push",
         `--force-with-lease=${BRANCH}:${lease ?? ""}`,
         "origin",
         `HEAD:refs/heads/${BRANCH}`,
-      ]),
+      ]);
+    },
     removeWorktree: () => {
       if (!existsSync(tree)) return;
       try {
