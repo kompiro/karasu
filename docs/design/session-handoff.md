@@ -447,7 +447,8 @@ kompiro が見ているセッションで動く必要がある。
 +- **検証に渡す時点**：`impl-<N>` の作業が残っていない状態で kompiro に PR を渡すとき、`verify-<N>` に `ready-for-verify` を
 +  送る。送る直前に Review tier を走り直させ、終わるのを待つ。High は `/coderabbit-converge` が「人間に渡せる」で終わる
 +  とき、Medium は `docs/process.md` の手順 12（CI）と 14（手動検証）を終えたとき、Design はさらに CodeRabbit のレビューに
-+  答え終え、kompiro への問いを待つ thread が残っていないとき。Low は送らない。`verify-<N>` は `ready-for-verify` を受けたら `/pr-verify` を始める
++  答え終え、kompiro への問いを待つ thread が残っていないとき。Low は送らない。`verify-<N>` は `ready-for-verify` を
++  受けたら `/pr-verify` を始める
 +- **差し戻し**：`/pr-verify` が依頼文を kompiro に渡して終わるところで、PR がマージされておらず、PR 本文に `Closes #<N>` か
 +  `Refs #<N>`（`N` は自分の名前の `N`）があり、`impl-<N>` がいれば、依頼を PR に 1 行目が
 +  `Hand-back by /pr-verify head=<sha>:` のコメントで残し、その URL を `hand-back` で送る。コメントは kompiro のアカウントで
@@ -488,11 +489,10 @@ kompiro が見ているセッションで動く必要がある。
 
 #3914 の実装（#3896）も、`.claude/skills/pr-verify/SKILL.md` の手順 6、`.claude/skills/coderabbit-converge/SKILL.md`、
 `docs/process/review.md` を変える。2 つの実装 PR は、後からマージされるほうが main を取り込んで、もう一方の変更に
-合わせる。`review.md` では、#3914 の実装は「指摘の重大度と対応」「High の PR で人間が読むもの」と、対応欄に原則の ID を
-書く形として「ローカルレビューの記録」を書き換え、この
-設計は末尾に節を足す。#3914 の実装が先にマージされて末尾の 3 行（「ローカルレビューの記録」の終わり）が変われば、
-下の「仕様の変更」のブロックの文脈が合わなくなるので、実装 PR の前に Design PR でブロックを直す（`review.md`「Design
-Doc に載せた仕様の文面」）。
+合わせる。`review.md` では、#3914 の実装は「指摘の重大度と対応」「High の PR で人間が読むもの」と、対応欄に原則の
+ID を書く形として「ローカルレビューの記録」を書き換え、この設計は末尾に節を足す。#3914 の実装が先にマージされて
+末尾の 3 行（「ローカルレビューの記録」の終わり）が変われば、下の「仕様の変更」のブロックの文脈が合わなくなるので、
+実装 PR の前に Design PR でブロックを直す（`review.md`「Design Doc に載せた仕様の文面」）。
 
 実装 PR がマージされたら、この Design Doc を ADR-3920 に昇格させる（`.claude/rules/adr.md`）。
 
@@ -546,7 +546,9 @@ Doc に載せた仕様の文面」）。
 3. **#3914 との順序。** #3914 は `pr-verify` 手順 6 の問いを減らし、この設計は同じ手順の終わり方を変える。
    **答え: #3914 を先にマージする。** #3914 は 2026-11-28 にマージし、この Design PR は main を取り込んで合わせた。
    #3914 の一覧で kompiro が変更を求めた項目も差し戻しの条件に入ること、`Hand-back` のコメントが一致の集計に
-   入らないこと、P1g の問いのあいだは converge が判断待ちで止まり `verify-<N>` に送らないこと、2 つの実装 PR の
+   入らないこと、CodeRabbit の thread かコメントから出た P1g の問いのあいだは converge が判断待ちで止まり
+   `verify-<N>` に送らないこと（ローカルレビューから出た P1g の問いは For Reviewers に載り、`/pr-verify` の答えで
+   差し戻しとして戻る）、2 つの実装 PR の
    順序（「実装の指針」）を書いた。
 4. **ほかのセッションを実装セッションが開いてよいか（名前の付け方 C か D）。**
    - C: `review-<N>` は kompiro に問いを出さないので、`impl-<N>` が
