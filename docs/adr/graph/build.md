@@ -125,6 +125,7 @@ flowchart TD
     ADR_3162["ADR-3162<br/>karasu serve の Share は、公開版 app を指すリンクで出す"]
     ADR_3196["ADR-3196<br/>Dependabot トリアージ 2026-10-14：npm 6 件を採用し、Radix は..."]
     ADR_3203["ADR-3203<br/>Dependabot security alert 2026-10-14（sharp の ov..."]
+    ADR_3240["ADR-3240<br/>npm の公開を staged publishing にし、OIDC のトークンを持つジョブで..."]
     ADR_3242["ADR-3242<br/>Dependabot トリアージ 2026-10-15：npm 5 件をそのまま採用し、vit..."]
     ADR_3246["ADR-3246<br/>`@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast..."]
     ADR_3257["ADR-3257<br/>app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる"]
@@ -147,9 +148,14 @@ flowchart TD
     ADR_3421["ADR-3421<br/>Copilot で推論する gh-aw の workflow を外し、個人の課金で動かせるまで..."]
     ADR_3504["ADR-3504<br/>Low の ADR の PR は draft を経ずに作り、ゲートはその create を 1..."]
     ADR_3514["ADR-3514<br/>gh pr ready のゲートは --repo をそのまま渡して同じ PR を読み、base..."]
+    ADR_3542["ADR-3542<br/>High の PR で人間が読む範囲を、合意済みの Design Doc で絞り、仕様の文面が..."]
     ADR_3571["ADR-3571<br/>PRD は docs/prd に置かず prd ラベルの Issue にし、展開した Epic..."]
     ADR_3575["ADR-3575<br/>Dependabot トリアージ 2026-11-02：npm 8 件をすべて採用し、LSP ..."]
     ADR_3586["ADR-3586<br/>Dependabot security alert 2026-11-03（@azure/msa..."]
+    ADR_3751["ADR-3751<br/>Dependabot トリアージ 2026-11-09：npm 14 件を採用し、@types..."]
+    ADR_3818["ADR-3818<br/>試験導入の PR は Issue を閉じず、Design Doc は試験より前に置く"]
+    ADR_3870["ADR-3870<br/>Dependabot トリアージ 2026-11-16：16 件を採用し jsdom 31 は..."]
+    ADR_3915["ADR-3915<br/>Dependabot トリアージ 2026-11-23：16 件を採用し Babel 8 と ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -166,6 +172,7 @@ flowchart TD
   ADR_2901["ADR-2901<br/>[chat-ai] AI authoring は利用者のエージェントセッションと karasu CLI skill..."]
   ADR_2969["ADR-2969<br/>[project] 運用者だけの段階をコードで守る — サインインを数値 user id の許可リストに限る"]
   ADR_2995["ADR-2995<br/>[project] ギャラリーの公開投稿の OGP 画像を要求時に描き、保存せず edge のキャッシュに置く"]
+  ADR_3620["ADR-3620<br/>[adr-tooling] 昇格 PR の張り替えに、隣の Design Doc への参照・ラベル・番号での言い換えを含める"]
   ADR_1296 --> ADR_8
   ADR_1628 --> ADR_1575
   ADR_1820 --> ADR_1314
@@ -196,6 +203,7 @@ flowchart TD
   ADR_2901 --> ADR_1315
   ADR_2901 --> ADR_1758
   ADR_2995 --> ADR_3020
+  ADR_3620 --> ADR_3286
   ADR_2716 -.supersedes.-> ADR_2640
   ADR_2807 -.supersedes.-> ADR_2805
   ADR_3052 -.supersedes.-> ADR_2898
@@ -334,6 +342,7 @@ flowchart TD
   class ADR_3162 accepted
   class ADR_3196 accepted
   class ADR_3203 accepted
+  class ADR_3240 accepted
   class ADR_3242 accepted
   class ADR_3246 accepted
   class ADR_3257 accepted
@@ -356,9 +365,14 @@ flowchart TD
   class ADR_3421 accepted
   class ADR_3504 accepted
   class ADR_3514 accepted
+  class ADR_3542 accepted
   class ADR_3571 accepted
   class ADR_3575 accepted
   class ADR_3586 accepted
+  class ADR_3751 accepted
+  class ADR_3818 accepted
+  class ADR_3870 accepted
+  class ADR_3915 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
@@ -374,4 +388,5 @@ flowchart TD
   class ADR_2901 ghost
   class ADR_2969 ghost
   class ADR_2995 ghost
+  class ADR_3620 ghost
 ```

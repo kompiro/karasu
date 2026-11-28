@@ -31,6 +31,7 @@ flowchart TD
     ADR_2585["ADR-2585<br/>ストアスコープの ER ビュー — FK は記録し、entity 関連は投影し、確認済みかどう..."]
     ADR_2597["ADR-2597<br/>チーム間の依存を `owns` × 論理エッジから導出する"]
     ADR_2677["ADR-2677<br/>言語 v2.0 を実施する: tag / annotation 語彙を閉じ、facet と b..."]
+    ADR_3794["ADR-3794<br/>usecase から client の local storage を参照する"]
     ADR_9002["ADR-9002<br/>ツール名「karasu」の採用"]
     ADR_9003["ADR-9003<br/>論理構造と物理構造の分離"]
   end
@@ -100,6 +101,7 @@ flowchart TD
   class ADR_2585 accepted
   class ADR_2597 accepted
   class ADR_2677 accepted
+  class ADR_3794 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
   class ADR_237 ghost
