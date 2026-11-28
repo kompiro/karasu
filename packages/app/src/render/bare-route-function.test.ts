@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { translate } from "@karasu-tools/i18n";
 import { onRequest } from "../../../../functions/[[path]].js";
 import { resolveRepoPermalink, type ResolveStatus } from "./repo-permalink.js";
 import { RESERVED_TOP_SEGMENTS } from "../routes.js";
@@ -217,6 +218,47 @@ describe.each(STATUSES)("a path the resolver answers %i for", (status) => {
       expect(!scenario.deterministic && refetched === 0).toBe(false);
       expect(await summary(second.response)).toEqual(await summary(first.response));
     });
+  });
+});
+
+describe("a model too large to link", () => {
+  // TPL-2259: the resolver's own tests pin the 413 diagnostic; this checks the
+  // Function hands that diagnostic to the visitor as it is, instead of a broken
+  // link (a 414 from an over-long `/s?s=` redirect) or a body of its own.
+  it.each([
+    ["without a ref", ""],
+    ["with a pinned ref", "@main"],
+  ])("%s, answers 413 with the diagnostic naming the cause", async (_label, ref) => {
+    const scenario = SCENARIOS[413];
+    fetchFake = scenario.github;
+    const { response } = await run(`/o/r${ref}`);
+    if (response === "next") throw new Error("the Function handed an over-cap model to the SPA");
+
+    expect(response.status).toBe(413);
+    expect(response.headers.get("Location")).toBeNull();
+    expect(response.headers.get("Content-Type")).toContain("text/plain");
+    const body = await response.text();
+
+    // The resolver's own answer for the same model: the Function must not
+    // rebuild the message, change its numbers or add to it.
+    const resolved = await resolveRepoPermalink(`o/r${ref}`, async (input) =>
+      scenario.github(String(input)),
+    );
+    expect(body).toBe(resolved.message);
+
+    // And that answer is the catalog's diagnostic: the cause, the encoded
+    // length over the cap, and what to do. The cap is private to
+    // `inline-share.ts`, so it is read back from the message, not pinned here.
+    const source = `o/r@${ref === "" ? "HEAD" : "main"}`;
+    const [, length, limit] = /encodes to (\d+) characters, over the (\d+) /.exec(body) ?? [];
+    expect(Number(length)).toBeGreaterThan(Number(limit));
+    expect(body).toBe(
+      translate("en", "permalink.tooLarge.message", {
+        source,
+        length: Number(length),
+        limit: Number(limit),
+      }),
+    );
   });
 });
 
