@@ -92,12 +92,16 @@ describe("name-from-prompt hook (#3920)", () => {
 
   it("reads only name records, not lines that merely contain the text", () => {
     const path = transcript("verify-3920");
-    // A later line whose tool input quotes a custom-title record must not pose as the name.
+    // A later tool call whose input is an object shaped like a name record must not pose as the name.
     writeFileSync(
       path,
       JSON.stringify({
         type: "assistant",
-        message: { content: '{"type":"custom-title","customTitle":"karasu-1f"}' },
+        message: {
+          content: [
+            { type: "tool_use", input: { type: "custom-title", customTitle: "karasu-1f" } },
+          ],
+        },
       }) + "\n",
       { flag: "a" },
     );

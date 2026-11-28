@@ -63,8 +63,8 @@ kompiro への文章は日本語で書き、em dash（—）は使わない（�
 
 **実装セッションに貼る依頼文を kompiro に渡して終わるところ（手順 1 の `fix`、手順 6 の冒頭と 6b の 3 で gate が
 `fix`、6b の 4 で変更が選ばれた、OK のあとに gate が `fix`、NO で直す点を言われた）では、どこでも本節に従う。**
-宛先が決まらなければ、今までどおり依頼文を kompiro に渡す。規則の正本は `docs/process/review.md`「セッション同士の
-やりとり」。
+宛先が決まらなければ、今までどおり依頼文を kompiro に渡す。規則の大枠は `docs/process/review.md`「セッション同士の
+やりとり」にあり、本節は `pr-verify` の側の細部を持つ。
 
 宛先が決まるのは、次がすべて成り立つときだけである。
 
@@ -84,7 +84,9 @@ kompiro への文章は日本語で書き、em dash（—）は使わない（�
    1 行目は `Hand-back by /pr-verify head=<headSha>:` にする。`<headSha>` は、`fix` を出した gate の実行（手順 1、
    手順 6 の冒頭、6b の 3、OK のあと）の `headSha`、6b の 4 と NO からなら手順 1 で控えた `headSha` にする（実装
    セッションは、これが PR の今の head と違う差し戻しを古いとみなして断る）。kompiro が選んだ変更（6b の変更、NO で挙げた点）の行には、
-   `Decisions by kompiro` と同じく末尾に `[change]` を付ける（やり直しの手順 3 が、差分で確かめる項目をこの印で選ぶ）。コメントは kompiro のアカウントで書かれ、ほかの処理が
+   `Decisions by kompiro` と同じく末尾に `[change]` を付ける（やり直しの手順 3 が、差分で確かめる項目をこの印で選ぶ）。
+   前の `Hand-back` のコメントの `[change]` の行で、手順 3 でまだ直っていなかったものも写す（手順 3 はいちばん新しい
+   コメントしか読まないので、写さないと確かめられなくなる）。コメントは kompiro のアカウントで書かれ、ほかの処理が
    読むので、CodeRabbit の指摘はスレッドかコメントの URL で書き、`cr-comment:v1:` で始まる文字列（CodeRabbit の
    指摘が答え済みに数えられる）も `@coderabbitai`（CodeRabbit がレビューを始める）も書かない
 2. `impl-<N>` に、1 行目を `hand-back PR #<pr> <コメントの URL>` にして送る（`SendMessage`）。メッセージには PR 番号と

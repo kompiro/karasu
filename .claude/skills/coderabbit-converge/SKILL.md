@@ -221,7 +221,7 @@ PR 本文のローカルレビューの記録に、このラウンドまでの C
 一覧に `verify-<N>` の行がちょうど 1 つあれば、1 行目を
 `ready-for-verify PR #<pr> head=<sha>` にして `verify-<N>` に送り（`SendMessage`）、送ったことを最後のメッセージに
 書く。「人間の判断待ちで止まっている」ときは送らない（kompiro の判断が要るので、差し戻されても直せない）。規則の
-正本は `docs/process/review.md`「セッション同士のやりとり」。
+大枠は `docs/process/review.md`「セッション同士のやりとり」にある。
 
 収束をマージ許可として扱わない。`gh pr merge` も PR の approve もしない（CodeRabbit は required check ではなく、
 マージ判断は人間が持つ）。
