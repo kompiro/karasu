@@ -184,6 +184,25 @@ client MobileApp [mobile] {
 
 `resource` is storage the client reads/writes; `capability` is a function the OS / browser grants — separate concepts. The SVG card shows count badges package / lock glyph `×N` respectively, with the full list in the detail panel.
 
+**Tying a storage to the usecases that use it (experimental).** Give the storage an id after its kind, and a usecase references it with the same dot-notation it uses for a database table:
+
+```krs
+system Shop {
+  client MobileApp [mobile] {
+    resource indexedDB Outbox "outbox"
+  }
+  service OrderService {
+    domain Order {
+      usecase QueueOrder {
+        resource MobileApp.Outbox { operations create }
+      }
+    }
+  }
+}
+```
+
+The reference is drawn as `outbox (indexedDB)` in the domain view, gets a column in the CRUD matrix and counts in `karasu coverage`; a misspelt id is reported. No `OrderService → MobileApp` edge is derived from it. If you silenced the old warning by tagging such a reference `[external]`, remove the tag once the storage has an id: `[external]` means the target lives outside the system.
+
 > Cookie / session / raw-credential storage, and threat modeling itself, are deliberately out of scope (karasu models the underlying facts but does not pin a security discipline's shape into its vocabulary — [ADR-834](../adr/834-security-modeling-stance.md)).
 
 ---

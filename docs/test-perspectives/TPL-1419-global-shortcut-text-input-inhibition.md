@@ -68,10 +68,12 @@ scope:
       **テキスト入力にフォーカスした状態**で end-to-end 検証したか
       （`skip`: 入力中に発火しない / `allow`: 入力中でも発火する）
 - [ ] `keybinding` が既存コマンドと衝突していないか（衝突時は先勝ちで
-      後発が無効化される）
+      後発が無効化される） [guard: `scripts/lint/keybinding-collisions.test.ts`]
 - [ ] コマンドを登録するコンポーネントのアンマウントで登録解除されるか
-- [ ] platform 依存（`mod` = Cmd/Ctrl）や修飾子順に依存する場合、その
-      正規化を検証したか
+- [ ] `keybinding` の修飾子を `mod`, `alt`, `shift`, キーの順で書いたか
+      （`Command.keybinding` の `Chord` 型がほかの順と大文字のキーを型エラーに
+      するので、CI の `pnpm run typecheck` が落ちる） [guard: `.github/workflows/ci.yml`]
+- [ ] platform 依存（`mod` = Cmd/Ctrl）に依存する場合、その正規化を検証したか
 - [ ] エディタにフォーカスした状態の検証を、jsdom の `<textarea>` ではなく
       **実ブラウザで実際のエディタにフォーカスして**行ったか（フォーカス先の
       要素はエディタの実装と browser で変わる。#3207）
@@ -107,3 +109,14 @@ karasu のキーボードショートカット基盤（`packages/app/src/keyboar
 - `packages/app/src/keyboard/command-context.test.tsx` — `CommandRegistry.getCommands`
   › `drops a command once its component unmounts`：登録したコンポーネントの
   アンマウントでコマンドが登録解除されること
+- `scripts/lint/keybinding-collisions.test.ts` — `useCommand` の登録をすべて読み
+  （`lint:e2e-command-coverage` と同じ読み取り。読めない値は throw する）、別の id の
+  コマンドが同じ chord を持てば落ちる。同時に mount されないコマンドどうしで chord を
+  共有するときは、理由付きで `SHARED_CHORDS` に載せる
+- `packages/app/src/keyboard/command-context.test.tsx` — `CommandRegistry.register
+  keybinding collisions`：生きているコマンドと同じ chord を別の id で登録すると、
+  vitest と `vite` dev では throw する（本番ビルドは先勝ちのまま `console.error` で報告するので、
+  本番ビルドで走る CI の E2E では落ちない）
+- `packages/app/src/keyboard/command-types.ts` — `Command.keybinding` は `Chord` 型
+  （`mod` / `alt` / `shift` の順の template literal と、閉じたキーの union）なので、
+  修飾子の順が違う chord や大文字のキーは型検査で落ちる

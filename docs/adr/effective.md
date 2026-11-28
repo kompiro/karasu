@@ -26,6 +26,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3416](3416-regenerate-adr-index-daily-pr.md) — ADR の生成物は PR に含めず、毎日の routine が出す再生成の PR でだけ更新する
 - [ADR-3471](3471-code-cites-issue-not-design-doc.md) — docs/ の外からは Design Doc ではなく ADR か Issue を指す
 - [ADR-3595](3595-adr-readme-topic-entry-point.md) — docs/adr/README.md の手書き一覧をやめ、topic の語彙と生成物への入口にする
+- [ADR-3620](3620-promotion-swap-sibling-link-and-label.md) — 昇格 PR の張り替えに、隣の Design Doc への参照・ラベル・番号での言い換えを含める
 
 ## app-ui
 
@@ -72,6 +73,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3599](3599-first-run-step-completion.md) — 初回体験のツアーは、ステップが頼んだ操作をしたことを示すだけで、進むのは訪問者に任せる
 - [ADR-3600](3600-first-run-understand-evolve-tours.md) — 初回体験の Understand と Evolve を同じ機構のガイドにし、シーンは開いているバッファを読み直さない
 - [ADR-3601](3601-first-run-second-sample.md) — Design a service split のガイドに給与システムの題材を同梱し、Step 1 で切り替えられるようにする
+- [ADR-3689](3689-feedback-discussions-category.md) — フィードバックは GitHub Discussions の Feedback カテゴリで受け、アプリはガイドの最後のステップからだけリンクする
 - [ADR-9009](9009-toolbar-icon-label.md) — ツールバーボタンはアイコン+テキストラベル必須
 - [ADR-9010](9010-memory-project-mode-unification.md) — MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`
 - [ADR-9011](9011-editor-diagnostics-display.md) — Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ
@@ -185,6 +187,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3162](3162-serve-share-hosted-links.md) — karasu serve の Share は、公開版 app を指すリンクで出す
 - [ADR-3196](3196-dependabot-triage-2026-10-14.md) — Dependabot トリアージ 2026-10-14：npm 6 件を採用し、Radix は 4 件を揃える差し替え PR、actions/* は gh-aw の生成物を除く差し替え PR で入れ、download-artifact と gh-aw-actions は却下する
 - [ADR-3203](3203-dependabot-security-2026-10-14.md) — Dependabot security alert 2026-10-14（sharp の override floor を修正版へ上げ、shell-quote を override し、修正版が無く upstream が異議を出している http-cache-semantics と braces は dismiss する）
+- [ADR-3240](3240-staged-npm-publishing.md) — npm の公開を staged publishing にし、OIDC のトークンを持つジョブで外のコードを動かさない
 - [ADR-3242](3242-dependabot-triage-2026-10-15.md) — Dependabot トリアージ 2026-10-15：npm 5 件をそのまま採用し、vite（override の floor 引き上げ）・knip（entry 修正）・vsce（利用元のいない override の削除）は差し替え PR で入れ、gh-aw-actions は却下する
 - [ADR-3246](3246-drop-overrides-left-by-vsce-4.md) — `@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast-uri` / `form-data` / `linkify-it` / `markdown-it`）を外す
 - [ADR-3257](3257-e2e-step-bound-follows-suite-growth.md) — app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる
@@ -206,9 +209,14 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3421](3421-remove-copilot-gh-aw-workflows.md) — Copilot で推論する gh-aw の workflow を外し、個人の課金で動かせるまで戻さない
 - [ADR-3504](3504-low-adr-pr-without-draft.md) — Low の ADR の PR は draft を経ずに作り、ゲートはその create を 1 つの形だけ通す
 - [ADR-3514](3514-ready-gate-reads-pr-it-acts-on.md) — gh pr ready のゲートは --repo をそのまま渡して同じ PR を読み、base は PR の base コミットで判定する
+- [ADR-3542](3542-high-pr-review-scope.md) — High の PR で人間が読む範囲を、合意済みの Design Doc で絞り、仕様の文面が一致したファイルは Medium に数える
 - [ADR-3571](3571-prd-as-issues.md) — PRD は docs/prd に置かず prd ラベルの Issue にし、展開した Epic をその sub-issue にする
 - [ADR-3575](3575-dependabot-triage-2026-11-02.md) — Dependabot トリアージ 2026-11-02：npm 8 件をすべて採用し、LSP 11 と SDK 1.x は ADR の assumptions を次の major に上げる差し替え PR で入れる
 - [ADR-3586](3586-dependabot-security-2026-11-03.md) — Dependabot security alert 2026-11-03（@azure/msal-node は ADR-3399 のとおり @azure/identity 4.14.1 への lock 更新で直し、glob と minimatch は修正版が新 major だけなので alert を open のまま保留する）
+- [ADR-3751](3751-dependabot-triage-2026-11-09.md) — Dependabot トリアージ 2026-11-09：npm 14 件を採用し、@types/vscode 1.144 は ExTester の上限で floor を動かせないので close する
+- [ADR-3818](3818-trial-pr-keeps-issue-open.md) — 試験導入の PR は Issue を閉じず、Design Doc は試験より前に置く
+- [ADR-3870](3870-dependabot-triage-2026-11-16.md) — Dependabot トリアージ 2026-11-16：16 件を採用し jsdom 31 は差し替え PR で入れ、同じ base の lock を続けてマージして壊した main を直す
+- [ADR-3915](3915-dependabot-triage-2026-11-23.md) — Dependabot トリアージ 2026-11-23：16 件を採用し Babel 8 と dompurify は差し替え PR で入れ、rebase で版が繰り上がった 3 本は分析し直してマージする
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -244,6 +252,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3258](3258-serve-import-resolution.md) — karasu serve は配信ディレクトリをまるごとブラウザのメモリに写して import を解決する
 - [ADR-3418](3418-serve-loopback-and-host-check.md) — `karasu serve` を loopback で listen し、ローカルでない `Host` の `/api/*` を拒否する
 - [ADR-3426](3426-render-src-ssrf-guard.md) — `/render?src=` の SSRF 対策を、解決後のアドレスとリダイレクトの各ホップで行う
+- [ADR-3654](3654-cli-diagnostic-codes.md) — 診断に重大度によらない KRS の ID を振り、人には行の接頭辞で、機械には check --format json で届ける
 - [ADR-9013](9013-cli-serve-mode.md) — CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー
 
 ## core-concepts
@@ -273,6 +282,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2585](2585-store-scoped-er-view.md) — ストアスコープの ER ビュー — FK は記録し、entity 関連は投影し、確認済みかどうかで描き分ける
 - [ADR-2597](2597-team-dependencies.md) — チーム間の依存を `owns` × 論理エッジから導出する
 - [ADR-2677](2677-language-v2-act.md) — 言語 v2.0 を実施する: tag / annotation 語彙を閉じ、facet と boundary を core にし、受理しない構文を error と定義する
+- [ADR-3794](3794-client-local-store-reference.md) — usecase から client の local storage を参照する
 - [ADR-9002](9002-karasu-naming.md) — ツール名「karasu」の採用
 - [ADR-9003](9003-logical-physical-separation.md) — 論理構造と物理構造の分離
 
@@ -297,6 +307,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2477](2477-parallel-edge-nudge-gate-colocation.md) — 並列エッジの perpendicular nudge は「重なっているか」で判定する
 - [ADR-2501](2501-errored-edge-declaration-renders-nowhere.md) — 起点スコープに反するエッジ宣言はどのビューにも描画しない
 - [ADR-3480](3480-edge-canonical-id-quoted-endpoints.md) — edge の canonical id（base form）は `.krs.style` で読み戻せる形にする
+- [ADR-3702](3702-edge-style-kind-key-disjoint.md) — 解決済み edge スタイルの kind 無しキーと kind 付きキーを重ならないようにする
 - [ADR-9019](9019-edge-direction-style.md) — `.krs.style` の edge `direction` プロパティ — 矢印の流れる向きを 5 値 enum で指定
 
 ## navigation
@@ -349,6 +360,8 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2552](2552-duplicate-realizes-target.md) — 同じ `realizes` ターゲットの繰り返しは 1 つの関係を宣言する（冪等）
 - [ADR-2571](2571-fmt-annotation-parameters.md) — アノテーションのパラメータを emit 1 箇所に畳み、値の種類ごとに正準形を 1 つ決める
 - [ADR-2707](2707-annotation-param-value-lexing.md) — 引用符なしのアノテーションパラメータ値を壊さずに拒否する
+- [ADR-3752](3752-optional-string-stops-at-next-edge.md) — 任意で続く要素を読む reader は、後の行で始まる次の edge を読まない
+- [ADR-3767](3767-required-value-stops-at-next-edge.md) — 必須の値を読む reader も、後の行で始まる次の edge を読まない
 - [ADR-9008](9008-ast-restructure-discriminated-union.md) — AST 再構成 — Discriminated Union とプロパティブロック
 
 ## project
@@ -426,6 +439,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2761](2761-width-budget-ladder-length.md) — 行幅予算の候補ラダーの長さを計測して 8 段にする
 - [ADR-2802](2802-builtin-icon-registration.md) — 組み込みアイコンは core が import 時に登録し、解決しない url() は値 validator が診断する
 - [ADR-2803](2803-slotted-icon-card-text.md) — shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通スタックで描く
+- [ADR-2823](2823-ghost-band-layout.md) — ghost entity / ghost domain を外部ドメインごとの枠に入れて焦点の枠の上下に並べ、焦点の線の後に routing chain で配線する
 - [ADR-2906](2906-icon-mode-removal-release-undecided.md) — icon display mode は非推奨のまま据え置き、削除する major はまだ決めない
 - [ADR-2917](2917-multi-system-root-same-id-nodes.md) — 複数 system のルートビューは同名ノードを両方描き、要素の id は bare id のまま、着地は path で決める
 - [ADR-2934](2934-same-id-per-node-maps.md) — 同名ノードの per-node Map は path をキーにし、bare id の見え方は勝者規則 1 つで決める
@@ -476,6 +490,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2269](2269-team-frame-style-selector.md) — team フレームの色は team カードと同じセレクタで指定する — `team` / `#<id>` / `team#<id>`
 - [ADR-2482](2482-themed-badge-color-single-source.md) — バッジ色はテーマ別の対で持ち、テーマ非依存の値を掴めなくする
 - [ADR-3141](3141-style-value-bounds-single-source.md) — スタイル値の範囲はスキーマ 1 か所に置き、スキーマを満たさない著者の宣言は cascade で 1 回捨てる
+- [ADR-3775](3775-variant-first-tag-wins.md) — 複数の variant タグを持つノードは、最初のタグの組み込みルールだけで描く
 - [ADR-9004](9004-css-inspired-styling.md) — CSSインスパイアのスタイリングシステム
 
 ## testing

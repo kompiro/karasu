@@ -35,13 +35,13 @@ export const MERGED_SPACE_REFERENCE_CODES = [
   // single file can see, and the entry file's per-file infos would otherwise
   // double the rebuild's (same shape as duplicate-boundary-assignment below).
   "duplicate-owner-assignment",
-  // The physical dot-notation refs (#2078). Shared infra is *canonically*
-  // declared in a dedicated file every slice imports (§S4.5), so a per-file
-  // verdict would warn on the recommended layout: every `resource ArticleDB.x`
-  // in `reader.krs` would look unresolved because the block lives in
-  // `infra.krs`. Suppressed per file, re-derived against the merged tree in `resolve()`.
+  // The physical dot-notation refs (#2078), and which client or infra block one
+  // names (#3794). Shared infra is *canonically* declared in a dedicated file
+  // every slice imports (§S4.5), so a per-file verdict would warn on the
+  // recommended layout. Suppressed per file, re-derived on the merged tree in `resolve()`.
   "unresolved-resource-ref",
   "unresolved-table-ref",
+  "resource-target-ambiguous",
   // `facet` declarations merge across files, so uniqueness is a property of the
   // merged namespace. Suppressed per file and re-derived in `resolve()` — otherwise a
   // duplicate split across two files would go unreported, and a duplicate inside

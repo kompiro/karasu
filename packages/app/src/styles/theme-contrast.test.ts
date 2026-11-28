@@ -1,5 +1,6 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+// @vitest-environment jsdom
+import { readdirSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   compositeOver,
   contrastRatio,
@@ -31,7 +32,7 @@ import { describe, expect, it } from "vitest";
  * so the app chrome and the diagram cannot disagree about what passes.
  */
 
-const THEMES_CSS = fileURLToPath(new URL("themes.css", import.meta.url));
+const THEMES_CSS = resolve(import.meta.dirname, "themes.css");
 
 /**
  * Opaque surfaces text is painted on. Translucent chrome is not here — it is
@@ -49,9 +50,8 @@ const NON_SURFACE_BG = ["bg-selected"];
 /**
  * Tokens whose role is text. `--accent` / `--accent-hover` / `--feather` /
  * `--success` are absent by role, not by exemption: they paint fills, borders
- * and glows, which answer to the 3:1 non-text minimum. After #2193 the only
- * `color:` use left on `--accent` is `.toolbar-btn--apply-patch`, on an opaque
- * `--bg-raised` (5.17:1 light / 5.17:1 dark).
+ * and glows, which answer to the 3:1 non-text minimum. No component CSS uses
+ * `--accent` as `color:`; the check below fails if one starts to.
  */
 const TEXT_TOKENS = [
   "text-primary",
@@ -75,6 +75,8 @@ const NON_CHROME_TEXT = ["text-on-accent"];
 /** Text that carries its own background rather than sitting on the chrome. */
 const SELF_BACKED_PAIRS: [string, string][] = [
   ["export-error-text", "export-error-bg"],
+  // The export error's dismiss button on hover (`.export-error-dismiss:hover`).
+  ["export-error-text-hover", "export-error-bg"],
   ["opfs-banner-text", "opfs-banner-bg"],
   // The badge preview's background comes inline from reference-data, not from
   // a token, so it has no pair to name here. `badgeBackgrounds()` reads it for
@@ -477,5 +479,122 @@ describe("themed text tokens meet WCAG AA on every surface they land on", () => 
     expect(sets.dark.size).toBeGreaterThanOrEqual(40);
     expect(sets.light.size).toBeGreaterThanOrEqual(40);
     expect(sets.light.get("text-muted")).not.toBe(sets.dark.get("text-muted"));
+  });
+});
+
+// ─── Every `color:` in the component CSS reaches a measured token ──────────
+
+/**
+ * The tokens the tests above measure as text, against some background. A
+ * token outside this set can still paint text, but nothing here would notice
+ * it sinking below AA.
+ */
+const MEASURED_TEXT = new Set([
+  ...TEXT_TOKENS,
+  ...NON_CHROME_TEXT,
+  ...SOLID_PAIRS.map(([fg]) => fg),
+  ...SELF_BACKED_PAIRS.map(([fg]) => fg),
+  ...TINTED_PAIRS.map((p) => p.fg),
+  ...PANEL_TEXT_PAIRS.map((p) => p.fg),
+  // Measured on every annotation badge colour by its own test above.
+  "badge-preview-text",
+]);
+
+const STYLES_DIR = import.meta.dirname;
+
+/** The component stylesheets: the same scope `styles-no-raw-color.test.ts` walks. */
+function componentStylesheets(): string[] {
+  const components = readdirSync(resolve(STYLES_DIR, "components"))
+    .filter((entry) => entry.endsWith(".css"))
+    .sort()
+    .map((entry) => `components/${entry}`);
+  return ["base.css", "layout.css", ...components];
+}
+
+interface Declaration {
+  file: string;
+  selector: string;
+  property: string;
+  value: string;
+}
+
+/**
+ * Every declaration in `files`, read through a CSS parser (jsdom's CSSOM)
+ * rather than a regex over the text, so nesting in `@media` / `@supports` and
+ * multi-line values are seen the way a browser sees them.
+ */
+function declarations(files: string[]): Declaration[] {
+  const out: Declaration[] = [];
+  for (const file of files) {
+    const style = document.createElement("style");
+    style.textContent = readFileSync(resolve(STYLES_DIR, file), "utf8");
+    document.head.appendChild(style);
+    const walk = (rules: CSSRuleList): void => {
+      for (const rule of Array.from(rules)) {
+        if ("cssRules" in rule) walk((rule as CSSGroupingRule).cssRules);
+        if (!("style" in rule)) continue;
+        const { style: decls } = rule as CSSStyleRule;
+        const selector = (rule as CSSStyleRule).selectorText ?? "";
+        for (let i = 0; i < decls.length; i++) {
+          const property = decls[i];
+          out.push({
+            file,
+            selector,
+            property,
+            value: decls.getPropertyValue(property).trim(),
+          });
+        }
+      }
+    };
+    walk(style.sheet!.cssRules);
+    style.remove();
+  }
+  return out;
+}
+
+/**
+ * The theme tokens a value reaches: each `var(--x)` (fallbacks included),
+ * followed through any custom property the component CSS defines itself, so
+ * `--row-ink: var(--accent); color: var(--row-ink)` resolves to `accent`.
+ * Local definitions are merged across selectors, so a name the theme also
+ * defines stays a reached token of its own: a component override in one rule
+ * cannot vouch for the theme value another rule reads.
+ */
+function tokensReached(value: string, local: Map<string, string[]>, seen = new Set<string>()) {
+  const out: string[] = [];
+  for (const [, name] of value.matchAll(/var\(\s*--([\w-]+)/g)) {
+    const intermediates = local.get(name);
+    if (intermediates === undefined || sets.dark.has(name)) out.push(name);
+    if (intermediates !== undefined && !seen.has(name)) {
+      seen.add(name);
+      for (const v of intermediates) out.push(...tokensReached(v, local, seen));
+    }
+  }
+  return out;
+}
+
+describe("every color: in the component CSS reaches a token measured as text", () => {
+  const all = declarations(componentStylesheets());
+  const local = new Map<string, string[]>();
+  for (const decl of all.filter((d) => d.property.startsWith("--"))) {
+    const name = decl.property.slice(2);
+    local.set(name, [...(local.get(name) ?? []), decl.value]);
+  }
+  const colors = all.filter((d) => d.property === "color");
+
+  it("reads the color declarations", () => {
+    // Guard against the parser silently matching nothing.
+    expect(colors.length).toBeGreaterThanOrEqual(100);
+  });
+
+  it("measures every token a color: declaration reaches", () => {
+    const unmeasured = colors.flatMap((d) =>
+      tokensReached(d.value, local)
+        .filter((token) => !MEASURED_TEXT.has(token))
+        .map((token) => `${d.file} ${d.selector} { color: ${d.value} } reaches --${token}`),
+    );
+    // Add the token to TEXT_TOKENS, or to the pair table that names the
+    // background it sits on, so its contrast is measured in both theme sets.
+    expect(unmeasured).toEqual([]);
   });
 });

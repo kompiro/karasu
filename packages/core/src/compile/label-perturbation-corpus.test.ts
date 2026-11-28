@@ -108,7 +108,8 @@ function pane(svg: string, face: (typeof FACES)[number]): string {
 
 /**
  * What a compile decided, with every label left out: verdicts, and the drawn
- * node, edge and team identities. Identities are kept per face and with every
+ * node and edge identities (teams and members are org-pane `data-node-id`s).
+ * Identities are kept per face and with every
  * occurrence, so a node moved between faces, or one drawn twice where it was
  * drawn once, shows up.
  */
@@ -131,7 +132,6 @@ function verdicts(result: { svg: string; diagnostics: Diagnostic[]; warnings: Wa
       ...attrs("data-edge-to"),
       ...attrs("data-edge-canonical-id"),
     ],
-    teams: attrs("data-team-id"),
   };
 }
 

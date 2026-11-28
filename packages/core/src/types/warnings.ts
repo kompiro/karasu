@@ -26,6 +26,7 @@ export type WarningKind =
   | "cyclic-dependency"
   | "delivers-target-not-client"
   | "client-capability-duplicate"
+  | "client-resource-duplicate-id"
   | "tag-not-builtin"
   | "tag-not-applicable"
   | "annotation-not-builtin"
@@ -238,6 +239,8 @@ export interface WarningParamsByKind {
    * duplicate.
    */
   "client-capability-duplicate": { clientId: string; name: string };
+  /** Two storages of one client share an id; the first is the one a reference resolves to (#3794). */
+  "client-resource-duplicate-id": { clientId: string; id: string };
   /**
    * A tag name is outside the tool vocabulary (builtin tags plus the
    * system-assigned tags of docs/spec/tags-annotations.md § System-assigned

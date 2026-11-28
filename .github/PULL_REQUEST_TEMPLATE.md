@@ -47,7 +47,7 @@ The Review tier check also asks, whatever the tier (docs/process/review.md):
 ## Local review
 
 <!--
-Below High, the required check "Review tier" reads the local review record
+Below High, the check "Review tier" reads the local review record
 from this body (docs/process/review.md "ローカルレビューの記録"): what
 /engineering:code-review and the CodeRabbit CLI found on the branch diff, and
 the disposition of each finding (fixed in <sha> / declined: <reason> /

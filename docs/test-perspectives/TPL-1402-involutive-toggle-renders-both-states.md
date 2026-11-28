@@ -54,7 +54,7 @@ involutive な toggle を実装 / 変更するときに確認する:
       diagnostic を含まないことを assert するテストがある（reducer・ボタン単体
       テストとは別に）
 - [ ] toggle が before/after を入れ替えるなら、入れ替えるのは入力**値（path 等）**
-      だけで、両入力を解決する共有リソース（overlay / superset FS）は入れ替えない
+      だけで、両入力を解決する共有リソース（overlay / superset FS）は入れ替えない [guard: `packages/app/src/hooks/useAppViews.matrix.test.tsx`]
 - [ ] forward → reverse → forward を往復し、各状態が独立に正しいことを確認する
       （reverse は forward の単なる対称と仮定しない）
 - [ ] toggle の各 variant（compare source が file / pasted / snapshot 等）で

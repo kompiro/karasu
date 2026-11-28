@@ -157,6 +157,8 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { property: "color2" } };
     case "style-unknown-icon":
       return { kind, params: { property: "shape", name: "databse" } };
+    case "client-resource-duplicate-id":
+      return { kind, params: { clientId: "test-client", id: "ApiKey" } };
     case "client-capability-duplicate":
       return { kind, params: { clientId: "test-client", name: "camera" } };
     case "tag-not-builtin":

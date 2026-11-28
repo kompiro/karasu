@@ -1,5 +1,6 @@
 import { deflateSync, inflateSync, strToU8, strFromU8 } from "fflate";
 import type { SharePayload, ShareTarget, ShareTargetView } from "@karasu-tools/core";
+import type { TranslateFn } from "@karasu-tools/i18n";
 
 export type { SharePayload, ShareTarget };
 
@@ -135,15 +136,16 @@ export function buildShareUrl(
  * below Cloudflare's ~16KB URL cap while covering every realistic project
  * (a real reverse-engineered `.krs` compresses to ~5k chars — ADR-1783).
  */
-export const MAX_UNFURL_PAYLOAD = 8000;
+const MAX_UNFURL_PAYLOAD = 8000;
 
 /**
  * True when `encoded` fits the server-visible URL budget — i.e. it may be put
  * into a `/s?s=` link (which echoes it again into `/render?s=`).
  *
- * Every producer of a server-visible `s=` URL MUST gate on this predicate, not
- * on its own comparison against {@link MAX_UNFURL_PAYLOAD}. Exporting only the
- * constant is what let the two producers drift: `buildShareUrls` compared
+ * Every producer of a server-visible `s=` URL MUST gate on this predicate. The
+ * limit itself is not exported, so no producer can write its own comparison
+ * against it (`unfurl-budget.test.ts` checks the module's exports). Exporting
+ * only the constant is what let the two producers drift: `buildShareUrls` compared
  * against it while `resolveRepoPermalink` did not, so a repo-backed permalink
  * could emit exactly the over-length redirect the constant exists to prevent
  * (Issue #2259). Sharing the comparison keeps the budget enforced in one place
@@ -151,6 +153,26 @@ export const MAX_UNFURL_PAYLOAD = 8000;
  */
 export function fitsUnfurlPayload(encoded: string): boolean {
   return encoded.length <= MAX_UNFURL_PAYLOAD;
+}
+
+/**
+ * The refusal for a model at `source` whose payload of `encodedLength`
+ * characters failed {@link fitsUnfurlPayload}, for a producer that refuses with
+ * a message (TPL-2259: the refusal names the cause and the remedy).
+ *
+ * The wording lives in `@karasu-tools/i18n` (`permalink.tooLarge.message`);
+ * this function only supplies the limit, which stays private to this module.
+ */
+export function describeUnfurlOverflow(
+  t: TranslateFn,
+  source: string,
+  encodedLength: number,
+): string {
+  return t("permalink.tooLarge.message", {
+    source,
+    length: encodedLength,
+    limit: MAX_UNFURL_PAYLOAD,
+  });
 }
 
 /** Path of the server-rendered share page (OGP unfurl). */
@@ -162,7 +184,7 @@ const SHARE_PAGE_PATH = "/s";
  * - `fragmentUrl`: the private `#s=` link — never sent to the server, but no
  *   OGP preview (crawlers can't see the fragment).
  * - `unfurlUrl`: the server-visible `/s?s=` link that unfurls with the diagram
- *   (OGP), or `null` when the encoded payload exceeds {@link MAX_UNFURL_PAYLOAD}
+ *   (OGP), or `null` when the encoded payload fails {@link fitsUnfurlPayload}
  *   — oversized projects fall back to the fragment-only link.
  *
  * Encodes once and reuses the result for both URLs.

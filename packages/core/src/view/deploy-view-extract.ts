@@ -1,7 +1,13 @@
-import type { DeployBlock, DeployNode, NodeIdPath, SystemNode } from "../types/ast.js";
+import type { DeployBlock, DeployNode, KrsFile, NodeIdPath, SystemNode } from "../types/ast.js";
 import type { EdgeKind } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
 import { buildEntityResolver } from "../resolver/resource-entity.js";
+import {
+  indexPhysicalTargets,
+  physicalTargetsOf,
+  type PhysicalTargetIndex,
+} from "../spec/infra-index.js";
+import { withUnassignedSystem } from "./unassigned-system.js";
 import { deriveInfraEdges } from "./derived-edges.js";
 import {
   nodePathIdentityKey,
@@ -67,6 +73,20 @@ export interface DeployViewSlice {
 }
 
 /**
+ * {@link extractDeployView} over a parsed or merged file: its deploy blocks, its
+ * systems with top-level nodes wrapped (so `realizes` reaches them), and the
+ * model-wide `<Parent>.<Child>` target index (#3794).
+ */
+export function extractModelDeployView(krsFile: KrsFile, selectedId?: string): DeployViewSlice {
+  return extractDeployView(
+    krsFile.deploys,
+    withUnassignedSystem(krsFile),
+    selectedId,
+    physicalTargetsOf(krsFile),
+  );
+}
+
+/**
  * Extracts a DeployViewSlice from deploy blocks + system nodes.
  * Groups deploy units by their `realizes` value and derives ghost edges
  * from system-level edges between the realized services.
@@ -77,6 +97,8 @@ export function extractDeployView(
   deploys: DeployBlock[],
   systems: SystemNode[],
   selectedId?: string,
+  /** Model-wide `<Parent>.<Child>` targets; defaults to an index of `systems`. */
+  physicalTargets: PhysicalTargetIndex = indexPhysicalTargets(systems),
 ): DeployViewSlice {
   const empty: DeployViewSlice = {
     deployLabel: "",
@@ -292,7 +314,7 @@ export function extractDeployView(
   // (ADR-1870), so a single resolver serves every system.
   const allChildren = systems.flatMap((s) => s.children);
   const allInfra = allChildren.filter((n) => INFRA_KIND_SET.has(n.kind));
-  const entityResolver = buildEntityResolver(allChildren);
+  const entityResolver = buildEntityResolver(allChildren, physicalTargets);
   for (const system of systems) {
     const services = system.children.filter((n) => n.kind === "service");
     for (const edge of deriveInfraEdges([...services, ...allInfra], entityResolver)) {

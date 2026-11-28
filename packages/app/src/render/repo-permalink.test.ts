@@ -1,10 +1,25 @@
 import { describe, it, expect } from "vitest";
-import { decodeShare, MAX_UNFURL_PAYLOAD } from "../utils/inline-share.js";
+import { synthesizeSharePayload } from "@karasu-tools/core";
+import { translate } from "@karasu-tools/i18n";
+import { decodeShare, encodeShare, fitsUnfurlPayload } from "../utils/inline-share.js";
 import {
   parseRepoPermalink,
   resolveRepoPermalink,
   GitHubRawFileSystemProvider,
 } from "./repo-permalink.js";
+
+/** The longest payload `fitsUnfurlPayload` accepts, found from the predicate itself. */
+function unfurlCap(): number {
+  let fits = 0;
+  let overflows = 1 << 20;
+  while (overflows - fits > 1) {
+    const mid = Math.floor((fits + overflows) / 2);
+    if (fitsUnfurlPayload("x".repeat(mid))) fits = mid;
+    else overflows = mid;
+  }
+  return fits;
+}
+const MAX_UNFURL_PAYLOAD = unfurlCap();
 
 const SINGLE_KRS = `system Shop {
   service Web { label "Web" }
@@ -66,15 +81,52 @@ describe("parseRepoPermalink", () => {
     expect(r.ok && r.value.filePath).toBe("a@b.krs");
   });
 
+  // Each refusal is the `@karasu-tools/i18n` entry, in English because the
+  // route has no locale source yet (#3837, #3838).
   it.each([
-    ["kompiro/karasu@", "empty ref after @"],
-    ["kompiro@main", "only one segment"],
-    ["kompiro/karasu@bad ref", "space in ref"],
-    ["kompiro/karasu/../secret.krs@main", "path traversal"],
-    ["kompiro/karasu/notes.txt@main", "non-.krs path"],
-    ["bad_owner!/karasu@main", "invalid owner charset"],
-  ])("rejects %s (%s)", (input) => {
-    expect(parseRepoPermalink(input).ok).toBe(false);
+    ["", "empty permalink", translate("en", "permalink.parse.empty")],
+    ["kompiro/karasu@", "empty ref after @", translate("en", "permalink.parse.emptyRef")],
+    ["kompiro@main", "only one segment", translate("en", "permalink.parse.shape")],
+    [
+      "kompiro/karasu@bad ref",
+      "space in ref",
+      translate("en", "permalink.parse.invalidRef", { ref: "bad ref" }),
+    ],
+    [
+      "kompiro/karasu/../secret.krs@main",
+      "path traversal",
+      translate("en", "permalink.parse.invalidPath", { path: "../secret.krs" }),
+    ],
+    [
+      "kompiro/karasu/notes.txt@main",
+      "non-.krs path",
+      translate("en", "permalink.parse.notKrs", { path: "notes.txt" }),
+    ],
+    [
+      "bad_owner!/karasu@main",
+      "invalid owner charset",
+      translate("en", "permalink.parse.invalidOwner", { owner: "bad_owner!" }),
+    ],
+    [
+      "kompiro/bad repo@main",
+      "invalid repo charset",
+      translate("en", "permalink.parse.invalidRepo", { repo: "bad repo" }),
+    ],
+  ])("rejects %j (%s) with the catalog message", (input, _case, message) => {
+    expect(parseRepoPermalink(input)).toEqual({ ok: false, message });
+  });
+
+  it("keeps the English wording the route has always sent", () => {
+    // The catalog moved the words, not changed them: callers and crawlers that
+    // read the plain-text body see the same text as before #3837.
+    expect(parseRepoPermalink("kompiro@main")).toEqual({
+      ok: false,
+      message: "Expected '<owner>/<repo>[/<path>]@<ref>'.",
+    });
+    expect(parseRepoPermalink("kompiro/karasu/notes.txt@main")).toEqual({
+      ok: false,
+      message: 'Path must point to a .krs file, got "notes.txt".',
+    });
   });
 });
 
@@ -170,7 +222,13 @@ describe("resolveRepoPermalink", () => {
   it("404s when no .krs is found at the ref", async () => {
     const res = await resolveRepoPermalink("o/r@sha", stubFetch({ "README.md": "x" }));
     expect(res.status).toBe(404);
-    expect(res.message).toContain("No .krs found");
+    expect(res.message).toBe(
+      translate("en", "permalink.notFound.message", {
+        source: "o/r@sha",
+        tried: "index.krs / karasu.krs",
+      }),
+    );
+    expect(res.message).toBe("No .krs found at o/r@sha (looked for index.krs / karasu.krs).");
   });
 
   it("404s when an explicit path is missing", async () => {
@@ -179,21 +237,40 @@ describe("resolveRepoPermalink", () => {
       stubFetch({ "index.krs": SINGLE_KRS }),
     );
     expect(res.status).toBe(404);
+    expect(res.message).toBe(
+      translate("en", "permalink.notFound.message", { source: "o/r@sha", tried: "missing.krs" }),
+    );
   });
 
   it("400s on a malformed permalink (single segment)", async () => {
     const res = await resolveRepoPermalink("o", stubFetch({}));
     expect(res.status).toBe(400);
+    expect(res.message).toBe(translate("en", "permalink.parse.shape"));
   });
 
   it("400s on an empty ref after '@'", async () => {
     const res = await resolveRepoPermalink("o/r@", stubFetch({}));
     expect(res.status).toBe(400);
+    expect(res.message).toBe(translate("en", "permalink.parse.emptyRef"));
   });
 
   it("502s on an upstream GitHub failure (non-404)", async () => {
     const res = await resolveRepoPermalink("o/r@sha", stubFetch({ "index.krs": "__500__" }));
     expect(res.status).toBe(502);
+    expect(res.message).toBe(translate("en", "permalink.upstream.message", { status: 500 }));
+    expect(res.message).toBe("Upstream GitHub error (500).");
+  });
+
+  it("500s with the cause when resolving fails unexpectedly", async () => {
+    const fetchImpl = (async () => {
+      throw new Error("network down");
+    }) as typeof fetch;
+    const res = await resolveRepoPermalink("o/r@sha", fetchImpl);
+    expect(res.status).toBe(500);
+    expect(res.message).toBe(
+      translate("en", "permalink.failed.message", { source: "o/r@sha", detail: "network down" }),
+    );
+    expect(res.message).toBe("Failed to resolve o/r@sha: network down");
   });
 
   it("degrades gracefully (200, not 500) on an unsupported directory import", async () => {
@@ -239,6 +316,17 @@ describe("resolveRepoPermalink — unfurl payload cap", () => {
   const resolveWith = (n: number) =>
     resolveRepoPermalink("o/r@sha", stubFetch({ "index.krs": krsWithServices(n) }));
 
+  /** Length of the payload the resolver builds for `n` services, computed independently. */
+  async function encodedLengthOf(n: number): Promise<number> {
+    const fs = new GitHubRawFileSystemProvider(
+      "o",
+      "r",
+      "sha",
+      stubFetch({ "index.krs": krsWithServices(n) }),
+    );
+    return encodeShare(await synthesizeSharePayload("index.krs", fs)).length;
+  }
+
   /** Encoded length the resolver reported it could not fit. */
   function reportedLength(message: string | undefined): number {
     const m = /encodes to (\d+) characters/.exec(message ?? "");
@@ -253,9 +341,21 @@ describe("resolveRepoPermalink — unfurl payload cap", () => {
     expect(res.encodedPayload).toBeUndefined();
     expect(res.message).toContain("Model too large for a permalink: o/r@sha");
     expect(res.message).toContain(String(MAX_UNFURL_PAYLOAD));
-    expect(reportedLength(res.message)).toBeGreaterThan(MAX_UNFURL_PAYLOAD);
+    // The reported size is the model's real encoded length, not just some number over the cap.
+    const encodedLength = await encodedLengthOf(400);
+    expect(encodedLength).toBeGreaterThan(MAX_UNFURL_PAYLOAD);
+    expect(reportedLength(res.message)).toBe(encodedLength);
     // Names the remedy, not just the failure.
     expect(res.message).toContain("narrower entry .krs");
+    // The body is the i18n catalog entry, not text built in app code (#3837).
+    // The route has no locale source yet, so it is the English entry (#3838).
+    expect(res.message).toBe(
+      translate("en", "permalink.tooLarge.message", {
+        source: "o/r@sha",
+        length: encodedLength,
+        limit: MAX_UNFURL_PAYLOAD,
+      }),
+    );
   });
 
   it("accepts right up to the cap and refuses one node past it", async () => {
@@ -276,6 +376,8 @@ describe("resolveRepoPermalink — unfurl payload cap", () => {
 
     const refused = await resolveWith(overflows);
     expect(refused.status).toBe(413);
-    expect(reportedLength(refused.message)).toBeGreaterThan(MAX_UNFURL_PAYLOAD);
+    const refusedLength = await encodedLengthOf(overflows);
+    expect(refusedLength).toBeGreaterThan(MAX_UNFURL_PAYLOAD);
+    expect(reportedLength(refused.message)).toBe(refusedLength);
   });
 });

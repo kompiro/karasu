@@ -887,7 +887,8 @@ system ECPlatform {
         path: "index.krs",
         content: `// ec-platform/02.5-clients.krs
 // Demonstrates: client kind with form-factor tags, service.delivers,
-// client.handles, and resource <storageKind> "<name>" lines.
+// client.handles, and resource <storageKind> [<Id>] "<name>" lines. A storage
+// with an id is what a usecase's \`resource <ClientId>.<Id>\` names (experimental).
 // Slots between 02-users (who) and 03-domains (what each domain does).
 //
 // User → Client → Service is the natural progression: the people in 02-users
@@ -912,7 +913,7 @@ system ECPlatform {
     description "iOS / Android 向け公式アプリ"
     handles Order
     resource localStorage "preferences"
-    resource indexedDB "outbox"
+    resource indexedDB Outbox "outbox"
   }
 
   client WebApp [web] {
@@ -930,6 +931,9 @@ system ECPlatform {
 
     domain Order {
       label "受注"
+      usecase QueueOrder {
+        resource MobileApp.Outbox { operations create }
+      }
     }
   }
 
@@ -1551,7 +1555,8 @@ system ECPlatform {
         path: "index.krs",
         content: `// ec-platform/02.5-clients.krs
 // Demonstrates: client kind with form-factor tags, service.delivers,
-// client.handles, and resource <storageKind> "<name>" lines.
+// client.handles, and resource <storageKind> [<Id>] "<name>" lines. A storage
+// with an id is what a usecase's \`resource <ClientId>.<Id>\` names (experimental).
 // Slots between 02-users (who) and 03-domains (what each domain does).
 //
 // User → Client → Service is the natural progression: the people in 02-users
@@ -1576,7 +1581,7 @@ system ECPlatform {
     description "Official iOS / Android app"
     handles Order
     resource localStorage "preferences"
-    resource indexedDB "outbox"
+    resource indexedDB Outbox "outbox"
   }
 
   client WebApp [web] {
@@ -1594,6 +1599,9 @@ system ECPlatform {
 
     domain Order {
       label "Orders"
+      usecase QueueOrder {
+        resource MobileApp.Outbox { operations create }
+      }
     }
   }
 

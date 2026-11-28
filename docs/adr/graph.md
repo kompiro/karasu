@@ -22,6 +22,7 @@ flowchart TD
     ADR_3416["ADR-3416<br/>ADR の生成物は PR に含めず、毎日の routine が出す再生成の PR でだけ更新する"]
     ADR_3471["ADR-3471<br/>docs/ の外からは Design Doc ではなく ADR か Issue を指す"]
     ADR_3595["ADR-3595<br/>docs/adr/README.md の手書き一覧をやめ、topic の語彙と生成物への入口にする"]
+    ADR_3620["ADR-3620<br/>昇格 PR の張り替えに、隣の Design Doc への参照・ラベル・番号での言い換えを含める"]
   end
   subgraph app-ui["app-ui"]
     ADR_104["ADR-104<br/>system セレクタUIを採用しない"]
@@ -69,6 +70,7 @@ flowchart TD
     ADR_3599["ADR-3599<br/>初回体験のツアーは、ステップが頼んだ操作をしたことを示すだけで、進むのは訪問者に任せる"]
     ADR_3600["ADR-3600<br/>初回体験の Understand と Evolve を同じ機構のガイドにし、シーンは開いている..."]
     ADR_3601["ADR-3601<br/>Design a service split のガイドに給与システムの題材を同梱し、Step ..."]
+    ADR_3689["ADR-3689<br/>フィードバックは GitHub Discussions の Feedback カテゴリで受け、..."]
     ADR_9009["ADR-9009<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_9010["ADR-9010<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
     ADR_9011["ADR-9011<br/>Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -195,6 +197,7 @@ flowchart TD
     ADR_3162["ADR-3162<br/>karasu serve の Share は、公開版 app を指すリンクで出す"]
     ADR_3196["ADR-3196<br/>Dependabot トリアージ 2026-10-14：npm 6 件を採用し、Radix は..."]
     ADR_3203["ADR-3203<br/>Dependabot security alert 2026-10-14（sharp の ov..."]
+    ADR_3240["ADR-3240<br/>npm の公開を staged publishing にし、OIDC のトークンを持つジョブで..."]
     ADR_3242["ADR-3242<br/>Dependabot トリアージ 2026-10-15：npm 5 件をそのまま採用し、vit..."]
     ADR_3246["ADR-3246<br/>`@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast..."]
     ADR_3257["ADR-3257<br/>app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる"]
@@ -217,9 +220,14 @@ flowchart TD
     ADR_3421["ADR-3421<br/>Copilot で推論する gh-aw の workflow を外し、個人の課金で動かせるまで..."]
     ADR_3504["ADR-3504<br/>Low の ADR の PR は draft を経ずに作り、ゲートはその create を 1..."]
     ADR_3514["ADR-3514<br/>gh pr ready のゲートは --repo をそのまま渡して同じ PR を読み、base..."]
+    ADR_3542["ADR-3542<br/>High の PR で人間が読む範囲を、合意済みの Design Doc で絞り、仕様の文面が..."]
     ADR_3571["ADR-3571<br/>PRD は docs/prd に置かず prd ラベルの Issue にし、展開した Epic..."]
     ADR_3575["ADR-3575<br/>Dependabot トリアージ 2026-11-02：npm 8 件をすべて採用し、LSP ..."]
     ADR_3586["ADR-3586<br/>Dependabot security alert 2026-11-03（@azure/msa..."]
+    ADR_3751["ADR-3751<br/>Dependabot トリアージ 2026-11-09：npm 14 件を採用し、@types..."]
+    ADR_3818["ADR-3818<br/>試験導入の PR は Issue を閉じず、Design Doc は試験より前に置く"]
+    ADR_3870["ADR-3870<br/>Dependabot トリアージ 2026-11-16：16 件を採用し jsdom 31 は..."]
+    ADR_3915["ADR-3915<br/>Dependabot トリアージ 2026-11-23：16 件を採用し Babel 8 と ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -253,6 +261,7 @@ flowchart TD
     ADR_3258["ADR-3258<br/>karasu serve は配信ディレクトリをまるごとブラウザのメモリに写して import ..."]
     ADR_3418["ADR-3418<br/>`karasu serve` を loopback で listen し、ローカルでない `H..."]
     ADR_3426["ADR-3426<br/>`/render?src=` の SSRF 対策を、解決後のアドレスとリダイレクトの各ホップで行う"]
+    ADR_3654["ADR-3654<br/>診断に重大度によらない KRS の ID を振り、人には行の接頭辞で、機械には check -..."]
     ADR_9013["ADR-9013<br/>CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
   end
   subgraph core-concepts["core-concepts"]
@@ -281,6 +290,7 @@ flowchart TD
     ADR_2585["ADR-2585<br/>ストアスコープの ER ビュー — FK は記録し、entity 関連は投影し、確認済みかどう..."]
     ADR_2597["ADR-2597<br/>チーム間の依存を `owns` × 論理エッジから導出する"]
     ADR_2677["ADR-2677<br/>言語 v2.0 を実施する: tag / annotation 語彙を閉じ、facet と b..."]
+    ADR_3794["ADR-3794<br/>usecase から client の local storage を参照する"]
     ADR_9002["ADR-9002<br/>ツール名「karasu」の採用"]
     ADR_9003["ADR-9003<br/>論理構造と物理構造の分離"]
   end
@@ -304,6 +314,7 @@ flowchart TD
     ADR_2477["ADR-2477<br/>並列エッジの perpendicular nudge は「重なっているか」で判定する"]
     ADR_2501["ADR-2501<br/>起点スコープに反するエッジ宣言はどのビューにも描画しない"]
     ADR_3480["ADR-3480<br/>edge の canonical id（base form）は `.krs.style` で読..."]
+    ADR_3702["ADR-3702<br/>解決済み edge スタイルの kind 無しキーと kind 付きキーを重ならないようにする"]
     ADR_9019["ADR-9019<br/>`.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
   end
   subgraph navigation["navigation"]
@@ -355,6 +366,8 @@ flowchart TD
     ADR_2552["ADR-2552<br/>同じ `realizes` ターゲットの繰り返しは 1 つの関係を宣言する（冪等）"]
     ADR_2571["ADR-2571<br/>アノテーションのパラメータを emit 1 箇所に畳み、値の種類ごとに正準形を 1 つ決める"]
     ADR_2707["ADR-2707<br/>引用符なしのアノテーションパラメータ値を壊さずに拒否する"]
+    ADR_3752["ADR-3752<br/>任意で続く要素を読む reader は、後の行で始まる次の edge を読まない"]
+    ADR_3767["ADR-3767<br/>必須の値を読む reader も、後の行で始まる次の edge を読まない"]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
   end
   subgraph project["project"]
@@ -435,6 +448,7 @@ flowchart TD
     ADR_2761["ADR-2761<br/>行幅予算の候補ラダーの長さを計測して 8 段にする"]
     ADR_2802["ADR-2802<br/>組み込みアイコンは core が import 時に登録し、解決しない url() は値 va..."]
     ADR_2803["ADR-2803<br/>shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通ス..."]
+    ADR_2823["ADR-2823<br/>ghost entity / ghost domain を外部ドメインごとの枠に入れて焦点の枠..."]
     ADR_2906["ADR-2906<br/>icon display mode は非推奨のまま据え置き、削除する major はまだ決めない"]
     ADR_2917["ADR-2917<br/>複数 system のルートビューは同名ノードを両方描き、要素の id は bare id の..."]
     ADR_2934["ADR-2934<br/>同名ノードの per-node Map は path をキーにし、bare id の見え方は勝..."]
@@ -486,6 +500,7 @@ flowchart TD
     ADR_2269["ADR-2269<br/>team フレームの色は team カードと同じセレクタで指定する — `team` / `#..."]
     ADR_2482["ADR-2482<br/>バッジ色はテーマ別の対で持ち、テーマ非依存の値を掴めなくする"]
     ADR_3141["ADR-3141<br/>スタイル値の範囲はスキーマ 1 か所に置き、スキーマを満たさない著者の宣言は cascade ..."]
+    ADR_3775["ADR-3775<br/>複数の variant タグを持つノードは、最初のタグの組み込みルールだけで描く"]
     ADR_9004["ADR-9004<br/>CSSインスパイアのスタイリングシステム"]
   end
   subgraph testing["testing"]
@@ -684,6 +699,7 @@ flowchart TD
   ADR_3342 --> ADR_3326
   ADR_3418 --> ADR_3426
   ADR_3504 --> ADR_3286
+  ADR_3620 --> ADR_3286
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -1100,6 +1116,7 @@ flowchart TD
   class ADR_2810 accepted
   class ADR_2813 accepted
   class ADR_2818 accepted
+  class ADR_2823 accepted
   class ADR_2836 accepted
   class ADR_2839 superseded
   class ADR_2859 accepted
@@ -1153,6 +1170,7 @@ flowchart TD
   class ADR_3196 accepted
   class ADR_3203 accepted
   class ADR_3237 accepted
+  class ADR_3240 accepted
   class ADR_3242 accepted
   class ADR_3246 accepted
   class ADR_3257 accepted
@@ -1187,6 +1205,7 @@ flowchart TD
   class ADR_3486 superseded
   class ADR_3504 accepted
   class ADR_3514 accepted
+  class ADR_3542 accepted
   class ADR_3571 accepted
   class ADR_3575 accepted
   class ADR_3586 accepted
@@ -1195,7 +1214,19 @@ flowchart TD
   class ADR_3599 accepted
   class ADR_3600 accepted
   class ADR_3601 accepted
+  class ADR_3620 accepted
+  class ADR_3654 accepted
+  class ADR_3689 accepted
+  class ADR_3702 accepted
   class ADR_3706 accepted
+  class ADR_3751 accepted
+  class ADR_3752 accepted
+  class ADR_3767 accepted
+  class ADR_3775 accepted
+  class ADR_3794 accepted
+  class ADR_3818 accepted
+  class ADR_3870 accepted
+  class ADR_3915 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

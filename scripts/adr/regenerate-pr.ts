@@ -10,9 +10,10 @@
 // Exit codes: 0 merged, closed or nothing to do; 3 waited out (the PR stays and
 // tomorrow's run picks it up); 1 anything else (TPL-2786).
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 import { CONFIG_FILES, GENERATORS, outputPaths, strayPaths } from "./generated.ts";
 import {
   BASE,
@@ -133,6 +134,43 @@ function gitIn(cwd: string, args: string[], quiet = false): string {
   });
 }
 
+/**
+ * Runs git, copies all of its output to this script's stderr, and on failure
+ * throws with the output's last lines. For a push: the pre-push hooks print to
+ * stdout, and a discarded stdout left a refused push with only "failed to push
+ * some refs" (Issue #3925). The thrown message reaches the JSON result the
+ * routine reports; this script's stdout carries only that result.
+ */
+function gitLoud(cwd: string, args: string[]): void {
+  const r = spawnSync("git", args, { cwd, encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
+  if (r.error) throw r.error;
+  const output = `${r.stdout}${r.stderr}`;
+  process.stderr.write(output);
+  if (r.status !== 0) {
+    throw new Error(`git ${args[0]} failed (exit ${r.status ?? r.signal}): ${refusal(output)}`);
+  }
+}
+
+/**
+ * The lines that say why: lefthook's summary marks each failed command with 🥊
+ * (each command's own output, with the details, stays in the stderr copy), and
+ * git's last line follows. Output without that summary falls back to its last lines.
+ */
+export function refusal(output: string): string {
+  const lines = stripVTControlCharacters(output)
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l !== "");
+  const failed = lines.filter((l) => l.startsWith("🥊"));
+  return (failed.length > 0 ? [...failed, lines.at(-1)] : lines.slice(-6)).join(" | ");
+}
+
+/**
+ * The release tags the pre-push hook `diagnostic-ids-history` compares against.
+ * It fails without one, and the routine's clone has no tags (Issue #3925).
+ */
+export const RELEASE_TAGS = "+refs/tags/karasu@*:refs/tags/karasu@*";
+
 /** The main checkout that owns the repository, whichever worktree the caller is in. */
 function repoRoot(cwd: string): string {
   const common = gitIn(cwd, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim();
@@ -142,7 +180,7 @@ function repoRoot(cwd: string): string {
   return dirname(common);
 }
 
-function gitWorkspace(root: string): Workspace {
+export function gitWorkspace(root: string): Workspace {
   const tree = join(root, ".claude", "worktrees", BRANCH);
   const git = (args: string[], quiet = false) => gitIn(root, args, quiet);
   const inTree = (args: string[]) => gitIn(tree, args);
@@ -202,13 +240,16 @@ function gitWorkspace(root: string): Workspace {
       inTree(["commit", "-m", TITLE]);
       return inTree(["rev-parse", "HEAD"]).trim();
     },
-    push: (lease) =>
-      void inTree([
+    push: (lease) => {
+      // The pre-push hooks run here, so fetch what they read first.
+      git(["fetch", "--no-tags", "origin", RELEASE_TAGS]);
+      gitLoud(tree, [
         "push",
         `--force-with-lease=${BRANCH}:${lease ?? ""}`,
         "origin",
         `HEAD:refs/heads/${BRANCH}`,
-      ]),
+      ]);
+    },
     removeWorktree: () => {
       if (!existsSync(tree)) return;
       try {

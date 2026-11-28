@@ -2,6 +2,7 @@
 // import ban exists to route specs and helpers through this file.
 // eslint-disable-next-line no-restricted-imports -- base of every fixture's `test`
 import { test as base } from "@playwright/test";
+import { assertZIndexScaleOnPages, installZIndexProbe } from "./z-index-scan.js";
 
 /**
  * Base fixture every other `test` in this package extends (#3249).
@@ -20,7 +21,7 @@ import { test as base } from "@playwright/test";
  */
 const GOOGLE_FONTS_URL = /^https:\/\/fonts\.(googleapis|gstatic)\.com\//;
 
-export const test = base.extend<{ stubWebFonts: void }>({
+export const test = base.extend<{ stubWebFonts: void; zIndexScale: void }>({
   stubWebFonts: [
     async ({ context }, use) => {
       await context.route(GOOGLE_FONTS_URL, (route) =>
@@ -34,6 +35,17 @@ export const test = base.extend<{ stubWebFonts: void }>({
         }),
       );
       await use();
+    },
+    { auto: true },
+  ],
+  // Every surface a passing test showed must take its z-index from the scale
+  // in tokens.css (TPL-1468; z-index-scan.ts).
+  zIndexScale: [
+    async ({ context }, use, testInfo) => {
+      await installZIndexProbe(context);
+      await use();
+      if (testInfo.status !== testInfo.expectedStatus) return;
+      await assertZIndexScaleOnPages(context.pages());
     },
     { auto: true },
   ],

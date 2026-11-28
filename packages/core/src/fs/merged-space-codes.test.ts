@@ -110,6 +110,18 @@ const FIXTURES = {
     },
     named: { bare: "Infra", path: "Infra.DB" },
   },
+  "resource-target-ambiguous": {
+    // A client's storage and an infra block answer the same `WebApp.ApiKey`
+    // only once the imported half adds the infra block (#3794).
+    entry:
+      `client WebApp [web] {\n  resource sessionStorage ApiKey "k"\n}\n` +
+      PHYSICAL_REFS(`usecase U { resource WebApp.ApiKey { operations read } }`),
+    variants: {
+      draws: `system Infra {\n  storage WebApp {\n    bucket ApiKey\n  }\n}\n`,
+      quiet: `system Infra {\n  storage Other {\n    bucket ApiKey\n  }\n}\n`,
+    },
+    named: { bare: "Infra", path: "Infra.WebApp" },
+  },
   "duplicate-facet-id": {
     entry: `facet pii {\n  label "PII"\n}\n`,
     variants: {

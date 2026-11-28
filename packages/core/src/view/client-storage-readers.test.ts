@@ -1,0 +1,231 @@
+/**
+ * What the readers of a resolved `resource <ClientId>.<Id>` do with it (#3794):
+ * the canvas labels it `<name> (<storageKind>)`, and nothing that reads infra
+ * (derived service → store edges, shared-store fan-in, cross-domain store
+ * access) treats a client's storage as an infra store, including when an infra
+ * block and a client share the id (TPL-1720).
+ */
+import { describe, it, expect } from "vitest";
+import { compile } from "../compile/compile.js";
+import { extractView } from "./view-extract.js";
+import { withUnassignedSystem } from "./unassigned-system.js";
+import { Parser } from "../parser/parser.js";
+import { physicalTargetsOf } from "../spec/infra-index.js";
+import { layout } from "../renderer/layout.js";
+import { extractModelDeployView } from "./deploy-view-extract.js";
+import { CHAR_WIDTH, estimateTextWidth } from "../renderer/rendering-constants.js";
+
+const MODEL = `
+system S {
+  client WebApp [web] {
+    resource sessionStorage ApiKey "karasu.ai.anthropic.apiKey"
+    resource localStorage Theme "karasu-theme"
+  }
+  service App {
+    delivers WebApp
+    domain Chat {
+      usecase SaveApiKey { resource WebApp.ApiKey { operations create } }
+    }
+    domain Look {
+      usecase SetTheme { resource WebApp.Theme { operations update } }
+    }
+  }
+  service Other {
+    domain Prefs {
+      usecase ReadKey { resource WebApp.ApiKey { operations read } }
+    }
+  }
+}
+`;
+
+function view(src: string, path: string[]) {
+  const file = Parser.parse(src).value;
+  return extractView(withUnassignedSystem(file), path, [], [], undefined, physicalTargetsOf(file));
+}
+
+describe("client storage readers (#3794)", () => {
+  it("labels a resolved client storage <name> (<storageKind>)", () => {
+    const slice = view(MODEL, ["S", "App", "Chat"]);
+    expect(slice.resourceLabelMap.get("WebApp.ApiKey")).toBe(
+      "karasu.ai.anthropic.apiKey (sessionStorage)",
+    );
+    expect(slice.childNodes.map((n) => n.id)).toContain("WebApp.ApiKey");
+  });
+
+  it("sizes the promoted card for the label it draws, not for its id", () => {
+    const label = "karasu.ai.anthropic.apiKey (sessionStorage)";
+    const node = layout(view(MODEL, ["S", "App", "Chat"])).nodes.get("WebApp.ApiKey");
+    expect(node?.label).toBe(label);
+    expect(node!.width).toBeGreaterThanOrEqual(estimateTextWidth(label, CHAR_WIDTH));
+  });
+
+  it("draws that label in the domain view", () => {
+    const result = compile(MODEL, { viewPath: ["S", "App", "Chat"] });
+    expect(result.svg).toContain("karasu.ai.anthropic.apiKey (sessionStorage)");
+  });
+
+  it("labels a storage of a top-level client too", () => {
+    const src = `
+client WebApp [web] {
+  resource opfs Projects "/meta/projects.json"
+}
+system S {
+  service App {
+    domain Workspace {
+      usecase SaveProject { resource WebApp.Projects { operations update } }
+    }
+  }
+}
+`;
+    const result = compile(src, { viewPath: ["S", "App", "Workspace"] });
+    expect(result.svg).toContain("/meta/projects.json (opfs)");
+  });
+
+  it("derives no service → client edge from a client storage reference", () => {
+    // The root system view is where derived service → store edges are drawn.
+    const slice = view(MODEL, []);
+    const toClient = slice.childEdges.filter((e) => e.to === "WebApp");
+    // Only the authored `delivers` relation reaches the client.
+    expect(toClient.length).toBeGreaterThan(0);
+    expect(toClient.every((e) => e.tags.includes("delivers"))).toBe(true);
+    expect(slice.childEdges.some((e) => e.from === "Other" && e.to === "WebApp")).toBe(false);
+  });
+
+  it("keeps resolving to the infra block, and its edge, when a client shares the id", () => {
+    const src = `
+client WebApp [web] {
+  resource sessionStorage ApiKey "k"
+}
+system S {
+  storage WebApp {
+    bucket ApiKey { label "Key bucket" }
+  }
+  service App {
+    domain Chat {
+      usecase SaveApiKey { resource WebApp.ApiKey { operations create } }
+    }
+  }
+}
+`;
+    const root = view(src, []);
+    expect(root.childEdges.some((e) => e.from === "App" && e.to === "WebApp")).toBe(true);
+    expect(view(src, ["S", "App", "Chat"]).resourceLabelMap.get("WebApp.ApiKey")).toBe(
+      "Key bucket",
+    );
+  });
+
+  it("reads the shape tag of a top-level infra leaf from the same index, and infers none for a client storage", () => {
+    const src = `
+database Db {
+  table Orders
+}
+queue Events {
+  queue Placed
+}
+storage WebApp {
+  bucket Media
+}
+system S {
+  client WebApp [web] { resource sessionStorage ApiKey "k" }
+}
+`;
+    const file = Parser.parse(src).value;
+    // Only the real systems: the top-level database reaches the map through the index.
+    const slice = extractView(file.systems, ["S"], [], [], undefined, physicalTargetsOf(file));
+    expect(slice.resourceInferredTagsMap.get("Db.Orders")).toBe("table");
+    expect(slice.resourceInferredTagsMap.get("Events.Placed")).toBe("queue");
+    // The infra leaf keeps its tag when a client shares the block's id.
+    expect(slice.resourceInferredTagsMap.get("WebApp.Media")).toBe("storage");
+    expect(slice.resourceInferredTagsMap.has("WebApp.ApiKey")).toBe(false);
+  });
+
+  it("gives no label to a storage two same-id clients declare", () => {
+    const src = `
+system A {
+  client WebApp [web] { resource sessionStorage ApiKey "a" }
+}
+system B {
+  client WebApp [web] { resource localStorage ApiKey "b" }
+}
+`;
+    expect(view(src, ["A"]).resourceLabelMap.has("WebApp.ApiKey")).toBe(false);
+  });
+
+  it("puts the referencing usecases on the client's metadata", () => {
+    const result = compile(MODEL, { viewPath: ["S"] });
+    if (result.diagramType !== "system") throw new Error("expected a system result");
+    const client = result.nodeMetadata.get("WebApp");
+    expect(client?.resources?.map((r) => [r.id, r.usecases])).toEqual([
+      ["ApiKey", ["SaveApiKey", "ReadKey"]],
+      ["Theme", ["SetTheme"]],
+    ]);
+  });
+
+  it("lists the usecases only on the first of two storages with one id", () => {
+    const src = `
+system S {
+  client WebApp [web] {
+    resource sessionStorage ApiKey "a"
+    resource localStorage ApiKey "b"
+  }
+  service App {
+    domain Chat { usecase Save { resource WebApp.ApiKey { operations create } } }
+  }
+}
+`;
+    const result = compile(src, { viewPath: ["S"] });
+    if (result.diagramType !== "system") throw new Error("expected a system result");
+    expect(result.nodeMetadata.get("WebApp")?.resources?.map((r) => r.usecases)).toEqual([
+      ["Save"],
+      undefined,
+    ]);
+  });
+
+  it("names the client storage on a promoted resource's metadata", () => {
+    const result = compile(MODEL, { viewPath: ["S", "App", "Chat"] });
+    if (result.diagramType !== "system") throw new Error("expected a system result");
+    expect(result.nodeMetadata.get("WebApp.ApiKey")?.clientStorage).toEqual({
+      clientId: "WebApp",
+      storageId: "ApiKey",
+      storageKind: "sessionStorage",
+      name: "karasu.ai.anthropic.apiKey",
+    });
+  });
+
+  it("derives the deploy view's ghost edges with the model-wide index, none to a client storage", () => {
+    const src = `
+client WebApp [web] {
+  resource sessionStorage ApiKey "k"
+}
+system S {
+  database Db {
+    table Orders
+  }
+  service App {
+    domain Chat {
+      usecase Save { resource WebApp.ApiKey { operations create } }
+      usecase Order { resource Db.Orders { operations create } }
+    }
+  }
+}
+deploy prod {
+  oci api {
+    realizes App
+  }
+  store db {
+    realizes Db
+  }
+}
+`;
+    const slice = extractModelDeployView(Parser.parse(src).value);
+    const pairs = slice.ghostEdges.map((e) => `${e.from}->${e.to}`);
+    expect(pairs).toContain("App->Db");
+    expect(pairs.some((p) => p.endsWith("->WebApp"))).toBe(false);
+  });
+
+  it("reports no shared-store fan-in or cross-domain store access on a client storage", () => {
+    const kinds = compile(MODEL).warnings.map((w) => w.kind);
+    expect(kinds).not.toContain("shared-infra-fan-in");
+    expect(kinds).not.toContain("cross-domain-store-access");
+  });
+});

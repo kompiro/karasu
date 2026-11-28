@@ -1,7 +1,8 @@
 // The three parallel views of one model each draw everything the merged model
 // declares for them (TPL-2169): the system face every logical node, the deploy
-// face every deploy node, the org face every team. Measured over every shipped
-// example through `buildAllViewsSvgProject`, the bundle `karasu render` writes,
+// face every deploy node, the org face every team and member, nested ones
+// included. Measured over every shipped example through
+// `buildAllViewsSvgProject`, the bundle `karasu render` writes,
 // so imports are resolved as they are for a user and a new example joins the
 // day it is added. The expectation is derived from the merged model, so a new
 // declaration joins without touching this file.
@@ -14,7 +15,7 @@ import { InMemoryFileSystemProvider } from "../fs/in-memory-provider.js";
 import { ImportResolver } from "../fs/import-resolver.js";
 import { Parser } from "../parser/parser.js";
 import { nodePathRefId } from "../parser/node-path.js";
-import type { KrsFile, KrsNode } from "../types/ast.js";
+import type { KrsFile, KrsNode, OrgNode } from "../types/ast.js";
 import { buildAllViewsSvgProject } from "./compile.js";
 
 const EXAMPLES = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../examples");
@@ -85,15 +86,22 @@ function declared(file: KrsFile): Record<Face, Expected[]> {
     // and the anchor carries no path (#2933, docs/spec/permalink.md). When a
     // container's id is declared at two paths, the bundle draws the level of
     // the one the app resolves the anchor to, and the other's contents have
-    // no level. Decided there; not a loss this guard should report. The
-    // winner's contents stay expected: only the branches the anchor does not
-    // resolve to are left out.
-    const behindSharedAnchor = prefix.some((ancestor, i) => {
-      if (i === 0 || (pathsPerId.get(ancestor.id) ?? 0) < 2) return false;
-      const own = prefix.slice(0, i + 1).map((n) => n.id);
-      const winner = file.nodePathIndex.get(ancestor.id)?.join(".");
-      return winner !== own.join(".") && winner !== own.slice(1).join(".");
-    });
+    // no level. Decided there; not a loss this guard should report. Only the
+    // direct children of a container that does not own its anchor are left
+    // out: the renderer still descends into it, so a grandchild that owns an
+    // anchor of its own is drawn. When the index names a winner, the winner's
+    // children stay expected. The index walks only some logical kinds
+    // (`INDEXED_KINDS` in parser/reference-validation.ts): an indexed kind with
+    // no winner is an index bug, so its children stay expected; for any other
+    // kind the bundle gives the anchor to the first path it walks, which this
+    // test does not reproduce, so the children of every such path are left out.
+    const parent = prefix[prefix.length - 1];
+    const behindSharedAnchor = (() => {
+      if (prefix.length < 2 || (pathsPerId.get(parent.id) ?? 0) < 2) return false;
+      const winner = file.nodePathIndex.get(parent.id)?.join(".");
+      if (winner === undefined) return !INDEXED_KINDS.has(parent.kind);
+      return winner !== prefix.map((n) => n.id).join(".");
+    })();
     if (!isRootCanvas && !behindSharedAnchor) {
       system.push({
         key: nodePathRefId(chain.map((n) => n.id)),
@@ -106,8 +114,17 @@ function declared(file: KrsFile): Record<Face, Expected[]> {
   return {
     system,
     deploy: file.deploys.flatMap((block) => block.nodes.map((node) => ({ key: node.id }))),
-    org: file.organizations.flatMap((org) => org.teams.map((team) => ({ key: team.id }))),
+    // Every team and member, nested ones included: the org view draws each.
+    org: file.organizations.flatMap((org) => orgNodes(org.teams).map((node) => ({ key: node.id }))),
   };
+}
+
+/** The logical kinds `nodePathIndex` walks (`INDEXED_KINDS` in parser/reference-validation.ts). */
+const INDEXED_KINDS = new Set(["service", "domain", "client"]);
+
+/** A team list and everything under it, teams and members alike. */
+function orgNodes(nodes: readonly OrgNode[]): OrgNode[] {
+  return nodes.flatMap((node) => [node, ...(node.kind === "team" ? orgNodes(node.children) : [])]);
 }
 
 const unescape = (value: string) =>
@@ -134,7 +151,7 @@ function draws(face: Face, markup: string, expected: Expected): boolean {
       (id) => id === expected.key || id.endsWith(`::${expected.key}`),
     );
   }
-  return values("data-team-id").has(expected.key) || values("data-node-id").has(expected.key);
+  return values("data-node-id").has(expected.key);
 }
 
 describe("every shipped example draws all of its model on each of the three faces (TPL-2169)", () => {
@@ -168,6 +185,19 @@ describe("every shipped example draws all of its model on each of the three face
     expect(found).toBe(true);
   });
 
+  // Nested teams and members are part of the org face only if the corpus has
+  // them: a team inside a team, and a member, in any entries.
+  it("holds a nested team and a member", async () => {
+    const kinds = new Set<string>();
+    for (const entry of entries) {
+      const { krsFile } = await new ImportResolver(fs).resolve(entry);
+      for (const org of krsFile.organizations)
+        for (const team of org.teams)
+          for (const node of orgNodes(team.children)) kinds.add(node.kind);
+    }
+    expect([...kinds].sort()).toEqual(["member", "team"]);
+  });
+
   it.each(entries)("%s", async (entry) => {
     const { svg } = await buildAllViewsSvgProject(entry, fs);
     const { krsFile } = await new ImportResolver(fs).resolve(entry);
@@ -176,7 +206,7 @@ describe("every shipped example draws all of its model on each of the three face
     for (const face of Object.keys(FACES) as Face[]) {
       const markup = pane(svg, face);
       for (const key of expected[face])
-        if (!draws(face, markup, key)) undrawn.push(`${face}:${key}`);
+        if (!draws(face, markup, key)) undrawn.push(`${face}:${key.key}`);
     }
     expect(undrawn).toEqual([]);
   });

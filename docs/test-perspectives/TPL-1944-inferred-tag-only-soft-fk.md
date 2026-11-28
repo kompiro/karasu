@@ -61,12 +61,19 @@ scope:
 - 全列 FK ジャンクションの 2 本の Explicit FK → どちらの関連も無タグ。
 - 集約内の child→root FK（内部リンク）→ 関連として出力しない（自己参照も同様）。
 - `edge[inferred]` 既定スタイルが色のみを設定し、`[sync]` / `[async]` の線種を
-  上書きしない。
+  上書きしない。 [guard: `packages/core/src/builtins/inferred-edge-rule.test.ts`]
 - 同じ判定が **table 層にも**そのまま適用される（#2722）: `translate --from db` が
   `database` ブロック内に記録する `TableA -> TableB` は、Explicit FK が 1 本でも寄与すれば
   無タグ、Soft FK のみなら `[inferred]`。entity 関連と table エッジは同じ関連集合から
   出るので、一方だけ `[inferred]` になる組み合わせは存在しない
   （`packages/core/src/translate/db.test.ts` › recorded table edges (#2722)）。
+
+## 関連テスト
+
+- `packages/core/src/builtins/inferred-edge-rule.test.ts` — 全組み込みテーマ（`DiagramTheme` の
+  union 全体に固定した一覧）の解析済みシートで、`inferred` タグを持つ edge ルール（型なしの
+  `[inferred]` を含む）が `color` だけを宣言することを確かめる。`edge[delivers]` は
+  `border-style` を正当に持つので、規則は `inferred` に限る。
 
 ## 派生元 spec
 

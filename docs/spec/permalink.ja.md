@@ -27,8 +27,11 @@ SVG からコピーした fragment はアプリでも解決し、その逆も成
   `ActiveView`。`@karasu-tools/core` の `ShareTargetView` が対応する）に加えて
   `entity`。`entity` トークンは **ドメイン単位のエンティティビュー**を指す:
   `<id>` は domain id で、`#krs-entity-<domainId>` はそのドメインのエンティティ
-  ビュー（エンティティとドメイン内関連。他ドメイン先の ghost は後続で入る）
-  を開く。エンティティビューは
+  ビュー（エンティティとドメイン内関連。修飾付きの他ドメイン参照は外部
+  エンティティの muted な ghost として描かれる。ドメインを参照する ghost は
+  ドメインの枠の上に、ドメインが参照する ghost は下に置かれ（両方向の関連を持つ
+  ghost は本数の多い側、同数なら下）、外部ドメインごとの枠に入る。その側に 1 件しかない ghost は所属ドメインの subLabel 付きのカードに
+  なる。[syntax.md](./syntax.md) を参照）を開く。エンティティビューは
   静的 all-views バンドル（`drill-down-svg.ts`）に出力され、system ビューの
   ドメインからドリルされるため system pane 内に置かれる。SPA では entity ビューは
   **`system` ビューのサブモード**（独立した `ActiveView` ではない）: app は

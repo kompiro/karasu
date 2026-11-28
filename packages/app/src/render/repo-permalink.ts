@@ -5,7 +5,15 @@ import {
   type FileSystemProvider,
   type DirEntry,
 } from "@karasu-tools/core";
-import { encodeShare, fitsUnfurlPayload, MAX_UNFURL_PAYLOAD } from "../utils/inline-share.js";
+import { bindTranslate } from "@karasu-tools/i18n";
+import { describeUnfurlOverflow, encodeShare, fitsUnfurlPayload } from "../utils/inline-share.js";
+
+/**
+ * Translator for the plain-text bodies this resolver returns. The words live
+ * in `@karasu-tools/i18n` (`permalink.*`); the route has no locale source yet,
+ * so every body is English (#3838).
+ */
+const t = bindTranslate("en");
 
 /**
  * Repo-backed + ref-pinned permalink resolver for karasu-nest (Phase 2).
@@ -96,7 +104,7 @@ const DEFAULT_REF = "HEAD";
  */
 export function parseRepoPermalink(rawPath: string): ParseResult {
   const path = rawPath.replace(/^\/+/, "").replace(/\/+$/, "");
-  if (path === "") return { ok: false, message: "Empty permalink." };
+  if (path === "") return { ok: false, message: t("permalink.parse.empty") };
 
   const at = path.lastIndexOf("@");
   let left: string;
@@ -108,36 +116,32 @@ export function parseRepoPermalink(rawPath: string): ParseResult {
     left = path.slice(0, at);
     ref = path.slice(at + 1);
     if (ref === "") {
-      return {
-        ok: false,
-        message: "Empty ref after '@' — give a branch/tag/SHA, or omit '@' for the default branch.",
-      };
+      return { ok: false, message: t("permalink.parse.emptyRef") };
     }
     if (!REF_RE.test(ref)) {
-      return {
-        ok: false,
-        message: `Invalid ref "${ref}". Use a commit SHA, or a slash-free branch/tag name.`,
-      };
+      return { ok: false, message: t("permalink.parse.invalidRef", { ref }) };
     }
   }
 
   const segments = left.split("/");
   if (segments.length < 2) {
-    return { ok: false, message: "Expected '<owner>/<repo>[/<path>]@<ref>'." };
+    return { ok: false, message: t("permalink.parse.shape") };
   }
   const [owner, repo, ...rest] = segments;
-  if (!OWNER_RE.test(owner)) return { ok: false, message: `Invalid owner "${owner}".` };
-  if (!REPO_RE.test(repo)) return { ok: false, message: `Invalid repo "${repo}".` };
+  if (!OWNER_RE.test(owner))
+    return { ok: false, message: t("permalink.parse.invalidOwner", { owner }) };
+  if (!REPO_RE.test(repo))
+    return { ok: false, message: t("permalink.parse.invalidRepo", { repo }) };
 
   let filePath: string | null = null;
   if (rest.length > 0) {
     filePath = rest.join("/");
     // Reject traversal / absolute / backslash paths before it reaches a URL.
     if (!isSafeRelativePath(filePath)) {
-      return { ok: false, message: `Invalid path "${filePath}".` };
+      return { ok: false, message: t("permalink.parse.invalidPath", { path: filePath }) };
     }
     if (!filePath.endsWith(".krs")) {
-      return { ok: false, message: `Path must point to a .krs file, got "${filePath}".` };
+      return { ok: false, message: t("permalink.parse.notKrs", { path: filePath }) };
     }
   }
 
@@ -267,7 +271,7 @@ export interface ResolveResult {
 }
 
 /**
- * Status returned when the resolved model encodes above {@link MAX_UNFURL_PAYLOAD}.
+ * Status returned when the resolved model encodes past {@link fitsUnfurlPayload}.
  *
  * No HTTP status names this exactly: 413 and 414 both describe an oversized
  * *request*, whereas here the request is small and it is the `/s?s=` URL we
@@ -293,7 +297,7 @@ function isImmutableRef(ref: string): boolean {
  * @param fetchImpl injected fetch (the Workers runtime passes global `fetch`)
  *
  * Status: 200 (payload), 400 (bad permalink), 404 (no `.krs` at the ref),
- * 413 (the model encodes above {@link MAX_UNFURL_PAYLOAD}), 502 (upstream
+ * 413 (the model encodes past {@link fitsUnfurlPayload}), 502 (upstream
  * GitHub failure), 500 (unexpected). A directory/wildcard import degrades
  * gracefully (opens without those files), not an error.
  */
@@ -314,7 +318,7 @@ export async function resolveRepoPermalink(
       const tried = filePath ?? DEFAULT_ENTRIES.join(" / ");
       return {
         status: 404,
-        message: `No .krs found at ${owner}/${repo}@${ref} (looked for ${tried}).`,
+        message: t("permalink.notFound.message", { source: `${owner}/${repo}@${ref}`, tried }),
         contentType: PLAIN,
       };
     }
@@ -334,11 +338,7 @@ export async function resolveRepoPermalink(
       // rejected alternatives are recorded on Issue #2259.
       return {
         status: STATUS_PAYLOAD_TOO_LARGE,
-        message:
-          `Model too large for a permalink: ${owner}/${repo}@${ref} encodes to ` +
-          `${encodedPayload.length} characters, over the ${MAX_UNFURL_PAYLOAD} a ` +
-          `shareable URL can carry. Point the permalink at a narrower entry .krs, ` +
-          `or split the model.`,
+        message: describeUnfurlOverflow(t, `${owner}/${repo}@${ref}`, encodedPayload.length),
         contentType: PLAIN,
       };
     }
@@ -353,13 +353,16 @@ export async function resolveRepoPermalink(
     if (typeof upstream === "number") {
       return {
         status: 502,
-        message: `Upstream GitHub error (${upstream}).`,
+        message: t("permalink.upstream.message", { status: upstream }),
         contentType: PLAIN,
       };
     }
     return {
       status: 500,
-      message: `Failed to resolve ${owner}/${repo}@${ref}: ${(err as Error).message}`,
+      message: t("permalink.failed.message", {
+        source: `${owner}/${repo}@${ref}`,
+        detail: (err as Error).message,
+      }),
       contentType: PLAIN,
     };
   }

@@ -28,6 +28,9 @@ import {
   collectPromotedChildren,
 } from "./resource-promotion.js";
 import { resolveContainerChain } from "./view-path.js";
+import { indexPhysicalTargets, type PhysicalTargetIndex } from "../spec/infra-index.js";
+// Re-exported so a caller building an extractor from a file imports both from here.
+export { physicalTargetsOf } from "../spec/infra-index.js";
 import {
   emptySlice,
   type ExpandedFrame,
@@ -404,13 +407,17 @@ interface SharedViewExtractContext {
   ghostEndpoint: (ref: NodeIdPath) => GhostEndpointMatch | undefined;
 }
 
-function buildSharedContext(systems: KrsNode[], orphans: KrsNode[]): SharedViewExtractContext {
-  const resourceLabelMap = buildResourceLabelMap(systems);
-  const resourceInferredTagsMap = buildResourceInferredTagsMap(systems);
+function buildSharedContext(
+  systems: KrsNode[],
+  orphans: KrsNode[],
+  physicalTargets: PhysicalTargetIndex = indexPhysicalTargets([...systems, ...orphans]),
+): SharedViewExtractContext {
+  const resourceLabelMap = buildResourceLabelMap(systems, physicalTargets);
+  const resourceInferredTagsMap = buildResourceInferredTagsMap(systems, physicalTargets);
   // Resolver over the whole model: a bare `resource <id>` in one domain may
   // resolve to an `entity` declared in another domain / service, so this is
   // built once from every root, not per-container.
-  const entityResolver = buildEntityResolver([...systems, ...orphans]);
+  const entityResolver = buildEntityResolver([...systems, ...orphans], physicalTargets);
   return {
     resourceLabelMap,
     resourceInferredTagsMap,
@@ -482,8 +489,14 @@ export function createViewExtractor(
   systems: KrsNode[],
   unassignedDomains: KrsNode[] = [],
   unassignedServices: KrsNode[] = [],
+  /** Model-wide `<Parent>.<Child>` targets, so top-level clients reach labels (#3794). */
+  physicalTargets?: PhysicalTargetIndex,
 ): ViewExtractor {
-  const shared = buildSharedContext(systems, [...unassignedServices, ...unassignedDomains]);
+  const shared = buildSharedContext(
+    systems,
+    [...unassignedServices, ...unassignedDomains],
+    physicalTargets,
+  );
   return (path, expandedContainers) =>
     extractWithContext(
       systems,
@@ -511,8 +524,14 @@ export function extractView(
    * other system frames stay collapsed (Phase 1 scope).
    */
   expandedContainers?: ReadonlySet<string>,
+  /** Model-wide `<Parent>.<Child>` targets, so top-level clients reach labels (#3794). */
+  physicalTargets?: PhysicalTargetIndex,
 ): ViewSlice {
-  const shared = buildSharedContext(systems, [...unassignedServices, ...unassignedDomains]);
+  const shared = buildSharedContext(
+    systems,
+    [...unassignedServices, ...unassignedDomains],
+    physicalTargets,
+  );
   return extractWithContext(
     systems,
     path,

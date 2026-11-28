@@ -132,6 +132,7 @@ function buildGhostDomains(
             ghostDomainMap.set(edge.to, {
               node: foreignDomain,
               parentServiceLabel: targetService?.label ?? targetServiceId,
+              parentServiceId: targetServiceId,
             });
           }
         }
@@ -151,6 +152,7 @@ function buildGhostDomains(
           ghostDomainMap.set(domain.id, {
             node: domain,
             parentServiceLabel: service.label ?? service.id,
+            parentServiceId: service.id,
           });
         }
         ghostDomainEdges.push(edge);

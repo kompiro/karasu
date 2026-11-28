@@ -144,6 +144,8 @@ export const DIAGNOSTIC_IDS: Readonly<Record<DiagnosticCode | WarningKind, Diagn
   "app-project-compile-error": "KRS112",
   "app-org-parse-error": "KRS113",
   "generic-text": "KRS114",
+  "resource-target-ambiguous": "KRS115",
+  "client-resource-duplicate-id": "KRS116",
 };
 
 /**
