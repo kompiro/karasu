@@ -47,7 +47,9 @@ fi
 transcript=$(jq -r '.transcript_path // empty' <<<"$input" 2>/dev/null) || transcript=""
 current=""
 if [ -n "$transcript" ] && [ -r "$transcript" ]; then
-  current=$(grep -F '"type":"custom-title"' "$transcript" 2>/dev/null | tail -n 1 |
+  # Anchored to the start of the line, the form Claude Code writes the record in, so a tool input
+  # that merely contains the text cannot pose as the last name.
+  current=$(grep '^{"type":"custom-title"' "$transcript" 2>/dev/null | tail -n 1 |
     jq -r '.customTitle // empty' 2>/dev/null) || current=""
 fi
 

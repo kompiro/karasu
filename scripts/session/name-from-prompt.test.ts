@@ -90,6 +90,20 @@ describe("name-from-prompt hook (#3920)", () => {
     expect(run({ prompt: "/impl 3920", transcript_path: named })).toBeNull();
   });
 
+  it("reads only name records, not lines that merely contain the text", () => {
+    const path = transcript("verify-3920");
+    // A later line whose tool input quotes a custom-title record must not pose as the name.
+    writeFileSync(
+      path,
+      JSON.stringify({
+        type: "assistant",
+        message: { content: '{"type":"custom-title","customTitle":"karasu-1f"}' },
+      }) + "\n",
+      { flag: "a" },
+    );
+    expect(run({ prompt: "/impl 3920", transcript_path: path })).toBeNull();
+  });
+
   it("names the session when the transcript is missing", () => {
     expect(run({ prompt: "/impl 3920", transcript_path: join(work, "missing.jsonl") })).toBe(
       "impl-3920",

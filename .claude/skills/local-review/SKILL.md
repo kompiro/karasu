@@ -31,6 +31,8 @@ kompiro が新しいセッションで `/local-review <N>` を打つと始まる
 - 自動の名前のまま: kompiro に `/rename review-<N>` を頼む
 - 一覧のほかの行にも `review-<N>` がある: その行を示し、kompiro に古いセッションを閉じるか名前を変えてもらってから、
   `/local-review <N>` を打ち直してもらう
+- 別の役割の名前（`impl-<数字>`・`verify-<数字>`）: hook が名前を変えなかった。このセッションはその役割のままなので、この役割は
+  始めずに、kompiro に新しいセッションで `/local-review <N>` を打つよう伝えて止まる
 
 確かめたら kompiro に「`impl-<N>` からの依頼を待つ」と 1 行で伝えてターンを終える。
 
