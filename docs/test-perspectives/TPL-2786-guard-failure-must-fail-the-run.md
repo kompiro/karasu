@@ -79,6 +79,7 @@ frontmatter が `continue-on-error: false` を宣言していること、lock �
 
 <!-- absent-path-next-line: deleted with the gh-aw workflows in #3423 (ADR-3421), named as history -->
 - `scripts/ci/agentic-workflow-safety.test.ts`
+- `scripts/adr/regenerate-pr-flow.test.ts`（再生成の routine が読み取りをやり直したあとも、失敗し続けた読み取りで run を落とす。#3933）
 
 ## 派生元 spec
 
