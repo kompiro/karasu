@@ -250,8 +250,47 @@ export interface Deps {
   log: (message: string) => void;
 }
 
+/** How many times a read is tried before its failure ends the run (Issue #3933). */
+export const READ_ATTEMPTS = 3;
+const READ_BACKOFF_MS = 5 * 1000;
+
+/**
+ * The same GitHub with each read tried up to {@link READ_ATTEMPTS} times. A read
+ * through the routine's proxy can fail once and work right after, and giving up
+ * on it left an opened PR unmerged until the next day's run (Issue #3933). Writes
+ * are not retried: a repeated create could open a second PR, and a merge is
+ * already pinned to a SHA. The last failure is thrown as it was (TPL-2786).
+ */
+function withReadRetries(github: GitHub, clock: Clock, log: (message: string) => void): GitHub {
+  const read = <T>(what: string, call: () => T): T => {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return call();
+      } catch (e) {
+        if (attempt >= READ_ATTEMPTS) throw e;
+        const reason = e instanceof Error ? e.message : String(e);
+        log(`${what} failed (attempt ${attempt} of ${READ_ATTEMPTS}), retrying: ${reason}`);
+        clock.sleep(READ_BACKOFF_MS);
+      }
+    }
+  };
+  return {
+    openPulls: () => read("listing the open PRs", () => github.openPulls()),
+    pull: (n) => read(`reading PR #${n}`, () => github.pull(n)),
+    branchSha: () => read(`reading ${BRANCH}`, () => github.branchSha()),
+    requiredChecks: () => read("reading the required checks", () => github.requiredChecks()),
+    checkRuns: (sha) => read(`reading the check runs of ${sha}`, () => github.checkRuns(sha)),
+    createPull: (body) => github.createPull(body),
+    closePull: (n) => github.closePull(n),
+    addLabel: (n, name) => github.addLabel(n, name),
+    removeLabel: (n, name) => github.removeLabel(n, name),
+    merge: (n, sha) => github.merge(n, sha),
+  };
+}
+
 export function regeneratePr(deps: Deps): Result {
-  const { github, workspace, clock, log } = deps;
+  const { workspace, clock, log } = deps;
+  const github = withReadRetries(deps.github, clock, log);
   const deadline = clock.now() + DEADLINE_MS;
 
   if (workspace.worktreeExists()) {
