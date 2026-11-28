@@ -40,8 +40,9 @@ kompiro が新しいセッションで `/impl <N>` を打つと始まる。`N` �
 
 ## 2. 着手する
 
-`/hane:start-dev` の流れで Issue N に着手する。Issue N の worktree（`git worktree list` でブランチ名に `N` を含む
-もの）がすでにあれば、作り直さずにそこで続ける。Design PR と実装 PR を順に作るときも、同じ `impl-<N>` が続けて
+`/hane:start-dev` の流れで Issue N に着手する。Issue N の worktree（`git worktree list` で、ブランチ名に前後が数字で
+ない `N` を含むもの。`N` が 39 なら `3920` は数えない）がすでにあれば、作り直さずにそこで続ける。当てはまるものが
+2 つ以上あれば、どれで続けるかを kompiro に聞く。Design PR と実装 PR を順に作るときも、同じ `impl-<N>` が続けて
 持つ。
 
 ## 3. ローカルレビューを `review-<N>` に頼む（手順 8・9）
