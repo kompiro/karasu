@@ -147,14 +147,22 @@ function gitLoud(cwd: string, args: string[]): void {
   const output = `${r.stdout}${r.stderr}`;
   process.stderr.write(output);
   if (r.status !== 0) {
-    const tail = stripVTControlCharacters(output)
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l !== "")
-      .slice(-6)
-      .join(" | ");
-    throw new Error(`git ${args[0]} failed (exit ${r.status}): ${tail}`);
+    throw new Error(`git ${args[0]} failed (exit ${r.status ?? r.signal}): ${refusal(output)}`);
   }
+}
+
+/**
+ * The lines that say why: lefthook's summary marks each failed command with 🥊
+ * (each command's own output, with the details, stays in the stderr copy), and
+ * git's last line follows. Output without that summary falls back to its last lines.
+ */
+export function refusal(output: string): string {
+  const lines = stripVTControlCharacters(output)
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l !== "");
+  const failed = lines.filter((l) => l.startsWith("🥊"));
+  return (failed.length > 0 ? [...failed, lines.at(-1)] : lines.slice(-6)).join(" | ");
 }
 
 /**

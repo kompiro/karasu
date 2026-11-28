@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { BRANCH } from "./regenerate-pr-flow.ts";
-import { RELEASE_TAGS, gitWorkspace } from "./regenerate-pr.ts";
+import { RELEASE_TAGS, gitWorkspace, refusal } from "./regenerate-pr.ts";
 
 // The real git side of `pnpm adr:regenerate-pr`'s push (Issue #3925). The routine
 // clones without tags, and the pre-push hook `diagnostic-ids-history` fails
@@ -106,7 +106,7 @@ describe("gitWorkspace push on a clone without tags", { timeout: 30_000 }, () =>
     );
   });
 
-  it("names the hook's reason in the error when the push is still refused", () => {
+  it("puts the hook's output in the error when the push is still refused", () => {
     // No release tag on origin either: the fetch brings nothing and the hook refuses.
     git(dir, ["--git-dir", origin, "tag", "-d", "karasu@1.0.0"]);
     expect(() => gitWorkspace(root).push(null)).toThrow(
@@ -118,5 +118,29 @@ describe("gitWorkspace push on a clone without tags", { timeout: 30_000 }, () =>
     git(root, ["fetch", "-q", "origin", RELEASE_TAGS]);
     git(root, ["push", "-q", "origin", `origin/main:refs/heads/${BRANCH}`]);
     expect(() => gitWorkspace(root).push(null)).toThrow(/git push failed \(exit 1\): .*stale info/);
+  });
+});
+
+// A unit test, but its subject is this module's push, so it lives here.
+describe("refusal", () => {
+  it("names every command lefthook marks failed, and git's last line", () => {
+    const output = [
+      "\u001b[1m┃  diagnostic-ids-history ❯\u001b[0m",
+      "diagnostic-ids-history: no karasu@* tag found.",
+      "summary: (done in 9.0 seconds)",
+      ...Array.from({ length: 10 }, (_, i) => `✔️ check-${i} (1.0 seconds)`),
+      "🥊 diagnostic-ids-history (0.4 seconds)",
+      "🥊 knip (3.1 seconds)",
+      "error: failed to push some refs to 'https://github.com/kompiro/karasu'",
+    ].join("\n");
+    expect(refusal(output)).toBe(
+      "🥊 diagnostic-ids-history (0.4 seconds) | 🥊 knip (3.1 seconds) | " +
+        "error: failed to push some refs to 'https://github.com/kompiro/karasu'",
+    );
+  });
+
+  it("falls back to the last lines when there is no lefthook summary", () => {
+    const output = ["one", "", "two", "three", "four", "five", "six", "seven"].join("\n");
+    expect(refusal(output)).toBe("two | three | four | five | six | seven");
   });
 });
