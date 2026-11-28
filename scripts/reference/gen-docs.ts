@@ -22,6 +22,7 @@ import {
   REFERENCE_DATA,
   SELECTOR_SPECIFICITY,
 } from "../../packages/core/src/builtins/reference-data.ts";
+import { OWNS_TARGET_KINDS, REALIZES_TARGET_KIND_SET } from "../../packages/core/src/types/ast.ts";
 
 export type Locale = "en" | "ja";
 
@@ -32,6 +33,8 @@ export interface TableSpec {
   file: Record<Locale, string>;
   /** Column headers per locale. */
   headers: Record<Locale, string[]>;
+  /** Where the rows come from, when it is not only `reference-data.ts`; named in the marker. */
+  source?: string;
   /** The table body for a locale: one array of cell strings per row. */
   rows: (locale: Locale) => string[][];
 }
@@ -191,10 +194,41 @@ export const TABLES: TableSpec[] = [
           : [],
       ),
   },
+  {
+    id: "owns-target-kinds",
+    file: { en: "docs/spec/syntax.md", ja: "docs/spec/syntax.ja.md" },
+    source:
+      "`OWNS_TARGET_KINDS` in packages/core/src/types/ast.ts (descriptions from reference-data.ts)",
+    headers: { en: ["Keyword", "Meaning"], ja: ["キーワード", "意味"] },
+    rows: (locale) => targetKindRows(OWNS_TARGET_KINDS, locale),
+  },
+  {
+    id: "realizes-target-kinds",
+    file: { en: "docs/spec/syntax.md", ja: "docs/spec/syntax.ja.md" },
+    source:
+      "`REALIZES_TARGET_KIND_SET` in packages/core/src/types/ast.ts (descriptions from reference-data.ts)",
+    headers: { en: ["Keyword", "Meaning"], ja: ["キーワード", "意味"] },
+    rows: (locale) => targetKindRows([...REALIZES_TARGET_KIND_SET], locale),
+  },
 ];
 
-const MARKER_NOTE =
-  "DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`.";
+/**
+ * The kinds a relation accepts as its target, from the constant the checks
+ * read (TPL-1720), so the spec cannot name a different set. A kind the
+ * reference data does not describe fails the generation rather than vanishing
+ * from the table.
+ */
+function targetKindRows(kinds: readonly string[], locale: Locale): string[][] {
+  return kinds.map((kind) => {
+    const entry = REFERENCE_DATA.nodeKinds.find((k) => k.kind === kind);
+    if (!entry) throw new Error(`no reference data for node kind \`${kind}\``);
+    return [code(kind), entry.description[locale]];
+  });
+}
+
+/** The marker's note: where the rows come from, and how to regenerate them. */
+const markerNote = (source = "packages/core/src/builtins/reference-data.ts"): string =>
+  `DO NOT EDIT. Generated from ${source}; run \`pnpm gen:reference\`.`;
 
 function renderTable(headers: string[], rows: string[][]): string {
   const headerLine = `| ${headers.join(" | ")} |`;
@@ -204,7 +238,7 @@ function renderTable(headers: string[], rows: string[][]): string {
 }
 
 export function blockFor(spec: TableSpec, locale: Locale): string {
-  const open = `<!-- gen:reference:${spec.id} — ${MARKER_NOTE} -->`;
+  const open = `<!-- gen:reference:${spec.id} — ${markerNote(spec.source)} -->`;
   const close = `<!-- /gen:reference:${spec.id} -->`;
   return `${open}\n${renderTable(spec.headers[locale], spec.rows(locale))}\n${close}`;
 }
