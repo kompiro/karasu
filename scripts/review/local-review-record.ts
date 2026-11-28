@@ -77,6 +77,61 @@ const isCodeRabbitRow = (f: Finding): boolean => /^coderabbit$/i.test(f.reviewer
  */
 export const isDesignRow = (f: Finding): boolean => /^design$/i.test(f.reviewer.trim());
 
+/**
+ * Applies `f` to the parts of `s` outside code spans and keeps the code spans as
+ * they are. A code span is a run of backticks closed by the next run of the same
+ * length (CommonMark); a run with no such partner is plain text.
+ */
+function outsideCodeSpans(s: string, f: (text: string) => string): string {
+  let out = "";
+  let text = "";
+  let i = 0;
+  while (i < s.length) {
+    if (s[i] !== "`") {
+      text += s[i++];
+      continue;
+    }
+    let j = i;
+    while (s[j] === "`") j++;
+    const run = s.slice(i, j);
+    const close = new RegExp(`(?<!\`)${run}(?!\`)`, "g");
+    close.lastIndex = j;
+    const m = close.exec(s);
+    if (m === null) {
+      text += run;
+      i = j;
+      continue;
+    }
+    out += f(text) + s.slice(i, m.index + run.length);
+    text = "";
+    i = m.index + run.length;
+  }
+  return out + f(text);
+}
+
+/**
+ * The Reviewers / Waived / Verification lines sit inside the record's `<details>`,
+ * where a bare tag of the author's text would end the fold early (`</details>`) or
+ * swallow the table (`<pre>`). Outside code spans, `&`, `<` and `\` are written as
+ * entities, which GitHub shows as the characters they stand for, and a newline
+ * as a space, so the line stays one paragraph. With no backslash left outside the
+ * code spans, no backtick is escaped, so GitHub finds the code spans that
+ * {@link outsideCodeSpans} found. {@link unescapeLine} reverses it, so the record
+ * reads back the text it was given (Issue #3875).
+ */
+const LINE_ENTITIES: Record<string, string> = { "&": "&amp;", "<": "&lt;", "\\": "&#92;" };
+const LINE_CHARS = Object.fromEntries(Object.entries(LINE_ENTITIES).map(([c, e]) => [e, c]));
+
+function escapeLine(s: string): string {
+  return outsideCodeSpans(s.replace(/\r?\n/g, " "), (t) =>
+    t.replace(/[&<\\]/g, (c) => LINE_ENTITIES[c]),
+  );
+}
+
+function unescapeLine(s: string): string {
+  return outsideCodeSpans(s, (t) => t.replace(/&amp;|&lt;|&#92;/g, (e) => LINE_CHARS[e]));
+}
+
 /** Splits a markdown table row on pipes that are not escaped. */
 function cells(row: string): string[] {
   const inner = row.trim().replace(/^\|/, "").replace(/\|$/, "");
@@ -95,9 +150,13 @@ export function parseRecord(body: string): ParseResult {
   if (end < 0) return { error: `the local review record is not closed with ${CLOSE}` };
   const block = body.slice(start, end);
 
-  const reviewers = /^Reviewers:[ \t]*(.*)$/m.exec(block)?.[1].trim() ?? "";
-  const waived = /^Waived:[ \t]*(.*)$/m.exec(block)?.[1].trim();
-  const verification = /^Verification:[ \t]*(.*)$/m.exec(block)?.[1].trim();
+  const line = (name: string): string | undefined => {
+    const v = new RegExp(`^${name}:[ \\t]*(.*)$`, "m").exec(block)?.[1];
+    return v === undefined ? undefined : unescapeLine(v.trim());
+  };
+  const reviewers = line("Reviewers") ?? "";
+  const waived = line("Waived");
+  const verification = line("Verification");
 
   const findings: Finding[] = [];
   const rows = block.split("\n").filter((l) => l.trim().startsWith("|"));
@@ -299,9 +358,9 @@ export function renderRecord(r: LocalReviewRecord): string {
     "",
     `<details><summary>${recordSummary(r)}</summary>`,
     "",
-    `Reviewers: ${r.reviewers}`,
+    `Reviewers: ${escapeLine(r.reviewers)}`,
   ];
-  if (r.waived !== undefined) lines.push(`Waived: ${r.waived}`);
+  if (r.waived !== undefined) lines.push(`Waived: ${escapeLine(r.waived)}`);
   lines.push("");
   if (r.findings.length === 0) {
     lines.push("No findings.");
@@ -314,7 +373,9 @@ export function renderRecord(r: LocalReviewRecord): string {
       );
     }
   }
-  if (r.verification !== undefined) lines.push("", `Verification: ${r.verification}`);
+  if (r.verification !== undefined) {
+    lines.push("", `Verification: ${escapeLine(r.verification)}`);
+  }
   // The blank line ends the HTML block `</details>` opens; without it, a heading
   // right after the closing marker would render as text.
   lines.push("", "</details>", "", CLOSE);

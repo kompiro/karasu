@@ -88,6 +88,44 @@ describe("parseRecord / renderRecord", () => {
     expect(b).toMatch(/\n\n<\/details>\n\n<!-- \/local-review -->/);
   });
 
+  it("keeps the author's tags in the Reviewers, Waived and Verification lines from breaking the fold (#3875)", () => {
+    const tags = "</details> <details> <pre> <!-- & &lt; \\` </details> \\`";
+    const r = {
+      base: BASE,
+      head: HEAD,
+      reviewers: `coderabbit CLI --deep, ${tags}, \`</details>\` in a code span`,
+      waived: `w ${tags}`,
+      findings: [finding({})],
+      verification: `checked ${tags}\nsecond line`,
+    };
+    const block = renderRecord(r);
+    // Outside the fold's own tags, no `<` is left outside a code span.
+    const inner = block.slice(
+      block.indexOf("</summary>") + "</summary>".length,
+      block.lastIndexOf("</details>"),
+    );
+    expect(inner.replace(/`[^`]*`/g, "")).not.toMatch(/[<\\]/);
+    expect(inner).toContain("`</details>` in a code span");
+    // The record reads back what it was given; a newline becomes a space.
+    const parsed = parseRecord(block);
+    expect("record" in parsed && parsed.record).toMatchObject({
+      reviewers: r.reviewers,
+      waived: r.waived,
+      verification: `checked ${tags} second line`,
+    });
+    // What verifyRecord reads from the Reviewers line is unchanged.
+    expect(
+      check(
+        body([finding({})], { reviewers: "coderabbit CLI skipped: <offline> & `x`" }),
+        "medium",
+      ),
+    ).toEqual([]);
+    const skipped = parseRecord(body([], { reviewers: "coderabbit CLI skipped: <offline>" }));
+    expect("record" in skipped && skipped.record.reviewers).toBe(
+      "coderabbit CLI skipped: <offline>",
+    );
+  });
+
   it("reads a record written before the fold (#3875)", () => {
     const old = [
       `<!-- local-review:v1 base=${BASE} head=${HEAD} -->`,

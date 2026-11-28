@@ -239,7 +239,9 @@ node scripts/review/local-review-record.ts render --findings <findings.json> --i
 gh pr edit <n> --body-file <本文ファイル>
 ```
 
-`render` は見出しの下を `<details>` に畳み、summary に指摘の件数と対応の内訳を書く（#3875）。PR 本文の
+`render` は見出しの下を `<details>` に畳み、summary に指摘の件数と対応の内訳を書く（#3875）。
+`Reviewers:`・`Waived:`・`Verification:` の行は、code span の外の `<`・`&`・`\` を文字参照にして書くので、
+フラグに渡した文のタグが畳みを閉じない。本文を手で直すときも、この 3 行にタグを書くなら code span で囲む。PR 本文の
 `## TPL impact` も同じく `<details>` に畳み、summary に `Cited: <引用した TPL の ID>` か `N/A` を書く。
 
 `<findings.json>` は `{reviewer, sev, where, finding, disposition}` の配列で、対応は `fixed in <sha>`・
