@@ -114,7 +114,10 @@ export interface Workspace {
    * nothing changed. Throws when the generator wrote outside the generated paths.
    */
   commitGenerated(paths: GeneratedPaths): string | null;
-  /** Pushes the worktree's HEAD to the branch. `lease` null means the branch must not exist. */
+  /**
+   * Pushes the worktree's HEAD to the branch, after fetching what the pre-push
+   * hooks read (the release tags). `lease` null means the branch must not exist.
+   */
   push(lease: string | null): void;
   removeWorktree(): void;
 }
