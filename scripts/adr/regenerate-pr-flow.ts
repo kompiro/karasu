@@ -114,7 +114,10 @@ export interface Workspace {
    * nothing changed. Throws when the generator wrote outside the generated paths.
    */
   commitGenerated(paths: GeneratedPaths): string | null;
-  /** Pushes the worktree's HEAD to the branch. `lease` null means the branch must not exist. */
+  /**
+   * Pushes the worktree's HEAD to the branch, after fetching what the pre-push
+   * hooks read (the release tags). `lease` null means the branch must not exist.
+   */
   push(lease: string | null): void;
   removeWorktree(): void;
 }
@@ -247,8 +250,58 @@ export interface Deps {
   log: (message: string) => void;
 }
 
+/** How many times a read is tried before its failure ends the run (Issue #3933). */
+export const READ_ATTEMPTS = 3;
+const READ_BACKOFF_MS = 5 * 1000;
+
+/** A GitHub read that failed on every attempt. Its message is the last failure's. */
+class ReadFailed extends Error {
+  readonly what: string;
+  constructor(what: string, message: string, cause: unknown) {
+    super(message, { cause });
+    this.what = what;
+  }
+}
+
+/**
+ * The same GitHub with each read tried up to {@link READ_ATTEMPTS} times. A read
+ * through the routine's proxy can fail once and work right after, and giving up
+ * on it left an opened PR unmerged until the next day's run (Issue #3933). Writes
+ * are not retried: a repeated create could open a second PR, and a merge is
+ * already pinned to a SHA. The last failure is thrown as a {@link ReadFailed}
+ * with the same message (TPL-2786), so the wait for checks and the report of a
+ * failed run can tell it from a bug (Issues #3934, #3936).
+ */
+function withReadRetries(github: GitHub, clock: Clock, log: (message: string) => void): GitHub {
+  const read = <T>(what: string, call: () => T): T => {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return call();
+      } catch (e) {
+        const reason = e instanceof Error ? e.message : String(e);
+        if (attempt >= READ_ATTEMPTS) throw new ReadFailed(what, reason, e);
+        log(`${what} failed (attempt ${attempt} of ${READ_ATTEMPTS}), retrying: ${reason}`);
+        clock.sleep(READ_BACKOFF_MS);
+      }
+    }
+  };
+  return {
+    openPulls: () => read("listing the open PRs", () => github.openPulls()),
+    pull: (n) => read(`reading PR #${n}`, () => github.pull(n)),
+    branchSha: () => read(`reading ${BRANCH}`, () => github.branchSha()),
+    requiredChecks: () => read("reading the required checks", () => github.requiredChecks()),
+    checkRuns: (sha) => read(`reading the check runs of ${sha}`, () => github.checkRuns(sha)),
+    createPull: (body) => github.createPull(body),
+    closePull: (n) => github.closePull(n),
+    addLabel: (n, name) => github.addLabel(n, name),
+    removeLabel: (n, name) => github.removeLabel(n, name),
+    merge: (n, sha) => github.merge(n, sha),
+  };
+}
+
 export function regeneratePr(deps: Deps): Result {
-  const { github, workspace, clock, log } = deps;
+  const { workspace, clock, log } = deps;
+  const github = withReadRetries(deps.github, clock, log);
   const deadline = clock.now() + DEADLINE_MS;
 
   if (workspace.worktreeExists()) {
@@ -316,131 +369,184 @@ export function regeneratePr(deps: Deps): Result {
     return { state: "ready" };
   };
 
-  // 1. Yesterday's PR, if it is still open and ready.
-  workspace.fetchMain();
-  const found = findRegenerationPr(github.openPulls());
-  if (found.errors.length > 0) return { outcome: "failed", message: found.errors.join("\n") };
-  let pr = found.pr;
-  let pickedUp: string | undefined;
-  if (pr !== null) {
-    const sha = workspace.fetchPull(pr.number);
-    const headConfigs = workspace.configs(sha);
-    const mainConfigs = workspace.configs("origin/main");
-    const sameConfig =
-      headConfigs.adr !== null &&
-      mainConfigs.adr !== null &&
-      sameOutputs(readGeneratedPaths(headConfigs), readGeneratedPaths(mainConfigs));
-    if (sha !== pr.head.sha) {
-      log(`PR #${pr.number}: fetched ${sha}, GitHub reports ${pr.head.sha}; regenerating instead`);
-    } else if (!sameConfig) {
-      log(`PR #${pr.number}: the outputs changed on main since it was made; regenerating instead`);
-    } else {
-      const ready = readiness(pr.number, sha);
-      if (ready.state !== "ready") {
-        log(`PR #${pr.number} not merged: ${ready.why}; regenerating over it`);
+  /**
+   * {@link readiness} for the wait in step 4. The PR is open by then, so a read
+   * that keeps failing leaves the same state as checks that do not finish: the
+   * PR stays open for the next run. It is waited on (and at the deadline reported
+   * as `waited` with the PR) instead of ending the run without it (Issue #3934).
+   * Any other error still ends the run.
+   */
+  const pollReadiness = (n: number, sha: string, headMayLag: boolean): Readiness => {
+    try {
+      return readiness(n, sha, headMayLag);
+    } catch (e) {
+      if (!(e instanceof ReadFailed)) throw e;
+      const why = `${e.what} failed: ${e.message}`;
+      log(`PR #${n}: ${why}; polling again`);
+      return { state: "pending", why };
+    }
+  };
+
+  /**
+   * What the run has done to a PR so far, so a read that fails after that still
+   * reports it: `pr` is the regeneration PR the run is working with (yesterday's
+   * open PR, or the one it opened or reused), `pickedUp` yesterday's PR it merged.
+   * `as` keeps them typed past their first assignment.
+   */
+  let pr = null as Pull | null;
+  let pickedUp = undefined as string | undefined;
+
+  const steps = (): Result => {
+    // 1. Yesterday's PR, if it is still open and ready.
+    workspace.fetchMain();
+    const found = findRegenerationPr(github.openPulls());
+    if (found.errors.length > 0) return { outcome: "failed", message: found.errors.join("\n") };
+    pr = found.pr;
+    if (pr !== null) {
+      const sha = workspace.fetchPull(pr.number);
+      const headConfigs = workspace.configs(sha);
+      const mainConfigs = workspace.configs("origin/main");
+      const sameConfig =
+        headConfigs.adr !== null &&
+        mainConfigs.adr !== null &&
+        sameOutputs(readGeneratedPaths(headConfigs), readGeneratedPaths(mainConfigs));
+      if (sha !== pr.head.sha) {
+        log(
+          `PR #${pr.number}: fetched ${sha}, GitHub reports ${pr.head.sha}; regenerating instead`,
+        );
+      } else if (!sameConfig) {
+        log(
+          `PR #${pr.number}: the outputs changed on main since it was made; regenerating instead`,
+        );
       } else {
-        const merged = github.merge(pr.number, sha);
-        if (merged.ok) {
-          log(`merged yesterday's PR #${pr.number}`);
-          pickedUp = pr.html_url;
-          pr = null;
-          // `delete_branch_on_merge` removes the branch; a push racing that
-          // deletion fails its lease, so wait until it is gone.
-          const until = Math.min(deadline, clock.now() + BRANCH_GONE_MS);
-          while (github.branchSha() !== null && clock.now() < until) clock.sleep(5000);
-          workspace.fetchMain();
+        const ready = readiness(pr.number, sha);
+        if (ready.state !== "ready") {
+          log(`PR #${pr.number} not merged: ${ready.why}; regenerating over it`);
         } else {
-          log(`PR #${pr.number} could not be merged (${merged.message}); regenerating over it`);
+          const merged = github.merge(pr.number, sha);
+          if (merged.ok) {
+            log(`merged yesterday's PR #${pr.number}`);
+            pickedUp = pr.html_url;
+            pr = null;
+            // `delete_branch_on_merge` removes the branch; a push racing that
+            // deletion fails its lease, so wait until it is gone.
+            const until = Math.min(deadline, clock.now() + BRANCH_GONE_MS);
+            while (github.branchSha() !== null && clock.now() < until) clock.sleep(5000);
+            workspace.fetchMain();
+          } else {
+            log(`PR #${pr.number} could not be merged (${merged.message}); regenerating over it`);
+          }
         }
       }
     }
-  }
 
-  // 2. Regenerate from origin/main in the script's own worktree.
-  const mainConfigs = workspace.configs("origin/main");
-  if (mainConfigs.adr === null) {
-    return { outcome: "failed", pickedUp, message: "origin/main has no adr.config.json" };
-  }
-  const paths = readGeneratedPaths(mainConfigs);
-  try {
-    workspace.addWorktree();
-    workspace.regenerate(paths);
-    const commit = workspace.commitGenerated(paths);
-
-    if (commit === null) {
-      if (pr !== null) {
-        github.closePull(pr.number);
-        return {
-          outcome: "closed",
-          pr: pr.html_url,
-          pickedUp,
-          message: `the indexes on main are current; closed PR #${pr.number}`,
-        };
-      }
-      return pickedUp !== undefined
-        ? {
-            outcome: "merged",
-            pr: pickedUp,
-            pickedUp,
-            message: "merged yesterday's PR; main is current",
-          }
-        : { outcome: "nothing", message: "the indexes on main are current" };
-    }
-
-    const own = diffKind("origin/main", commit);
-    if (own.kind !== "regeneration") {
+    // 2. Regenerate from origin/main in the script's own worktree.
+    const mainConfigs = workspace.configs("origin/main");
+    if (mainConfigs.adr === null) {
       return {
         outcome: "failed",
+        pr: pr?.html_url,
         pickedUp,
-        message: `the regenerated commit is not a generated-only diff: ${own.reasons.join("; ")}`,
+        message: "origin/main has no adr.config.json",
       };
     }
+    const paths = readGeneratedPaths(mainConfigs);
+    try {
+      workspace.addWorktree();
+      workspace.regenerate(paths);
+      const commit = workspace.commitGenerated(paths);
 
-    // 3. Push with a lease read just now, then open or reuse the PR.
-    workspace.push(github.branchSha());
-    const pushedAt = clock.now();
-    if (pr !== null) {
-      const current = github.pull(pr.number);
-      if (current.state !== "open" || !isRegenerationPr(current)) pr = null;
-    }
-    if (pr === null) {
-      pr = github.createPull(prBody());
-      log(`opened PR #${pr.number}`);
-    } else {
-      log(`updated PR #${pr.number}`);
-    }
-    const edits = labelEdits(github.pull(pr.number).labels.map((l) => l.name));
-    for (const name of edits.remove) github.removeLabel(pr.number, name);
-    for (const name of edits.add) github.addLabel(pr.number, name);
-
-    // 4. Wait for the checks, then merge with the head pinned.
-    for (;;) {
-      const ready = readiness(pr.number, commit, clock.now() < pushedAt + HEAD_LAG_MS);
-      if (ready.state === "fail") {
-        return { outcome: "failed", pr: pr.html_url, pickedUp, message: ready.why };
-      }
-      if (ready.state === "ready") {
-        const merged = github.merge(pr.number, commit);
-        return merged.ok
-          ? { outcome: "merged", pr: pr.html_url, pickedUp, message: `merged PR #${pr.number}` }
-          : {
-              outcome: "failed",
-              pr: pr.html_url,
+      if (commit === null) {
+        if (pr !== null) {
+          github.closePull(pr.number);
+          return {
+            outcome: "closed",
+            pr: pr.html_url,
+            pickedUp,
+            message: `the indexes on main are current; closed PR #${pr.number}`,
+          };
+        }
+        return pickedUp !== undefined
+          ? {
+              outcome: "merged",
+              pr: pickedUp,
               pickedUp,
-              message: `PR #${pr.number} could not be merged: ${merged.message}`,
-            };
+              message: "merged yesterday's PR; main is current",
+            }
+          : { outcome: "nothing", message: "the indexes on main are current" };
       }
-      if (clock.now() + POLL_MS > deadline) {
+
+      const own = diffKind("origin/main", commit);
+      if (own.kind !== "regeneration") {
         return {
-          outcome: "waited",
-          pr: pr.html_url,
+          outcome: "failed",
+          pr: pr?.html_url,
           pickedUp,
-          message: `waited out (${ready.why}); PR #${pr.number} stays open for the next run`,
+          message: `the regenerated commit is not a generated-only diff: ${own.reasons.join("; ")}`,
         };
       }
-      clock.sleep(POLL_MS);
+
+      // 3. Push with a lease read just now, then open or reuse the PR.
+      workspace.push(github.branchSha());
+      const pushedAt = clock.now();
+      if (pr !== null) {
+        const current = github.pull(pr.number);
+        if (current.state !== "open" || !isRegenerationPr(current)) pr = null;
+      }
+      if (pr === null) {
+        pr = github.createPull(prBody());
+        log(`opened PR #${pr.number}`);
+      } else {
+        log(`updated PR #${pr.number}`);
+      }
+      const edits = labelEdits(github.pull(pr.number).labels.map((l) => l.name));
+      for (const name of edits.remove) github.removeLabel(pr.number, name);
+      for (const name of edits.add) github.addLabel(pr.number, name);
+
+      // 4. Wait for the checks, then merge with the head pinned.
+      for (;;) {
+        const ready = pollReadiness(pr.number, commit, clock.now() < pushedAt + HEAD_LAG_MS);
+        if (ready.state === "fail") {
+          return { outcome: "failed", pr: pr.html_url, pickedUp, message: ready.why };
+        }
+        if (ready.state === "ready") {
+          const merged = github.merge(pr.number, commit);
+          return merged.ok
+            ? { outcome: "merged", pr: pr.html_url, pickedUp, message: `merged PR #${pr.number}` }
+            : {
+                outcome: "failed",
+                pr: pr.html_url,
+                pickedUp,
+                message: `PR #${pr.number} could not be merged: ${merged.message}`,
+              };
+        }
+        if (clock.now() + POLL_MS > deadline) {
+          return {
+            outcome: "waited",
+            pr: pr.html_url,
+            pickedUp,
+            message: `waited out (${ready.why}); PR #${pr.number} stays open for the next run`,
+          };
+        }
+        clock.sleep(POLL_MS);
+      }
+    } finally {
+      workspace.removeWorktree();
     }
-  } finally {
-    workspace.removeWorktree();
+  };
+
+  // A GitHub read that keeps failing after the run started still names the PR it
+  // merged or left open (Issue #3936). The outcome stays "failed", so nothing is
+  // reported as done. Any other error escapes, and main() reports it as "failed".
+  try {
+    return steps();
+  } catch (e) {
+    if (!(e instanceof ReadFailed)) throw e;
+    return {
+      outcome: "failed",
+      pr: pr?.html_url,
+      pickedUp,
+      message: `${e.what} failed: ${e.message}`,
+    };
   }
 }

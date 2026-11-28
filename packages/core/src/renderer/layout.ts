@@ -25,9 +25,9 @@ import {
 } from "./layout-geometry.js";
 import { computeLayoutEdges, portResolver, runRoutingChain } from "./layout-edges.js";
 import {
+  bandGapReservations,
   placeGhostUsers,
-  placeGhostDomains,
-  placeGhostEntities,
+  placeGhostBands,
   placeCallerGhostSystems,
   placeOutgoingGhostSystems,
 } from "./ghost-layout.js";
@@ -56,6 +56,7 @@ import {
 } from "./layout-measure.js";
 import { nodePathRefId } from "../parser/node-path.js";
 import { applyMutualPairs } from "./mutual-pair.js";
+import { bandRoutingFor } from "./band-phase.js";
 import { chooseLabelRoom } from "./label-room.js";
 import type { LayoutNode, ContainerRect, LayoutResult, LayoutOptions } from "./layout-types.js";
 
@@ -106,30 +107,26 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // winner, and with it the rows the reservation is keyed on (ADR-2593 found
   // the placement is not monotone in the budget). Views whose channels fit
   // never take this branch, so their output is unchanged byte for byte.
-  const reservations = channelReservations(
-    found.result.result,
-    found.result.rows,
-    found.result.enclosure,
-  );
-  // Column capacity (#2611): the same measurement on the horizontal axis. A
-  // long edge that found no free lane between the rows it crosses had to run
-  // out to a gutter; where a row carries more such columns than the gaps
-  // between its cards can hold at `TRUNK_LANE_GAP`, the missing width is
-  // opened inside that row. Joined to the channel reservation above so both
-  // are applied by **one** re-placement.
-  const columns = columnReservations(found.result.result, found.result.rows);
-  const sides = gutterReservations(found.result.result, found.result.enclosure);
-  const reserved = reservations.size > 0 || columns.size > 0 || sides !== undefined;
+  const first = found.result;
+  const reservations = channelReservations(first.result, first.rows, first.enclosure);
+  // Column capacity (#2611): the same measurement on the horizontal axis, where
+  // a row carries more gutter-bound columns than its card gaps hold at
+  // `TRUNK_LANE_GAP`. Band channel capacity (#3881): the room before a ghost
+  // band row its lanes lack. All are applied by **one** re-placement.
+  const columns = columnReservations(first.result, first.rows);
+  const sides = gutterReservations(first.result, first.enclosure);
+  const gaps = bandGapReservations(first.result);
+  const reserved = reservations.size > 0 || columns.size > 0 || !!sides || !!gaps;
   // Label room (#3036): kept only where it seats strictly more withheld labels.
   const chosen = chooseLabelRoom({
     first: found.result,
     structural: reserved
-      ? layoutInner(viewSlice, options, found.budget, reservations, columns, sides)
+      ? layoutInner(viewSlice, options, found.budget, reservations, columns, sides, gaps)
       : undefined,
     reservations,
     columns,
     options,
-    place: (rows, cols) => layoutInner(viewSlice, options, found.budget, rows, cols, sides),
+    place: (rows, cols) => layoutInner(viewSlice, options, found.budget, rows, cols, sides, gaps),
   });
   const { result } = chosen.run;
   // Crossing marks decorate the routed edges and change neither the canvas
@@ -182,6 +179,8 @@ function layoutInner(
   extraGapBeforeCard?: ReadonlyMap<number, ReadonlyMap<string, number>>,
   /** Gutter capacity to reserve inside the drill-down frame's sides (#3154). */
   extraFrameSides?: FrameSides,
+  /** Room to reserve before ghost band rows on that same pass (#3881). */
+  bandGaps?: ReadonlyMap<string, number>,
 ): LayoutRun {
   const {
     ownerIndex,
@@ -467,10 +466,10 @@ function layoutInner(
     if (degraded.length > 0) degradedMemberships = degraded;
   }
 
-  // Place ghost nodes
+  // Place ghost nodes; the ghost band (#2823) reports a row the width budget cut.
   placeGhostUsers(viewSlice, layoutNodes, containers, measureCtx);
-  placeGhostDomains(viewSlice, layoutNodes, containers, measureCtx);
-  placeGhostEntities(viewSlice, layoutNodes, containers, measureCtx);
+  const ghostBand = { remap: remapGhostEndpoint, widthBudget, bandGaps };
+  const bandBound = placeGhostBands(viewSlice, layoutNodes, containers, measureCtx, ghostBand);
   placeCallerGhostSystems(viewSlice, layoutNodes, containers, ownerOf, measureCtx);
   placeOutgoingGhostSystems(viewSlice, layoutNodes, containers, ownerOf, measureCtx);
 
@@ -527,8 +526,7 @@ function layoutInner(
   // runRoutingChain. In-place expansion (#1921/#1923) shares the chain: the
   // expanded frame rects let a service-level edge anchor on the frame border
   // and detour around the *other* frames, while an edge to an interior domain
-  // still enters its own frame. The style-fed port resolver (#2422) turns on
-  // outline seating.
+  // still enters its own frame. The style-fed port resolver (#2422) seats ports.
   runRoutingChain(
     layoutNodes,
     layoutEdges,
@@ -546,6 +544,7 @@ function layoutInner(
       groupBands: groupBy ? groupBands : null,
       ports: portResolver(options),
       enclosure: focusFrame,
+      band: bandRoutingFor(containers, layoutNodes, options, expandedFrameRects),
     },
   );
 
@@ -581,7 +580,7 @@ function layoutInner(
       containers,
       width: totalWidth,
       height: totalHeight,
-      widthBound: placed.widthBound,
+      widthBound: placed.widthBound || bandBound,
       foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
       foldedFacetMembership: foldFacetMembership(
         viewSlice.childNodes,

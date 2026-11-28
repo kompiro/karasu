@@ -5,7 +5,7 @@ import { CATEGORY_STUB_TAG } from "./category-collapse.js";
 import type { DisplayMode, LayoutNode, LayoutResult, Rect } from "./layout-types.js";
 import { renderArrowMarker } from "./edge-routing.js";
 import { edgeLineKeyOf } from "./edge-line-key.js";
-import { containerStyleOf, renderContainer } from "./container-frame.js";
+import { containerStyleOf, renderBandFrame, renderContainer } from "./container-frame.js";
 import { buildLegendFooter, el, escapeXml } from "./svg-builder.js";
 import { GHOST_OPACITY } from "./rendering-constants.js";
 import { DEFAULT_EMPTY_STATE_LABELS } from "./empty-state-labels.js";
@@ -13,7 +13,7 @@ import type { LegendViewScope } from "../types/ast.js";
 import { resolvePalette } from "./palette.js";
 import { nodePathRefId } from "../parser/node-path.js";
 import type { RenderOptions } from "./render-options.js";
-import { renderEdgeLayer, withheldLabelsOf } from "./edge-layer.js";
+import { drawnLabelBoxesOf, renderEdgeLayer, withheldLabelsOf } from "./edge-layer.js";
 import { assignChipZones, chipZoneOf, renderNode } from "./node-card.js";
 import { resolveNodeStyle, shapeNameOf } from "./node-style.js";
 import {
@@ -112,6 +112,7 @@ export function render(
     chipZoneFor,
     edgeLineKey,
     withheldLabels: (result) => withheldLabelsOf(result, styles, palette),
+    canvasLabelBoxes: (result) => drawnLabelBoxesOf(result, styles, palette),
     teamLabels: options?.teamLabels,
     boundaryMembership: options?.boundaryMembership,
     scopedBoundaryMembership: options?.scopedBoundaryMembership,
@@ -264,9 +265,17 @@ export function renderFromLayout(
     }
   }
 
+  // Ghost band frames (#2823): their own branch, not a node's style.
+  for (const container of layoutResult.containers) {
+    if (container.ghostBand !== undefined) {
+      const base = styles.defaultNodeStyle;
+      parts.push(renderBandFrame(container, palette, base.fontFamily, base.borderRadius));
+    }
+  }
+
   // Focused container
   for (const container of layoutResult.containers) {
-    if (!container.ghost) {
+    if (!container.ghost && container.ghostBand === undefined) {
       const containerStyle = containerStyleOf(styles, container, palette);
       const diffState = options?.containerDiffState?.get(container.id);
       parts.push(

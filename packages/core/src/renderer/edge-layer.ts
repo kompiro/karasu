@@ -1,6 +1,6 @@
 import type { ResolvedStyles } from "../types/style.js";
 import { edgeKey } from "../diff/view-diff.js";
-import type { HopMark, LayoutResult, WithheldLabel } from "./layout-types.js";
+import type { HopMark, LayoutResult, Rect, WithheldLabel } from "./layout-types.js";
 import { renderEdge } from "./edge-routing.js";
 import { resolvedEdgeStyle } from "./edge-line-key.js";
 import { resolveLabelPlacements, buildLabelInputs, labelBox } from "./label-placement.js";
@@ -62,6 +62,24 @@ export function withheldLabelsOf(
       const box = labelBox(label.anchor, label.width, label.fontSize);
       return { anchor: label.anchor, width: box.width, height: box.height };
     });
+}
+
+/**
+ * The boxes of the labels the canvas draws on `layoutResult`, where the label
+ * pass seats them (#3889): what the ghost band's lines keep off. A label left
+ * off the canvas (`label-display: auto`) or one only hover shows has no box.
+ */
+export function drawnLabelBoxesOf(
+  layoutResult: LayoutResult,
+  styles: ResolvedStyles,
+  palette: DiagramPalette,
+): Rect[] {
+  const { labelInputs, labelPlacements } = placeLabels(layoutResult, styles, palette);
+  return labelInputs
+    .filter((label) => label.deferred !== true)
+    .map((label) =>
+      labelBox(labelPlacements.get(label.index) ?? label.anchor, label.width, label.fontSize),
+    );
 }
 
 /**

@@ -8,7 +8,8 @@
  * saturated model in `routing-parity.test.ts`.
  */
 import { describe, it, expect } from "vitest";
-import { distributeGutterLanes, TRUNK_LANE_GAP } from "./edge-routing-groups.js";
+import { TRUNK_LANE_GAP } from "./edge-routing-groups.js";
+import { distributeGutterLanes } from "./edge-routing-gutter-lanes.js";
 import { collectChannels, NO_CHANNEL_LIMITS } from "./edge-routing-lanes.js";
 import { detectMarks } from "./crossing-marks.js";
 import { ownLabelSegment } from "./edge-routing.js";

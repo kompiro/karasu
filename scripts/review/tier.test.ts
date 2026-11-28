@@ -2,7 +2,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
+import { checkImports, listFiles } from "./function-imports.ts";
 import { type GitFacts, parseRecord } from "./local-review-record.ts";
+import { isTestFile } from "./test-changes.ts";
 import {
   ADR_GENERATED_GLOBS,
   adrEditIsRecordOnly,
@@ -23,6 +25,7 @@ import {
   unknownRiskLabels,
   lineInDiff,
   matchesAgreedText,
+  outsideLinks,
   packageJsonTier,
   parseDiff,
   pathTier,
@@ -41,7 +44,11 @@ const pkg = (fields: Record<string, unknown>) => JSON.stringify({ name: "x", ...
 describe("pathTier", () => {
   it.each([
     ["docs/test-perspectives/README.md", "low"],
-    ["docs/guide/02-onboarding.md", "low"],
+    ["docs/test-perspectives/TPL-1-x.md", "low"],
+    // The docs site renders a guide's raw HTML and SVG (#3786).
+    ["docs/guide/02-onboarding.md", "medium"],
+    ["docs/guide/img/x.svg", "medium"],
+    ["docs/test-perspectives/x.svg", "medium"],
     ["packages/core/src/parser/parser.test.ts", "low"],
     ["packages/app/src/App.test.tsx", "low"],
     ["packages/e2e/tests/share.spec.ts", "low"],
@@ -70,6 +77,16 @@ describe("pathTier", () => {
     ["packages/app/src/components/ChatPane.tsx", "high"],
     ["packages/app/src/components/NodeDetailPanel.tsx", "high"],
     ["packages/app/src/components/EdgeDetailPanel.tsx", "high"],
+    // The app's Pages Functions and what they delegate to (#3799).
+    ["functions/render.ts", "high"],
+    ["functions/s.ts", "high"],
+    ["functions/[[path]].ts", "high"],
+    ["functions/r/[[path]].ts", "high"],
+    ["functions/_lib/share-raster.ts", "high"],
+    ["packages/app/src/render/share-render.ts", "high"],
+    ["packages/app/src/render/share-page.ts", "high"],
+    ["packages/app/src/render/repo-permalink.ts", "high"],
+    ["packages/core/src/renderer/ogp-frame.ts", "high"],
     // Language behavior (#3505).
     ["packages/core/src/lexer/lexer.ts", "high"],
     ["packages/core/src/parser/parser.ts", "high"],
@@ -86,6 +103,8 @@ describe("pathTier", () => {
     ["packages/cli/src/serve.test.ts", "low"],
     ["packages/nest/src/worker.test.ts", "low"],
     ["packages/core/src/renderer/svg-builder.test.ts", "low"],
+    ["packages/app/src/render/share-render.test.ts", "low"],
+    ["packages/core/src/renderer/ogp-frame.test.ts", "low"],
     ["packages/lsp/src/diagnostics.test.ts", "low"],
     [".github/actions/purge-preview-deployments/action.yml", "high"],
     ["packages/cli/CHANGELOG.md", "high"],
@@ -181,8 +200,23 @@ const modified = (path: string, extra: Partial<ChangedFile> = {}): ChangedFile =
   hunks: [],
   ...extra,
 });
-const added = (path: string): ChangedFile => ({ path, status: "added", hunks: [] });
+/** A new file as the CLI reads it: one hunk, and its text (the outside-link check reads it, #3786). */
+const added = (path: string): ChangedFile => ({
+  path,
+  status: "added",
+  hunks: [{ oldStart: 0, removed: [], newStart: 1, added: ["# x"] }],
+  before: null,
+  after: "# x\n",
+});
 const deleted = (path: string): ChangedFile => ({ path, status: "deleted", hunks: [] });
+/** `f` with text on both sides and a hunk where it has none, as the CLI reads a Markdown file (#3786). */
+const readable = (f: ChangedFile): ChangedFile => ({
+  ...f,
+  before: f.before ?? "# x\n",
+  after: f.after ?? "# x\ny\n",
+  hunks: f.hunks.length > 0 ? f.hunks : [{ oldStart: 1, removed: [], newStart: 2, added: ["y"] }],
+});
+const TPL_DOC = "docs/test-perspectives/TPL-1-x.md";
 const tierOf = (...files: ChangedFile[]) => classifyChange({ files, author: "kompiro" }).tier;
 
 /** An AT record as the tests below change it. */
@@ -254,15 +288,15 @@ const insertAt = (at: number, ...lines: string[]): string[] => [
 
 describe("classifyChange", () => {
   it("takes the strictest tier across the files", () => {
-    expect(tierOf(modified("docs/guide/a.md"), modified("docs/design/x.md"))).toBe("design");
-    expect(tierOf(modified("docs/guide/a.md"), modified("packages/core/a.ts"))).toBe("medium");
-    expect(tierOf(modified("docs/guide/a.md"), modified(".github/workflows/x.yml"))).toBe("high");
+    expect(tierOf(readable(modified(TPL_DOC)), modified("docs/design/x.md"))).toBe("design");
+    expect(tierOf(readable(modified(TPL_DOC)), modified("packages/core/a.ts"))).toBe("medium");
+    expect(tierOf(readable(modified(TPL_DOC)), modified(".github/workflows/x.yml"))).toBe("high");
   });
 
   it("lists every file with its own tier, strictest first and in diff order within a tier", () => {
     const { files } = classifyChange({
       files: [
-        modified("docs/guide/a.md"),
+        readable(modified(TPL_DOC)),
         modified("packages/core/a.ts"),
         modified("docs/spec/syntax.md"),
         modified("packages/core/b.ts"),
@@ -280,7 +314,7 @@ describe("classifyChange", () => {
       },
       { path: "packages/core/a.ts", tier: "medium", boundary: false, narrowable: false },
       { path: "packages/core/b.ts", tier: "medium", boundary: false, narrowable: false },
-      { path: "docs/guide/a.md", tier: "low", boundary: false, narrowable: false },
+      { path: TPL_DOC, tier: "low", boundary: false, narrowable: false },
     ]);
   });
 
@@ -305,8 +339,8 @@ describe("classifyChange", () => {
 
   it("keeps each file's own tier when the author makes the PR High", () => {
     expect(
-      classifyChange({ files: [modified("docs/guide/a.md")], author: "someone" }).files,
-    ).toEqual([{ path: "docs/guide/a.md", tier: "low", boundary: false, narrowable: false }]);
+      classifyChange({ files: [readable(modified(TPL_DOC))], author: "someone" }).files,
+    ).toEqual([{ path: TPL_DOC, tier: "low", boundary: false, narrowable: false }]);
   });
 
   it("reads package.json by the fields that moved", () => {
@@ -329,9 +363,77 @@ describe("classifyChange", () => {
     expect(sec("packages/nest/src/a.ts")).toBe(true);
     expect(sec("packages/cli/src/render-fetch.ts")).toBe(true);
     expect(sec("packages/core/src/renderer/svg-builder.ts")).toBe(true);
+    expect(sec("functions/render.ts")).toBe(true);
+    expect(sec("packages/app/src/render/share-render.ts")).toBe(true);
+    expect(sec("packages/core/src/renderer/ogp-frame.ts")).toBe(true);
     expect(sec(".github/workflows/x.yml")).toBe(true);
     expect(sec("packages/core/a.ts")).toBe(false);
     expect(sec("packages/core/src/parser/parser.ts")).toBe(false);
+  });
+
+  // Every Pages Function answers a public request, so the modules it hands that
+  // request to are a security boundary too (#3799). Derived from the import
+  // graph, one level deep: a new function, or a function importing a module
+  // off the boundary, fails here. What those modules import in turn is not
+  // checked (`bare-route.ts` reads the `routes.ts` constant table).
+  //
+  // esbuild, with wrangler's options, resolves what each function imports
+  // (`function-imports.ts`), so the guard checks the file the bundle loads;
+  // the syntax tree adds a specifier computed at run time. Both, and a Node
+  // built-in, fail unless allowed below.
+  it("keeps every module a Pages Function imports directly on the security boundary", async () => {
+    const sec = (path: string) =>
+      classifyChange({ files: [modified(path)], author: "kompiro" }).securityReview;
+    const files = listFiles(REPO_ROOT, "functions").filter(
+      (path) => /\.[cm]?[jt]sx?$/.test(path) && !/\.d\.[cm]?ts$/.test(path) && !isTestFile(path),
+    );
+
+    const { problems, imported } = await checkImports({
+      root: REPO_ROOT,
+      files,
+      policy: {
+        // Any other package, a workspace package included (its modules are
+        // not checked here), fails until it is added.
+        packages: new Set(["@resvg/resvg-wasm"]),
+        // Pages runs the functions without `nodejs_compat` (wrangler.toml), so
+        // no built-in is allowed; enabling one means listing it here.
+        builtins: new Set(),
+      },
+      onBoundary: sec,
+    });
+    // The graph held the handlers this exists for.
+    expect(imported).toEqual(
+      expect.arrayContaining([
+        "packages/app/src/render/share-render.ts",
+        "functions/_lib/share-raster.ts",
+      ]),
+    );
+    expect(problems).toEqual([]);
+  });
+
+  // esbuild tells the guard which specifiers it bundled, not which call sites:
+  // `require?.(x)` beside a bundled `require(x)` would pass. Banning every
+  // reference to `require` leaves `import()` as the only run-time load, and
+  // `import` has no optional or indirect form (#3799).
+  it("lints every Pages Function against any reference to require", () => {
+    const config = JSON.parse(readFileSync(resolve(REPO_ROOT, ".oxlintrc.json"), "utf8")) as {
+      overrides: { files: string[]; rules: Record<string, unknown> }[];
+    };
+    const banned = config.overrides
+      .filter((o) => o.files.includes("functions/**"))
+      .flatMap((o) => {
+        const rule = o.rules["no-restricted-globals"];
+        return Array.isArray(rule) && rule[0] === "error" ? rule.slice(1) : [];
+      })
+      .map((entry: { name?: string } | string) => (typeof entry === "string" ? entry : entry.name));
+    expect(banned).toContain("require");
+
+    const scripts = (
+      JSON.parse(readFileSync(resolve(REPO_ROOT, "package.json"), "utf8")) as {
+        scripts: Record<string, string>;
+      }
+    ).scripts;
+    expect(scripts.lint.split(" ")).toContain("functions/");
   });
 
   describe("dangerous sinks (#3505)", () => {
@@ -518,14 +620,14 @@ describe("classifyChange", () => {
     const ADR = "docs/adr/3286-risk-based-review-tiers.md";
 
     it("is Low for a new ADR and the generated files", () => {
-      expect(tierOf(added(ADR), modified("docs/adr/effective.md"))).toBe("low");
-      expect(tierOf(added(ADR), modified("docs/adr/graph/build.md"))).toBe("low");
+      expect(tierOf(added(ADR), readable(modified("docs/adr/effective.md")))).toBe("low");
+      expect(tierOf(added(ADR), readable(modified("docs/adr/graph/build.md")))).toBe("low");
     });
 
     it("is Low for a PR that changes only the generated files (Issue #3416)", () => {
       expect(
         tierOf(
-          modified("docs/adr/effective.md"),
+          readable(modified("docs/adr/effective.md")),
           added("docs/adr/graph/new-topic.md"),
           deleted("docs/adr/graph/old-topic.md"),
         ),
@@ -686,7 +788,7 @@ describe("classifyChange", () => {
     });
 
     it("is Low when a new ADR replaces a deleted Design Doc and links are swapped", () => {
-      expect(tierOf(added(NEW_ADR), deleted(DESIGN), swap)).toBe("low");
+      expect(tierOf(added(NEW_ADR), deleted(DESIGN), readable(swap))).toBe("low");
     });
 
     it("falls back to the path rules without a new ADR in the same PR", () => {
@@ -1167,7 +1269,7 @@ describe("isLinkSwap: sibling names, the item label and ADR-<n> (#3620)", () => 
         tierOf(
           added("docs/adr/3038-tpl-enforcement-status.md"),
           deleted("docs/design/tpl-enforcement-status.md"),
-          recall,
+          readable(recall),
         ),
       ).toBe("low");
     });
@@ -2468,5 +2570,379 @@ describe("tierSummary with agreed spec text (#3542)", () => {
       ],
     });
     expect(out).toContain("| medium (agreed) | <code>docs/spec/style.md</code> |");
+  });
+});
+
+describe("outsideLinks: links outside karasu's domains (#3786)", () => {
+  const SHA = "0123456789abcdef0123456789abcdef01234567";
+  /** A new Markdown file holding `text`. */
+  const newDoc = (text: string, path = TPL_DOC): ChangedFile => ({
+    path,
+    status: "added",
+    hunks: [{ oldStart: 0, removed: [], newStart: 1, added: text.split("\n") }],
+    before: null,
+    after: text,
+  });
+  /** A Markdown file changed from `before` to `after`. */
+  const edit = (before: string, after: string, path = TPL_DOC): ChangedFile => ({
+    path,
+    status: "modified",
+    hunks: [{ oldStart: 1, removed: before.split("\n"), newStart: 1, added: after.split("\n") }],
+    before,
+    after,
+  });
+  const outside = (text: string, path?: string) => outsideLinks(newDoc(text, path));
+
+  it.each([
+    "https://github.com/kompiro/karasu/issues/1",
+    "https://github.com/Kompiro/hane",
+    "https://github.com/kompiro",
+    "https://github.com/kompiro/karasu/blob/main/x.md",
+    "https://karasu.kompiro.dev/",
+    "https://karasu.kompiro.dev",
+    `https://karasu.kompiro.dev/kompiro/karasu@${SHA}#krs-system-payment-api`,
+    "https://karasu-nest.kompiro.dev/auth/callback",
+    "https://kompiro.github.io/karasu/",
+    "https://karasu.pages.dev/",
+    "https://taka.kompiro.dev/TkrZQG",
+    "https://taka.kompiro.dev/",
+    "http://localhost:5173/x",
+    "http://127.0.0.1:8080",
+    "https://example.com/x",
+    "https://api.example.org",
+    "https://example.net/x",
+    "http://app.localhost:3000/",
+    "https://karasu.example",
+    "https://a.test/x",
+    "https://x.invalid",
+    "See https://karasu.kompiro.dev.",
+    "See https://karasu.kompiro.dev/.",
+    "**https://karasu.kompiro.dev**",
+    "_https://github.com/kompiro/karasu_",
+    "[ADR](../adr/12-x.md) and [TPL](TPL-2-y.md) and `/docs/adr/12-x.md`",
+    "[TPL](../test-perspectives/TPL-1-x.md)",
+    '`<g class="crossing-marks">` and `<tspan class="x">` in an SVG example',
+    // Where a URL ends depends on what opened it (#3849 review).
+    "[link](https://taka.kompiro.dev/TkrZQG)を参照",
+    "[a](https://github.com/kompiro/karasu/issues/1)、[b](../adr/12-x.md)、#3787",
+    "(see https://kompiro.github.io/karasu/), and more",
+    "`https://karasu.kompiro.dev/` and `https://karasu.kompiro.dev` and `https://taka.kompiro.dev/TkrZQG`",
+    // A glob or a regex escape after `//` that names no host on the internet.
+    '"docs/adr/graph/\\\\*\\\\*" and `$\\\\{port\\\\}` and `\\\\)`',
+    "\\*\\*種類\\*\\* and `\\\\{` and `\\\\}`",
+    "`\\\\|` and `\\\\.` stay regex escapes",
+    // Kept out by kompiro's decision of 2026-11-16 (#3786): not URLs anyone opens.
+    "  - file: packages/core/src/parser.ts\n  - root_cause_file: packages/x.ts",
+    "nodeMetadata: Map<string, X>; form-data: ^4.0.6",
+    "`ajv@8.20.0` and `pnpm/action-setup@v6.0.3` and @monaco-editor/react@4.7.0",
+    "`/\\\\.color\\\\[theme\\\\]/` and `\\\\(x\\\\)` and `\\\\^` and `\\\\{`",
+    "the javascript: scheme, and data: too",
+  ])("adds nothing outside for %j", (text) => {
+    expect(outside(text)).toEqual([]);
+  });
+
+  it.each([
+    ["https://github.com/someone/x", "github.com"],
+    ["https://github.com/kompiro-evil/x", "github.com"],
+    ["https://github.com/kompiro/../x", "github.com"],
+    ["https://github.com/kompiro/%2e%2e/x", "github.com"],
+    ["https://github.com/kompiro/karasu/raw/main/x", "github.com"],
+    [`https://github.com/kompiro/karasu/blob/${SHA}/x`, "github.com"],
+    ["https://github.com/kompiro/karasu/tree/abcdef1/x", "github.com"],
+    ["https://github.com/kompiro/karasu/commit/abcdef1", "github.com"],
+    ["https://github.com", "github.com"],
+    ["https://gist.github.com/kompiro/x", "gist.github.com"],
+    ["https://raw.githubusercontent.com/kompiro/karasu/main/x", "raw.githubusercontent.com"],
+    ["https://taka.kompiro.dev.evil.com/x", "taka.kompiro.dev.evil.com"],
+    ["https://x.taka.kompiro.dev/a", "x.taka.kompiro.dev"],
+    ["https://taka.kompiro.dev@evil.com", "an unreadable URL"],
+    ["https://taka.kompiro.dev/a/b", "taka.kompiro.dev"],
+    ["https://taka.kompiro.dev/x?u=1", "taka.kompiro.dev"],
+    ["https://taka.kompiro.dev/x#y", "taka.kompiro.dev"],
+    ["https://taka.kompiro.dev/%41", "taka.kompiro.dev"],
+    ["https://taka.kompiro.dev/../x", "taka.kompiro.dev"],
+    ["https://karasu.kompiro.dev/s?s=abc", "karasu.kompiro.dev"],
+    ["https://karasu.kompiro.dev/attacker/repo", "karasu.kompiro.dev"],
+    // The app reads a `.krs` from the fragment too (kompiro's decision of 2026-11-16).
+    ["https://karasu.kompiro.dev/#s=abc", "karasu.kompiro.dev"],
+    ["https://karasu.kompiro.dev/kompiro/karasu#s=abc", "karasu.kompiro.dev"],
+    ["https://karasu.pages.dev/?s=abc", "karasu.pages.dev"],
+    ["https://karasu.pages.dev/#s=abc", "karasu.pages.dev"],
+    ["https://karasu.pages.dev/attacker/repo", "karasu.pages.dev"],
+    ["https://karasu-nest.kompiro.dev/?x=1", "karasu-nest.kompiro.dev"],
+    ["https://spike-x.karasu.pages.dev/", "spike-x.karasu.pages.dev"],
+    ["https://kompiro.dev.evil.com/", "kompiro.dev.evil.com"],
+    ["https://evilkompiro.dev/", "evilkompiro.dev"],
+    ["https://karasu.kompiro.dev@evil.com", "an unreadable URL"],
+    // Punctuation followed by more is part of the host: a name under evil.com.
+    ["https://karasu.kompiro.dev_.evil.com/x", "an unreadable URL"],
+    ["https://karasu.kompiro.dev*.evil.com/x", "an unreadable URL"],
+    ["https://karasu.kompirо.dev/", "an unreadable URL"],
+    ["https://%65vil.com/", "an unreadable URL"],
+    ["https://karasu.kompiro.dev\\@evil.com", "karasu.kompiro.dev"],
+    ["[x](/\\evil.com)", "evil.com"],
+    ["https:\\\\evil.com", "evil.com"],
+    ["https:\\/\\/evil.com", "evil.com"],
+    ["http:evil.com", "an unreadable URL"],
+    ["http:/evil.com", "an unreadable URL"],
+    ["HTTPS://EVIL.COM", "evil.com"],
+    ["Www.evil.com", "www.evil.com"],
+    ["see www.evil.com", "www.evil.com"],
+    ["//evil.com", "evil.com"],
+    ["(//evil.com)", "evil.com"],
+    ['<img src="//evil.com/x.png">', "evil.com"],
+    ["a;//evil.com", "evil.com"],
+    ["a,//evil.com", "evil.com"],
+    [">//evil.com", "evil.com"],
+    ["///evil.com", "evil.com"],
+    ["//%65vil.com", "an unreadable URL"],
+    ["//évil.com", "an unreadable URL"],
+    ["//[::1]/x", "an unreadable URL"],
+    ["<https://evil.com>", "evil.com"],
+    ["[x]: https://evil.com", "evil.com"],
+    ["[https://karasu.kompiro.dev](https://evil.com)", "evil.com"],
+    ["![](https://evil.com/x.png)", "evil.com"],
+    // Raw HTML counts on its own (kompiro's decision of 2026-11-17).
+    ['<a href="https://evil.com">x</a>', "raw HTML"],
+    ['<a href="https://karasu.kompiro.dev/">karasu</a>', "raw HTML"],
+    ["<a href=https://karasu.kompiro.dev/>karasu</a>", "raw HTML"],
+    ['<a href="https://kompiro.github.io&quot;@evil.com/">x</a>', "raw HTML"],
+    ['<a href=" https://kompiro.github.io)@evil.com/">x</a>', "raw HTML"],
+    ['<a href="https://kompiro.github.io @evil.com/">x</a>', "raw HTML"],
+    ["write to someone@evil.com", "an email address"],
+    ["[x](mailto:someone)", "a mailto: URL"],
+    ["[x](javascript:alert(1))", "a javascript: URL"],
+    ['<a href="data:text/html,x">', "a data: URL"],
+    ["[x](vbscript:x) [y](file:///etc/passwd)", "a file: URL"],
+    ["https&#58;//evil.com", "evil.com"],
+    ["&#x2F;&#x2F;evil.com", "evil.com"],
+    ["https&#58//evil.com", "evil.com"],
+    ["[x](https&colon;//evil.com)", "an unreadable character reference"],
+    ["```\ncurl https://evil.com\n```", "evil.com"],
+    ["![x](/../../../../attacker/repo/blob/main/x.png)", "a relative path outside the repository"],
+    ["[x](../../../x/y)", "a relative path outside the repository"],
+    ["[x](%2e%2e/x)", "a relative path outside the repository"],
+    // Markdown drops a backslash before punctuation in a link (#3786 review).
+    ["[x](https://kompiro.github.io\\@evil.com/)", "an unreadable URL"],
+    ["[x](https://example.com\\@evil.com/)", "an unreadable URL"],
+    ["[x](https://karasu-nest.kompiro.dev\\.evil.com/)", "karasu-nest.kompiro.dev.evil.com"],
+    ["[x]: https://kompiro.github.io\\@evil.com/", "an unreadable URL"],
+    [
+      "[x](\\.\\./\\.\\./\\.\\./\\.\\./\\.\\./\\.\\./attacker/repo)",
+      "a relative path outside the repository",
+    ],
+    // A commit by SHA in any route, or by ref, can be a fork's.
+    ["https://github.com/kompiro/karasu/commit/abcdef1234567.patch", "github.com"],
+    ["https://github.com/kompiro/karasu/blame/abcdef1234567/README.md", "github.com"],
+    ["https://github.com/kompiro/karasu/archive/abcdef1234567.zip", "github.com"],
+    ["https://github.com/kompiro/karasu/blob/refs/pull/3800/head/x.md", "github.com"],
+    // Any character a URL parser takes can start a name under a wildcard record.
+    ["[x](//~x.evil.com/)", "an unreadable URL"],
+    ["[x](//!x.evil.com/)", "an unreadable URL"],
+    ["[x](//$x.evil.com/)", "an unreadable URL"],
+    ["[x](//=x.evil.com/)", "an unreadable URL"],
+    ["[x](//+x.evil.com/)", "an unreadable URL"],
+    ["[x](//:@evil.com)", "an unreadable URL"],
+    // A quote does not end a Markdown link destination; `)` does not end a quoted attribute.
+    ["[x](https://kompiro.github.io'@evil.com/)", "an unreadable URL"],
+    ["[x](https://kompiro.github.io\\)@evil.com/)", "an unreadable URL"],
+    ['<a href="https://kompiro.github.io).evil.com">x</a>', "raw HTML"],
+    ["[x](https://kompiro.github.io(x).evil.com)", "an unreadable URL"],
+    ["[x](https://github.com/kompiro/x'/../../attacker/repo)", "github.com"],
+    ["[x](https://karasu.kompiro.dev/'?s=x)", "karasu.kompiro.dev"],
+    ["[x](//(x'@evil.com)", "an unreadable URL"],
+    ["<a href=https://kompiro.github.io).evil.com>x</a>", "raw HTML"],
+    // A reference is data, never a terminator; `<` does not end a link destination.
+    ["[x](https://kompiro.github.io&#41;@evil.com/)", "an unreadable URL"],
+    ["[x](https://example.com&#41;@evil.com/)", "an unreadable URL"],
+    ["[x](https://kompiro.github.io&nbsp;@evil.com/)", "an unreadable URL"],
+    ["[x](https://kompiro.github.io\u00a0@evil.com/)", "an unreadable URL"],
+    ["[x](https://kompiro.github.io\u3000@evil.com/)", "an unreadable URL"],
+    ["[x](//(x\u00a0@evil.com/)", "an unreadable URL"],
+    ["[x](https://kompiro.github.io<@evil.com/)", "an unreadable URL"],
+    ["[x]( https://kompiro.github.io<@evil.com/)", "an unreadable URL"],
+    ["x < https://kompiro.github.io>@evil.com", "an unreadable URL"],
+    ["[x](https://kompiro.github.io`@evil.com/)", "an unreadable URL"],
+    [
+      '<div>\n<a x\' foo=a=" bar=">" href="https://kompiro.github.io)@evil.com/">x</a>\n</div>',
+      "raw HTML",
+    ],
+    [
+      '<div>\n<img x\' foo=a=" bar=">" src="https://kompiro.github.io)@evil.com/x.png">\n</div>',
+      "raw HTML",
+    ],
+    ['<div>\n<a title=t"href="https://kompiro.github.io)@evil.com/">x</a>\n</div>', "raw HTML"],
+    ["[x]: https://kompiro.github.io<@evil.com/\n\n[x]", "an unreadable URL"],
+    ['[x]: https://kompiro.github.io<@evil.com/ "t"\n\n[x]', "an unreadable URL"],
+    ['<div>\n<a/href="https://kompiro.github.io)@evil.com/">x</a>\n</div>', "raw HTML"],
+    ['<div>\n<a title="t"href="https://kompiro.github.io)@evil.com/">x</a>\n</div>', "raw HTML"],
+    ['<div>\n<img/src="https://kompiro.github.io)@evil.com/x.png">\n</div>', "raw HTML"],
+    ['<div>\n<a/href="https://kompiro.github.io\n@evil.com/">x</a>\n</div>', "raw HTML"],
+    ['<div>\n<a x\'="\'>" href="https://kompiro.github.io)@evil.com/">x</a>\n</div>', "raw HTML"],
+    ['<div>\n<img x\'="\'>" src="https://kompiro.github.io)@evil.com/x.png">\n</div>', "raw HTML"],
+    ["[x](\n//kompiro.github.io<@evil.com/)", "an unreadable URL"],
+    ["[x](https://kompiro.github.io&lt;@evil.com/)", "an unreadable URL"],
+    ["[x](<https://kompiro.github.io @evil.com/>)", "an unreadable URL"],
+    ["<https://kompiro.github.io&#62;@evil.com/>", "an unreadable URL"],
+    ["[x](//*.evil.com)", "an unreadable URL"],
+    ["[x](//.evil.com)", ".evil.com"],
+    ["[x](<//(x.evil.com>)", "an unreadable URL"],
+    ["[x](//[ab.evil.com)", "an unreadable URL"],
+    ["[x](//{x}.evil.com)", "an unreadable URL"],
+    ["[x](//$x。evil.com)", "an unreadable URL"],
+    ["<//evil.com>", "evil.com"],
+    ["a //evil.com", "evil.com"],
+    ["[x](vbscript:msgbox)", "a vbscript: URL"],
+    ['<img src="https://evil.com/x.png">', "evil.com"],
+  ])("finds %j outside as %j", (text, host) => {
+    expect(outside(text, "docs/adr/12-x.md")).toContain(host);
+  });
+
+  it("counts an HTML attribute whose URL a line break, a CR or a tab splits", () => {
+    expect(outside('<a href="https://karasu.kompiro.dev\n.evil.com">x</a>')).toContain("raw HTML");
+    expect(outside('<a href="java\nscript:alert(1)">x</a>')).toContain("raw HTML");
+    expect(outside('<a\nhref="https://ev\r\n\r\nil.com">x</a>')).toContain("raw HTML");
+    expect(outside('<a\thref="https://karasu.kompiro.dev\t.evil.com">')).toContain("raw HTML");
+  });
+
+  it("does not count a link the file already had: a rewritten line or one moved in the file", () => {
+    const before = "# x\n\nSee https://evil.com for y.\n\nend";
+    expect(outsideLinks(edit(before, "# x\n\nSee [y](https://evil.com).\n\nend"))).toEqual([]);
+    expect(outsideLinks(edit(before, "# x\n\nend\n\nSee https://evil.com for y."))).toEqual([]);
+    // GFM leaves a trailing `.` out of an autolink: the same target as the link.
+    expect(
+      outsideLinks(edit("See https://evil.com/x.\n", "See [x](https://evil.com/x).\n")),
+    ).toEqual([]);
+  });
+
+  it("does not count a link moved past a line it was joined to", () => {
+    expect(
+      outsideLinks(edit("# x\n\nhttps://evil.com\nend", "# x\n\nend\nhttps://evil.com")),
+    ).toEqual([]);
+  });
+
+  it("does not let a link one backslash reading sees hide behind a copy the other saw", () => {
+    // `https:\/\/evil.com/` in a code span: Markdown's escapes read it as a URL,
+    // every-backslash-as-/ reads `https:////`. The new tag is the other way round.
+    const before = "# t\n\nUpstream: `https:\\/\\/evil.com/`";
+    const after = `${before}\n[click](/\\evil.com/)`;
+    expect(outsideLinks(edit(before, after))).toContain("evil.com");
+  });
+
+  it("counts an edit inside an HTML attribute the file already had", () => {
+    const before = '<a href="https://karasu.kompiro.dev\n">x</a>';
+    const after = '<a href="https://karasu.kompiro.dev\n.evil.com">x</a>';
+    expect(outsideLinks(edit(before, after))).toEqual(["raw HTML"]);
+    // A `>` inside a quoted value does not end the tag, so the key still sees href.
+    const quoted = '<a title=">" href="https://karasu.kompiro.dev/">x</a>';
+    expect(
+      outsideLinks(
+        edit(quoted, quoted.replace("karasu.kompiro.dev/", "karasu.kompiro.dev@evil.com/")),
+      ),
+    ).toContain("raw HTML");
+    // Text around the tag can change: the tag itself is the same.
+    expect(outsideLinks(edit(`a\n${before}`, `b\n${before}`))).toEqual([]);
+  });
+
+  it("counts a link moved in from another file", () => {
+    const from = edit("# a\n\nhttps://evil.com", "# a", "docs/test-perspectives/TPL-2-a.md");
+    const to = edit("# b", "# b\n\nhttps://evil.com", "docs/test-perspectives/TPL-3-b.md");
+    const r = classifyChange({ files: [from, to], author: "kompiro" });
+    expect(r.files.map((f) => [f.path, f.tier])).toEqual([
+      ["docs/test-perspectives/TPL-3-b.md", "medium"],
+      ["docs/test-perspectives/TPL-2-a.md", "low"],
+    ]);
+  });
+
+  it("counts a second copy of a link the file had, and one from another file", () => {
+    const before = "# x\n\nSee https://evil.com.";
+    expect(outsideLinks(edit(before, `${before} Again https://evil.com.`))).toEqual(["evil.com"]);
+    expect(outsideLinks(edit("# x", "# x\n\nhttps://evil.com"))).toEqual(["evil.com"]);
+  });
+
+  it("keeps a relative path inside the repository", () => {
+    expect(outside("[x](../adr/12-x.md) [y](../../packages/core/src/x.ts)")).toEqual([]);
+    expect(outside("[x](/docs/adr/12-x.md)", "docs/adr/12-x.md")).toEqual([]);
+  });
+
+  it("counts a file it cannot read as adding a link: binary, no hunks, or a side not read", () => {
+    const unreadable = ["a file whose text could not be read"];
+    expect(outsideLinks({ ...newDoc("x"), after: "PNG\u0000x" })).toEqual(unreadable);
+    expect(outsideLinks({ ...edit("a", "b"), hunks: [] })).toEqual(unreadable);
+    expect(outsideLinks({ ...edit("a", "b"), before: undefined })).toEqual(unreadable);
+    expect(outsideLinks({ path: TPL_DOC, status: "added", hunks: [] })).toEqual(unreadable);
+    expect(outsideLinks({ path: TPL_DOC, status: "deleted", hunks: [], after: null })).toEqual([]);
+  });
+
+  it("shows at most ten hosts, each cut at 80 characters", () => {
+    const hosts = Array.from({ length: 12 }, (_, i) => `https://h${i}.evil.com`).join(" ");
+    const shown = outside(hosts);
+    expect(shown).toHaveLength(11);
+    expect(shown[10]).toBe("2 more");
+    expect(outside(`https://${"a".repeat(200)}.com`)[0]).toHaveLength(81);
+  });
+
+  describe("in classifyChange", () => {
+    const EVIL = "See https://evil.com/x.";
+
+    it("makes a Low TPL, new ADR or promotion Medium and names the host", () => {
+      const r = classifyChange({ files: [newDoc(EVIL)], author: "kompiro" });
+      expect(r.tier).toBe("medium");
+      expect(r.reasons).toEqual([
+        `${TPL_DOC}: medium (adds a link outside karasu's domains: evil.com)`,
+      ]);
+      expect(r.files[0]).toMatchObject({ tier: "medium", outside: ["evil.com"] });
+      expect(tierOf(newDoc(EVIL, "docs/adr/12-x.md"))).toBe("medium");
+      expect(tierOf(newDoc(EVIL, "docs/adr/12-x.md"), deleted("docs/design/x.md"))).toBe("medium");
+    });
+
+    it("makes a promotion's link swap Medium when the file also gains an outside link", () => {
+      const swap = modified("docs/acceptance/x.md", {
+        hunks: [
+          {
+            oldStart: 5,
+            removed: ["- 設計: [x.md](../design/x.md)"],
+            newStart: 5,
+            added: ["- 設計: [ADR-12](../adr/12-x.md)"],
+          },
+        ],
+        before: "# x\n",
+        after: "# x\n\nhttps://evil.com\n",
+      });
+      const promotion = [added("docs/adr/12-x.md"), deleted("docs/design/x.md")];
+      expect(tierOf(...promotion, { ...swap, after: swap.before })).toBe("low");
+      expect(tierOf(...promotion, swap)).toBe("medium");
+    });
+
+    it("leaves a Low file with only karasu's links Low", () => {
+      expect(tierOf(newDoc("https://github.com/kompiro/karasu/issues/1", "docs/adr/12-x.md"))).toBe(
+        "low",
+      );
+    });
+
+    it("does not read test files", () => {
+      expect(tierOf(newDoc(`const u = "${EVIL}";`, "packages/core/src/x.test.ts"))).toBe("low");
+    });
+
+    it("keeps a Medium, Design or High file at its own tier", () => {
+      expect(tierOf(edit("a", EVIL, "packages/core/src/a.ts"))).toBe("medium");
+      expect(tierOf(edit("a", EVIL, "docs/design/x.md"))).toBe("design");
+      expect(tierOf(edit("a", EVIL, "docs/spec/syntax.md"))).toBe("high");
+    });
+
+    it("shows the hosts in the job summary, as literal text", () => {
+      const out = tierSummary({
+        effective: "medium",
+        trustedAuthor: true,
+        files: [
+          { path: TPL_DOC, tier: "medium", outside: ["evil.com", "an unreadable URL"] },
+          { path: "docs/adr/12-x.md", tier: "medium", outside: ["a|b](x)"] },
+        ],
+      });
+      expect(out).toContain(
+        "| medium | <code>docs/test-perspectives/TPL-1-x.md</code> (adds a link outside karasu's domains: evil.com, an unreadable URL) |",
+      );
+      expect(out).toContain("a&#124;b&#93;&#40;x&#41;");
+    });
   });
 });

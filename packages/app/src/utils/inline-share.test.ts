@@ -1,16 +1,23 @@
 import { describe, it, expect } from "vitest";
 import { deflateSync, strToU8 } from "fflate";
+import { bindTranslate } from "@karasu-tools/i18n";
 import {
   encodeShare,
   decodeShare,
   buildShareUrl,
   buildShareUrls,
+  describeUnfurlOverflow,
   fitsUnfurlPayload,
-  MAX_UNFURL_PAYLOAD,
   readSharedProjectFromHash,
   SHARE_FRAGMENT_KEY,
 } from "./inline-share.js";
 import { HOSTED_APP_ORIGIN } from "./hosted-app.js";
+
+/**
+ * The unfurl budget (ADR-1783). `inline-share.ts` does not export it (TPL-2259),
+ * so the tests name the documented value and check the predicate against it.
+ */
+const MAX_UNFURL_PAYLOAD = 8000;
 
 const SAMPLE = `system Shop {
   service Api { label "API" }
@@ -192,6 +199,25 @@ describe("fitsUnfurlPayload", () => {
     expect(fitsUnfurlPayload("x".repeat(MAX_UNFURL_PAYLOAD))).toBe(true);
     expect(fitsUnfurlPayload("x".repeat(MAX_UNFURL_PAYLOAD + 1))).toBe(false);
     expect(fitsUnfurlPayload("")).toBe(true);
+  });
+});
+
+describe("describeUnfurlOverflow", () => {
+  // The wording lives in `@karasu-tools/i18n`; the helper only supplies the
+  // limit, which `inline-share.ts` keeps private (TPL-2259).
+  it("fills the catalog entry of the translator it is given with the private limit", () => {
+    const en = describeUnfurlOverflow(bindTranslate("en"), "o/r@sha", 9123);
+    expect(en).toBe(
+      "Model too large for a permalink: o/r@sha encodes to 9123 characters, " +
+        `over the ${MAX_UNFURL_PAYLOAD} a shareable URL can carry. ` +
+        "Point the permalink at a narrower entry .krs, or split the model.",
+    );
+
+    const ja = describeUnfurlOverflow(bindTranslate("ja"), "o/r@sha", 9123);
+    expect(ja).toContain("o/r@sha");
+    expect(ja).toContain("9123");
+    expect(ja).toContain(String(MAX_UNFURL_PAYLOAD));
+    expect(ja).not.toBe(en);
   });
 });
 

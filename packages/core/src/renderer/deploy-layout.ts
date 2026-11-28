@@ -19,7 +19,7 @@ import {
   GRID_COLUMN_CAP,
 } from "./layer-layout-logics.js";
 import { searchWidthBudget } from "./aspect-search.js";
-import { runRoutingChain } from "./layout-edges.js";
+import { NO_BAND, runRoutingChain } from "./layout-edges.js";
 import { normalizeCoordinates } from "./layout-geometry.js";
 const NODE_GAP = 16;
 const CONTAINER_GAP = 48;
@@ -645,13 +645,13 @@ function routeDeployEdges(containers: ContainerRect[], edges: LayoutEdge[]): voi
   runRoutingChain(boxes, edges, [], {
     // No in-place expansion on the deploy view.
     expandedFrames: undefined,
-    // No band stack: trunk aggregation and backward dashing stay off, as on an
-    // ungrouped system canvas.
+    // No band stack: no trunks or backward dashing, as on an ungrouped canvas.
     groupBands: null,
     // Containers are rectangles; the bounding box is the outline.
     ports: undefined,
     // The containers are the cards here; no frame encloses them all.
     enclosure: undefined,
+    band: NO_BAND,
   });
   for (const e of edges) e.ghost = true;
 }

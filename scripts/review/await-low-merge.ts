@@ -1,8 +1,8 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
-// Waits for the Low PR merger to merge one Low PR (Issue #3698). The waiting and
+// Waits for the Low PR merger to merge one Low PR (Issue #3673). The waiting and
 // the outcomes are in `await-low-merge-flow.ts`; this file is the real GitHub and
-// git they run against. Read-only on GitHub: the session comments and enables
-// auto-merge from the outcome (`.claude/rules/adr.md`). Locally it fetches `main`
+// git they run against. Read-only on GitHub: the session acts on the outcome
+// (`.claude/rules/adr.md`). Locally it fetches `main`
 // and the PR head's objects for the judge's tier check, as the merger does.
 //
 //   node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/review/await-low-merge.ts <pr> [--once]
