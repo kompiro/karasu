@@ -13,6 +13,11 @@ discovered_from:
 related_to:
   - TPL-3385
   - TPL-2909
+known_consumers:
+  - session-naming-hook
+  - session-start-skills
+  - pr-verify
+  - coderabbit-converge
 topic: project
 scope:
   packages: []
@@ -22,6 +27,10 @@ scope:
     - ".claude/skills/coderabbit-converge/**"
     - "docs/process/review.md"
     - ".claude/settings.json"
+    - "scripts/session/**"
+    - ".claude/skills/impl/**"
+    - ".claude/skills/local-review/**"
+    - ".claude/skills/verify/**"
 ---
 
 # TPL-3920: 別のセッションからのメッセージは起こす合図として扱い、判定と記録は PR から読み直す
@@ -94,8 +103,13 @@ gate の判定）から読み直して決める。依頼の中身と往復の回
   この文字列を書くと gate の `fix` の理由から指摘が消える（失敗モードの 10 個目のうち id の側）ことの根拠で、
   コメントに id を書かない理由である
 
-残りの失敗モード（1〜9 と、10 個目のうち `@coderabbitai` の側）にはテストが無い。名前を付ける hook の対応
-（6 つ目）のうち、prompt から名前への対応と、別の役割の名前を変えないことは、実装 PR で足す hook の vitest が
-固める。組み込みのコマンドとの重なりは Claude Code がコマンドを選ぶ仕組みによるので、実装 PR の受け入れテストで
-確かめる。ほかの対処は skill の手順と `docs/process/review.md` の文面にあり、機械の検査は無い。実装 PR の
-受け入れテストで 3 つのセッションを動かして確かめる
+- `scripts/session/name-from-prompt.test.ts` › `name-from-prompt hook (#3920)` › `sets no name for any other prompt`：
+  起動スキルの prompt でなければ名前を付けない。組み込みの `/code-review` の別名の `/review <N>` も外れる（失敗モードの
+  6 つ目のうち、名前を付ける仕組みの側）
+- `scripts/session/name-from-prompt.test.ts` › `name-from-prompt hook (#3920)` › `does not move a session that carries another role's name`：
+  別の役割の名前が付いたセッションで起動スキルを打ち直しても、名前を変えない（同じく 6 つ目）
+
+残りの失敗モード（1〜5、7〜9、6 つ目のうち組み込みのコマンドとの重なり、10 個目のうち `@coderabbitai` の側）には
+自動のテストが無い。組み込みのコマンドとの重なりは Claude Code がコマンドを選ぶ仕組みにより、ほかの対処は skill の
+手順と `docs/process/review.md`「セッション同士のやりとり」の文面にある。どれも
+`docs/acceptance/3920-session-handoff.md` の手動確認で 3 つのセッションを動かして確かめる
