@@ -261,8 +261,11 @@ describe("regeneratePr", () => {
 
   it("retries a read that fails once and still merges in the same run (Issue #3933)", () => {
     let failures = 1;
+    const clock = fakeClock();
+    const readAt: number[] = [];
     const gh = fakeGitHub({
       runs: () => {
+        readAt.push(clock.now());
         if (failures-- > 0) throw new Error("gh api ...: unexpected end of JSON input");
         return allPass();
       },
@@ -272,11 +275,13 @@ describe("regeneratePr", () => {
     const result = regeneratePr({
       github: gh.github,
       workspace: ws.workspace,
-      clock: fakeClock(),
+      clock,
       log: (m) => logged.push(m),
     });
     expect(result.outcome).toBe("merged");
     expect(gh.calls).toContain("merge #100 new-head");
+    // The retry waits the backoff, not the 30-second poll.
+    expect(readAt).toEqual([0, 5000]);
     expect(logged).toContainEqual(
       expect.stringMatching(
         /^reading the check runs of new-head failed \(attempt 1 of 3\), retrying: .*unexpected end of JSON input$/,
