@@ -88,42 +88,63 @@ describe("parseRecord / renderRecord", () => {
     expect(b).toMatch(/\n\n<\/details>\n\n<!-- \/local-review -->/);
   });
 
-  it("keeps the author's tags in the Reviewers, Waived and Verification lines from breaking the fold (#3875)", () => {
-    const tags = "</details> <details> <pre> <!-- & &lt; \\` </details> \\`";
+  it("keeps the author's text from breaking the fold, and reads it back (#3875)", () => {
+    // Each of these broke the fold on GitHub: a bare tag, an unclosed tag, a code
+    // span that a link, image or autolink takes apart, a code span across lines,
+    // and a fence opened by a lone CR. The record's own marker inside a code span
+    // cut the record short when read back.
+    const hostile = [
+      "</details> <details> <pre> <!-- & &lt; \\`",
+      "[x](`)</details>` ![i](`)</details>` www.a.com/`</details>` https://a.com/`</details>`",
+      "`<!-- /local-review -->` `<!-- local-review:v1 base=" + BASE + " head=" + HEAD + " -->`",
+      "a lone CR\r```, U+2028\u2028and U+2029\u2029end, a trailing backtick `",
+      "zero-width <\u200b already there",
+    ].join(" | ");
     const r = {
       base: BASE,
       head: HEAD,
-      reviewers: `coderabbit CLI --deep, ${tags}, \`</details>\` in a code span`,
-      waived: `w ${tags}`,
-      findings: [finding({})],
-      verification: `checked ${tags}\nsecond line`,
+      reviewers: `coderabbit CLI --deep, ${hostile}`,
+      waived: `\`</details>\` ${hostile}`,
+      findings: [finding({ where: hostile, finding: hostile, disposition: "declined: <pre> x" })],
+      verification: `checked ${hostile}\nsecond line`,
     };
     const block = renderRecord(r);
-    // Outside the fold's own tags, no `<` is left outside a code span.
+    // Between the fold's own tags, no `<` can start a tag, and no line was split.
     const inner = block.slice(
       block.indexOf("</summary>") + "</summary>".length,
       block.lastIndexOf("</details>"),
     );
-    expect(inner.replace(/`[^`]*`/g, "")).not.toMatch(/[<\\]/);
-    expect(inner).toContain("`</details>` in a code span");
-    // The record reads back what it was given; a newline becomes a space.
+    expect(inner).not.toMatch(/<[A-Za-z/!?]/);
+    expect(inner).not.toMatch(/[\r\u2028\u2029]/);
+    expect(block.match(/<!-- \/local-review -->/g)).toHaveLength(1);
+    // The record reads back what it was given; a line ending becomes a space.
+    const flat = (s: string) => s.replace(/\r\n|[\r\n\u2028\u2029]/g, " ");
     const parsed = parseRecord(block);
-    expect("record" in parsed && parsed.record).toMatchObject({
-      reviewers: r.reviewers,
-      waived: r.waived,
-      verification: `checked ${tags} second line`,
+    expect("record" in parsed && parsed.record).toEqual({
+      ...r,
+      reviewers: flat(r.reviewers),
+      waived: flat(r.waived),
+      verification: flat(r.verification),
+      findings: r.findings.map((f) => ({ ...f, where: flat(f.where), finding: flat(f.finding) })),
     });
-    // What verifyRecord reads from the Reviewers line is unchanged.
+  });
+
+  it("reads the Reviewers line the same way through the guard (#3875)", () => {
     expect(
       check(
         body([finding({})], { reviewers: "coderabbit CLI skipped: <offline> & `x`" }),
         "medium",
       ),
     ).toEqual([]);
-    const skipped = parseRecord(body([], { reviewers: "coderabbit CLI skipped: <offline>" }));
-    expect("record" in skipped && skipped.record.reviewers).toBe(
-      "coderabbit CLI skipped: <offline>",
-    );
+    // A lone CR no longer starts a `Waived:` line the author did not write.
+    const cr = parseRecord(body([finding({})], { reviewers: "coderabbit CLI --deep\rWaived: no" }));
+    expect("record" in cr && cr.record.waived).toBeUndefined();
+    expect(
+      check(
+        body([finding({ disposition: "" })], { reviewers: "x\u2028coderabbit CLI --deep" }),
+        "medium",
+      ),
+    ).toEqual([expect.stringContaining("finding 1 has no disposition")]);
   });
 
   it("reads a record written before the fold (#3875)", () => {

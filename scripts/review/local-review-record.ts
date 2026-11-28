@@ -78,64 +78,26 @@ const isCodeRabbitRow = (f: Finding): boolean => /^coderabbit$/i.test(f.reviewer
 export const isDesignRow = (f: Finding): boolean => /^design$/i.test(f.reviewer.trim());
 
 /**
- * Applies `f` to the parts of `s` outside code spans and keeps the code spans as
- * they are. A code span is a run of backticks closed by the next run of the same
- * length (CommonMark); a run with no such partner is plain text.
+ * Everything the author wrote sits inside the record's `<details>`, where a bare
+ * tag would end the fold early (`</details>`), swallow the table (`<pre>`), or
+ * look like the record's own markers to {@link parseRecord}. GitHub finds a tag
+ * (HTML, comment or autolink) only where `<` is followed by a letter, `/`, `!` or
+ * `?`, so a zero-width space after every `<` keeps any tag from forming, whatever
+ * else (code spans, links, autolinks) the text holds, and the reader sees the
+ * same characters. {@link unguard} removes one after every `<`, so the record
+ * reads back the text it was given (Issue #3875). Line endings become spaces, so
+ * each value stays on its line; JavaScript and GitHub also end a line at a lone
+ * `\r`, U+2028 and U+2029.
  */
-function outsideCodeSpans(s: string, f: (text: string) => string): string {
-  let out = "";
-  let text = "";
-  let i = 0;
-  while (i < s.length) {
-    if (s[i] !== "`") {
-      text += s[i++];
-      continue;
-    }
-    let j = i;
-    while (s[j] === "`") j++;
-    const run = s.slice(i, j);
-    const close = new RegExp(`(?<!\`)${run}(?!\`)`, "g");
-    close.lastIndex = j;
-    const m = close.exec(s);
-    if (m === null) {
-      text += run;
-      i = j;
-      continue;
-    }
-    out += f(text) + s.slice(i, m.index + run.length);
-    text = "";
-    i = m.index + run.length;
-  }
-  return out + f(text);
-}
-
-/**
- * The Reviewers / Waived / Verification lines sit inside the record's `<details>`,
- * where a bare tag of the author's text would end the fold early (`</details>`) or
- * swallow the table (`<pre>`). Outside code spans, `&`, `<` and `\` are written as
- * entities, which GitHub shows as the characters they stand for, and a newline
- * as a space, so the line stays one paragraph. With no backslash left outside the
- * code spans, no backtick is escaped, so GitHub finds the code spans that
- * {@link outsideCodeSpans} found. {@link unescapeLine} reverses it, so the record
- * reads back the text it was given (Issue #3875).
- */
-const LINE_ENTITIES: Record<string, string> = { "&": "&amp;", "<": "&lt;", "\\": "&#92;" };
-const LINE_CHARS = Object.fromEntries(Object.entries(LINE_ENTITIES).map(([c, e]) => [e, c]));
-
-function escapeLine(s: string): string {
-  return outsideCodeSpans(s.replace(/\r?\n/g, " "), (t) =>
-    t.replace(/[&<\\]/g, (c) => LINE_ENTITIES[c]),
-  );
-}
-
-function unescapeLine(s: string): string {
-  return outsideCodeSpans(s, (t) => t.replace(/&amp;|&lt;|&#92;/g, (e) => LINE_CHARS[e]));
-}
+const ZWSP = "\u200b";
+const LINE_END = /\r\n|[\r\n\u2028\u2029]/g;
+const guard = (s: string): string => s.replace(LINE_END, " ").replace(/</g, `<${ZWSP}`);
+const unguard = (s: string): string => s.replace(new RegExp(`<${ZWSP}`, "g"), "<");
 
 /** Splits a markdown table row on pipes that are not escaped. */
 function cells(row: string): string[] {
   const inner = row.trim().replace(/^\|/, "").replace(/\|$/, "");
-  return inner.split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, "|"));
+  return inner.split(/(?<!\\)\|/).map((c) => unguard(c.trim().replace(/\\\|/g, "|")));
 }
 
 export function parseRecord(body: string): ParseResult {
@@ -152,7 +114,7 @@ export function parseRecord(body: string): ParseResult {
 
   const line = (name: string): string | undefined => {
     const v = new RegExp(`^${name}:[ \\t]*(.*)$`, "m").exec(block)?.[1];
-    return v === undefined ? undefined : unescapeLine(v.trim());
+    return v === undefined ? undefined : unguard(v.trim());
   };
   const reviewers = line("Reviewers") ?? "";
   const waived = line("Waived");
@@ -306,7 +268,7 @@ export function verifyRecord(
   return errors;
 }
 
-const escapeCell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+const escapeCell = (s: string) => guard(s).replace(/\|/g, "\\|");
 
 const SUMMARY_KINDS = ["fixed", "declined", "deferred", "no deviation", "open"] as const;
 
@@ -314,13 +276,13 @@ const SUMMARY_KINDS = ["fixed", "declined", "deferred", "no deviation", "open"] 
  * How the folded summary counts a row, by the same rules {@link verifyRecord}
  * applies: `no deviation` answers a design row only, and a row with no answer the
  * check accepts is `open`. The disposition is read as the table holds it
- * (newlines become spaces), so the count matches what {@link parseRecord} reads.
+ * (line endings become spaces), so the count matches what {@link parseRecord} reads.
  * It counts the disposition as written and checks nothing else: a `fixed in <sha>`
  * whose commit is not in the head still counts as fixed, and Design's advisory
  * `coderabbit` rows are counted too. Those checks stay in {@link verifyRecord}.
  */
 function summaryKind(f: Finding): (typeof SUMMARY_KINDS)[number] {
-  const d = f.disposition.replace(/\n/g, " ").trim();
+  const d = f.disposition.replace(LINE_END, " ").trim();
   if (FIXED.test(d)) return "fixed";
   if (DECLINED.test(d)) return "declined";
   if (ISSUE.test(d)) return "deferred";
@@ -358,9 +320,9 @@ export function renderRecord(r: LocalReviewRecord): string {
     "",
     `<details><summary>${recordSummary(r)}</summary>`,
     "",
-    `Reviewers: ${escapeLine(r.reviewers)}`,
+    `Reviewers: ${guard(r.reviewers)}`,
   ];
-  if (r.waived !== undefined) lines.push(`Waived: ${escapeLine(r.waived)}`);
+  if (r.waived !== undefined) lines.push(`Waived: ${guard(r.waived)}`);
   lines.push("");
   if (r.findings.length === 0) {
     lines.push("No findings.");
@@ -374,7 +336,7 @@ export function renderRecord(r: LocalReviewRecord): string {
     }
   }
   if (r.verification !== undefined) {
-    lines.push("", `Verification: ${escapeLine(r.verification)}`);
+    lines.push("", `Verification: ${guard(r.verification)}`);
   }
   // The blank line ends the HTML block `</details>` opens; without it, a heading
   // right after the closing marker would render as text.
