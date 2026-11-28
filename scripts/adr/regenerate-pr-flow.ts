@@ -269,7 +269,8 @@ class ReadFailed extends Error {
  * on it left an opened PR unmerged until the next day's run (Issue #3933). Writes
  * are not retried: a repeated create could open a second PR, and a merge is
  * already pinned to a SHA. The last failure is thrown as a {@link ReadFailed}
- * with the same message (TPL-2786), so the wait for checks can tell it from a bug.
+ * with the same message (TPL-2786), so the wait for checks and the report of a
+ * failed run can tell it from a bug (Issues #3934, #3936).
  */
 function withReadRetries(github: GitHub, clock: Clock, log: (message: string) => void): GitHub {
   const read = <T>(what: string, call: () => T): T => {
