@@ -25,25 +25,34 @@ type: process
 ### AC-1: 起動スキルの prompt だけが、その役割の名前になる
 
 - [ ] AT-1: hook は、前後の空白と改行を除いた prompt の全体が `/impl <N>`・`/local-review <N>`・`/verify <N>`（数字の前の
-  `#` は可）のときだけ、`impl-<N>`・`review-<N>`・`verify-<N>` を返す。`/review <N>`、後ろに文が続く prompt、ほかの prompt
-  には何も返さない。読めない入力でも 0 で終わる
+  `#` は可）のときだけ、`impl-<N>`・`review-<N>`・`verify-<N>` を返す。VS Code 拡張が prompt の先頭に付ける
+  `<ide_opened_file>…</ide_opened_file>`・`<ide_selection>…</ide_selection>` は除いてから比べる。`/review <N>`、前後に文が
+  続く prompt、ほかの prompt には何も返さない。読めない入力でも 0 で終わる
 
   > ✅ Automated — `scripts/session/name-from-prompt.test.ts` › `name-from-prompt hook (#3920)` › `names a session after each start skill`
   >
   > ✅ Automated — `scripts/session/name-from-prompt.test.ts` › `name-from-prompt hook (#3920)` › `accepts a # before the number and trims surrounding whitespace and newlines`
   >
+  > ✅ Automated — `scripts/session/name-from-prompt.test.ts` › `name-from-prompt hook (#3920)` › `drops the editor context the VS Code extension puts in front of the prompt`
+  >
+  > ✅ Automated — `scripts/session/name-from-prompt.test.ts` › `name-from-prompt hook (#3920)` › `sets no name when the editor context is not just in front`
+  >
   > ✅ Automated — `scripts/session/name-from-prompt.test.ts` › `name-from-prompt hook (#3920)` › `sets no name for any other prompt`
   >
   > ✅ Automated — `scripts/session/name-from-prompt.test.ts` › `name-from-prompt hook (#3920)` › `exits 0 silently on input it cannot read`
 
-- [ ] AT-2: 別の役割の名前が付いたセッションの名前は変えない。名前は transcript の最後の `custom-title` から読み、同じ
-  役割・自動の名前・名前なし・transcript が無いときは名前を付ける
+- [ ] AT-2: 別の役割の名前が付いたセッションの名前は変えない。今の名前は hook の入力の `session_title` から読み、無ければ
+  transcript の最後の `custom-title` から読む。同じ役割・自動の名前・名前なし・transcript が無いときは名前を付ける
 
   > ✅ Automated — `scripts/session/name-from-prompt.test.ts` › `name-from-prompt hook (#3920)` › `does not move a session that carries another role's name`
   >
   > ✅ Automated — `scripts/session/name-from-prompt.test.ts` › `name-from-prompt hook (#3920)` › `renames a session that has the same role, an automatic name or no name`
   >
   > ✅ Automated — `scripts/session/name-from-prompt.test.ts` › `name-from-prompt hook (#3920)` › `reads the last name in the transcript`
+  >
+  > ✅ Automated — `scripts/session/name-from-prompt.test.ts` › `name-from-prompt hook (#3920)` › `reads the current name from session_title before the transcript`
+  >
+  > ✅ Automated — `scripts/session/name-from-prompt.test.ts` › `name-from-prompt hook (#3920)` › `falls back to the transcript when session_title is empty or not a string`
   >
   > ✅ Automated — `scripts/session/name-from-prompt.test.ts` › `name-from-prompt hook (#3920)` › `names the session when the transcript is missing`
 
@@ -59,9 +68,10 @@ Claude Code のセッション同士のメッセージと、hook が付けた名
 NO で直す点を挙げる）に対して行い、終わったら閉じる。M12 を先に行い、そのあと `Hand-back` のコメントを 3 件にして
 M11 を行う。PR の上の差し戻し（M7〜M10）は、PR の往復の上限を最大 2 件使う。
 
-- [ ] M1: 新しいセッションで `/impl <N>`・`/local-review <N>`・`/verify <N>` を打つと、それぞれの `ListAgents` の 1 行目と
-  タブの名前が `impl-<N>`・`review-<N>`・`verify-<N>` になり、`/local-review` で始まるのが組み込みの `/code-review` では
-  なくプロジェクトのスキルである
+- [ ] M1: エディタでファイルを開いたまま、新しいセッションの最初の prompt として `/impl <N>`・`/local-review <N>`・
+  `/verify <N>` を番号まで打って送ると、それぞれの `ListAgents` の 1 行目とタブの名前が `impl-<N>`・`review-<N>`・
+  `verify-<N>` になり、`/local-review` で始まるのが組み込みの `/code-review` ではなくプロジェクトのスキルである。
+  候補の一覧から選んで番号なしで送ったとき（`/impl` だけ）は名前が自動のままで、スキルが番号を聞く
 - [ ] M2: `impl-<N>` が手順 8 の回を頼むと、待機中の `review-<N>` が指摘を返す。手順 8 を終えて CLI を頼むと、
   `review-<N>` が CLI を当てて返す。このブランチに CLI のレビューがまだ無い状態から始め、`impl-<N>` の `gh pr ready` が
   `review-<N>` の CLI のレビュー（`git.json` の `head` が返されたコミット）で CLI のゲートを通る

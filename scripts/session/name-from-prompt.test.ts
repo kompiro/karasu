@@ -50,6 +50,33 @@ describe("name-from-prompt hook (#3920)", () => {
     expect(run({ prompt: "\n\t/local-review #7 \n\n" })).toBe("review-7");
   });
 
+  it("drops the editor context the VS Code extension puts in front of the prompt", () => {
+    // The form seen on 2.1.332 when a file is open in the editor (#3920 manual check M1).
+    const opened =
+      "<ide_opened_file>The user opened the file /w/reports/pr-verify/3939/summary.md in the IDE. " +
+      "This may or may not be related to the current task.</ide_opened_file>\n";
+    const selection =
+      "<ide_selection>The user selected the lines 1 to 2 from /w/a.ts:\nconst a = 1;\n" +
+      "</ide_selection>\n";
+    expect(run({ prompt: `${opened}/impl 3920` })).toBe("impl-3920");
+    expect(run({ prompt: `${selection}/verify #3920` })).toBe("verify-3920");
+    expect(run({ prompt: `${opened}${selection}\n/local-review 3920\n` })).toBe("review-3920");
+  });
+
+  describe("sets no name when the editor context is not just in front", () => {
+    const opened = "<ide_opened_file>x</ide_opened_file>\n";
+    it.each([
+      `${opened}/impl`,
+      `${opened}/impl 3920 please`,
+      `${opened}please\n/impl 3920`,
+      `/impl 3920\n${opened}`,
+      `<ide_opened_file>unclosed\n/impl 3920`,
+      `<ide_diagnostics>x</ide_diagnostics>\n/impl 3920`,
+    ])("%j", (prompt) => {
+      expect(run({ prompt })).toBeNull();
+    });
+  });
+
   describe("sets no name for any other prompt", () => {
     it.each([
       "hello",
@@ -106,6 +133,25 @@ describe("name-from-prompt hook (#3920)", () => {
       { flag: "a" },
     );
     expect(run({ prompt: "/impl 3920", transcript_path: path })).toBeNull();
+  });
+
+  it("reads the current name from session_title before the transcript", () => {
+    // session_title is in the hook input once the session has a name (seen on 2.1.332).
+    expect(run({ prompt: "/verify 3920", session_title: "impl-3920" })).toBeNull();
+    expect(run({ prompt: "/impl 3921", session_title: "impl-3920" })).toBe("impl-3921");
+    expect(run({ prompt: "/impl 3920", session_title: "karasu-9b" })).toBe("impl-3920");
+    // session_title is the current name, so it wins over the transcript's record.
+    const t = transcript("verify-3920");
+    expect(run({ prompt: "/impl 3920", session_title: "karasu-1f", transcript_path: t })).toBe(
+      "impl-3920",
+    );
+    expect(run({ prompt: "/impl 3920", session_title: "verify-3920" })).toBeNull();
+  });
+
+  it("falls back to the transcript when session_title is empty or not a string", () => {
+    const t = transcript("verify-3920");
+    expect(run({ prompt: "/impl 3920", session_title: "", transcript_path: t })).toBeNull();
+    expect(run({ prompt: "/impl 3920", session_title: 7, transcript_path: t })).toBeNull();
   });
 
   it("names the session when the transcript is missing", () => {
