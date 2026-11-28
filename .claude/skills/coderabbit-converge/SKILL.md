@@ -216,5 +216,12 @@ PR 本文のローカルレビューの記録に、このラウンドまでの C
 - ラウンド数、再レビューを頼んだ回数、rate limit で待った時間
 - 直した指摘・却下した指摘（理由付き）・Issue に回した指摘・質問した指摘（thread へのリンク）
 
+「人間に渡せる」で終わり、Review tier の走り直しが終わったら、検証セッションに渡す。このセッションの名前が
+`impl-<N>`（`ListAgents` の 1 行目）で、PR 本文に `Closes #<N>` か `Refs #<N>`（`#<N>` の直後が数字でない）があり、
+一覧に `verify-<N>` の行がちょうど 1 つあれば、1 行目を
+`ready-for-verify PR #<pr> head=<sha>` にして `verify-<N>` に送り（`SendMessage`）、送ったことを最後のメッセージに
+書く。「人間の判断待ちで止まっている」ときは送らない（kompiro の判断が要るので、差し戻されても直せない）。規則の
+大枠は `docs/process/review.md`「セッション同士のやりとり」にある。
+
 収束をマージ許可として扱わない。`gh pr merge` も PR の approve もしない（CodeRabbit は required check ではなく、
 マージ判断は人間が持つ）。
