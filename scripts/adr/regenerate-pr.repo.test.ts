@@ -28,15 +28,21 @@ const git = (cwd: string, args: string[]) =>
   execFileSync("git", args, { cwd, encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 
 // A caller's GIT_DIR or GIT_INDEX_FILE (a pre-push hook sets them) must not point
-// the throwaway repositories' git at the real one. gitWorkspace reads process.env.
+// the throwaway repositories' git at the real one, and the developer's global or
+// system config (a `core.hooksPath` would skip the stand-in hook) must not apply.
+// gitWorkspace reads process.env.
 beforeAll(() => {
   for (const k of Object.keys(process.env).filter((name) => name.startsWith("GIT_"))) {
     savedGitEnv[k] = process.env[k];
     delete process.env[k];
   }
+  process.env.GIT_CONFIG_GLOBAL = "/dev/null";
+  process.env.GIT_CONFIG_NOSYSTEM = "1";
 });
 
 afterAll(() => {
+  delete process.env.GIT_CONFIG_GLOBAL;
+  delete process.env.GIT_CONFIG_NOSYSTEM;
   Object.assign(process.env, savedGitEnv);
 });
 
@@ -100,9 +106,17 @@ describe("gitWorkspace push on a clone without tags", { timeout: 30_000 }, () =>
     );
   });
 
+  it("names the hook's reason in the error when the push is still refused", () => {
+    // No release tag on origin either: the fetch brings nothing and the hook refuses.
+    git(dir, ["--git-dir", origin, "tag", "-d", "karasu@1.0.0"]);
+    expect(() => gitWorkspace(root).push(null)).toThrow(
+      /git push failed \(exit 1\): .*no karasu@\* tag/,
+    );
+  });
+
   it("still honours the lease: a branch that exists is not overwritten by a null lease", () => {
     git(root, ["fetch", "-q", "origin", RELEASE_TAGS]);
     git(root, ["push", "-q", "origin", `origin/main:refs/heads/${BRANCH}`]);
-    expect(() => gitWorkspace(root).push(null)).toThrow(/Command failed: git push/);
+    expect(() => gitWorkspace(root).push(null)).toThrow(/git push failed \(exit 1\): .*stale info/);
   });
 });

@@ -10,9 +10,10 @@
 // Exit codes: 0 merged, closed or nothing to do; 3 waited out (the PR stays and
 // tomorrow's run picks it up); 1 anything else (TPL-2786).
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 import { CONFIG_FILES, GENERATORS, outputPaths, strayPaths } from "./generated.ts";
 import {
   BASE,
@@ -134,13 +135,26 @@ function gitIn(cwd: string, args: string[], quiet = false): string {
 }
 
 /**
- * Runs git with its stdout on this script's stderr. For a push: the pre-push
- * hooks print to stdout, and a discarded stdout leaves a refused push with only
- * "failed to push some refs" (Issue #3925). Not this script's stdout, whose last
- * line is the JSON result the routine reads.
+ * Runs git, copies all of its output to this script's stderr, and on failure
+ * throws with the output's last lines. For a push: the pre-push hooks print to
+ * stdout, and a discarded stdout left a refused push with only "failed to push
+ * some refs" (Issue #3925). The thrown message reaches the JSON result the
+ * routine reports; this script's stdout carries only that result.
  */
 function gitLoud(cwd: string, args: string[]): void {
-  execFileSync("git", args, { cwd, stdio: ["ignore", 2, "inherit"] });
+  const r = spawnSync("git", args, { cwd, encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
+  if (r.error) throw r.error;
+  const output = `${r.stdout}${r.stderr}`;
+  process.stderr.write(output);
+  if (r.status !== 0) {
+    const tail = stripVTControlCharacters(output)
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l !== "")
+      .slice(-6)
+      .join(" | ");
+    throw new Error(`git ${args[0]} failed (exit ${r.status}): ${tail}`);
+  }
 }
 
 /**
