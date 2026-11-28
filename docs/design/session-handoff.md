@@ -4,7 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#3920](https://github.com/kompiro/karasu/issues/3920)
-  - 関連 Issue: [#3896](https://github.com/kompiro/karasu/issues/3896)（Design PR #3914。kompiro に届く問いを減らす側）
+  - 関連 Issue: [#3896](https://github.com/kompiro/karasu/issues/3896)（Design PR #3914、2026-11-28 にマージ。kompiro に届く問いを減らす側。Design Doc は `docs/design/review-decision-principles.md`）
   - 関連 ADR: [ADR-3286](../adr/3286-risk-based-review-tiers.md)（判断の根拠を PR に残す）、[ADR-3342](../adr/3342-ready-gate-local-review.md)（CLI のレビューが済んでいない PR を ready にさせない）
   - 関連 TPL: [TPL-3920](../test-perspectives/TPL-3920-session-message-is-a-wake-up-not-a-record.md)（この PR で起こす proactive TPL）、[TPL-3385](../test-perspectives/TPL-3385-consumer-of-a-signal-the-producer-stops-emitting.md)、[TPL-2909](../test-perspectives/TPL-2909-pending-items-need-stable-ids-not-a-moving-window.md)
   - コード: `.claude/skills/pr-verify/SKILL.md`、`.claude/skills/coderabbit-converge/SKILL.md`、`docs/process/review.md`、`scripts/coderabbit/review-state.ts`、`scripts/coderabbit/ready-gate.sh`、`scripts/review/local-review-record.ts`、`.claude/settings.json`（UserPromptSubmit の hook）
@@ -58,6 +58,10 @@ Claude Code には、同じマシンのセッション同士がメッセージ�
 
 これらに共通するのは「依頼文を kompiro に渡して終わる」ことなので、設計はこの 1 つの条件で書き、箇所を
 数え上げない。
+
+#3914 の実装のあとは、手順 6 が原則の ID を持つ判断を一覧で見せ、kompiro は違うと思った項目にだけ答える。そこで
+kompiro が変更を求めた項目も、6b の 4（変更が 1 つでも選ばれた）と同じく依頼文を渡して終わるので、この 1 つの
+条件に入り、差し戻す箇所は増えない。
 
 ### 実装セッションが PR を kompiro に渡す時点
 
@@ -331,7 +335,8 @@ kompiro が見ているセッションで動く必要がある。
    Review tier を走り直させ、終わるのを待ってから送る（converge の終わり方と同じ。今の `review.md` が求めて
    いない段階でも、新しい節で求める）。走っている check があると、検証セッションの gate は `wait` になる。
    - High: `coderabbit-converge` が「人間に渡せる」で終わるとき（終わり方で走り直す）。「人間の判断待ちで
-     止まっている」ときは送らない（kompiro の判断が要るので、差し戻されても実装セッションは直せない）
+     止まっている」ときは送らない（kompiro の判断が要るので、差し戻されても実装セッションは直せない）。#3914 の
+     P1g の問い（直すのに 50 行を超える修正）が答えを待っているあいだも、converge はここで止まる
    - Medium: `docs/process.md` 手順 12（CI）と 14（手動検証）を終えたとき
    - Design: 手順 12 と 14 を終え、CodeRabbit のレビューに答え終えたとき
    - Low: 送らない
@@ -379,7 +384,8 @@ kompiro が見ているセッションで動く必要がある。
    あとのレビューの頼み直しだけ）も 1 件と数える。どの往復も上限を持つようにするためで、上限に達しても
    今の手順に戻るだけである。
 5. **手順 3 での読み方:** `Hand-back by /pr-verify` のコメントは `Decisions by kompiro` ではないので、
-   For Reviewers の答えとしては読まない。やり直しの `/pr-verify` では、最新の `Hand-back` のコメントに挙げた点が
+   For Reviewers の答えとしては読まない。#3914 が原則ごとに `agree` / `differ` を数えるのも `Decisions by kompiro`
+   の記録だけなので、`Hand-back` のコメントはその集計に入らない。やり直しの `/pr-verify` では、最新の `Hand-back` のコメントに挙げた点が
    直っているかを、`[change]` の答えと同じく確かめる（NO のときに kompiro が挙げた点も、ここで確かめる）。
 
 ### 前提として kompiro が設定するもの
@@ -477,6 +483,13 @@ kompiro が見ているセッションで動く必要がある。
   通さないので、この Design PR では `.claude/settings.json` だけを足してある）
 - 受け入れテスト: 下の項目を `docs/acceptance/session-handoff.md` に起こす
 
+#3914 の実装（#3896）も、`.claude/skills/pr-verify/SKILL.md` の手順 6、`.claude/skills/coderabbit-converge/SKILL.md`、
+`docs/process/review.md` を変える。2 つの実装 PR は、後からマージされるほうが main を取り込んで、もう一方の変更に
+合わせる。`review.md` では、#3914 の実装は「指摘の重大度と対応」と「High の PR で人間が読むもの」を書き換え、この
+設計は末尾に節を足す。#3914 の実装が先にマージされて末尾の 3 行（「ローカルレビューの記録」の終わり）が変われば、
+下の「仕様の変更」のブロックの文脈が合わなくなるので、実装 PR の前に Design PR でブロックを直す（`review.md`「Design
+Doc に載せた仕様の文面」）。
+
 実装 PR がマージされたら、この Design Doc を ADR-3920 に昇格させる（`.claude/rules/adr.md`）。
 
 ### 影響範囲・マイグレーション
@@ -527,8 +540,10 @@ kompiro が見ているセッションで動く必要がある。
 2. **往復の上限を 3 回にするか。** PR ごとに、HEAD が変わらない差し戻しも数える。ローカルレビューは今の手順 8 と
    同じ 3 回まで。**答え: 3 回。**
 3. **#3914 との順序。** #3914 は `pr-verify` 手順 6 の問いを減らし、この設計は同じ手順の終わり方を変える。
-   **答え: #3914 を先にマージする。** この Design PR は #3914 のマージを待ち、そのあと main を取り込んで、
-   `pr-verify` の終わり方の記述を #3914 に合わせる。
+   **答え: #3914 を先にマージする。** #3914 は 2026-11-28 にマージし、この Design PR は main を取り込んで合わせた。
+   #3914 の一覧で kompiro が変更を求めた項目も差し戻しの条件に入ること、`Hand-back` のコメントが一致の集計に
+   入らないこと、P1g の問いのあいだは converge が判断待ちで止まり `verify-<N>` に送らないこと、2 つの実装 PR の
+   順序（「実装の指針」）を書いた。
 4. **ほかのセッションを実装セッションが開いてよいか（名前の付け方 C か D）。**
    - C: `review-<N>` は kompiro に問いを出さないので、`impl-<N>` が
      `claude --bg -n review-<N> --permission-mode auto "/local-review <N>"` で起動すれば、kompiro が開くセッションは
