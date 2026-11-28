@@ -6,6 +6,7 @@
   - 引き金 Issue: [#3896](https://github.com/kompiro/karasu/issues/3896)
   - PR: [#3914](https://github.com/kompiro/karasu/pull/3914)
   - 関連 ADR: [ADR-3286](../adr/3286-risk-based-review-tiers.md)（指摘の重大度と対応、差分の外は Issue に回す）、[ADR-3542](../adr/3542-high-pr-review-scope.md)（`## For Reviewers` 節と読む範囲の絞り込み）
+  - 関連 TPL: [TPL-3286](../test-perspectives/TPL-3286-merge-eligibility-judged-on-final-diff.md)（マージの可否を最後の差分で判定する。`## Decided by Claude` 節も、記録の `head` と同じく HEAD を覆っているかを確かめる対象にするかを実装時に照らす）。本 doc は `docs/spec/` と `docs/concepts*.md` に節を足さないので、proactive TPL は起こさない
   - 関連 Issue: [#3546](https://github.com/kompiro/karasu/issues/3546)（High の PR で kompiro が読む範囲）、[#3380](https://github.com/kompiro/karasu/issues/3380)（段階導入 1 か月後の計測）、[#3875](https://github.com/kompiro/karasu/issues/3875)（PR 本文の節の折りたたみ）
   - 関連文書: `docs/process/review.md`「指摘の重大度と対応」「High の PR で人間が読むもの」、`docs/process/coderabbit-rounds.md`「人間に確認する指摘の判定」、`docs/test-perspectives/README.md`（marker の付け方）、`.claude/skills/pr-verify/SKILL.md`、`.claude/skills/coderabbit-converge/SKILL.md`、`.claude/skills/branch-review/SKILL.md`
 
@@ -260,12 +261,7 @@ P1g の 50 行と、超えたら後回しでなく聞くことは、kompiro が 
 - Issue への影響: P1 で直す指摘が Issue にならなくなる。A のうち #3874 の 2 件は後回しのために #3872・#3873 を起票していたが、P1 があれば起票されなかった
 - 既存の PR: 実装の PR のマージより前に作られた PR には求めない
 
-## Related TPLs
-
-- [TPL-3286](../test-perspectives/TPL-3286-merge-eligibility-judged-on-final-diff.md): マージの可否を最後の差分で判定する観点。`## Decided by Claude` 節も、記録の `head` と同じく HEAD を覆っているかを確かめる対象にするかを実装時に照らす
-- 本 doc は `docs/spec/` と `docs/concepts*.md` に節を足さないので、proactive TPL は起こさない
-
-## 決めないこと
+## 未解決の問い / 決めないこと
 
 - Issue の流入に上限を置くこと（見つけたものを台帳に貯めるなど）。P1 で後回しが減る効果を見てから別に決める
 - 記録の文面の誤り（E）を減らす方法。判断を委ねる話ではないので扱わない
