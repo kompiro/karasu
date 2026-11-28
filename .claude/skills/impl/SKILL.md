@@ -65,8 +65,13 @@ kompiro が新しいセッションで `/impl <N>` を打つと始まる。`N` �
 Review tier の走り直し、送らない場合（Low、kompiro への問いを待っている）は `review.md`「セッション同士の
 やりとり」の「検証に渡す時点」に従う。
 
-`verify-<N>` の行がちょうど 1 つあれば `ready-for-verify PR #<M> head=<sha>` を送り、kompiro に PR へのリンクを
+PR 本文に `Closes #<N>` か `Refs #<N>`（`#<N>` の直後が数字でない）があり、`verify-<N>` の行がちょうど 1 つあれば
+`ready-for-verify PR #<M> head=<sha>` を送り、kompiro に PR へのリンクを
 添えて「`verify-<N>` に渡した」と知らせる。無ければ今までどおり kompiro に知らせる。
+
+High の PR では、`/coderabbit-converge` が「人間に渡せる」で終わるときに同じ条件で送る（Review tier の走り直しも
+converge が行う）。それがこの送信なので、converge の最後のメッセージに「`verify-<N>` に送った」とあれば、もう一度
+送らない。
 
 ## 5. メッセージを受けたとき
 
@@ -85,7 +90,7 @@ Review tier の走り直し、送らない場合（Low、kompiro への問いを
 
 - コメントが PR M のもの（`issue_url` が `.../issues/<M>`）
 - コメントの作者が kompiro の login（`gh api user --jq .login`）で、1 行目が `Hand-back by /pr-verify head=<sha>:`
-- PR M のコメントのうち、1 行目が `Hand-back by /pr-verify` のものでいちばん新しい
+- PR M のコメントのうち、作者が kompiro の login で 1 行目が `Hand-back by /pr-verify` のものでいちばん新しい
 - コメントの `head=` が PR M の今の head と同じ（違えば、その後に push した変更をまだ誰も確かめていないので古い）
 - PR M の head のリポジトリが `kompiro/karasu` で、head のブランチが自分の作業ブランチ
 

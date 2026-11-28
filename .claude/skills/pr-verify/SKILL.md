@@ -81,7 +81,9 @@ kompiro への文章は日本語で書き、em dash（—）は使わない（�
 決まったら、次の順で行う。
 
 1. 依頼文（今までどおりの英語の依頼文）を PR に英語のコメントで残す（`gh pr comment <pr> --body-file <ファイル>`）。
-   1 行目は `Hand-back by /pr-verify head=<headSha>:` にする。kompiro が選んだ変更（6b の変更、NO で挙げた点）の行には、
+   1 行目は `Hand-back by /pr-verify head=<headSha>:` にする。`<headSha>` は、`fix` を出した gate の実行（手順 1、
+   手順 6 の冒頭、6b の 3、OK のあと）の `headSha`、6b の 4 と NO からなら手順 1 で控えた `headSha` にする（実装
+   セッションは、これが PR の今の head と違う差し戻しを古いとみなして断る）。kompiro が選んだ変更（6b の変更、NO で挙げた点）の行には、
    `Decisions by kompiro` と同じく末尾に `[change]` を付ける（やり直しの手順 3 が、差分で確かめる項目をこの印で選ぶ）。コメントは kompiro のアカウントで書かれ、ほかの処理が
    読むので、CodeRabbit の指摘はスレッドかコメントの URL で書き、`cr-comment:v1:` で始まる文字列（CodeRabbit の
    指摘が答え済みに数えられる）も `@coderabbitai`（CodeRabbit がレビューを始める）も書かない
@@ -172,7 +174,8 @@ PR に残す。答えとして読むのは、作者が kompiro の login（`gh a
 「マージ前に決めてほしいこと」を集めるときも、答えがある問いは聞き直さない。
 
 1 行目が `Hand-back by /pr-verify` のコメント（上の「実装セッションへの差し戻し」が残したもの）は `Decisions by kompiro`
-ではないので、答えとしては読まない。代わりに、いちばん新しい `Hand-back` のコメントのうち、末尾に `[change]` の印がある
+ではないので、答えとしては読まない。代わりに、作者が kompiro の login の `Hand-back` のコメントでいちばん新しいものの
+うち、末尾に `[change]` の印がある
 行（kompiro が 6b で選んだ変更と、NO のときに挙げた点）を、`[change]` の答えと同じく「変更を確かめる項目」にし、そのコメントの
 `head=` から今の HEAD までの差分で直っているかを確かめる。印の無い行（gate の `reasons` から来た未解決のスレッド、失敗した
 check、コンフリクト、rate limit が明けたあとの頼み直し）は差分では確かめず、手順 1 の `gate.sh` が PR から読み直す（HEAD を
