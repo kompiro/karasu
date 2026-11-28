@@ -3,6 +3,7 @@ import {
   type Finding,
   type GitFacts,
   parseRecord,
+  recordSummary,
   renderRecord,
   severityOf,
   upsertRecord,
@@ -65,6 +66,127 @@ describe("parseRecord / renderRecord", () => {
     expect(
       parseRecord(`<!-- local-review:v1 base=${BASE} head=${HEAD} -->\nReviewers: x`),
     ).toHaveProperty("error");
+  });
+
+  it("folds the record under the heading and keeps it readable (#3875)", () => {
+    const b = body([finding({}), finding({ sev: "Minor", disposition: "declined: out of scope" })]);
+    // Each part is present (indexOf would give -1) and comes after the one before.
+    const parts = [
+      "## Local review",
+      "<details><summary>2 findings: 1 fixed, 1 declined</summary>",
+      "Reviewers:",
+      "| # | Reviewer |",
+      "Verification:",
+      "</details>",
+      "<!-- /local-review -->",
+    ];
+    const at = parts.map((part) => b.indexOf(part));
+    expect(at.filter((i) => i < 0)).toEqual([]);
+    expect(at).toEqual([...at].sort((x, y) => x - y));
+    // GitHub renders a table inside <details> only with a blank line before it.
+    expect(b).toMatch(/<\/summary>\n\n/);
+    expect(b).toMatch(/\n\n<\/details>\n\n<!-- \/local-review -->/);
+  });
+
+  it("keeps the author's text from breaking the fold, and reads it back (#3875)", () => {
+    // Each of these broke the fold on GitHub: a bare tag, an unclosed tag, a code
+    // span that a link, image or autolink takes apart, a code span across lines,
+    // and a fence opened by a lone CR. The record's own marker inside a code span
+    // cut the record short when read back.
+    const hostile = [
+      "</details> <details> <pre> <!-- & &lt; \\`",
+      "[x](`)</details>` ![i](`)</details>` www.a.com/`</details>` https://a.com/`</details>`",
+      "`<!-- /local-review -->` `<!-- local-review:v1 base=" + BASE + " head=" + HEAD + " -->`",
+      "a lone CR\r```, U+2028\u2028and U+2029\u2029end, a trailing backtick `",
+      "zero-width <\u200b already there",
+    ].join(" | ");
+    const r = {
+      base: BASE,
+      head: HEAD,
+      reviewers: `coderabbit CLI --deep, ${hostile}`,
+      waived: `\`</details>\` ${hostile}`,
+      findings: [finding({ where: hostile, finding: hostile, disposition: "declined: <pre> x" })],
+      verification: `checked ${hostile}\nsecond line`,
+    };
+    const block = renderRecord(r);
+    // Between the fold's own tags, no `<` can start a tag, and no line was split.
+    const inner = block.slice(
+      block.indexOf("</summary>") + "</summary>".length,
+      block.lastIndexOf("</details>"),
+    );
+    expect(inner).not.toMatch(/<[A-Za-z/!?]/);
+    expect(inner).not.toMatch(/[\r\u2028\u2029]/);
+    expect(block.match(/<!-- \/local-review -->/g)).toHaveLength(1);
+    // The record reads back what it was given; a line ending becomes a space.
+    const flat = (s: string) => s.replace(/\r\n|[\r\n\u2028\u2029]/g, " ");
+    const parsed = parseRecord(block);
+    expect("record" in parsed && parsed.record).toEqual({
+      ...r,
+      reviewers: flat(r.reviewers),
+      waived: flat(r.waived),
+      verification: flat(r.verification),
+      findings: r.findings.map((f) => ({ ...f, where: flat(f.where), finding: flat(f.finding) })),
+    });
+  });
+
+  it("reads the Reviewers line the same way through the guard (#3875)", () => {
+    expect(
+      check(
+        body([finding({})], { reviewers: "coderabbit CLI skipped: <offline> & `x`" }),
+        "medium",
+      ),
+    ).toEqual([]);
+    // A lone CR no longer starts a `Waived:` line the author did not write.
+    const cr = parseRecord(body([finding({})], { reviewers: "coderabbit CLI --deep\rWaived: no" }));
+    expect("record" in cr && cr.record.waived).toBeUndefined();
+    expect(
+      check(
+        body([finding({ disposition: "" })], { reviewers: "x\u2028coderabbit CLI --deep" }),
+        "medium",
+      ),
+    ).toEqual([expect.stringContaining("finding 1 has no disposition")]);
+  });
+
+  it("reads a record written before the fold (#3875)", () => {
+    const old = [
+      `<!-- local-review:v1 base=${BASE} head=${HEAD} -->`,
+      "",
+      "## Local review",
+      "",
+      "Reviewers: r",
+      "",
+      "| # | Reviewer | Sev | Where | Finding | Disposition |",
+      "| --- | --- | --- | --- | --- | --- |",
+      "| 1 | engineering | Minor | a.ts | x | declined: y |",
+      "<!-- /local-review -->",
+    ].join("\n");
+    const parsed = parseRecord(old);
+    expect("record" in parsed && parsed.record.findings).toHaveLength(1);
+  });
+
+  it("summarises the folded record by disposition", () => {
+    const r = { base: BASE, head: HEAD, reviewers: "r" };
+    expect(recordSummary({ ...r, findings: [] })).toBe("No findings");
+    expect(recordSummary({ ...r, findings: [], waived: "hand-made PR" })).toBe("Waived");
+    expect(recordSummary({ ...r, findings: [finding({})] })).toBe("1 finding: 1 fixed");
+    // The table turns a newline into a space, so the summary does too.
+    expect(recordSummary({ ...r, findings: [finding({ disposition: "fixed in\nabcdef0" })] })).toBe(
+      "1 finding: 1 fixed",
+    );
+    expect(
+      recordSummary({
+        ...r,
+        findings: [
+          finding({ disposition: "→ #3360" }),
+          finding({ reviewer: "design", disposition: "no deviation" }),
+          finding({ disposition: "" }),
+        ],
+      }),
+    ).toBe("3 findings: 1 deferred, 1 no deviation, 1 open");
+    // `no deviation` answers a design row only, as verifyRecord reads it.
+    expect(recordSummary({ ...r, findings: [finding({ disposition: "no deviation" })] })).toBe(
+      "1 finding: 1 open",
+    );
   });
 
   it("upserts: replaces an existing record and appends when there is none", () => {
