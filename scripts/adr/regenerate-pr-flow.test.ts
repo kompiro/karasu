@@ -18,6 +18,7 @@ import {
   labelEdits,
   labelsAreLow,
   prBody,
+  READ_ATTEMPTS,
   regeneratePr,
 } from "./regenerate-pr-flow.ts";
 
@@ -256,6 +257,64 @@ describe("regeneratePr", () => {
     const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
     go(gh, ws);
     expect(ws.calls).toContain("push lease=leftover");
+  });
+
+  it("retries a read that fails once and still merges in the same run (Issue #3933)", () => {
+    let failures = 1;
+    const clock = fakeClock();
+    const readAt: number[] = [];
+    const gh = fakeGitHub({
+      runs: () => {
+        readAt.push(clock.now());
+        if (failures-- > 0) throw new Error("gh api ...: unexpected end of JSON input");
+        return allPass();
+      },
+    });
+    const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
+    const logged: string[] = [];
+    const result = regeneratePr({
+      github: gh.github,
+      workspace: ws.workspace,
+      clock,
+      log: (m) => logged.push(m),
+    });
+    expect(result.outcome).toBe("merged");
+    expect(gh.calls).toContain("merge #100 new-head");
+    // The retry waits the backoff, not the 30-second poll.
+    expect(readAt).toEqual([0, 5000]);
+    expect(logged).toContainEqual(
+      expect.stringMatching(
+        /^reading the check runs of new-head failed \(attempt 1 of 3\), retrying: .*unexpected end of JSON input$/,
+      ),
+    );
+  });
+
+  it("fails the run with the read's error once every attempt has failed", () => {
+    let attempts = 0;
+    const gh = fakeGitHub({
+      runs: () => {
+        attempts++;
+        throw new Error("gh api ...: HTTP 502");
+      },
+    });
+    const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
+    // regeneratePr throws; main() turns it into the "failed" JSON result.
+    expect(() => go(gh, ws)).toThrow("HTTP 502");
+    expect(attempts).toBe(READ_ATTEMPTS);
+    expect(gh.calls.some((c) => c.startsWith("merge"))).toBe(false);
+    expect(ws.calls.at(-1)).toBe("removeWorktree");
+  });
+
+  it("does not retry a write", () => {
+    let creates = 0;
+    const gh = fakeGitHub({});
+    gh.github.createPull = () => {
+      creates++;
+      throw new Error("gh api ...: HTTP 502");
+    };
+    const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
+    expect(() => go(gh, ws)).toThrow("HTTP 502");
+    expect(creates).toBe(1);
   });
 
   it("leaves the PR open and exits 3 when the checks do not finish in time", () => {

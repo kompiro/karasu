@@ -25,6 +25,7 @@ flowchart TD
     ADR_2477["ADR-2477<br/>並列エッジの perpendicular nudge は「重なっているか」で判定する"]
     ADR_2501["ADR-2501<br/>起点スコープに反するエッジ宣言はどのビューにも描画しない"]
     ADR_3480["ADR-3480<br/>edge の canonical id（base form）は `.krs.style` で読..."]
+    ADR_3702["ADR-3702<br/>解決済み edge スタイルの kind 無しキーと kind 付きキーを重ならないようにする"]
     ADR_9019["ADR-9019<br/>`.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
   end
   ADR_19["ADR-19<br/>[parser] ID 必須化と `label` のプロパティ化"]
@@ -70,6 +71,7 @@ flowchart TD
   class ADR_2477 accepted
   class ADR_2501 accepted
   class ADR_3480 accepted
+  class ADR_3702 accepted
   class ADR_9019 accepted
   class ADR_19 ghost
   class ADR_281 ghost

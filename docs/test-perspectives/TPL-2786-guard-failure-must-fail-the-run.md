@@ -59,7 +59,7 @@ scope:
 
 ## 由来
 
-本 TPL を起こした gh-aw の threat detection（2 本のワークフロー）と、それを検査した `agentic-workflow-safety.test.ts` は #3423（ADR-3421）で外れた。外した理由はエンジンの課金で、観点が成り立たなくなったからではない。観点は gh-aw に限らず後段を条件付きで許可するゲート全般に当てはまり、gh-aw も個人の課金で推論できるエンジンが使えるようになったら #3421 で戻すので、`active` のまま残す（2026-10 のレビュー、#3357）。下の「既知の対処パターン」と「関連テスト」は外す前の形を記録している。
+本 TPL を起こした gh-aw の threat detection（2 本のワークフロー）と、それを検査した `agentic-workflow-safety.test.ts` は #3423（ADR-3421）で外れた。外した理由はエンジンの課金で、観点が成り立たなくなったからではない。観点は gh-aw に限らず後段を条件付きで許可するゲート全般に当てはまり、gh-aw も個人の課金で推論できるエンジンが使えるようになったら #3421 で戻すので、`active` のまま残す（2026-10 のレビュー、#3357）。下の「既知の対処パターン」と、関連テストの `agentic-workflow-safety.test.ts` は外す前の形を記録している。
 
 ## 既知の対処パターン
 
@@ -79,6 +79,7 @@ frontmatter が `continue-on-error: false` を宣言していること、lock �
 
 <!-- absent-path-next-line: deleted with the gh-aw workflows in #3423 (ADR-3421), named as history -->
 - `scripts/ci/agentic-workflow-safety.test.ts`
+- `scripts/adr/regenerate-pr-flow.test.ts`（再生成の routine の読み取りがやり直しのあとも失敗し続けたら、マージせずに例外で抜ける。run の終了状態は `main()` が決め、ここでは検査しない。#3933）
 
 ## 派生元 spec
 
